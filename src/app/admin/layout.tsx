@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!_hasHydrated) {
     return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-50 flex items-center justify-center">
         <div className="h-9 w-9 rounded-full border-2 border-rose-600 border-t-transparent animate-spin" aria-hidden />
         <span className="sr-only">Loading admin…</span>
       </div>
@@ -67,9 +67,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isAuthenticated || user?.role !== 'admin') return null;
 
   return (
-    <div className="h-screen bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-dvh max-h-dvh bg-gray-50 overflow-hidden overscroll-none">
       {/* Mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-40 bg-gray-900 text-white border-b border-gray-800">
+      <div className="lg:hidden shrink-0 z-40 bg-gray-900 text-white border-b border-gray-800">
         <div className="h-14 px-4 flex items-center justify-between">
           <h1 className="font-serif text-sm font-bold">
             <span className="text-gold-400">✦</span> Rani Admin
@@ -111,8 +111,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
       </div>
 
-      <div className="flex h-[calc(100vh-56px)] lg:h-full overflow-hidden">
-      <aside className="hidden lg:flex w-[260px] min-w-[260px] max-w-[260px] bg-gray-900 flex-col flex-shrink-0 h-full">
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
+      <aside className="hidden lg:flex w-[260px] min-w-[260px] max-w-[260px] bg-gray-900 flex-col flex-shrink-0 min-h-0 h-full">
         <div className="p-5 border-b border-gray-800">
           <h1 className="font-serif text-base font-bold text-white">
             <span className="text-gold-400">✦</span> Rani Admin
@@ -121,7 +121,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <nav
-          className="flex-1 overflow-y-auto py-4 px-3 space-y-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-4 px-3 space-y-1 [scrollbar-width:thin]"
         >
           {navItems.map(({ label, href, icon: Icon }) => (
             <Link
@@ -154,7 +154,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      <main ref={mainScrollRef} className="flex-1 min-w-0 h-full overflow-y-auto">
+      <main
+        ref={mainScrollRef}
+        data-lenis-prevent
+        className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y"
+      >
         {children}
       </main>
       </div>
