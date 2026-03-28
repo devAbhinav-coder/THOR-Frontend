@@ -25,6 +25,12 @@ function isAuthPublicRequest(config: InternalAxiosRequestConfig): boolean {
   );
 }
 
+/** Session probe: guests get 401; never send them to the login page for this. */
+function isAuthMeRequest(config: InternalAxiosRequestConfig): boolean {
+  const path = (config.url || "").split("?")[0];
+  return path === "/auth/me" || path === "auth/me" || path.endsWith("/auth/me");
+}
+
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
@@ -46,7 +52,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       }
       const path = `${window.location.pathname}${window.location.search || ""}`;
-      if (!path.startsWith("/auth")) {
+      if (!path.startsWith("/auth") && !isAuthMeRequest(originalRequest)) {
         window.location.href = loginUrlWithRedirect(path);
       }
       return Promise.reject({ message: "Session expired", status: 401 });
