@@ -31,6 +31,8 @@ export default function AdminStorefrontPage() {
   const [announcementDraft, setAnnouncementDraft] = useState('');
   const [heroImageFiles, setHeroImageFiles] = useState<Record<number, File | null>>({});
   const [promoBgFile, setPromoBgFile] = useState<File | null>(null);
+  const [blogMainFile, setBlogMainFile] = useState<File | null>(null);
+  const [blogSideFile, setBlogSideFile] = useState<File | null>(null);
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
 
@@ -76,9 +78,13 @@ export default function AdminStorefrontPage() {
         if (file) fd.append(`heroImage_${index}`, file);
       });
       if (promoBgFile) fd.append('promoBackground', promoBgFile);
+      if (blogMainFile) fd.append('blogMainImage', blogMainFile);
+      if (blogSideFile) fd.append('blogSideImage', blogSideFile);
       await adminApi.updateStorefrontSettings(fd);
       setHeroImageFiles({});
       setPromoBgFile(null);
+      setBlogMainFile(null);
+      setBlogSideFile(null);
       toast.success('Storefront settings updated');
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Failed to save settings');
@@ -362,6 +368,27 @@ export default function AdminStorefrontPage() {
         </div>
         <textarea className={inputCls} rows={2} value={settings.promoBanner.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, description: e.target.value } } : p)} placeholder="Promo description" />
         <input className={inputCls} value={(settings.promoBanner.perks || []).join(', ')} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, perks: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } } : p)} placeholder="Perks comma separated" />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <h2 className="font-semibold text-gray-900">Blog / Journal Banner</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+             <ImageUploader maxFiles={1} aspectRatio="4:5" maxSizeMB={5} existingImages={blogMainFile ? [] : (settings.blogBanner?.mainImage ? [settings.blogBanner.mainImage] : [])} onChange={(files) => setBlogMainFile(files[0] || null)} label="Main Image (Portrait)" />
+             {settings.blogBanner?.mainImage && !blogMainFile && <button type="button" className="text-xs text-red-600" onClick={() => setSettings(p => p ? { ...p, blogBanner: { ...p.blogBanner, mainImage: '', mainImagePublicId: undefined } as any } : p)}>Remove main image</button>}
+          </div>
+          <div className="space-y-3">
+             <ImageUploader maxFiles={1} aspectRatio="1:1" maxSizeMB={5} existingImages={blogSideFile ? [] : (settings.blogBanner?.sideImage ? [settings.blogBanner.sideImage] : [])} onChange={(files) => setBlogSideFile(files[0] || null)} label="Side Floating Image (Square)" />
+             {settings.blogBanner?.sideImage && !blogSideFile && <button type="button" className="text-xs text-red-600" onClick={() => setSettings(p => p ? { ...p, blogBanner: { ...p.blogBanner, sideImage: '', sideImagePublicId: undefined } as any } : p)}>Remove side image</button>}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+          <input className={inputCls} value={settings.blogBanner?.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, eyebrow: e.target.value } as any } : p)} placeholder="Eyebrow text" />
+          <input className={inputCls} value={settings.blogBanner?.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, title: e.target.value } as any } : p)} placeholder="Title" />
+          <input className={inputCls} value={settings.blogBanner?.buttonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonText: e.target.value } as any } : p)} placeholder="Button text" />
+          <input className={inputCls} value={settings.blogBanner?.buttonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonLink: e.target.value } as any } : p)} placeholder="Button link" />
+        </div>
+        <textarea className={inputCls} rows={2} value={settings.blogBanner?.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, description: e.target.value } as any } : p)} placeholder="Description" />
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">

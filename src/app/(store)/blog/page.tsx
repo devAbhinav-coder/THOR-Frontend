@@ -93,18 +93,18 @@ export default function BlogListingPage() {
             <Link 
               href={`/blog/${blog.slug}`} 
               key={blog._id}
-              className="group flex flex-col bg-navy-900/40 backdrop-blur-xl border border-white/5 rounded-[2rem] overflow-hidden hover:border-gold-500/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_50px_-12px_rgba(234,179,8,0.15)] relative"
+              className="group flex flex-col bg-navy-900/40 backdrop-blur-xl border border-white/5 rounded-[2rem] overflow-hidden md:hover:border-gold-500/30 transition-all duration-500 md:hover:-translate-y-1.5 md:hover:shadow-[0_20px_50px_-12px_rgba(234,179,8,0.15)] relative transform-gpu isolate"
             >
               {/* Highlight Glow on Hover */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-brand-600/0 via-gold-500/0 to-white/0 group-hover:from-brand-600/5 group-hover:via-gold-500/5 group-hover:to-white/5 transition-colors duration-500 z-0" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-brand-600/0 via-gold-500/0 to-white/0 md:group-hover:from-brand-600/5 md:group-hover:via-gold-500/5 md:group-hover:to-white/5 transition-colors duration-500 z-0 pointer-events-none" />
 
-              <div className="relative aspect-[4/3] w-full overflow-hidden bg-navy-950/50 z-10">
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-navy-900/40 z-10 transform-gpu">
                 {blog.images && blog.images[0] ? (
                   <Image
                     src={blog.images[0].url}
                     alt={blog.title}
                     fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="object-cover transition-transform duration-700 md:group-hover:scale-[1.03] transform-gpu will-change-transform"
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-white/10 uppercase tracking-widest text-sm font-bold bg-navy-900">
@@ -112,30 +112,33 @@ export default function BlogListingPage() {
                   </div>
                 )}
                 
-                {/* Overlay gradient */}
-                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-navy-950 via-navy-950/50 to-transparent opacity-90 transition-opacity group-hover:opacity-100" />
+                {/* Overlay gradient - extended down and made solid at bottom to kill subpixel gap */}
+                <div className="absolute inset-x-0 -bottom-2 h-[60%] bg-gradient-to-t from-[#0e172a] via-[#0e172a]/60 to-transparent opacity-90 transition-opacity duration-500 md:group-hover:opacity-100 pointer-events-none z-20" />
                 
                 {/* Stats overlays */}
-                <div className="absolute bottom-5 left-5 flex gap-3 text-xs font-semibold text-white">
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                    <Heart className="w-3.5 h-3.5 text-brand-400 fill-brand-400" />
-                    <span>{blog.likes?.length || 0}</span>
+                <div className="absolute bottom-5 left-5 flex gap-3 text-xs font-bold text-white z-30">
+                  <div className="flex items-center gap-1.5 bg-black/50 hover:bg-black/70 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/20 shadow-2xl transition-colors">
+                    <Heart className="w-4 h-4 text-brand-400 fill-brand-400" />
+                    <span className="text-white drop-shadow-md">{blog.likes?.length || 0}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                    <Eye className="w-3.5 h-3.5 text-blue-300" />
-                    <span>{blog.viewCount || 0}</span>
+                  <div className="flex items-center gap-1.5 bg-black/50 hover:bg-black/70 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/20 shadow-2xl transition-colors">
+                    <Eye className="w-4 h-4 text-blue-300" />
+                    <span className="text-white drop-shadow-md">{blog.viewCount || 0}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col flex-1 p-6 sm:p-8 relative z-10">
-                <div className="flex items-center gap-2 text-xs text-brand-300 font-bold tracking-widest uppercase mb-4 opacity-80 group-hover:opacity-100 transition-opacity">
+              <div className="flex flex-col flex-1 p-6 sm:p-8 relative z-10 bg-[#0e172a]/20">
+                {/* Structural seal to cover fractional rendering cracks (flexbox zoom sub-pixel issue) */}
+                <div className="absolute -top-1 inset-x-0 h-2 bg-[#0e172a] -z-10" />
+                
+                <div className="flex items-center gap-2 text-xs text-brand-300 font-bold tracking-widest uppercase mb-4 opacity-80 md:group-hover:opacity-100 transition-opacity">
                   <span>{new Date(blog.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                   <span className="text-white/20">•</span>
                   <span>{blog.author?.name || "Editorial"}</span>
                 </div>
                 
-                <h2 className="text-2xl font-bold text-white mb-4 line-clamp-2 leading-snug group-hover:text-gold-300 transition-colors">
+                <h2 className="text-2xl font-bold text-white mb-4 line-clamp-2 leading-snug md:group-hover:text-gold-300 transition-colors">
                   {blog.title}
                 </h2>
                 
@@ -144,9 +147,9 @@ export default function BlogListingPage() {
                 </p>
                 
                 <div className="flex items-center w-full justify-between mt-auto pt-5 border-t border-white/5">
-                   <span className="text-sm font-bold tracking-wide text-brand-400 flex items-center gap-2 group-hover:text-gold-400 transition-colors">
+                   <span className="text-sm font-bold tracking-wide text-brand-400 flex items-center gap-2 md:group-hover:text-gold-400 transition-colors">
                     Read the Story 
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight className="w-4 h-4 md:group-hover:translate-x-1 transition-transform" />
                    </span>
                 </div>
               </div>

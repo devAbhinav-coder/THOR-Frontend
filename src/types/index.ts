@@ -288,6 +288,18 @@ export interface StorefrontSettings {
     secondaryButtonLink?: string;
     perks?: string[];
   };
+  blogBanner: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    mainImage?: string;
+    mainImagePublicId?: string;
+    sideImage?: string;
+    sideImagePublicId?: string;
+    buttonText?: string;
+    buttonLink?: string;
+    isActive?: boolean;
+  };
   footer: {
     description?: string;
     contactAddress?: string;

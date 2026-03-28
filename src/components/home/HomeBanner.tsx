@@ -27,7 +27,7 @@ export default function HomeBanner() {
           {/* Soft image layer */}
           <div className="absolute inset-0 opacity-[0.18]">
             <Image
-              src={promo?.backgroundImage || "https://images.unsplash.com/photo-1520975958225-b3ea6a2c4bd0?w=1600&q=80&auto=format&fit=crop"}
+              src={promo?.backgroundImage || "https://images.unsplash.com/photo-1583391733958-d25e07fac0ec?w=1600&q=80&auto=format&fit=crop"}
               alt="Fabric texture background"
               fill
               sizes="(max-width: 1024px) 100vw, 1200px"

@@ -1,10 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen } from "lucide-react";
 import Image from "next/image";
+import { storefrontApi } from "@/lib/api";
+import { StorefrontSettings } from "@/types";
 
 export default function BlogBanner() {
+  const [settings, setSettings] = useState<StorefrontSettings | null>(null);
+
+  useEffect(() => {
+    storefrontApi
+      .getSettings()
+      .then((res) => setSettings(res.data?.settings || null))
+      .catch(() => {});
+  }, []);
+
+  const blog = settings?.blogBanner;
+
   return (
     <section className="relative overflow-hidden bg-navy-950 py-24 sm:py-32 isolate">
       {/* Decorative background gradients */}
@@ -19,23 +33,30 @@ export default function BlogBanner() {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-sm font-semibold tracking-wide uppercase mb-8">
                 <BookOpen className="w-4 h-4" />
-                Journal & Stories
+                {blog?.eyebrow || "Journal & Stories"}
               </div>
               
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight mb-6 leading-tight">
-                Discover the <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-300 to-brand-400">Art of Ethnic</span>
+                {blog?.title?.split(' ').map((word, i, arr) => {
+                   if (i >= arr.length - 2 && i > 0) {
+                     return <span key={i} className="text-transparent bg-clip-text bg-gradient-to-r from-gold-300 to-brand-400"> {word}</span>;
+                   }
+                   return i === 0 ? word : ' ' + word;
+                }) || (
+                  <>Discover the <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-300 to-brand-400">Art of Ethnic</span></>
+                )}
               </h2>
               
               <p className="text-lg sm:text-xl text-white/70 mb-10 leading-relaxed font-light">
-                Dive deep into the rich history of Indian textures, get styling tips from experts, and stay updated with our latest collections and pop-up stalls.
+                {blog?.description || "Dive deep into the rich history of Indian textures, get styling tips from experts, and stay updated with our latest collections and pop-up stalls."}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
-                  href="/blog"
+                  href={blog?.buttonLink || "/blog"}
                   className="group inline-flex items-center justify-center gap-3 bg-white text-navy-950 px-8 py-4 rounded-full font-bold text-lg transition-all duration-300 hover:bg-gold-50 hover:scale-105 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
                 >
-                  Visit Our Blog
+                  {blog?.buttonText || "Visit Our Blog"}
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
@@ -47,17 +68,17 @@ export default function BlogBanner() {
               <div className="relative w-full max-w-md aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500 border border-white/10 group">
                 <div className="absolute inset-0 bg-gradient-to-t from-navy-950/80 via-transparent to-transparent z-10" />
                 <Image
-                  src="https://img.tatacliq.com/images/i25/437Wx649H/MP000000027106089_437Wx649H_202506261316181.jpeg"
-                  alt="Elegant ethnic wear"
+                  src={blog?.mainImage || ""}
+                  alt="Journal Highlight"
                   fill
                   className="object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
 
               {/* Decorative floating element */}
-              <div className="absolute top-1/4 -left-12 sm:left-0 lg:-left-12 w-48 aspect-square rounded-2xl overflow-hidden shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] transform -rotate-12 border-4 border-navy-900 z-20 hidden sm:block">
+              <div className="absolute top-1/4 -left-12 sm:left-0 lg:-left-12 w-48 aspect-square rounded-2xl overflow-hidden shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] transform -rotate-12 border-4 border-navy-900 z-20 hidden sm:block bg-navy-950">
                 <Image
-                  src="https://designmango.in/upload/blog_images/What-is-Kalamkari-designmango-1716897998_Untitled%20design%20(1).jpg"
+                  src={blog?.sideImage || ""}
                   alt="Fabric details"
                   fill
                   className="object-cover"
