@@ -66,6 +66,7 @@ export default function AdminOrderDetailsPage() {
     note: '',
   });
   const [trackingErrors, setTrackingErrors] = useState<{ shippingCarrier?: string; trackingNumber?: string; trackingUrl?: string }>({});
+  const [trackingModalOpen, setTrackingModalOpen] = useState(false);
 
   const trackingHref = useMemo(() => {
     if (!order) return null;
@@ -95,6 +96,10 @@ export default function AdminOrderDetailsPage() {
   }, [id]);
 
   const updateStatus = async (status: OrderStatus) => {
+    if (status === 'shipped') {
+      setTrackingModalOpen(true);
+      return;
+    }
     if (!order) return;
     setUpdating(true);
     try {
@@ -131,6 +136,7 @@ export default function AdminOrderDetailsPage() {
       toast.success('Marked as shipped');
       const res = await adminApi.getOrderDetails(order._id);
       setOrder(res.data.order);
+      setTrackingModalOpen(false);
     } catch (err: unknown) {
       toast.error((err as { message?: string })?.message || 'Failed to update');
     } finally {
@@ -382,6 +388,61 @@ export default function AdminOrderDetailsPage() {
           </div>
         </div>
       </div>
+
+      {trackingModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
+          <div className="absolute inset-0" onClick={() => setTrackingModalOpen(false)} />
+          <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 sm:p-5 border-b border-gray-100">
+              <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Shipping</p>
+              <h3 className="text-lg font-bold text-gray-900">Add tracking details</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Required — users will see this in their tracking emails and order details.
+              </p>
+            </div>
+            <div className="p-4 sm:p-5 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Courier</label>
+                <input
+                  value={tracking.shippingCarrier}
+                  onChange={(e) => { setTrackingErrors((p) => ({ ...p, shippingCarrier: undefined })); setTracking((p) => ({ ...p, shippingCarrier: e.target.value })); }}
+                  placeholder="e.g. Delhivery, BlueDart, FedEx"
+                  className={cn("w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300", trackingErrors.shippingCarrier ? "border-red-300 bg-red-50/40" : "border-gray-200")}
+                />
+                {trackingErrors.shippingCarrier && <p className="text-xs text-red-600 mt-1">{trackingErrors.shippingCarrier}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Tracking / AWB number</label>
+                <input
+                  value={tracking.trackingNumber}
+                  onChange={(e) => { setTrackingErrors((p) => ({ ...p, trackingNumber: undefined })); setTracking((p) => ({ ...p, trackingNumber: e.target.value })); }}
+                  placeholder="e.g. 1234567890"
+                  className={cn("w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300", trackingErrors.trackingNumber ? "border-red-300 bg-red-50/40" : "border-gray-200")}
+                />
+                {trackingErrors.trackingNumber && <p className="text-xs text-red-600 mt-1">{trackingErrors.trackingNumber}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Tracking URL (optional)</label>
+                <input
+                  value={tracking.trackingUrl}
+                  onChange={(e) => { setTrackingErrors((p) => ({ ...p, trackingUrl: undefined })); setTracking((p) => ({ ...p, trackingUrl: e.target.value })); }}
+                  placeholder="https://..."
+                  className={cn("w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300", trackingErrors.trackingUrl ? "border-red-300 bg-red-50/40" : "border-gray-200")}
+                />
+                {trackingErrors.trackingUrl && <p className="text-xs text-red-600 mt-1">{trackingErrors.trackingUrl}</p>}
+              </div>
+            </div>
+            <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex gap-3">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setTrackingModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="brand" className="flex-1 rounded-xl" loading={updating} onClick={markShippedWithTracking}>
+                Mark Shipped
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
