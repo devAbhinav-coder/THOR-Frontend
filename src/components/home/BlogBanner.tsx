@@ -47,7 +47,7 @@ export default function BlogBanner() {
               <div className="relative w-full max-w-md aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500 border border-white/10 group">
                 <div className="absolute inset-0 bg-gradient-to-t from-navy-950/80 via-transparent to-transparent z-10" />
                 <Image
-                  src="https://images.unsplash.com/photo-1610030469983-98e550d615ef?auto=format&fit=crop&q=80&w=800"
+                  src="https://img.tatacliq.com/images/i25/437Wx649H/MP000000027106089_437Wx649H_202506261316181.jpeg"
                   alt="Elegant ethnic wear"
                   fill
                   className="object-cover transition-transform duration-700 group-hover:scale-110"
@@ -57,7 +57,7 @@ export default function BlogBanner() {
               {/* Decorative floating element */}
               <div className="absolute top-1/4 -left-12 sm:left-0 lg:-left-12 w-48 aspect-square rounded-2xl overflow-hidden shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] transform -rotate-12 border-4 border-navy-900 z-20 hidden sm:block">
                 <Image
-                  src="https://images.unsplash.com/photo-1583391733958-d25e07fac0ec?auto=format&fit=crop&q=80&w=400"
+                  src="https://designmango.in/upload/blog_images/What-is-Kalamkari-designmango-1716897998_Untitled%20design%20(1).jpg"
                   alt="Fabric details"
                   fill
                   className="object-cover"
