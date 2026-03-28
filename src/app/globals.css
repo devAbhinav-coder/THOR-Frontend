@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand Prussian blue */
+    --prussian-blue: #14192f;
+
+    /* Page surface */
+    --background: 0 0% 100%;
+    --foreground: 229 32% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 229 32% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 229 32% 11%;
+
+    /* Primary = crimson red (#c41230) */
+    --primary: 349 82% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary = Prussian blue #14192F */
+    --secondary: 229 40% 13%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 349 60% 95%;
+    --accent-foreground: 349 82% 35%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 349 82% 42%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 229 36% 8%;
+    --foreground: 210 20% 95%;
+    --card: 229 36% 11%;
+    --card-foreground: 210 20% 95%;
+    --popover: 229 36% 11%;
+    --popover-foreground: 210 20% 95%;
+    --primary: 349 80% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 229 38% 32%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 229 25% 18%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 349 30% 18%;
+    --accent-foreground: 349 70% 75%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 229 25% 18%;
+    --input: 229 25% 18%;
+    --ring: 349 80% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+@layer utilities {
+  .skeleton {
+    @apply relative overflow-hidden bg-gray-200;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer;
+  }
+
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Prussian-to-crimson gradient (hero overlays & CTAs) */
+  .gradient-brand {
+    background: linear-gradient(135deg, #0c1020 0%, var(--prussian-blue) 50%, #c41230 100%);
+  }
+  .gradient-hero {
+    background: linear-gradient(160deg, #0a0e1a 0%, var(--prussian-blue) 58%, #7d0b1f 100%);
+  }
+}
+
+/* Swiper overrides */
+.swiper-pagination-bullet-active {
+  background-color: #c41230 !important;
+}
+.swiper-button-next,
+.swiper-button-prev {
+  color: #c41230 !important;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
