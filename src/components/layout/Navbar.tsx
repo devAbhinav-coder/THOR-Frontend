@@ -244,6 +244,12 @@ export default function Navbar() {
               >
                 Featured
               </Link>
+              <Link
+                href='/blog'
+                className='px-3 py-2 text-sm font-medium text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+              >
+                Blog
+              </Link>
             </nav>
 
             <form
@@ -508,6 +514,12 @@ export default function Navbar() {
                 className='block px-3 py-2 text-sm font-medium text-gold-400 hover:bg-navy-800 rounded-lg'
               >
                 Featured
+              </Link>
+              <Link
+                href='/blog'
+                className='block px-3 py-2 text-sm font-medium text-white hover:bg-navy-800 rounded-lg'
+              >
+                Blog
               </Link>
 
               {navCategories.length > 0 && (

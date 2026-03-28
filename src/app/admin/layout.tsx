@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, Package, ShoppingCart, Tag, Users, Star,
-  LogOut, ChevronRight, BarChart3, FolderOpen, Menu, X, Mail,
+  LogOut, ChevronRight, BarChart3, FolderOpen, Menu, X, Mail, FileText
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ const navItems = [
   { label: 'Categories', href: '/admin/categories', icon: FolderOpen },
   { label: 'Storefront', href: '/admin/storefront', icon: FolderOpen },
   { label: 'Email Campaigns', href: '/admin/emails', icon: Mail },
+  { label: 'Blogs', href: '/admin/blogs', icon: FileText },
   { label: 'Products', href: '/admin/products', icon: Package },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },

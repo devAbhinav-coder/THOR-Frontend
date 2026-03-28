@@ -301,3 +301,33 @@ export interface StorefrontSettings {
     categoryLimit?: number;
   };
 }
+
+export interface BlogImage {
+  url: string;
+  publicId: string;
+  caption?: string;
+}
+
+export interface Blog {
+  _id: string;
+  title: string;
+  slug: string;
+  content: string;
+  images: BlogImage[];
+  author: { _id: string; name: string; avatar?: string };
+  likes: string[];
+  isPublished: boolean;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogComment {
+  _id: string;
+  blog: string;
+  user: { _id: string; name: string; avatar?: string };
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

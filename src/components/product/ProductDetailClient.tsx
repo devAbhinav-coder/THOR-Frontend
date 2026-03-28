@@ -302,7 +302,6 @@ export default function ProductDetailClient({ slug }: Props) {
     setIsAddingToCart(true);
     try {
       await addToCart(product._id, { sku: selectedVariant.sku, size: selectedVariant.size, color: selectedVariant.color }, quantity);
-      toast.success("Added to cart!");
     } catch { /* handled */ } finally { setIsAddingToCart(false); }
   };
 

@@ -265,4 +265,17 @@ export const adminApi = {
   deleteCategory: (id: string) => del204("admin.categories.delete", api.delete(`/admin/categories/${id}`)),
 };
 
+export const blogApi = {
+  getAll: (params?: Record<string, string | number | boolean>) => api.get("/blogs", { params }).then(res => res.data),
+  getBySlug: (slug: string) => api.get(`/blogs/${slug}`).then(res => res.data),
+  like: (id: string) => api.post(`/blogs/${id}/like`).then(res => res.data),
+  addComment: (id: string, content: string) => api.post(`/blogs/${id}/comments`, { content }).then(res => res.data),
+  getAdminAll: (params?: Record<string, string | number>) => api.get("/blogs/admin/all", { params }).then(res => res.data),
+  create: (data: FormData) => api.post("/blogs", data, { headers: { "Content-Type": "multipart/form-data" } }).then(res => res.data),
+  update: (id: string, data: FormData) => api.patch(`/blogs/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }).then(res => res.data),
+  delete: (id: string) => api.delete(`/blogs/${id}`).then(res => res.data),
+  deleteImage: (id: string, publicId: string) => api.delete(`/blogs/${id}/images/${publicId}`).then(res => res.data),
+  deleteComment: (id: string, commentId: string) => api.delete(`/blogs/${id}/comments/${commentId}`).then(res => res.data),
+};
+
 export default api;

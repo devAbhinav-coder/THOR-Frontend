@@ -6,6 +6,7 @@ import HomeBanner from '@/components/home/HomeBanner';
 import CategorySection from '@/components/home/CategorySection';
 import WhyChooseUs from '@/components/home/WhyChooseUs';
 import Testimonials from '@/components/home/Testimonials';
+import BlogBanner from '@/components/home/BlogBanner';
 
 export const metadata: Metadata = {
   title: 'The House of Rani | Premium Indian Ethnic Wear',
@@ -22,6 +23,7 @@ export default function HomePage() {
       <HomeBanner />
       <ExploreCollection />
       <WhyChooseUs />
+      <BlogBanner />
       <Testimonials />
     </>
   );

@@ -72,7 +72,6 @@ export default function ProductCard({ product, className }: ProductCardProps) {
         },
         1,
       );
-      toast.success("Added to cart!");
     } catch {
       /* handled in store */
     } finally {
