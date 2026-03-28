@@ -415,7 +415,10 @@ export default function AdminConcierge() {
   return (
     <div className="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-[80] flex flex-col items-end gap-2 pointer-events-none [&>*]:pointer-events-auto">
       {open && (
-        <div className="w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px] h-[74vh] sm:h-[600px] bg-white rounded-2xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col ring-1 ring-gold-500/20">
+        <div
+          data-lenis-prevent
+          className="w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px] h-[74vh] sm:h-[600px] bg-white rounded-2xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col ring-1 ring-gold-500/20"
+        >
           <div className="bg-gradient-to-r from-gray-900 via-gray-900 to-navy-950 text-white px-4 py-3 shrink-0 border-b border-gold-500/30">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -451,7 +454,7 @@ export default function AdminConcierge() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 bg-gray-50">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y px-3 py-3 bg-gray-50">
             <div className="space-y-3">
               {messages.map((m) => (
                 <div key={m.id} className={cn("flex gap-2", m.sender === "user" ? "justify-end" : "justify-start")}>

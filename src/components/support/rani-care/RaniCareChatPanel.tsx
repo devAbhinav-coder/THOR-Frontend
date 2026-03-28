@@ -42,7 +42,10 @@ export function RaniCareChatPanel(props: ChatProps) {
   return (
     <div className="fixed right-4 z-[95] flex flex-col items-end gap-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 sm:right-6">
       {open && (
-        <div className="w-[calc(100vw-2rem)] sm:w-[400px] max-w-[400px] h-[76vh] sm:h-[660px] bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden mb-3 animate-fadeIn flex flex-col">
+        <div
+          data-lenis-prevent
+          className="w-[calc(100vw-2rem)] sm:w-[400px] max-w-[400px] h-[76vh] sm:h-[660px] bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden mb-3 animate-fadeIn flex flex-col"
+        >
           <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 text-white px-4 py-3.5 shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -63,7 +66,7 @@ export function RaniCareChatPanel(props: ChatProps) {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 bg-[#f7f8fb]">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y px-3 py-3 bg-[#f7f8fb]">
             <div className="space-y-3">
               {messages.map((message: ChatMessage) => (
                 <div
