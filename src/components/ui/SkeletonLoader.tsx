@@ -10,21 +10,24 @@ export function Skeleton({ className }: SkeletonProps) {
   );
 }
 
+/** Matches `ProductCard` layout: 3:4 image + fixed text bands + mobile CTA slot */
 export function ProductCardSkeleton() {
   return (
-    <div className="rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100">
-      <Skeleton className="h-64 w-full" />
-      <div className="p-4 space-y-2">
-        <Skeleton className="h-3 w-20" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <div className="flex items-center gap-1">
-          <Skeleton className="h-3 w-24" />
-        </div>
-        <div className="flex items-center justify-between pt-1">
-          <Skeleton className="h-5 w-20" />
-          <Skeleton className="h-8 w-24 rounded-lg" />
-        </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-2xl bg-gray-100">
+        <Skeleton className="h-full w-full rounded-2xl" />
+      </div>
+      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-1.5">
+        <Skeleton className="h-3 w-24 shrink-0" />
+        <Skeleton className="h-10 w-full shrink-0" />
+        <Skeleton className="h-5 w-28 shrink-0" />
+        <Skeleton className="h-4 w-20 shrink-0" />
+        <Skeleton className="h-[26px] w-24 shrink-0" />
+        <Skeleton className="h-[22px] w-36 shrink-0" />
+        <div className="min-h-0 flex-1" aria-hidden />
+      </div>
+      <div className="mt-auto shrink-0 pt-2 sm:hidden">
+        <Skeleton className="h-10 w-full rounded-xl" />
       </div>
     </div>
   );

@@ -41,6 +41,8 @@ export default function ShopClient() {
   });
   const [page, setPage] = useState(1);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  /** FIFO: each debounced value we pushed with router.replace; skip draft reset when URL catches up (handles out-of-order navigations while typing). */
+  const searchCommitQueue = useRef<string[]>([]);
 
   const [filters, setFilters] = useState({
     category: searchParams.get("category") || "",
@@ -75,19 +77,26 @@ export default function ShopClient() {
   }, [searchParamsKey, searchParams]);
 
   useEffect(() => {
-    if (searchPending) return;
+    const urlQ = (searchParams.get("search") || "").trim();
+    const q = searchCommitQueue.current;
+    if (q.length > 0 && q[0] === urlQ) {
+      q.shift();
+      return;
+    }
+    searchCommitQueue.current = [];
     setSearchDraft(searchParams.get("search") || "");
-  }, [searchParamsKey, searchParams, searchPending]);
+  }, [searchParamsKey, searchParams]);
 
   useEffect(() => {
     const urlQ = (searchParams.get("search") || "").trim();
     if (debouncedSearch === urlQ) return;
+    searchCommitQueue.current.push(debouncedSearch);
     const params = new URLSearchParams(searchParams.toString());
     if (debouncedSearch) params.set("search", debouncedSearch);
     else params.delete("search");
     const qs = params.toString();
     router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
-  }, [debouncedSearch, router, searchParams, searchParamsKey]);
+  }, [debouncedSearch, router, searchParams]);
 
   const queryKey = useMemo(
     () =>
@@ -432,7 +441,7 @@ export default function ShopClient() {
           </div>
 
           {isLoading ?
-            <div className='grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5'>
+            <div className='grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
               {[...Array(9)].map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
@@ -447,7 +456,7 @@ export default function ShopClient() {
               </Button>
             </div>
           : <>
-              <div className='grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5'>
+              <div className='grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
                 {products.map((product) => (
                   <ProductCard key={product._id} product={product} />
                 ))}
@@ -457,7 +466,7 @@ export default function ShopClient() {
               <div ref={loadMoreRef} className='h-10' />
 
               {isLoadingMore && (
-                <div className='mt-6 grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5'>
+                <div className='mt-6 grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
                   {[...Array(6)].map((_, i) => (
                     <ProductCardSkeleton key={`more-${i}`} />
                   ))}

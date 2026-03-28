@@ -109,12 +109,19 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   };
 
   return (
-    <div className={cn("group relative flex flex-col h-full", className)}>
-      <Link href={`/shop/${product.slug}`} className='block'>
-        {/* ── Image – 3:4 portrait, no cropping ── */}
+    <div
+      className={cn(
+        "group relative flex h-full min-h-0 flex-col",
+        className,
+      )}
+    >
+      <Link
+        href={`/shop/${product.slug}`}
+        className='flex min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2 rounded-2xl'
+      >
+        {/* ── Image – 3:4 portrait (same on every card / breakpoint) ── */}
         <div
-          className='relative overflow-hidden rounded-2xl bg-gray-100'
-          style={{ aspectRatio: "3/4" }}
+          className='relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-2xl bg-gray-100'
           onMouseEnter={() => canUseHoverEffects && setHoveredImage(true)}
           onMouseLeave={() => canUseHoverEffects && setHoveredImage(false)}
         >
@@ -204,93 +211,98 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           )}
         </div>
 
-        {/* ── Info below image ── */}
-        <div className='mt-3 space-y-1.5 flex flex-col min-h-[152px]'>
-          {/* Category · Fabric · Subcategory */}
-          <div className='flex items-center gap-1.5 flex-wrap'>
-            <span className='text-[10px] font-bold text-brand-600 uppercase tracking-wider'>
+        {/* ── Info: fixed vertical rhythm so every card matches on phone + desktop ── */}
+        <div className='mt-3 flex min-h-0 flex-1 flex-col gap-1.5'>
+          {/* Meta — single line */}
+          <div className='flex h-4 min-h-4 shrink-0 items-center gap-1.5 overflow-hidden'>
+            <span className='truncate text-[10px] font-bold uppercase tracking-wider text-brand-600'>
               {product.category}
             </span>
-            {product.fabric && (
+            {product.fabric ?
               <>
-                <span className='text-[10px] text-gray-300'>·</span>
-                <span className='text-[10px] font-semibold text-gray-500 uppercase tracking-wide'>
+                <span className='shrink-0 text-[10px] text-gray-300'>·</span>
+                <span className='truncate text-[10px] font-semibold uppercase tracking-wide text-gray-500'>
                   {product.fabric}
                 </span>
               </>
-            )}
+            : null}
           </div>
 
-          {/* Product name */}
-          <h3 className='text-sm font-semibold text-gray-900 line-clamp-2 leading-snug min-h-[40px]'>
+          {/* Title — exactly two lines tall everywhere */}
+          <h3 className='line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-gray-900'>
             {product.name}
           </h3>
 
-          {/* Color swatches */}
-          {(() => {
-            const uniqueColors = product.variants
-              .filter((v) => v.color)
-              .reduce<{ color: string; colorCode?: string }[]>((acc, v) => {
-                if (!acc.find((c) => c.color === v.color)) {
-                  acc.push({ color: v.color!, colorCode: v.colorCode });
-                }
-                return acc;
-              }, []);
-            if (uniqueColors.length === 0) return null;
-            const MAX = 5;
-            const visible = uniqueColors.slice(0, MAX);
-            const extra = uniqueColors.length - MAX;
-            return (
-              <div className='flex items-center gap-1.5 flex-wrap'>
-                {visible.map(({ color, colorCode }) =>
-                  colorCode ? (
-                    <span
-                      key={color}
-                      title={color}
-                      className='h-4 w-4 rounded-full border border-gray-200 shadow-sm flex-shrink-0'
-                      style={{ background: colorCode }}
-                    />
-                  ) : (
-                    <span
-                      key={color}
-                      className='text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full leading-none'
-                    >
-                      {color}
-                    </span>
-                  )
-                )}
-                {extra > 0 && (
-                  <span className='text-[10px] font-semibold text-gray-400'>
-                    +{extra}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Stars */}
-          {product.ratings.count > 0 && (
-            <div className='flex items-center gap-1'>
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={cn(
-                    "h-3 w-3",
-                    i < Math.round(product.ratings.average) ?
-                      "fill-gold-400 text-gold-400"
-                    : "fill-gray-200 text-gray-200",
+          {/* Colors — one row; scroll horizontally if many (no wrapping = same card height) */}
+          <div className='h-5 min-h-5 shrink-0'>
+            {(() => {
+              const uniqueColors = product.variants
+                .filter((v) => v.color)
+                .reduce<{ color: string; colorCode?: string }[]>((acc, v) => {
+                  if (!acc.find((c) => c.color === v.color)) {
+                    acc.push({ color: v.color!, colorCode: v.colorCode });
+                  }
+                  return acc;
+                }, []);
+              if (uniqueColors.length === 0) {
+                return <div className='h-5' aria-hidden />;
+              }
+              const MAX = 5;
+              const visible = uniqueColors.slice(0, MAX);
+              const extra = uniqueColors.length - MAX;
+              return (
+                <div className='flex h-5 max-w-full items-center gap-1.5 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                  {visible.map(({ color, colorCode }) =>
+                    colorCode ? (
+                      <span
+                        key={color}
+                        title={color}
+                        className='h-4 w-4 shrink-0 rounded-full border border-gray-200 shadow-sm'
+                        style={{ background: colorCode }}
+                      />
+                    ) : (
+                      <span
+                        key={color}
+                        className='shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-500'
+                      >
+                        {color}
+                      </span>
+                    ),
                   )}
-                />
-              ))}
-              <span className='text-[10px] text-gray-400 ml-0.5'>
-                ({product.ratings.count})
-              </span>
-            </div>
-          )}
-          {product.ratings.count === 0 && <div className='h-[14px]' />}
+                  {extra > 0 && (
+                    <span className='shrink-0 text-[10px] font-semibold text-gray-400'>
+                      +{extra}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
 
-          {/* Price row */}
-          <div className='flex items-center flex-wrap gap-x-2 gap-y-0.5'>
+          {/* Ratings — same row height whether 0 or many reviews */}
+          <div className='flex h-4 min-h-4 shrink-0 items-center gap-1'>
+            {product.ratings.count > 0 ?
+              <>
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={cn(
+                      "h-3 w-3 shrink-0",
+                      i < Math.round(product.ratings.average) ?
+                        "fill-gold-400 text-gold-400"
+                      : "fill-gray-200 text-gray-200",
+                    )}
+                  />
+                ))}
+                <span className='ml-0.5 text-[10px] text-gray-400'>
+                  ({product.ratings.count})
+                </span>
+              </>
+            : null}
+          </div>
+
+          {/* Price */}
+          <div className='flex min-h-[26px] shrink-0 flex-wrap items-center gap-x-2 gap-y-0.5'>
             <span className='text-base font-bold text-gray-900'>
               {formatPrice(product.price)}
             </span>
@@ -300,32 +312,28 @@ export default function ProductCard({ product, className }: ProductCardProps) {
               </span>
             )}
             {discountPercent > 0 && (
-              <span className='text-xs text-green-600 font-semibold'>
+              <span className='text-xs font-semibold text-green-600'>
                 {discountPercent}% off
               </span>
             )}
           </div>
 
-          {/* Status row (fixed height so cards don't jump) */}
-          <div className='min-h-[22px]'>
-            {!isOutOfStock && product.totalStock > 0 && product.totalStock <= 5 ? (
-              <p className='text-xs font-semibold text-amber-700'>
-                <span className='inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 whitespace-nowrap'>
-                  <span aria-hidden>⚡</span> Only a few left!
-                </span>
-              </p>
-            ) : (
-              <div className='h-[22px]' />
-            )}
+          {/* Low stock — fixed band */}
+          <div className='flex h-[22px] min-h-[22px] shrink-0 items-center'>
+            {!isOutOfStock && product.totalStock > 0 && product.totalStock <= 5 ?
+              <span className='inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-700'>
+                <span aria-hidden>⚡</span> Only a few left!
+              </span>
+            : null}
           </div>
 
-          {/* Spacer to keep card heights consistent */}
-          <div className='mt-auto' />
+          {/* Fills extra row height from CSS grid so cards in a row align */}
+          <div className='min-h-0 flex-1' aria-hidden />
         </div>
       </Link>
 
-      {/* Mobile CTA — always visible on small screens */}
-      <div className='sm:hidden mt-3'>
+      {/* Mobile CTA — pinned to bottom of stretched grid cell */}
+      <div className='mt-auto shrink-0 pt-2 sm:hidden'>
         <button
           onClick={handleAddToCart}
           disabled={isOutOfStock || isAddingToCart}

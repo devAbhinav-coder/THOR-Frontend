@@ -52,7 +52,7 @@ export default function ExploreCollection() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch [&>*]:h-full [&>*]:min-h-0">
           {isLoading
             ? [...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)
             : products.slice(0, 16).map((product) => (

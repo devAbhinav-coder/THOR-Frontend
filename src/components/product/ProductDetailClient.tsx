@@ -810,7 +810,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 View all <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0">
               {relatedProducts.slice(0, 4).map((p) => (
                 <ProductCard key={p._id} product={p} />
               ))}
@@ -835,7 +835,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 Explore all <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0">
               {moreProducts.slice(0, 4).map((p) => (
                 <ProductCard key={p._id} product={p} />
               ))}
