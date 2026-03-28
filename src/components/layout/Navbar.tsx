@@ -52,7 +52,10 @@ export default function Navbar() {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const navCategories = useMemo(() => categoriesData.slice(0, 7), [categoriesData]);
+  const navCategories = useMemo(
+    () => categoriesData.slice(0, 7),
+    [categoriesData],
+  );
 
   const { data: storefrontSettings } = useQuery({
     queryKey: queryKeys.storefrontSettings,
@@ -154,15 +157,14 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isSearchOpen, focusStoreSearch]);
 
-  const ordersHref = isAuthenticated
-    ? "/dashboard/orders"
-    : "/auth/login?redirect=/dashboard/orders";
+  const ordersHref =
+    isAuthenticated ? "/dashboard/orders" : (
+      "/auth/login?redirect=/dashboard/orders"
+    );
 
-  const isShopActive =
-    pathname === "/shop" || pathname.startsWith("/shop");
+  const isShopActive = pathname === "/shop" || pathname.startsWith("/shop");
   const isOrdersActive = pathname.startsWith("/dashboard/orders");
-  const isCartActive =
-    pathname === "/cart" || pathname.startsWith("/cart");
+  const isCartActive = pathname === "/cart" || pathname.startsWith("/cart");
 
   return (
     <>
@@ -264,7 +266,7 @@ export default function Navbar() {
                   aria-label='Search store'
                   className='w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 pr-24 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35'
                 />
-                {searchQuery ? (
+                {searchQuery ?
                   <button
                     type='button'
                     onClick={() => setSearchQuery("")}
@@ -273,7 +275,7 @@ export default function Navbar() {
                   >
                     <X className='h-3.5 w-3.5' />
                   </button>
-                ) : null}
+                : null}
                 <kbd className='pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-navy-600 bg-navy-900/80 px-1.5 py-0.5 font-sans text-[10px] font-medium text-white/50 xl:inline'>
                   Ctrl+K
                 </kbd>
@@ -407,7 +409,10 @@ export default function Navbar() {
               data-navbar-search
               className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'
             >
-              <form onSubmit={handleSearch} className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+              <form
+                onSubmit={handleSearch}
+                className='flex flex-col gap-2 sm:flex-row sm:items-center'
+              >
                 <div className='relative flex-1'>
                   <Search className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35' />
                   <input
@@ -415,12 +420,12 @@ export default function Navbar() {
                     type='search'
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder='Search sarees, lehengas, kurtis…'
+                    placeholder='Search sarees, kalamkari, etc.'
                     autoComplete='off'
                     aria-label='Search store'
                     className='w-full rounded-xl border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35'
                   />
-                  {searchQuery ? (
+                  {searchQuery ?
                     <button
                       type='button'
                       onClick={() => setSearchQuery("")}
@@ -429,7 +434,7 @@ export default function Navbar() {
                     >
                       <X className='h-4 w-4' />
                     </button>
-                  ) : null}
+                  : null}
                 </div>
                 <button
                   type='submit'
@@ -438,9 +443,6 @@ export default function Navbar() {
                   Search
                 </button>
               </form>
-              <p className='mt-2 text-center text-[11px] text-white/40'>
-                Opens shop results · On desktop use the bar in the header or press Ctrl+K
-              </p>
             </div>
           )}
         </div>
@@ -597,15 +599,15 @@ export default function Navbar() {
             href='/'
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              pathname === "/"
-                ? "text-white"
-                : "text-white/70 hover:text-white"
+              pathname === "/" ? "text-white" : (
+                "text-white/70 hover:text-white"
+              ),
             )}
           >
             <Home
               className={cn(
                 "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                pathname === "/" ? "text-brand-400" : "text-white/75"
+                pathname === "/" ? "text-brand-400" : "text-white/75",
               )}
               strokeWidth={pathname === "/" ? 2.5 : 2}
             />
@@ -615,13 +617,13 @@ export default function Navbar() {
             href='/shop'
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isShopActive ? "text-white" : "text-white/70 hover:text-white"
+              isShopActive ? "text-white" : "text-white/70 hover:text-white",
             )}
           >
             <Store
               className={cn(
                 "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isShopActive ? "text-brand-400" : "text-white/75"
+                isShopActive ? "text-brand-400" : "text-white/75",
               )}
               strokeWidth={isShopActive ? 2.5 : 2}
             />
@@ -631,14 +633,14 @@ export default function Navbar() {
             href='/cart'
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isCartActive ? "text-white" : "text-white/70 hover:text-white"
+              isCartActive ? "text-white" : "text-white/70 hover:text-white",
             )}
           >
             <span className='relative inline-flex'>
               <ShoppingBag
                 className={cn(
                   "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                  isCartActive ? "text-brand-400" : "text-white/75"
+                  isCartActive ? "text-brand-400" : "text-white/75",
                 )}
                 strokeWidth={isCartActive ? 2.5 : 2}
               />
@@ -654,13 +656,13 @@ export default function Navbar() {
             href={ordersHref}
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isOrdersActive ? "text-white" : "text-white/70 hover:text-white"
+              isOrdersActive ? "text-white" : "text-white/70 hover:text-white",
             )}
           >
             <Package
               className={cn(
                 "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isOrdersActive ? "text-brand-400" : "text-white/75"
+                isOrdersActive ? "text-brand-400" : "text-white/75",
               )}
               strokeWidth={isOrdersActive ? 2.5 : 2}
             />
@@ -671,7 +673,7 @@ export default function Navbar() {
             onClick={() => setIsMenuOpen((o) => !o)}
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isMenuOpen ? "text-white" : "text-white/70 hover:text-white"
+              isMenuOpen ? "text-white" : "text-white/70 hover:text-white",
             )}
             aria-expanded={isMenuOpen}
             aria-label='Open menu'
@@ -684,7 +686,8 @@ export default function Navbar() {
             : <Menu
                 className='h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0 text-white/75'
                 strokeWidth={2}
-              />}
+              />
+            }
             Menu
           </button>
         </div>

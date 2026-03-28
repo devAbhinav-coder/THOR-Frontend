@@ -407,9 +407,7 @@ export default function ShopClient() {
               className='w-full sm:max-w-xl'
               aria-label='Search products'
             />
-            <p className='text-xs text-gray-400 -mt-1 sm:-mt-2'>
-              Results update after you pause typing — use filters on the left to narrow further.
-            </p>
+
             <div className='flex flex-wrap items-center justify-between gap-3'>
               <Button
                 variant='outline'
