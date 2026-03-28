@@ -46,12 +46,12 @@ export function RaniCareChatPanel(props: ChatProps) {
           <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 text-white px-4 py-3.5 shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-widest text-gold-300 font-semibold">Support Assistant</p>
+                <p className="text-[11px] uppercase tracking-widest text-gold-300 font-semibold">Customer support</p>
                 <h3 className="text-base font-bold flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-gold-300" />
-                  RaniCare Concierge
+                  RaniCare
                 </h3>
-                <p className="text-xs text-white/70 mt-0.5">Last 5 orders · track · cancel (before dispatch)</p>
+                <p className="text-xs text-white/75 mt-0.5">Orders, delivery, and account help</p>
               </div>
               <button
                 onClick={() => setOpen(false)}
@@ -139,7 +139,7 @@ export function RaniCareChatPanel(props: ChatProps) {
                                   Cancel
                                 </button>
                               ) : (
-                                <span className="text-[10px] text-gray-400 self-center">Cancel N/A</span>
+                                <span className="text-[10px] text-gray-400 self-center">Not cancellable</span>
                               )}
                             </div>
                           </div>
@@ -176,7 +176,7 @@ export function RaniCareChatPanel(props: ChatProps) {
                   </div>
                   <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-3 py-2 text-sm text-gray-500 inline-flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {loadingOrders ? "Loading your orders…" : "Typing…"}
+                    {loadingOrders ? "Loading orders…" : "Preparing a reply…"}
                   </div>
                 </div>
               )}
@@ -196,7 +196,7 @@ export function RaniCareChatPanel(props: ChatProps) {
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask anything, or type your order number…"
+                placeholder="Type your message or order number"
                 rows={1}
                 maxLength={500}
                 className="w-full resize-none rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 max-h-24"
@@ -217,7 +217,8 @@ export function RaniCareChatPanel(props: ChatProps) {
               </button>
             </form>
             <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">
-              <span>Enter to send · Shift+Enter new line</span>
+              <span className="hidden sm:inline">Enter to send · Shift+Enter for a new line</span>
+              <span className="sm:hidden">Enter sends</span>
               <Link
                 href="/dashboard/orders"
                 className="inline-flex items-center gap-0.5 text-brand-600 hover:text-brand-700 font-medium"
@@ -242,13 +243,13 @@ export function RaniCareChatPanel(props: ChatProps) {
             </button>
             <span
               className="absolute top-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm ring-1 ring-white/90"
-              title="We’re online"
+              title="Support chat"
               aria-hidden
             />
           </div>
           <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-md text-xs text-gray-600 max-w-[280px]">
             <Sparkles className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-            <span className="leading-snug">RaniCare — orders &amp; support</span>
+            <span className="leading-snug">Orders &amp; support</span>
             <ArrowRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />
           </div>
         </div>

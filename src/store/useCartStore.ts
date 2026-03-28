@@ -104,7 +104,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       const body = await cartApi.applyCoupon(code);
       const cart = body.data.cart;
       set({ cart, appliedCouponCode: body.data.coupon?.code || code });
-      toast.success(`Coupon applied! You saved ₹${body.data.coupon.appliedDiscount}`);
+      toast.success(`Coupon applied. You saved ₹${body.data.coupon.appliedDiscount}.`);
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || 'Invalid coupon');
@@ -116,7 +116,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     try {
       const body = await cartApi.removeCoupon();
       set({ cart: body.data.cart, appliedCouponCode: null });
-      toast.success('Coupon removed');
+      toast.success('Coupon removed from your cart.');
     } catch {
       toast.error('Failed to remove coupon');
     }

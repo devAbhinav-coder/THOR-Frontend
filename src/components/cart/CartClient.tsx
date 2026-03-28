@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, cn } from "@/lib/utils";
 import { couponApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CartItem, Coupon } from "@/types";
@@ -258,53 +258,70 @@ export default function CartClient() {
             <div className='p-5 border-b border-gray-100'>
               <h2 className='font-semibold text-gray-900'>Summary</h2>
               <p className='text-xs text-gray-500 mt-1'>
-                COD available for now.
+                Cash on delivery is available at checkout.
               </p>
             </div>
 
             <div className='p-5 space-y-4'>
               {/* Coupon */}
-              <div className='rounded-2xl border border-gray-100 bg-gray-50/60 p-4'>
-                <div className='flex items-center justify-between gap-3'>
-                  <p className='text-sm font-semibold text-gray-900'>Coupon</p>
+              <div className='rounded-2xl border border-gray-100 bg-gray-50/60 p-4 min-w-0'>
+                <div className='flex items-center justify-between gap-3 min-w-0'>
+                  <p className='text-sm font-semibold text-gray-900'>Promotional code</p>
                   {eligibleCoupons.length > 2 && (
                     <button
                       type='button'
                       onClick={() => setIsAllCouponsOpen(true)}
-                      className='text-xs font-semibold text-brand-700 hover:text-brand-800'
+                      className='text-xs font-semibold text-brand-700 hover:text-brand-800 shrink-0'
                     >
-                      See all
+                      View all
                     </button>
                   )}
                 </div>
 
                 {cart.discount > 0 ?
-                  <div className='mt-3 flex items-center justify-between gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2'>
-                    <div className='flex items-center gap-2 min-w-0'>
-                      <Tag className='h-4 w-4 text-green-700 flex-shrink-0' />
-                      <p className='text-sm text-green-900 font-semibold truncate'>
-                        Applied
-                        {appliedCouponCode ? `: ${appliedCouponCode}` : ""} ·
-                        Saved {formatPrice(cart.discount)}
-                      </p>
+                  <div className='mt-3 space-y-3 rounded-xl border border-green-200 bg-green-50 p-3'>
+                    <div className='flex items-start gap-2 min-w-0'>
+                      <Tag className='h-4 w-4 text-green-700 shrink-0 mt-0.5' aria-hidden />
+                      <div className='min-w-0'>
+                        <p className='text-sm font-medium text-green-900 break-words'>
+                          <span className='font-semibold tracking-wide'>
+                            {appliedCouponCode || "Coupon"}
+                          </span>
+                          <span className='text-green-800'> · You save {formatPrice(cart.discount)}</span>
+                        </p>
+                        <p className='text-xs text-green-800/75 mt-1'>
+                          The discount is included in your total below.
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      onClick={removeCoupon}
-                      className='text-green-700/70 hover:text-red-600'
-                      aria-label='Remove coupon'
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      className='w-full border-red-200/80 text-red-700 hover:bg-red-50 hover:text-red-800'
+                      disabled={couponLoading}
+                      onClick={async () => {
+                        setCouponLoading(true);
+                        try {
+                          await removeCoupon();
+                        } finally {
+                          setCouponLoading(false);
+                        }
+                      }}
                     >
-                      <X className='h-4 w-4' />
-                    </button>
+                      {couponLoading ? "Removing…" : "Remove coupon"}
+                    </Button>
                   </div>
-                : <div className='mt-3 flex gap-2'>
+                : <div className='mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch'>
                     <input
                       type='text'
                       value={couponInput}
                       onChange={(e) =>
                         setCouponInput(e.target.value.toUpperCase())
                       }
-                      placeholder='Enter code'
-                      className='flex-1 h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500'
+                      placeholder='Enter coupon code'
+                      autoComplete='off'
+                      className='min-w-0 w-full h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500'
                       onKeyDown={(e) =>
                         e.key === "Enter" && handleApplyCoupon()
                       }
@@ -315,7 +332,7 @@ export default function CartClient() {
                       onClick={handleApplyCoupon}
                       loading={couponLoading}
                       disabled={!couponInput.trim()}
-                      className='h-10 px-4 rounded-xl'
+                      className='h-10 px-4 rounded-xl w-full sm:w-auto shrink-0'
                     >
                       Apply
                     </Button>
@@ -325,16 +342,17 @@ export default function CartClient() {
                 {/* Eligible coupons (top 2) */}
                 <div className='mt-4'>
                   {isLoadingCoupons ?
-                    <p className='text-xs text-gray-400'>Loading coupons...</p>
+                    <p className='text-xs text-gray-500'>Loading available offers…</p>
                   : eligibleCoupons.length === 0 ?
                     <p className='text-xs text-gray-500'>
-                      No eligible coupons right now.
+                      No coupons are available for this cart.
                     </p>
                   : <div className='space-y-2'>
                       {eligibleCoupons.slice(0, 2).map((c) => (
                         <button
                           key={c._id}
                           type='button'
+                          title={cart.discount > 0 ? "Remove your current coupon to use another" : undefined}
                           onClick={async () => {
                             try {
                               setCouponLoading(true);
@@ -345,8 +363,13 @@ export default function CartClient() {
                               setCouponLoading(false);
                             }
                           }}
-                          className='w-full text-left p-3 rounded-2xl border border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50 transition-all disabled:opacity-60'
-                          disabled={couponLoading}
+                          className={cn(
+                            "w-full min-w-0 text-left p-3 rounded-2xl border border-gray-200 bg-white transition-all",
+                            cart.discount > 0 || couponLoading ?
+                              "opacity-50 cursor-not-allowed"
+                            : "hover:border-brand-300 hover:bg-brand-50",
+                          )}
+                          disabled={couponLoading || cart.discount > 0}
                         >
                           <div className='flex items-center justify-between gap-2'>
                             <span className='font-mono font-bold text-sm text-brand-700'>
@@ -422,7 +445,7 @@ export default function CartClient() {
               </Button>
 
               <p className='text-[11px] text-gray-400 leading-relaxed'>
-                By continuing, you agree to our terms. COD available for now.
+                By continuing, you agree to our terms and conditions.
               </p>
             </div>
           </div>
@@ -437,13 +460,13 @@ export default function CartClient() {
             onClick={() => setIsAllCouponsOpen(false)}
           />
           <div className='relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden'>
-            <div className='p-4 border-b border-gray-100 flex items-center justify-between'>
-              <div>
+            <div className='p-4 border-b border-gray-100 flex items-center justify-between min-w-0 gap-2'>
+              <div className='min-w-0'>
                 <p className='text-xs uppercase tracking-widest text-gray-400 font-semibold'>
-                  Coupons
+                  Promotional codes
                 </p>
-                <h3 className='text-lg font-bold text-gray-900'>
-                  All eligible coupons
+                <h3 className='text-lg font-bold text-gray-900 truncate'>
+                  Available for your cart
                 </h3>
               </div>
               <button
@@ -454,7 +477,7 @@ export default function CartClient() {
                 <X className='h-4 w-4 text-gray-600' />
               </button>
             </div>
-            <div className='p-4 overflow-y-auto space-y-2'>
+            <div className='p-4 overflow-y-auto overflow-x-hidden space-y-2 min-w-0'>
               {eligibleCoupons.map((c) => (
                 <button
                   key={c._id}
@@ -470,11 +493,16 @@ export default function CartClient() {
                       setCouponLoading(false);
                     }
                   }}
-                  className='w-full text-left p-3 rounded-xl border border-gray-200 hover:border-brand-300 hover:bg-brand-50 transition-all'
-                  disabled={couponLoading}
+                  className={cn(
+                    "w-full min-w-0 text-left p-3 rounded-xl border border-gray-200 transition-all",
+                    cart.discount > 0 || couponLoading ?
+                      "opacity-50 cursor-not-allowed"
+                    : "hover:border-brand-300 hover:bg-brand-50",
+                  )}
+                  disabled={couponLoading || cart.discount > 0}
                 >
-                  <div className='flex items-center justify-between gap-2'>
-                    <span className='font-mono font-bold text-sm text-brand-700'>
+                  <div className='flex items-center justify-between gap-2 min-w-0'>
+                    <span className='font-mono font-bold text-sm text-brand-700 truncate'>
                       {c.code}
                     </span>
                     <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>

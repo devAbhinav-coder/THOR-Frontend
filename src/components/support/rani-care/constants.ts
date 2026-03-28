@@ -6,10 +6,9 @@ export const MAX_MESSAGES = 48;
 export const RECENT_ORDER_LIMIT = 5;
 
 export const INITIAL_ACTIONS: QuickAction[] = [
-  { label: "My recent orders", value: "action:recent_orders" },
-  { label: "Track / status", value: "action:recent_orders" },
+  { label: "My orders", value: "action:recent_orders" },
   { label: "Cancel an order", value: "action:cancel_help" },
   { label: "Returns & refunds", value: "return refund" },
-  { label: "Shipping time", value: "shipping time" },
-  { label: "Talk to support", value: "contact support" },
+  { label: "Delivery & shipping", value: "shipping time" },
+  { label: "Contact support", value: "contact support" },
 ];

@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, La
 import { productApi } from '@/lib/api';
 import { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
+import { sumVariantStock, variantStockSummary } from '@/lib/productStock';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SearchField } from '@/components/ui/SearchField';
@@ -72,6 +73,19 @@ export default function AdminProductsPage() {
     setIsModalOpen(false);
     setEditProduct(null);
     fetchProducts(1, debouncedSearch);
+  };
+
+  const stockMeta = (p: Product) => {
+    const total = sumVariantStock(p);
+    const breakdown = variantStockSummary(p);
+    return { total, breakdown };
+  };
+
+  const stockClass = (total: number) => {
+    if (total === 0) return 'text-red-600';
+    if (total <= 2) return 'text-amber-700';
+    if (total <= 5) return 'text-amber-600';
+    return 'text-green-600';
   };
 
   return (
@@ -169,7 +183,9 @@ export default function AdminProductsPage() {
                     </td>
                   </tr>
                 ))
-              ) : filtered.map((product) => (
+              ) : filtered.map((product) => {
+                const sm = stockMeta(product);
+                return (
                 <tr key={product._id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
@@ -203,9 +219,16 @@ export default function AdminProductsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-sm font-medium ${product.totalStock === 0 ? 'text-red-600' : product.totalStock <= 5 ? 'text-amber-600' : 'text-green-600'}`}>
-                      {product.totalStock === 0 ? 'Out' : product.totalStock}
-                    </span>
+                    <div>
+                      <span className={`text-sm font-medium ${stockClass(sm.total)}`}>
+                        {sm.total === 0 ? 'Out' : sm.total}
+                      </span>
+                      {sm.breakdown && (
+                        <p className="text-[10px] text-gray-400 mt-0.5 max-w-[140px]" title="Stock per variant row (same order as in editor)">
+                          By variant: {sm.breakdown}
+                        </p>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-sm text-gray-600">
@@ -236,7 +259,8 @@ export default function AdminProductsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>}
@@ -247,7 +271,9 @@ export default function AdminProductsPage() {
               [...Array(8)].map((_, i) => (
                 <div key={i} className="h-72 rounded-2xl bg-gray-100 animate-pulse" />
               ))
-            ) : filtered.map((product) => (
+            ) : filtered.map((product) => {
+              const sm = stockMeta(product);
+              return (
               <div key={product._id} className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all">
                 <div className="relative w-full bg-gray-100" style={{ aspectRatio: '3/4' }}>
                   <Image src={product.images[0]?.url || '/placeholder.jpg'} alt={product.name} fill sizes="320px" className="object-cover" />
@@ -261,6 +287,12 @@ export default function AdminProductsPage() {
                       {product.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
+                  <p className={`text-xs font-semibold mt-1.5 ${stockClass(sm.total)}`}>
+                    {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}
+                    {sm.breakdown && (
+                      <span className="block font-normal text-gray-400 text-[10px]">Variants: {sm.breakdown}</span>
+                    )}
+                  </p>
                   <div className="mt-3 flex items-center justify-end gap-2">
                     <button onClick={() => { setEditProduct(product); setIsModalOpen(true); }} className="p-1.5 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors">
                       <Pencil className="h-4 w-4" />
@@ -271,7 +303,8 @@ export default function AdminProductsPage() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 
@@ -284,7 +317,9 @@ export default function AdminProductsPage() {
               </div>
             ))
           ) : (
-            filtered.map((product) => (
+            filtered.map((product) => {
+              const sm = stockMeta(product);
+              return (
               <div key={product._id} className="p-4">
                 <div className="flex items-start gap-3">
                   <div className="relative w-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '3/4' }}>
@@ -307,8 +342,11 @@ export default function AdminProductsPage() {
                         {product.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                       <span className="text-xs font-semibold text-gray-900">{formatPrice(product.price)}</span>
-                      <span className={`text-xs font-semibold ${product.totalStock === 0 ? 'text-red-600' : product.totalStock <= 5 ? 'text-amber-600' : 'text-green-600'}`}>
-                        {product.totalStock === 0 ? 'Out of stock' : `${product.totalStock} in stock`}
+                      <span className={`text-xs font-semibold ${stockClass(sm.total)}`}>
+                        {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}
+                        {sm.breakdown && (
+                          <span className="block font-normal text-gray-400 text-[10px]">Variants: {sm.breakdown}</span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -330,7 +368,8 @@ export default function AdminProductsPage() {
                   </div>
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
 

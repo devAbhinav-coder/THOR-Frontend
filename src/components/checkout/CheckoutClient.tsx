@@ -21,7 +21,7 @@ import {
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { couponApi, orderApi } from "@/lib/api";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CartItem, Coupon } from "@/types";
@@ -92,6 +92,7 @@ export default function CheckoutClient() {
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [isAllCouponsOpen, setIsAllCouponsOpen] = useState(false);
+  const [couponBusy, setCouponBusy] = useState(false);
 
   const { cart, fetchCart, applyCoupon, removeCoupon, resetCart, appliedCouponCode } =
     useCartStore();
@@ -208,20 +209,19 @@ export default function CheckoutClient() {
   };
 
   return (
-    <div>
-      
-      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+    <div className='w-full min-w-0 overflow-x-hidden'>
+      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 box-border min-w-0'>
         <h1 className='text-2xl sm:text-3xl font-serif font-bold text-gray-900 mb-2'>
           Checkout
         </h1>
         <p className='text-sm text-gray-500 mb-8'>
-          Secure, fast and simple. Cash on Delivery available.
+          Secure checkout. Cash on delivery is available for your order.
         </p>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className='grid grid-cols-1 lg:grid-cols-5 gap-8'>
-            <div className='lg:col-span-3 space-y-6'>
-              <div className='bg-white rounded-xl p-6 border border-gray-100'>
+        <form onSubmit={handleSubmit(onSubmit)} className='min-w-0'>
+          <div className='grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8 min-w-0'>
+            <div className='lg:col-span-3 space-y-6 min-w-0'>
+              <div className='bg-white rounded-xl p-4 sm:p-6 border border-gray-100 min-w-0'>
                 <div className='flex items-center gap-2 mb-5'>
                   <MapPin className='h-5 w-5 text-brand-600' />
                   <h2 className='text-lg font-semibold text-gray-900'>
@@ -350,7 +350,7 @@ export default function CheckoutClient() {
                 </div>
               </div>
 
-              <div className='bg-white rounded-xl p-6 border border-gray-100'>
+              <div className='bg-white rounded-xl p-4 sm:p-6 border border-gray-100 min-w-0'>
                 <div className='flex items-center gap-2 mb-3'>
                   <Truck className='h-5 w-5 text-brand-600' />
                   <h2 className='text-lg font-semibold text-gray-900'>
@@ -367,23 +367,20 @@ export default function CheckoutClient() {
                       <p className='text-sm text-gray-500'>
                         Pay when your order arrives at your doorstep.
                       </p>
-                      <p className='text-xs text-gray-400 mt-1'>
-                        Online payments will be added later.
-                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className='lg:col-span-2'>
-              <div className='bg-white rounded-xl p-6 border border-gray-100 sticky top-20'>
+            <div className='lg:col-span-2 min-w-0'>
+              <div className='bg-white rounded-xl p-4 sm:p-6 border border-gray-100 sticky top-20 min-w-0 max-w-full'>
                 {/* Coupons (shown above order items) */}
-                <div className='mb-5 pb-5 border-b border-gray-100'>
-                  <div className='flex items-center justify-between gap-3 mb-3'>
-                    <div className='flex items-center gap-2'>
-                      <BadgePercent className='h-5 w-5 text-brand-600' />
-                      <h2 className='text-lg font-semibold text-gray-900'>
+                <div className='mb-5 pb-5 border-b border-gray-100 min-w-0'>
+                  <div className='flex items-center justify-between gap-2 mb-3 min-w-0'>
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <BadgePercent className='h-5 w-5 text-brand-600 shrink-0' />
+                      <h2 className='text-lg font-semibold text-gray-900 truncate'>
                         Coupons
                       </h2>
                     </div>
@@ -391,76 +388,88 @@ export default function CheckoutClient() {
                       <button
                         type='button'
                         onClick={() => setIsAllCouponsOpen(true)}
-                        className='text-sm font-semibold text-brand-600 hover:text-brand-700'
+                        className='text-sm font-semibold text-brand-600 hover:text-brand-700 shrink-0'
                       >
-                        See all
+                        View all
                       </button>
                     )}
                   </div>
 
-                  <div className='flex gap-2'>
-                    <input
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder='Coupon code'
-                      className='flex-1 h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500'
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      onClick={async () => {
-                        if (!couponCode.trim()) return;
-                        try {
-                          await applyCoupon(couponCode.trim());
-                          setCouponCode('');
-                        } catch {
-                          // toast from store
-                        }
-                      }}
-                    >
-                      Apply
-                    </Button>
-                    {hasAppliedCoupon && (
-                      <Button type='button' variant='ghost' onClick={removeCoupon}>
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-
-                  {hasAppliedCoupon && (
-                    <div className='mt-3 flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2'>
-                      <div className='flex items-center gap-2'>
-                        <Tag className='h-4 w-4 text-green-600' />
-                        <div>
-                          <p className='text-sm font-semibold text-green-800'>
-                            Coupon applied{appliedCouponCode ? `: ${appliedCouponCode}` : ""} · Saved {formatPrice(cart.discount)}
+                  {hasAppliedCoupon ?
+                    <div className='rounded-xl border border-green-200 bg-green-50 p-3 min-w-0 space-y-3'>
+                      <div className='flex items-start gap-2 min-w-0'>
+                        <Tag className='h-4 w-4 text-green-600 shrink-0 mt-0.5' aria-hidden />
+                        <div className='min-w-0 flex-1'>
+                          <p className='text-sm font-medium text-green-900 break-words'>
+                            <span className='font-semibold tracking-wide'>{appliedCouponCode || "Coupon"}</span>
+                            <span className='text-green-800'> · You save {formatPrice(cart.discount)}</span>
                           </p>
-                          <p className='text-xs text-green-700/80'>
-                            Your discount is already included in the total.
+                          <p className='text-xs text-green-800/75 mt-1'>
+                            The discount is reflected in your order total below.
                           </p>
                         </div>
                       </div>
-                      <button
+                      <Button
                         type='button'
-                        onClick={removeCoupon}
-                        className='h-8 w-8 rounded-lg bg-white/60 hover:bg-white flex items-center justify-center text-green-700'
-                        aria-label='Remove coupon'
+                        variant='outline'
+                        size='sm'
+                        className='w-full border-red-200/80 text-red-700 hover:bg-red-50 hover:text-red-800'
+                        disabled={couponBusy}
+                        onClick={async () => {
+                          setCouponBusy(true);
+                          try {
+                            await removeCoupon();
+                          } finally {
+                            setCouponBusy(false);
+                          }
+                        }}
                       >
-                        ×
-                      </button>
+                        {couponBusy ? "Removing…" : "Remove coupon"}
+                      </Button>
                     </div>
-                  )}
+                  : <div className='flex flex-col gap-2 sm:flex-row sm:items-stretch min-w-0'>
+                      <input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder='Enter coupon code'
+                        autoComplete='off'
+                        className='min-w-0 w-full h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500'
+                      />
+                      <Button
+                        type='button'
+                        variant='brand'
+                        className='w-full sm:w-auto shrink-0 sm:min-w-[5.5rem]'
+                        disabled={couponBusy || !couponCode.trim()}
+                        onClick={async () => {
+                          if (!couponCode.trim()) return;
+                          setCouponBusy(true);
+                          try {
+                            await applyCoupon(couponCode.trim());
+                            setCouponCode("");
+                          } catch {
+                            // toast from store
+                          } finally {
+                            setCouponBusy(false);
+                          }
+                        }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                  }
 
                   {isLoadingCoupons ? (
-                    <div className='text-sm text-gray-400 mt-3'>Loading coupons...</div>
+                    <div className='text-sm text-gray-500 mt-3'>Loading available offers…</div>
                   ) : eligibleCoupons.length === 0 ? (
-                    <div className='text-sm text-gray-500 mt-3'>No eligible coupons right now.</div>
+                    <div className='text-sm text-gray-500 mt-3'>No coupons are available for this cart.</div>
                   ) : (
-                    <div className='grid grid-cols-1 gap-2 mt-3'>
+                    <div className='grid grid-cols-1 gap-2 mt-3 min-w-0'>
                       {eligibleCoupons.slice(0, 2).map((c) => (
                         <button
                           key={c._id}
                           type='button'
+                          disabled={hasAppliedCoupon || couponBusy}
+                          title={hasAppliedCoupon ? "Remove your current coupon to use another" : undefined}
                           onClick={async () => {
                             try {
                               await applyCoupon(c.code);
@@ -468,10 +477,15 @@ export default function CheckoutClient() {
                               // store handles toast
                             }
                           }}
-                          className='text-left p-3 rounded-xl border border-gray-200 hover:border-brand-300 hover:bg-brand-50 transition-all'
+                          className={cn(
+                            "text-left p-3 rounded-xl border border-gray-200 transition-all min-w-0",
+                            hasAppliedCoupon || couponBusy ?
+                              "opacity-50 cursor-not-allowed"
+                            : "hover:border-brand-300 hover:bg-brand-50",
+                          )}
                         >
-                          <div className='flex items-center justify-between gap-2'>
-                            <span className='font-mono font-bold text-sm text-brand-700'>{c.code}</span>
+                          <div className='flex items-center justify-between gap-2 min-w-0'>
+                            <span className='font-mono font-bold text-sm text-brand-700 truncate min-w-0'>{c.code}</span>
                             <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
                               {c.eligibilityType === 'first_order'
                                 ? 'First Order'
@@ -494,12 +508,12 @@ export default function CheckoutClient() {
 
                 <button
                   type='button'
-                  className='flex items-center justify-between w-full mb-4 lg:cursor-default'
+                  className='flex items-center justify-between w-full mb-4 lg:cursor-default min-w-0 gap-2'
                   onClick={() => setShowItems(!showItems)}
                 >
-                  <div className='flex items-center gap-2'>
-                    <Package className='h-5 w-5 text-brand-600' />
-                    <h2 className='text-lg font-semibold text-gray-900'>
+                  <div className='flex items-center gap-2 min-w-0'>
+                    <Package className='h-5 w-5 text-brand-600 shrink-0' />
+                    <h2 className='text-lg font-semibold text-gray-900 truncate text-left'>
                       Order Items ({cart.items.length})
                     </h2>
                   </div>
@@ -514,7 +528,7 @@ export default function CheckoutClient() {
                   className={`space-y-3 mb-5 ${showItems ? "block" : "hidden lg:block"}`}
                 >
                   {cart.items.map((item: CartItem) => (
-                    <div key={item.variant.sku} className='flex gap-3'>
+                    <div key={item.variant.sku} className='flex gap-3 min-w-0'>
                       <div className='relative w-14 h-16 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0'>
                         <Image
                           src={
@@ -540,7 +554,7 @@ export default function CheckoutClient() {
                             .join(" · ")}
                         </p>
                       </div>
-                      <p className='text-sm font-semibold text-gray-900 flex-shrink-0'>
+                      <p className='text-sm font-semibold text-gray-900 flex-shrink-0 tabular-nums'>
                         {formatPrice(item.price * item.quantity)}
                       </p>
                     </div>
@@ -578,7 +592,7 @@ export default function CheckoutClient() {
                   type='submit'
                   variant='brand'
                   size='xl'
-                  className='w-full mt-5'
+                  className='w-full mt-5 text-center whitespace-normal leading-snug px-3 max-w-full'
                   loading={isPlacingOrder}
                 >
                   Place Order — {formatPrice(total)}
@@ -588,7 +602,7 @@ export default function CheckoutClient() {
                   {offerText}
                 </p>
                 <p className='text-xs text-gray-400 text-center mt-1'>
-                  By placing an order, you agree to our Terms & Conditions
+                  By placing this order, you agree to our terms and conditions.
                 </p>
               </div>
             </div>
@@ -597,13 +611,13 @@ export default function CheckoutClient() {
 
         {/* See all coupons modal (checkout) */}
         {isAllCouponsOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 overflow-x-hidden">
             <div className="absolute inset-0" onClick={() => setIsAllCouponsOpen(false)} />
-            <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Coupons</p>
-                  <h3 className="text-lg font-bold text-gray-900">All eligible coupons</h3>
+            <div className="relative w-full max-w-[100vw] sm:max-w-lg min-w-0 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between min-w-0 gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Promotional codes</p>
+                  <h3 className="text-lg font-bold text-gray-900 truncate">Available for your order</h3>
                 </div>
                 <button
                   onClick={() => setIsAllCouponsOpen(false)}
@@ -613,11 +627,12 @@ export default function CheckoutClient() {
                   <span className="text-gray-600 text-lg leading-none">×</span>
                 </button>
               </div>
-              <div className="p-4 overflow-y-auto space-y-2">
+              <div className="p-4 overflow-y-auto overflow-x-hidden space-y-2 min-w-0">
                 {eligibleCoupons.map((coupon) => (
                   <button
                     key={coupon._id}
                     type="button"
+                    disabled={hasAppliedCoupon || couponBusy}
                     onClick={async () => {
                       try {
                         await applyCoupon(coupon.code);
@@ -626,10 +641,15 @@ export default function CheckoutClient() {
                         // store handles toast
                       }
                     }}
-                    className="w-full text-left p-3 rounded-xl border border-gray-200 hover:border-brand-300 hover:bg-brand-50 transition-all"
+                    className={cn(
+                      "w-full min-w-0 text-left p-3 rounded-xl border border-gray-200 transition-all",
+                      hasAppliedCoupon || couponBusy ?
+                        "opacity-50 cursor-not-allowed"
+                      : "hover:border-brand-300 hover:bg-brand-50",
+                    )}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono font-bold text-sm text-brand-700">{coupon.code}</span>
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <span className="font-mono font-bold text-sm text-brand-700 truncate">{coupon.code}</span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase">
                         {coupon.eligibilityType === 'first_order'
                           ? 'First Order'

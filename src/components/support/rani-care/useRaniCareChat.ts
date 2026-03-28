@@ -24,7 +24,7 @@ export function useRaniCareChat() {
   const welcome = useMemo(
     () =>
       botMessage(
-        "Hi! I am RaniCare Concierge. I can show your last 5 orders, help track or cancel (before dispatch), and guide returns, shipping, and payments.",
+        "Welcome. I can help with your recent orders, delivery status, cancellations before dispatch, returns, and payments. Choose an option below or type your question.",
         INITIAL_ACTIONS,
       ),
     [],
@@ -93,13 +93,10 @@ export function useRaniCareChat() {
 
   const presentOrderList = async (opts: { intro: string; cancelHint?: boolean }) => {
     if (!isAuthenticated) {
-      pushBot(
-        "Sign in to see your recent orders and manage cancellations securely.",
-        [
-          { label: "Sign in", value: "sign in" },
-          { label: "Shipping policy", value: "shipping policy" },
-        ],
-      );
+      pushBot("Please sign in to view your orders and request a cancellation.", [
+        { label: "Sign in", value: "sign in" },
+        { label: "Shipping information", value: "shipping policy" },
+      ]);
       return;
     }
 
@@ -107,31 +104,28 @@ export function useRaniCareChat() {
     try {
       const list = await fetchRecentOrders();
       if (!list.length) {
-        pushBot(
-          "You do not have any orders yet. When you place one, it will show up here for tracking and support.",
-          [
-            { label: "Start shopping", value: "open shop" },
-            { label: "Shipping info", value: "shipping time" },
-          ],
-        );
+        pushBot("You have no orders yet. After you place an order, it will appear here for tracking.", [
+          { label: "Continue shopping", value: "open shop" },
+          { label: "Delivery information", value: "shipping time" },
+        ]);
         return;
       }
 
       const summaries = list.map(summarizeOrder);
       const cancelNote = opts.cancelHint
-        ? "\n\nCancellations are only possible while status is Pending or Confirmed (before dispatch). Shipped orders need return/refund support."
+        ? "\n\nCancellations are available only while your order is pending or confirmed (before dispatch). For shipped orders, please contact us about returns."
         : "";
 
       pushBot(
-        `${opts.intro}\nShowing up to ${RECENT_ORDER_LIMIT} most recent orders.${cancelNote}`,
+        `${opts.intro}\nUp to ${RECENT_ORDER_LIMIT} recent orders are shown below.${cancelNote}`,
         [
-          { label: "Refresh list", value: "action:recent_orders" },
-          { label: "Talk to support", value: "contact support" },
+          { label: "Refresh", value: "action:recent_orders" },
+          { label: "Contact support", value: "contact support" },
         ],
         summaries,
       );
     } catch {
-      pushBot("Could not load your orders right now. Please try again in a moment.", [
+      pushBot("We could not load your orders. Please try again shortly.", [
         { label: "Try again", value: "action:recent_orders" },
       ]);
     } finally {
@@ -158,13 +152,13 @@ export function useRaniCareChat() {
         }
       }
       if (!order) {
-        pushBot("That order was not found on your account. Try refreshing your order list.");
+        pushBot("That order was not found on your account. Refresh your order list and try again.");
         return;
       }
 
       const detail = formatOrderDetailText(order);
       const actions: QuickAction[] = [
-        { label: "Open order page", value: `open_order:${order._id}` },
+        { label: "View on website", value: `open_order:${order._id}` },
         { label: "All orders", value: "action:recent_orders" },
       ];
       if (order.status === "pending" || order.status === "confirmed") {
@@ -175,7 +169,7 @@ export function useRaniCareChat() {
 
       pushBot(detail, actions, undefined, 280);
     } catch {
-      pushBot("Could not load that order. It may have been removed or the link expired.", [
+      pushBot("We could not load that order. It may no longer be available.", [
         { label: "My orders", value: "action:recent_orders" },
       ]);
     } finally {
@@ -186,22 +180,22 @@ export function useRaniCareChat() {
   const presentCancelConfirm = (orderId: string) => {
     const o = recentOrdersRef.current.find((x) => x._id === orderId);
     if (!o) {
-      pushBot("Please open your order list again, then try cancel.", [{ label: "Recent orders", value: "action:recent_orders" }]);
+      pushBot("Open your order list again, then try to cancel.", [{ label: "Recent orders", value: "action:recent_orders" }]);
       return;
     }
     if (o.status !== "pending" && o.status !== "confirmed") {
       pushBot(
-        `Order ${o.orderNumber} is already ${o.status}. We cannot cancel it from chat at this stage. Contact support for return/refund options.`,
+        `Order ${o.orderNumber} is already ${o.status}. It cannot be cancelled here. Please contact us for returns or refunds.`,
         [{ label: "Contact support", value: "contact support" }],
       );
       return;
     }
 
     pushBot(
-      `Cancel order ${o.orderNumber}?\nThis only works before dispatch. If payment was online, refund timelines follow your bank/Razorpay rules.`,
+      `Cancel order ${o.orderNumber}?\nThis is only available before dispatch. Refunds for online payments follow your bank or card issuer’s timeline.`,
       [
-        { label: "Yes, cancel order", value: `cancel_confirm:${o._id}` },
-        { label: "No, keep it", value: "cancel_abort" },
+        { label: "Yes, cancel", value: `cancel_confirm:${o._id}` },
+        { label: "No, keep order", value: "cancel_abort" },
       ],
       undefined,
       200,
@@ -211,13 +205,13 @@ export function useRaniCareChat() {
   const executeCancel = async (orderId: string) => {
     setLoadingOrders(true);
     try {
-      await orderApi.cancel(orderId, "Cancelled via RaniCare Concierge");
+      await orderApi.cancel(orderId, "Cancelled via customer support chat");
       await fetchRecentOrders();
       pushBot(
-        "Your order was cancelled successfully. If you were charged online, refund processing will follow gateway/bank timelines (usually a few business days).",
+        "Your order has been cancelled. If you paid online, your refund will be processed according to your bank or card issuer—typically within a few business days.",
         [
-          { label: "View updated orders", value: "action:recent_orders" },
-          { label: "Email support", value: "email support" },
+          { label: "View orders", value: "action:recent_orders" },
+          { label: "Email us", value: "email support" },
         ],
       );
     } catch (err: unknown) {
@@ -225,13 +219,10 @@ export function useRaniCareChat() {
         err && typeof err === "object" && "message" in err
           ? String((err as { message: string }).message)
           : "Cancellation failed.";
-      pushBot(
-        `${msg} If it already shipped, please contact support for the next steps.`,
-        [
-          { label: "Recent orders", value: "action:recent_orders" },
-          { label: "Talk to support", value: "contact support" },
-        ],
-      );
+      pushBot(`${msg} If your order has shipped, contact us for the next steps.`, [
+        { label: "Recent orders", value: "action:recent_orders" },
+        { label: "Contact support", value: "contact support" },
+      ]);
     } finally {
       setLoadingOrders(false);
     }
@@ -244,8 +235,8 @@ export function useRaniCareChat() {
       await presentOrderList({
         intro:
           intent === "cancel_help"
-            ? "Pick an order below — open details to cancel if it is still Pending or Confirmed."
-            : "Here is what we found on your account.",
+            ? "Select an order below. You can cancel from the details if the status is still pending or confirmed."
+            : "Here are your recent orders.",
         cancelHint: intent === "cancel_help",
       });
       return;
@@ -253,10 +244,10 @@ export function useRaniCareChat() {
 
     if (intent === "returns") {
       pushBot(
-        "For returns/refunds, share your order number and photos (for damage/wrong item) with support. You can open any recent order below for details.",
+        "For returns or refunds, contact us with your order number. For damaged or incorrect items, photos help us assist you faster. Open a recent order below for details.",
         [
-          { label: "My recent orders", value: "action:recent_orders" },
-          { label: "Talk to support", value: "contact support" },
+          { label: "My orders", value: "action:recent_orders" },
+          { label: "Contact support", value: "contact support" },
         ],
       );
       return;
@@ -264,7 +255,7 @@ export function useRaniCareChat() {
 
     if (intent === "shipping") {
       pushBot(
-        "Standard processing is 1–3 business days and delivery is usually 3–10 business days across India. COD depends on pincode and order value.",
+        "Orders are usually processed within 1–3 business days. Delivery within India typically takes 3–10 business days. Cash on delivery may vary by location.",
         [
           { label: "Shipping policy", value: "shipping policy" },
           { label: "My orders", value: "action:recent_orders" },
@@ -275,43 +266,43 @@ export function useRaniCareChat() {
 
     if (intent === "payment") {
       pushBot(
-        "If payment failed but money left your account, it usually auto-reverses in 3–7 business days. Share the transaction ID with support if it does not.",
-        [{ label: "Talk to support", value: "contact support" }],
+        "If a payment failed but an amount was debited, it usually reverses within 3–7 business days. If it does not, contact us with your transaction reference.",
+        [{ label: "Contact support", value: "contact support" }],
       );
       return;
     }
 
     if (intent === "coupon") {
       pushBot(
-        "Coupons may require minimum cart value, valid dates, or first-order rules. Share the code and your cart total if you want me to reason through it.",
-        [{ label: "Open cart", value: "open cart" }],
+        "Promotional codes may require a minimum order value, valid dates, or apply only to first-time purchases. Apply your code at checkout, or contact us if it is not accepted.",
+        [{ label: "View cart", value: "open cart" }],
       );
       return;
     }
 
     if (intent === "sizing") {
       pushBot(
-        "Compare your measurements with the size chart on the product page. Between two sizes, pick the larger one for comfort.",
-        [{ label: "Browse shop", value: "open shop" }],
+        "Please compare your measurements with the size chart on the product page. If you are between sizes, the larger size is often more comfortable.",
+        [{ label: "Shop", value: "open shop" }],
       );
       return;
     }
 
     if (intent === "privacy") {
-      pushBot("We use your data for orders, support, security, and improvements — see our Privacy Policy.", [
+      pushBot("How we use your information is described in our privacy policy.", [
         { label: "Privacy policy", value: "privacy policy" },
       ]);
       return;
     }
 
     if (intent === "terms") {
-      pushBot("Purchase and website terms are in our Terms of Service.", [{ label: "Read terms", value: "terms policy" }]);
+      pushBot("Our terms of service cover purchases and use of this website.", [{ label: "Terms", value: "terms policy" }]);
       return;
     }
 
     if (intent === "contact") {
       pushBot(
-        `Reach our team:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nInclude your order number for fastest help.`,
+        `Contact us:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nPlease include your order number when writing about an order.`,
         [
           { label: "Call", value: "call support" },
           { label: "Email", value: "email support" },
@@ -330,12 +321,12 @@ export function useRaniCareChat() {
           return;
         }
         pushBot(
-          "I could not match that reference to your last orders. Check the order number or open your order list.",
-          [{ label: "My recent orders", value: "action:recent_orders" }],
+          "We could not match that to your recent orders. Check the order number or open your order list.",
+          [{ label: "My orders", value: "action:recent_orders" }],
         );
         return;
       } catch {
-        pushBot("Could not load orders right now. Try again in a moment.", [
+        pushBot("We could not load your orders. Please try again shortly.", [
           { label: "Try again", value: "action:recent_orders" },
         ]);
         return;
@@ -353,21 +344,21 @@ export function useRaniCareChat() {
     }
 
     pushBot(
-      "Tell me if you need order tracking, cancellation (before dispatch), returns, shipping, or payments — or tap a quick action below.",
+      "How can we help? You can ask about orders, delivery, returns, payments, or use the shortcuts below.",
       INITIAL_ACTIONS,
     );
   };
 
   const handleAction = async (value: string) => {
     if (value === "action:recent_orders") {
-      pushUser("Show my recent orders");
-      await presentOrderList({ intro: "Here is what we found on your account." });
+      pushUser("Show my orders");
+      await presentOrderList({ intro: "Here are your recent orders." });
       return;
     }
     if (value === "action:cancel_help") {
       pushUser("I want to cancel an order");
       await presentOrderList({
-        intro: "Pick an order to review. You can cancel from details if status is Pending or Confirmed.",
+        intro: "Select an order to review. You may cancel from the details if the status is pending or confirmed.",
         cancelHint: true,
       });
       return;
@@ -392,7 +383,7 @@ export function useRaniCareChat() {
     }
     if (value === "cancel_abort") {
       pushUser("Do not cancel");
-      pushBot("No problem — your order stays as is. Need anything else?", INITIAL_ACTIONS, undefined, 250);
+      pushBot("Understood. Your order is unchanged. How else can we help?", INITIAL_ACTIONS, undefined, 250);
       return;
     }
     if (value.startsWith("open_order:")) {

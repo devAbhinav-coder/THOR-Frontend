@@ -10,6 +10,7 @@ import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
+import { hasInStockVariant, sumVariantStock } from "@/lib/productStock";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -27,7 +28,8 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   const router = useRouter();
 
   const inWishlist = isInWishlist(product._id);
-  const isOutOfStock = product.totalStock === 0;
+  const sellableTotal = sumVariantStock(product);
+  const isOutOfStock = !hasInStockVariant(product);
   const discountPercent =
     product.comparePrice ?
       Math.round(
@@ -320,7 +322,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
 
           {/* Low stock — fixed band */}
           <div className='flex h-[22px] min-h-[22px] shrink-0 items-center'>
-            {!isOutOfStock && product.totalStock > 0 && product.totalStock <= 5 ?
+            {!isOutOfStock && sellableTotal > 0 && sellableTotal <= 5 ?
               <span className='inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-700'>
                 <span aria-hidden>⚡</span> Only a few left!
               </span>

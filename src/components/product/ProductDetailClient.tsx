@@ -27,6 +27,7 @@ import {
 import { productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, formatDate, cn } from "@/lib/utils";
+import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/ui/SkeletonLoader";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
@@ -205,7 +206,7 @@ export default function ProductDetailClient({ slug }: Props) {
               score += Math.min(tagOverlap, 4) * 6;
 
               // Gentle preference for better rated / in-stock items
-              if (r.totalStock > 0) score += 6;
+              if (sumVariantStock(r) > 0) score += 6;
               score += Math.round((r.ratings?.average || 0) * 2);
               score += Math.min(r.ratings?.count || 0, 50) / 10;
 
