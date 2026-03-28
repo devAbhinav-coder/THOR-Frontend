@@ -90,13 +90,21 @@ export default function ShopClient() {
   useEffect(() => {
     const urlQ = (searchParams.get("search") || "").trim();
     if (debouncedSearch === urlQ) return;
+    /* Clear-all: field is empty and URL has no search, but debounce still holds old query — do not re-apply it */
+    if (
+      searchDraft.trim() === "" &&
+      urlQ === "" &&
+      debouncedSearch !== ""
+    ) {
+      return;
+    }
     searchCommitQueue.current.push(debouncedSearch);
     const params = new URLSearchParams(searchParams.toString());
     if (debouncedSearch) params.set("search", debouncedSearch);
     else params.delete("search");
     const qs = params.toString();
     router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
-  }, [debouncedSearch, router, searchParams]);
+  }, [debouncedSearch, router, searchParams, searchDraft]);
 
   const queryKey = useMemo(
     () =>
@@ -206,6 +214,8 @@ export default function ShopClient() {
   };
 
   const clearFilters = () => {
+    searchCommitQueue.current = [];
+    setSearchDraft("");
     setFilters({
       category: "",
       fabric: "",

@@ -355,9 +355,8 @@ export default function ProductDetailClient({ slug }: Props) {
   };
 
   /* ── JSX ── */
-  /* Mobile: bottom tab bar (~3.25rem) + sticky CTA bar — avoid overlap / hidden buttons */
-  const mobileBottomReserve =
-    "pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] sm:pb-0";
+  /* Bottom padding for store mobile tab bar only (CTAs are inline, not fixed) */
+  const mobileBottomReserve = "pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8";
 
   return (
     <div className={cn("bg-white min-h-screen", mobileBottomReserve)}>
@@ -656,39 +655,42 @@ export default function ProductDetailClient({ slug }: Props) {
               )}
             </div>
 
-            {/* CTA — desktop */}
-            <div className="hidden sm:flex gap-3 pt-1">
-              <button
-                onClick={handleAddToCart}
-                disabled={isOutOfStock || isAddingToCart}
-                className={cn(
-                  "flex-1 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm",
-                  isOutOfStock ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-white border-2 border-navy-900 text-navy-900 hover:bg-navy-900 hover:text-white"
-                )}
-              >
-                {isAddingToCart ? <><span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> Adding…</> : <><ShoppingBag className="h-4 w-4" /> Add to Cart</>}
-              </button>
-              <button
-                onClick={handleBuyNow}
-                disabled={isOutOfStock || isBuyingNow}
-                className={cn(
-                  "flex-1 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg",
-                  isOutOfStock ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-brand-600 hover:bg-brand-700 text-white shadow-brand-200"
-                )}
-              >
-                {isBuyingNow ? <><span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> Processing…</> : <><Zap className="h-4 w-4" /> Buy Now</>}
-              </button>
+            {/* CTA — same layout mobile + desktop (below quantity, scrolls with page) */}
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-stretch">
+              <div className="flex gap-3 flex-1 min-w-0">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={isOutOfStock || isAddingToCart}
+                  className={cn(
+                    "flex-1 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm",
+                    isOutOfStock ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white border-2 border-navy-900 text-navy-900 hover:bg-navy-900 hover:text-white"
+                  )}
+                >
+                  {isAddingToCart ? <><span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> Adding…</> : <><ShoppingBag className="h-4 w-4" /> Add to Cart</>}
+                </button>
+                <button
+                  onClick={handleBuyNow}
+                  disabled={isOutOfStock || isBuyingNow}
+                  className={cn(
+                    "flex-1 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg",
+                    isOutOfStock ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-brand-600 hover:bg-brand-700 text-white shadow-brand-200"
+                  )}
+                >
+                  {isBuyingNow ? <><span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> Processing…</> : <><Zap className="h-4 w-4" /> Buy Now</>}
+                </button>
+              </div>
               <button
                 onClick={handleWishlist}
                 className={cn(
-                  "py-3.5 px-3.5 rounded-2xl border-2 flex items-center justify-center transition-all",
+                  "py-3.5 px-4 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all sm:w-auto sm:shrink-0",
                   inWishlist ? "border-brand-500 bg-brand-50 text-brand-600" : "border-gray-200 text-gray-500 hover:border-brand-400 hover:text-brand-600"
                 )}
                 aria-label="Wishlist"
               >
                 <Heart className={cn("h-5 w-5", inWishlist && "fill-current")} />
+                <span className="text-sm font-semibold sm:sr-only">Wishlist</span>
               </button>
             </div>
 
@@ -1035,36 +1037,6 @@ export default function ProductDetailClient({ slug }: Props) {
         </div>
       </section>
 
-      {/* ══════════════ MOBILE STICKY CTA (sits above app bottom nav) ══════════════ */}
-      <div
-        className="sm:hidden fixed left-0 right-0 z-[85] bg-white border-t border-gray-200 px-4 pt-3 pb-3 shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.12)] backdrop-blur-md"
-        style={{
-          bottom: "calc(3.35rem + env(safe-area-inset-bottom, 0px))",
-        }}
-      >
-        {isOutOfStock ? (
-          <div className="w-full py-3.5 rounded-2xl bg-gray-200 text-gray-400 text-sm font-bold text-center">Out of Stock</div>
-        ) : (
-          <div className="flex gap-3">
-            <button
-              onClick={handleAddToCart}
-              disabled={isAddingToCart}
-              className="flex-1 py-3.5 rounded-2xl border-2 border-navy-900 text-navy-900 text-sm font-bold flex items-center justify-center gap-2 hover:bg-navy-900 hover:text-white transition-all disabled:opacity-60"
-            >
-              {isAddingToCart ? <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <ShoppingBag className="h-4 w-4" />}
-              {isAddingToCart ? "Adding…" : "Add to Cart"}
-            </button>
-            <button
-              onClick={handleBuyNow}
-              disabled={isBuyingNow}
-              className="flex-1 py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-200 disabled:opacity-60"
-            >
-              {isBuyingNow ? <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : <Zap className="h-4 w-4" />}
-              {isBuyingNow ? "Processing…" : "Buy Now"}
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
