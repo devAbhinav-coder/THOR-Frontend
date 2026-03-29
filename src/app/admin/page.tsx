@@ -232,7 +232,7 @@ export default function AdminDashboardPage() {
               <div key={product._id} className="flex items-center gap-3">
                 <span className="text-sm font-bold text-gray-400 w-5">{i + 1}</span>
                 <div className="h-10 w-10 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
-                  <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                  {product.image ? <img src={product.image} alt={product.name} className="h-full w-full object-cover" /> : null}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>

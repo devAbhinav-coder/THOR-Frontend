@@ -256,7 +256,7 @@ export default function AnalyticsPage() {
                 <div key={p._id} className="flex items-center gap-3">
                   <span className="text-sm font-bold text-gray-300 w-5 text-right">{i + 1}</span>
                   <div className="h-10 w-10 rounded-lg overflow-hidden bg-gray-50">
-                    <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                    {p.image ? <img src={p.image} alt={p.name} className="h-full w-full object-cover" /> : null}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>

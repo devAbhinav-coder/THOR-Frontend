@@ -27,6 +27,7 @@ import { categoryApi, storefrontApi } from "@/lib/api";
 import { Category, StorefrontSettings } from "@/types";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/queryKeys";
+import NotificationBell from "@/components/layout/NotificationBell";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -242,7 +243,7 @@ export default function Navbar() {
                 href='/shop?isFeatured=true'
                 className='px-3 py-2 text-sm font-medium text-gold-400 hover:text-gold-300 hover:bg-navy-800 rounded-md transition-colors'
               >
-                Featured
+                Gifting
               </Link>
               <Link
                 href='/blog'
@@ -291,8 +292,10 @@ export default function Navbar() {
             {/* Right actions — mobile: search on right; cart in header only on desktop (mobile: bottom nav) */}
             <div className='flex items-center justify-end gap-0.5 sm:gap-1 shrink-0'>
               {isAuthenticated && (
-                <Link
-                  href='/dashboard/wishlist'
+                <>
+                  <NotificationBell />
+                  <Link
+                    href='/dashboard/wishlist'
                   className='relative p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
                   aria-label='Wishlist'
                 >
@@ -303,6 +306,7 @@ export default function Navbar() {
                     </span>
                   )}
                 </Link>
+                </>
               )}
 
               <Link

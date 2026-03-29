@@ -278,4 +278,11 @@ export const blogApi = {
   deleteComment: (id: string, commentId: string) => api.delete(`/blogs/${id}/comments/${commentId}`).then(res => res.data),
 };
 
+export const notificationApi = {
+  getAll: (params?: Record<string, string | number | boolean>) => api.get("/notifications", { params }).then(res => res.data),
+  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`).then(res => res.data),
+  markAllAsRead: () => api.patch("/notifications/mark-all-read").then(res => res.data),
+  clearAll: () => api.delete("/notifications/clear-all").then(res => res.data),
+};
+
 export default api;

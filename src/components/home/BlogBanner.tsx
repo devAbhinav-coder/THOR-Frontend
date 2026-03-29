@@ -19,6 +19,8 @@ export default function BlogBanner() {
 
   const blog = settings?.blogBanner;
 
+  if (!blog?.mainImage) return null;
+
   return (
     <section className="relative overflow-hidden bg-navy-950 py-24 sm:py-32 isolate">
       {/* Decorative background gradients */}

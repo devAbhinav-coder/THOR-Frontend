@@ -18,6 +18,8 @@ export default function HomeBanner() {
   }, []);
 
   const promo = settings?.promoBanner;
+
+  if (!promo?.title || !promo?.backgroundImage) return null;
   const perks = promo?.perks?.length ? promo.perks.slice(0, 3) : ["Premium fabrics", "Curated colors", "Easy to shop"];
 
   return (

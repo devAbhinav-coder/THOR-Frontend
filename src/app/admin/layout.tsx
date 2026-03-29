@@ -10,6 +10,7 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
 import AdminConcierge from '@/components/admin/AdminConcierge';
+import NotificationBell from '@/components/layout/NotificationBell';
 
 /** If persist never calls onRehydrateStorage (edge case), unblock admin shell */
 function useAuthHydrationFallback() {
@@ -75,13 +76,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h1 className="font-serif text-sm font-bold">
             <span className="text-gold-400">✦</span> Rani Admin
           </h1>
-          <button
-            onClick={() => setIsMenuOpen((v) => !v)}
-            className="h-9 w-9 rounded-lg bg-gray-800 flex items-center justify-center"
-            aria-label="Toggle admin menu"
-          >
-            {isMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <div className="theme-dark text-white">
+              <NotificationBell />
+            </div>
+            <button
+              onClick={() => setIsMenuOpen((v) => !v)}
+              className="h-9 w-9 rounded-lg bg-gray-800 flex items-center justify-center"
+              aria-label="Toggle admin menu"
+            >
+              {isMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
         {isMenuOpen && (
           <nav className="px-3 pb-3 space-y-1 border-t border-gray-800">
@@ -114,11 +120,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
       <aside className="hidden lg:flex w-[260px] min-w-[260px] max-w-[260px] bg-gray-900 flex-col flex-shrink-0 min-h-0 h-full">
-        <div className="p-5 border-b border-gray-800">
-          <h1 className="font-serif text-base font-bold text-white">
-            <span className="text-gold-400">✦</span> Rani Admin
-          </h1>
-          <p className="text-gray-400 text-xs mt-0.5">{user?.name}</p>
+        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+          <div>
+            <h1 className="font-serif text-base font-bold text-white">
+              <span className="text-gold-400">✦</span> Rani Admin
+            </h1>
+            <p className="text-gray-400 text-xs mt-0.5">{user?.name}</p>
+          </div>
+          <div className="theme-dark text-white">
+            <NotificationBell align="left" />
+          </div>
         </div>
 
         <nav
