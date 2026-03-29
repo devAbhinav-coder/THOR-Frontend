@@ -114,7 +114,7 @@ export default function BlogDetailPage() {
   };
 
   return (
-    <div className="bg-navy-950 min-h-screen pt-5 pb-2 selection:bg-brand-500/30">
+    <div className="bg-navy-950 min-h-screen overflow-x-hidden pt-5 pb-2 selection:bg-brand-500/30">
       
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -146,11 +146,11 @@ export default function BlogDetailPage() {
             {blog.title}
           </h1>
 
-          <div className="flex items-center justify-center gap-6  border-y border-white/5 bg-navy-900/20 backdrop-blur-sm rounded-3xl max-w-lg mx-auto">
+          <div className="flex items-center justify-center gap-6  p-2 border-y border-white/5 bg-navy-900/20 backdrop-blur-sm rounded-3xl max-w-lg mx-auto">
             <button 
               onClick={handleLike}
               disabled={likeMutation.isPending}
-              className="group flex flex-col items-center gap-1.5 text-white/50 hover:text-white transition-colors disabled:opacity-50"
+              className="group flex flex-col items-center gap-0.5 text-white/50 hover:text-white transition-colors disabled:opacity-50"
             >
               <div className={`p-3 rounded-full transition-all duration-300 ${isLikedByMe ? "bg-brand-500/20 shadow-[0_0_20px_-5px_var(--tw-shadow-color)] shadow-brand-500/50" : "bg-white/5 group-hover:bg-brand-500/10"}`}>
                 <Heart className={`w-6 h-6 transition-colors ${isLikedByMe ? "fill-brand-400 text-brand-400" : "group-hover:text-brand-400"}`} />
@@ -158,7 +158,7 @@ export default function BlogDetailPage() {
               <span className="font-bold text-base">{blog.likes?.length || 0}</span>
             </button>
             <div className="w-px h-12 bg-white/10" />
-            <a href="#comments" className="group flex flex-col items-center gap-1.5 text-white/50 hover:text-white transition-colors">
+            <a href="#comments" className="group flex flex-col items-center gap-0.5 text-white/50 hover:text-white transition-colors">
               <div className="p-3 rounded-full bg-white/5 group-hover:bg-gold-500/10 transition-colors">
                 <MessageCircle className="w-6 h-6 group-hover:text-gold-400 transition-colors" />
               </div>

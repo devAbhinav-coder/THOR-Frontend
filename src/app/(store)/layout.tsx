@@ -7,7 +7,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] lg:pb-0 min-h-screen">
+      <main className="pt-24 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0 min-h-screen">
         <StoreErrorBoundary>{children}</StoreErrorBoundary>
       </main>
       <Footer />

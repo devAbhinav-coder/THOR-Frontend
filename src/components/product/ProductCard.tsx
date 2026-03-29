@@ -282,24 +282,20 @@ export default function ProductCard({ product, className }: ProductCardProps) {
 
           {/* Ratings — same row height whether 0 or many reviews */}
           <div className='flex h-4 min-h-4 shrink-0 items-center gap-1'>
-            {product.ratings.count > 0 ?
-              <>
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={cn(
-                      "h-3 w-3 shrink-0",
-                      i < Math.round(product.ratings.average) ?
-                        "fill-gold-400 text-gold-400"
-                      : "fill-gray-200 text-gray-200",
-                    )}
-                  />
-                ))}
-                <span className='ml-0.5 text-[10px] text-gray-400'>
-                  ({product.ratings.count})
-                </span>
-              </>
-            : null}
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={cn(
+                  "h-3 w-3 shrink-0",
+                  product.ratings.count > 0 && i < Math.round(product.ratings.average) ?
+                    "fill-gold-400 text-gold-400"
+                  : "fill-gray-200 text-gray-200",
+                )}
+              />
+            ))}
+            <span className='ml-0.5 text-[10px] text-gray-400'>
+              ({product.ratings.count})
+            </span>
           </div>
 
           {/* Price */}

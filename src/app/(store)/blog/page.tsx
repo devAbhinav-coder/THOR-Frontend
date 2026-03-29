@@ -66,7 +66,7 @@ export default function BlogListingPage() {
   }, [hasMore, isLoading]);
 
   return (
-    <div className="relative min-h-screen bg-navy-950 overflow-hidden pt-5 pb-10 selection:bg-brand-500/30">
+    <div className="relative min-h-screen bg-navy-950 overflow-x-hidden pt-5 pb-10 selection:bg-brand-500/30">
       {/* Background Ambience */}
       <div className="absolute top-0 right-0 -mr-32 -mt-32 w-[50rem] h-[50rem] bg-brand-600/10 rounded-full blur-[128px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-[50rem] h-[50rem] bg-gold-600/10 rounded-full blur-[128px] pointer-events-none" />
@@ -74,8 +74,8 @@ export default function BlogListingPage() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
         
         {/* Header */}
-        <div className="text-center max-w-4xl mx-auto mb-20">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs font-bold tracking-widest uppercase mb-8 shadow-[0_0_20px_-5px_rgba(232,96,76,0.3)]">
+        <div className="text-center max-w-4xl mx-auto mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs font-bold tracking-widest uppercase mb-4 shadow-[0_0_20px_-5px_rgba(232,96,76,0.3)]">
              <Sparkles className="w-4 h-4" />
              The House of Rani Journal
           </div>
