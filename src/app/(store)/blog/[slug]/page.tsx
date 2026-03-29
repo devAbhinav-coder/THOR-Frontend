@@ -114,7 +114,7 @@ export default function BlogDetailPage() {
   };
 
   return (
-    <div className="bg-navy-950 min-h-screen overflow-x-hidden pt-5 pb-2 selection:bg-brand-500/30">
+    <div className="bg-navy-950 min-h-screen overflow-x-clip pt-5 pb-2 selection:bg-brand-500/30">
       
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">

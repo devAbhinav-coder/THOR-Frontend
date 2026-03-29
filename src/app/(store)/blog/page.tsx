@@ -66,7 +66,7 @@ export default function BlogListingPage() {
   }, [hasMore, isLoading]);
 
   return (
-    <div className="relative min-h-screen bg-navy-950 overflow-x-hidden pt-5 pb-10 selection:bg-brand-500/30">
+    <div className="relative min-h-screen bg-navy-950 overflow-x-clip pt-5 pb-10 selection:bg-brand-500/30">
       {/* Background Ambience */}
       <div className="absolute top-0 right-0 -mr-32 -mt-32 w-[50rem] h-[50rem] bg-brand-600/10 rounded-full blur-[128px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-[50rem] h-[50rem] bg-gold-600/10 rounded-full blur-[128px] pointer-events-none" />

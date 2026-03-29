@@ -27,7 +27,9 @@ export function NavigationProgress() {
   }, [routeKey]);
 
   useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
+    let timeoutId: NodeJS.Timeout;
+
+    const onClick = (e: MouseEvent) => {
       if (e.button !== 0) return;
       const el = e.target as HTMLElement | null;
       const a = el?.closest?.("a") as HTMLAnchorElement | null;
@@ -46,9 +48,19 @@ export function NavigationProgress() {
       const currentKey = `${window.location.pathname}${window.location.search}`;
       if (nextKey === currentKey) return;
       setActive(true);
+
+      // Failsafe: hide loader after 5 seconds if navigation hasn't completed
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setActive(false);
+      }, 10000);
     };
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   if (!active) return null;
