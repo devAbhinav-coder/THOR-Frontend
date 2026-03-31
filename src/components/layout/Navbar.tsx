@@ -19,6 +19,7 @@ import {
   Package,
   Home,
   Store,
+  Gift,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -34,12 +35,14 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchSubmitting, setIsSearchSubmitting] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
   const searchDesktopRef = useRef<HTMLInputElement>(null);
   const searchMobileRef = useRef<HTMLInputElement>(null);
+
 
   const { user, isAuthenticated, logout } = useAuthStore();
   const { itemCount } = useCartStore();
@@ -101,6 +104,7 @@ export default function Navbar() {
   useEffect(() => {
     setIsMenuOpen(false);
     setIsUserMenuOpen(false);
+    setIsSearchSubmitting(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -124,11 +128,20 @@ export default function Navbar() {
     e.preventDefault();
     const q = searchQuery.trim();
     if (q) {
+      setIsSearchSubmitting(true);
       router.push(`/shop?search=${encodeURIComponent(q)}`);
       setIsSearchOpen(false);
-      setSearchQuery("");
     }
   };
+
+  useEffect(() => {
+    if (!isSearchSubmitting) return;
+    const timer = window.setTimeout(() => {
+      setIsSearchSubmitting(false);
+      setSearchQuery("");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [isSearchSubmitting]);
 
   const focusStoreSearch = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -166,12 +179,22 @@ export default function Navbar() {
   const isShopActive = pathname === "/shop" || pathname.startsWith("/shop");
   const isOrdersActive = pathname.startsWith("/dashboard/orders");
   const isCartActive = pathname === "/cart" || pathname.startsWith("/cart");
+  const isGiftingActive = pathname === "/gifting" || pathname.startsWith("/gifting");
+  const showGlobalStoreSearch = !isGiftingActive;
 
   return (
     <>
+      {announcementMessages.length > 0 && (
+        <div className='bg-navy-950 min-h-8 border-b border-navy-700 flex items-center justify-center px-3 py-1.5 text-center relative z-40 group cursor-default'>
+          <p className='text-xs sm:text-sm text-gold-300 font-medium leading-snug max-w-4xl animate-fadeIn'>
+            {announcementMessages[announcementIndex]}
+          </p>
+        </div>
+      )}
+
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 border-b border-navy-800 bg-navy-950",
+          "sticky top-0 z-50 border-b border-navy-800 bg-navy-950",
           "transition-[box-shadow] duration-200 ease-out motion-reduce:transition-none",
           isScrolled ?
             "shadow-[0_8px_28px_-6px_rgba(0,0,0,0.5)]"
@@ -179,21 +202,31 @@ export default function Navbar() {
         )}
       >
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
-          <div className='flex items-center justify-between h-16 gap-2'>
-            {/* Logo — left on mobile, desktop flow */}
-            <Link
-              href='/'
-              className='flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0'
-            >
-              <Image
-                src='/logo.jpg'
-                alt='The House of Rani'
-                width={160}
-                height={48}
-                className='h-9 sm:h-12 w-auto max-w-[140px] sm:max-w-none object-contain object-left'
-                priority
-              />
-            </Link>
+          <div className='flex items-center justify-between h-14 gap-2'>
+            <div className='flex items-center gap-1 sm:gap-2 lg:gap-0'>
+              <button
+                type='button'
+                onClick={() => setIsMenuOpen((o) => !o)}
+                className='lg:hidden p-1.5 -ml-1.5 text-white/75 hover:text-white rounded-md transition-colors'
+                aria-label='Open menu'
+              >
+                <Menu className='h-6 w-6' strokeWidth={1.5} />
+              </button>
+              {/* Logo — left on mobile, desktop flow */}
+              <Link
+                href='/'
+                className='flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0'
+              >
+                <Image
+                  src='/logo.jpg'
+                  alt='The House of Rani'
+                  width={160}
+                  height={48}
+                  className='h-9 sm:h-12 w-auto max-w-[140px] sm:max-w-none object-contain object-left'
+                  priority
+                />
+              </Link>
+            </div>
 
             {/* Desktop nav */}
             <nav className='hidden lg:flex items-center space-x-1 flex-1 justify-center mx-4'>
@@ -234,15 +267,15 @@ export default function Navbar() {
 
               <Link
                 href='/shop?sort=-createdAt'
-                className='px-3 py-2 text-sm font-medium text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                className='px-3 py-2 text-sm font-medium text-gold-400 hover:text-gold-300  hover:bg-navy-800 rounded-md transition-colors'
               >
                 New Arrivals
               </Link>
-
               <Link
-                href='/shop?isFeatured=true'
-                className='px-3 py-2 text-sm font-medium text-gold-400 hover:text-gold-300 hover:bg-navy-800 rounded-md transition-colors'
+                href='/gifting'
+                className='flex items-center gap-1 px-3 py-2 text-sm font-medium text-brand-300 hover:text-brand-200 hover:bg-navy-800 rounded-md transition-colors'
               >
+                <Gift className='h-3.5 w-3.5' />
                 Gifting
               </Link>
               <Link
@@ -253,49 +286,54 @@ export default function Navbar() {
               </Link>
             </nav>
 
-            <form
-              data-navbar-search
-              onSubmit={handleSearch}
-              className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'
-            >
-              <div className='relative'>
-                <Search
-                  className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35'
-                  aria-hidden
-                />
-                <input
-                  ref={searchDesktopRef}
-                  type='search'
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder='Search sarees, lehengas, kurtis…'
-                  autoComplete='off'
-                  aria-label='Search store'
-                  className='w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 pr-24 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35'
-                />
-                {searchQuery ?
+            {showGlobalStoreSearch && (
+              <form
+                data-navbar-search
+                onSubmit={handleSearch}
+                className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'
+              >
+                <div className='relative'>
+                  <Search
+                    className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35'
+                    aria-hidden
+                  />
+                  <input
+                    ref={searchDesktopRef}
+                    type='search'
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder='Search sarees, lehengas, kurtis…'
+                    autoComplete='off'
+                    aria-label='Search store'
+                    className='w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 pr-[7.25rem] text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden'
+                  />
                   <button
-                    type='button'
-                    onClick={() => setSearchQuery("")}
-                    className='absolute right-[4.25rem] top-1/2 -translate-y-1/2 rounded-md p-1 text-white/45 hover:bg-navy-700 hover:text-white'
-                    aria-label='Clear search'
+                    type='submit'
+                    disabled={isSearchSubmitting || !searchQuery.trim()}
+                    className='absolute right-9 top-1/2 -translate-y-1/2 rounded-md bg-brand-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-55'
                   >
-                    <X className='h-3.5 w-3.5' />
+                    {isSearchSubmitting ? "..." : "Go"}
                   </button>
-                : null}
-                <kbd className='pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-navy-600 bg-navy-900/80 px-1.5 py-0.5 font-sans text-[10px] font-medium text-white/50 xl:inline'>
-                  Ctrl+K
-                </kbd>
-              </div>
-            </form>
+                  {searchQuery ?
+                    <button
+                      type='button'
+                      onClick={() => setSearchQuery("")}
+                      className='absolute right-[4.25rem] top-1/2 -translate-y-1/2 rounded-md p-1 text-white/45 hover:bg-navy-700 hover:text-white'
+                      aria-label='Clear search'
+                    >
+                      <X className='h-3.5 w-3.5' />
+                    </button>
+                  : null}
+                
+                </div>
+              </form>
+            )}
 
             {/* Right actions — mobile: search on right; cart in header only on desktop (mobile: bottom nav) */}
             <div className='flex items-center justify-end gap-0.5 sm:gap-1 shrink-0'>
               {isAuthenticated && (
-                <>
-                  <NotificationBell />
-                  <Link
-                    href='/dashboard/wishlist'
+                <Link
+                  href='/dashboard/wishlist'
                   className='relative p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
                   aria-label='Wishlist'
                 >
@@ -306,7 +344,6 @@ export default function Navbar() {
                     </span>
                   )}
                 </Link>
-                </>
               )}
 
               <Link
@@ -322,18 +359,24 @@ export default function Navbar() {
                 )}
               </Link>
 
-              <button
-                type='button'
-                onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className='lg:hidden p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
-                aria-label='Search'
-                aria-expanded={isSearchOpen}
-              >
-                <Search className='h-5 w-5' />
-              </button>
+              {showGlobalStoreSearch && (
+                <button
+                  type='button'
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className='lg:hidden p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                  aria-label='Search'
+                  aria-expanded={isSearchOpen}
+                >
+                  <Search className='h-5 w-5' />
+                </button>
+              )}
+
+              {isAuthenticated && (
+                <NotificationBell />
+              )}
 
               {isAuthenticated ?
-                <div className='relative'>
+                <div className='hidden lg:block relative'>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className='flex items-center gap-2 p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
@@ -396,7 +439,7 @@ export default function Navbar() {
                 </div>
               : <Link
                   href='/auth/login'
-                  className='flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                  className='hidden lg:flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
                 >
                   <User className='h-5 w-5' />
                   <span className='hidden sm:block'>Sign In</span>
@@ -405,16 +448,10 @@ export default function Navbar() {
             </div>
           </div>
 
-          {announcementMessages.length > 0 && (
-            <div className='min-h-10 border-t border-navy-700 flex items-center justify-center px-3 py-1.5 text-center'>
-              <p className='text-xs sm:text-sm text-gold-300 font-medium leading-snug max-w-4xl animate-fadeIn'>
-                {announcementMessages[announcementIndex]}
-              </p>
-            </div>
-          )}
+          {/* Announcement Bar Removed from Header */}
 
           {/* Mobile / tablet search */}
-          {isSearchOpen && (
+          {showGlobalStoreSearch && isSearchOpen && (
             <div
               data-navbar-search
               className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'
@@ -433,7 +470,7 @@ export default function Navbar() {
                     placeholder='Search sarees, kalamkari, etc.'
                     autoComplete='off'
                     aria-label='Search store'
-                    className='w-full rounded-xl border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35'
+                    className='w-full rounded-xl border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden'
                   />
                   {searchQuery ?
                     <button
@@ -448,9 +485,10 @@ export default function Navbar() {
                 </div>
                 <button
                   type='submit'
+                  disabled={isSearchSubmitting}
                   className='shrink-0 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700'
                 >
-                  Search
+                  {isSearchSubmitting ? "Searching..." : "Search"}
                 </button>
               </form>
             </div>
@@ -462,137 +500,101 @@ export default function Navbar() {
       {isMenuOpen && (
         <div className='fixed inset-0 z-[100] lg:hidden'>
           <div
-            className='fixed inset-0 bg-black/60 backdrop-blur-sm'
+            className='fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300'
             onClick={() => setIsMenuOpen(false)}
           />
-          <div className='fixed left-0 top-0 h-full w-[min(20rem,88vw)] max-h-[100dvh] bg-navy-900 shadow-2xl flex flex-col animate-fadeIn'>
+          <div className='fixed left-0 top-0 h-full w-[min(21rem,88vw)] max-h-[100dvh] bg-navy-950 shadow-[20px_0_40px_rgba(0,0,0,0.5)] flex flex-col animate-in slide-in-from-left duration-300 ease-out'>
             {/* Drawer header */}
-            <div className='flex items-center justify-between p-4 border-b border-navy-700'>
+            <div className='flex items-center justify-between p-5 border-b border-navy-800 bg-navy-900/50'>
               <Image
                 src='/logo.jpg'
                 alt='The House of Rani'
-                width={130}
-                height={40}
-                className='h-10 w-auto object-contain'
+                width={140}
+                height={42}
+                className='h-9 w-auto object-contain'
               />
               <button
                 onClick={() => setIsMenuOpen(false)}
-                className='p-2 text-white/70 hover:text-white'
+                className='p-2 text-white/50 hover:text-white bg-navy-800/50 hover:bg-navy-800 rounded-xl transition-all'
               >
                 <X className='h-5 w-5' />
               </button>
             </div>
 
-            <nav className='flex-1 overflow-y-auto p-4 space-y-1'>
-              <Link
-                href='/'
-                className='block px-3 py-2 text-sm font-medium text-white hover:bg-navy-800 rounded-lg'
-              >
-                Home
-              </Link>
-              <Link
-                href='/cart'
-                className='flex items-center justify-between px-3 py-2 text-sm font-medium text-white hover:bg-navy-800 rounded-lg'
-              >
-                Cart
-                {itemCount > 0 && (
-                  <span className='text-xs bg-brand-600 px-2 py-0.5 rounded-full'>
-                    {itemCount}
-                  </span>
-                )}
-              </Link>
-              <Link
-                href='/shop'
-                className='block px-3 py-2 text-sm font-medium text-white hover:bg-navy-800 rounded-lg'
-              >
-                All Products
-              </Link>
-              <Link
-                href='/shop?sort=-createdAt'
-                className='block px-3 py-2 text-sm font-medium text-white hover:bg-navy-800 rounded-lg'
-              >
-                New Arrivals
-              </Link>
-              <Link
-                href='/shop?isFeatured=true'
-                className='block px-3 py-2 text-sm font-medium text-gold-400 hover:bg-navy-800 rounded-lg'
-              >
-                Featured
-              </Link>
-              <Link
-                href='/blog'
-                className='block px-3 py-2 text-sm font-medium text-white hover:bg-navy-800 rounded-lg'
-              >
-                Blog
-              </Link>
+            <nav className='flex-1 overflow-y-auto no-scrollbar p-5 space-y-7'>
+              {/* Main Nav */}
+              <div className='space-y-1'>
+                <Link onClick={() => setIsMenuOpen(false)} href='/' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'><Home className='w-4 h-4' /></div> 
+                  Home
+                </Link>
+                <Link onClick={() => setIsMenuOpen(false)} href='/shop' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'><Store className='w-4 h-4' /></div> 
+                  All Products
+                </Link>
+                <Link onClick={() => setIsMenuOpen(false)} href='/shop?sort=-createdAt' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
+                  <div className='p-2 rounded-xl bg-gold-400/10 text-gold-400 group-hover:bg-gold-500 group-hover:text-white transition-colors'><Package className='w-4 h-4' /></div> 
+                  New Arrivals
+                </Link>
+                <Link onClick={() => setIsMenuOpen(false)} href='/gifting' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
+                  <div className='p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors'><Gift className='w-4 h-4' /></div> 
+                  Bespoke Gifting
+                </Link>
+                <Link onClick={() => setIsMenuOpen(false)} href='/blog' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'><LayoutDashboard className='w-4 h-4' /></div> 
+                  The Rani Blog
+                </Link>
+              </div>
 
+              {/* Categories */}
               {navCategories.length > 0 && (
-                <>
-                  <p className='px-3 pt-3 pb-1 text-xs font-semibold text-white/40 uppercase tracking-widest'>
-                    Categories
-                  </p>
-                  {navCategories.map((cat) => (
-                    <Link
-                      key={cat._id}
-                      href={`/shop?category=${encodeURIComponent(cat.name)}`}
-                      className='block px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-navy-800 rounded-lg'
-                    >
-                      {cat.name}
-                    </Link>
-                  ))}
-                </>
+                <div>
+                  <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>Curated Collections</p>
+                  <div className='space-y-0.5'>
+                    {navCategories.map((cat) => (
+                      <Link 
+                        key={cat._id} 
+                        onClick={() => setIsMenuOpen(false)} 
+                        href={`/shop?category=${encodeURIComponent(cat.name)}`} 
+                        className='block px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-navy-800/60 rounded-xl transition-colors'
+                      >
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               )}
 
-              {isAuthenticated ?
-                <>
-                  <p className='px-3 pt-3 pb-1 text-xs font-semibold text-white/40 uppercase tracking-widest'>
-                    Account
-                  </p>
-                  <Link
-                    href='/dashboard'
-                    prefetch
-                    className='block px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-navy-800 rounded-lg'
-                  >
-                    My Account
-                  </Link>
-                  <Link
-                    href='/dashboard/orders'
-                    prefetch
-                    className='block px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-navy-800 rounded-lg'
-                  >
-                    My Orders
-                  </Link>
-                  <Link
-                    href='/dashboard/wishlist'
-                    prefetch
-                    className='block px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-navy-800 rounded-lg'
-                  >
-                    Wishlist ({wishlistProducts.length})
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className='block w-full text-left px-3 py-2 text-sm text-brand-400 hover:bg-navy-800 rounded-lg'
-                  >
-                    Sign Out
-                  </button>
-                </>
-              : <>
-                  <div className='pt-3 space-y-2'>
-                    <Link
-                      href='/auth/login'
-                      className='block px-3 py-2 text-sm font-medium text-white hover:bg-navy-800 rounded-lg text-center border border-navy-600'
-                    >
+              {/* Account Section */}
+              <div className='pb-6'>
+                <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>Your Account</p>
+                {isAuthenticated ? (
+                  <div className='space-y-1 bg-navy-900/50 p-2 rounded-3xl border border-navy-800/50'>
+                    <Link onClick={() => setIsMenuOpen(false)} href='/dashboard' className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'>
+                      <User className='w-4 h-4 text-white/40' /> Dashboard
+                    </Link>
+                    <Link onClick={() => setIsMenuOpen(false)} href='/dashboard/orders' className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'>
+                      <Package className='w-4 h-4 text-white/40' /> My Orders
+                    </Link>
+                    <Link onClick={() => setIsMenuOpen(false)} href='/dashboard/wishlist' className='flex items-center justify-between px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'>
+                      <span className='flex items-center gap-3'><Heart className='w-4 h-4 text-white/40' /> Wishlist</span>
+                      {wishlistProducts.length > 0 && <span className='bg-brand-500/20 text-brand-300 text-[10px] font-bold px-2 py-0.5 rounded-full'>{wishlistProducts.length}</span>}
+                    </Link>
+                    <button onClick={handleLogout} className='w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/20 border border-transparent rounded-2xl transition-all'>
+                      <LogOut className='w-4 h-4' /> Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <div className='flex gap-2.5 mt-2'>
+                    <Link onClick={() => setIsMenuOpen(false)} href='/auth/login' className='flex-1 py-3 text-xs font-bold text-white bg-navy-800 border border-navy-700 hover:bg-navy-700 hover:border-navy-600 rounded-2xl text-center transition-all shadow-sm'>
                       Sign In
                     </Link>
-                    <Link
-                      href='/auth/signup'
-                      className='block px-3 py-2 text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-center transition-colors'
-                    >
+                    <Link onClick={() => setIsMenuOpen(false)} href='/auth/signup' className='flex-1 py-3 text-xs font-bold bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white rounded-2xl text-center shadow-lg shadow-brand-900/40 transition-all'>
                       Create Account
                     </Link>
                   </div>
-                </>
-              }
+                )}
+              </div>
             </nav>
           </div>
         </div>
@@ -610,7 +612,7 @@ export default function Navbar() {
         className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(0,0,0,0.45)] [color-scheme:dark]'
         aria-label='Primary'
       >
-        <div className='grid w-full grid-cols-5 max-w-xl mx-auto px-0.5 min-h-[3.25rem]'>
+        <div className='grid w-full grid-cols-6 max-w-xl mx-auto px-0.5 min-h-[3.25rem]'>
           <Link
             href='/'
             className={cn(
@@ -644,6 +646,22 @@ export default function Navbar() {
               strokeWidth={isShopActive ? 2.5 : 2}
             />
             Shop
+          </Link>
+          <Link 
+            href="/gifting" 
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
+              isGiftingActive ? "text-white" : "text-white/70 hover:text-white"
+            )}
+          >
+            <Gift 
+              className={cn(
+                "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
+                isGiftingActive ? "text-brand-400" : "text-white/75"
+              )}
+              strokeWidth={isGiftingActive ? 2.5 : 2}
+            />
+            <span>Gifting</span>
           </Link>
           <Link
             href='/cart'
@@ -684,28 +702,22 @@ export default function Navbar() {
             />
             Orders
           </Link>
-          <button
-            type='button'
-            onClick={() => setIsMenuOpen((o) => !o)}
+          <Link
+            href={isAuthenticated ? "/dashboard" : "/auth/login"}
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isMenuOpen ? "text-white" : "text-white/70 hover:text-white",
+              (pathname === "/dashboard" || pathname === "/auth/login") ? "text-white" : "text-white/70 hover:text-white",
             )}
-            aria-expanded={isMenuOpen}
-            aria-label='Open menu'
           >
-            {isMenuOpen ?
-              <X
-                className='h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0 text-brand-400'
-                strokeWidth={2.5}
-              />
-            : <Menu
-                className='h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0 text-white/75'
-                strokeWidth={2}
-              />
-            }
-            Menu
-          </button>
+            <User
+              className={cn(
+                "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
+                (pathname === "/dashboard" || pathname === "/auth/login") ? "text-brand-400" : "text-white/75",
+              )}
+              strokeWidth={(pathname === "/dashboard" || pathname === "/auth/login") ? 2.5 : 2}
+            />
+            Profile
+          </Link>
         </div>
       </nav>
     </>

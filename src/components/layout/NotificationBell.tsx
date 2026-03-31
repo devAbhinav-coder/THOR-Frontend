@@ -87,87 +87,96 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
 
       {isOpen && (
         <div className={cn(
-          "absolute mt-3 w-80 md:w-96 rounded-2xl bg-white dark:bg-neutral-900 border shadow-2xl overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200",
+          "absolute mt-3 flex flex-col w-80 md:w-96 max-h-[85vh] sm:max-h-[80vh] rounded-2xl bg-white dark:bg-neutral-900 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 dark:border-neutral-800 overflow-hidden z-[100] animate-in slide-in-from-top-2 duration-200",
           align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left"
         )}>
-          <div className="flex items-center justify-between px-4 py-3 bg-neutral-50/50 dark:bg-neutral-800/50 border-b backdrop-blur-md">
-            <h3 className="font-semibold text-sm">Notifications</h3>
-            <div className="flex items-center space-x-2">
-              {unreadCount > 0 && (
-                <button
-                  title="Mark all as read"
-                  onClick={() => markAllAsReadMutation.mutate()}
-                  className="p-1.5 text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-              )}
-              {notifications.length > 0 && (
-                <button
-                  title="Clear all"
-                  onClick={() => clearAllMutation.mutate()}
-                  className="p-1.5 text-neutral-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+          <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 bg-white dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-800">
+            <h3 className="font-bold text-gray-900 dark:text-white text-base">Notifications</h3>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllAsReadMutation.mutate()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Mark Read
+                  </button>
+                )}
+                {notifications.length > 0 && (
+                  <button
+                    onClick={() => clearAllMutation.mutate()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Clear All
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto overscroll-contain overflow-x-hidden no-scrollbar bg-gray-50/30 dark:bg-neutral-900/50" data-lenis-prevent>
+              {notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                  <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                    <Bell className="h-7 w-7 text-gray-300" />
+                  </div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-neutral-100">All caught up!</p>
+                  <p className="text-xs text-gray-500 mt-1">You have no new notifications.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {notifications.map((n: any) => (
+                    <Link
+                      key={n._id}
+                      href={n.link || "#"}
+                      onClick={(e) => {
+                        if (!n.link) e.preventDefault();
+                        handleNotificationClick(n._id, n.isRead);
+                      }}
+                      className={cn(
+                        "flex items-start gap-4 p-5 hover:bg-gray-50 dark:hover:bg-neutral-800/80 transition-colors relative group border-b border-gray-100 last:border-0",
+                        !n.isRead ? "bg-white dark:bg-neutral-900" : "bg-gray-50/50 dark:bg-neutral-900/50 opacity-75 hover:opacity-100"
+                      )}
+                    >
+                      {!n.isRead && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-500" />
+                      )}
+                      
+                      <div className={cn(
+                        "mt-0.5 p-2.5 rounded-full flex-shrink-0", 
+                        !n.isRead ? "bg-brand-50 text-brand-600" : "bg-gray-100 text-gray-500"
+                      )}>
+                        {IconForType(n.type)}
+                      </div>
+
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className={cn(
+                            "text-sm leading-snug", 
+                            !n.isRead ? "font-bold text-gray-900 dark:text-white" : "font-semibold text-gray-600 dark:text-gray-300"
+                          )}>
+                            {n.title}
+                          </p>
+                          <span className="flex-shrink-0 text-[10px] font-semibold text-gray-400 whitespace-nowrap pt-0.5">
+                            {new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </span>
+                        </div>
+                        <p className={cn(
+                          "text-xs leading-relaxed line-clamp-2",
+                          !n.isRead ? "text-gray-600 dark:text-gray-400 font-medium" : "text-gray-500 dark:text-gray-500"
+                        )}>
+                          {n.message}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
-
-          <div className="max-h-[60vh] overflow-y-auto no-scrollbar">
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                <div className="h-12 w-12 rounded-full bg-neutral-100 flex items-center justify-center mb-3">
-                  <Bell className="h-6 w-6 text-neutral-400" />
-                </div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">All caught up!</p>
-                <p className="text-xs text-neutral-500 mt-1">You have no new notifications.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col divide-y">
-                {notifications.map((n: any) => (
-                  <Link
-                    key={n._id}
-                    href={n.link || "#"}
-                    onClick={(e) => {
-                      if (!n.link) e.preventDefault();
-                      handleNotificationClick(n._id, n.isRead);
-                    }}
-                    className={cn(
-                      "flex items-start gap-4 p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors relative group",
-                      !n.isRead ? "bg-emerald-50/30 dark:bg-emerald-950/20" : ""
-                    )}
-                  >
-                    {!n.isRead && (
-                      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    )}
-                    <div className={cn("mt-1 p-2 rounded-full", !n.isRead ? "bg-white dark:bg-neutral-800 shadow-sm" : "bg-neutral-100 dark:bg-neutral-800")}>
-                      {IconForType(n.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm transition-colors", !n.isRead ? "font-semibold text-neutral-900 dark:text-white" : "font-medium text-neutral-700 dark:text-neutral-300")}>
-                        {n.title}
-                      </p>
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
-                        {n.message}
-                      </p>
-                      <p className="text-[11px] text-neutral-400 mt-1.5 font-medium">
-                        {new Date(n.createdAt).toLocaleString(undefined, {
-                          month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
-                        })}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
+          
+            {notifications.length > 0 && (
+              <div className="flex-shrink-0 p-3 bg-gray-50 dark:bg-neutral-900 border-t border-gray-100 items-center justify-center flex">
+                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">End of notifications</span>
               </div>
             )}
-          </div>
-          
-          {notifications.length > 0 && (
-            <div className="p-2 bg-neutral-50/50 border-t items-center justify-center flex">
-               <span className="text-xs text-neutral-400">End of notifications</span>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Package, Heart, MapPin, ShoppingBag, ArrowRight,
-  Clock, CheckCircle2, Truck, AlertCircle,
+  Clock, CheckCircle2, Truck, AlertCircle, User, Lock, Gift, ChevronRight
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useWishlistStore } from '@/store/useWishlistStore';
@@ -49,7 +49,35 @@ export default function DashboardPage() {
   const pendingCount = recentOrders.filter((o) => ['pending', 'confirmed', 'processing', 'shipped'].includes(o.status)).length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 sm:space-y-5">
+      {/* Mobile Navigation Menu - ONLY visible on mobile root dashboard */}
+      <div className="sm:hidden bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+        <div className="px-5 pt-5 pb-3 bg-gray-50/50 border-b border-gray-100">
+          <h2 className="text-sm font-black text-navy-900 tracking-tight uppercase">Your Account</h2>
+          <p className="text-[11px] text-gray-500 font-medium mt-0.5">Manage orders, wishlist & settings</p>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {[
+            { label: 'My Orders', href: '/dashboard/orders', icon: Package, color: 'text-brand-600', bg: 'bg-brand-50' },
+            { label: 'Bespoke Gifting', href: '/dashboard/gifting', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+            { label: 'Wishlist', href: '/dashboard/wishlist', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50' },
+            { label: 'Saved Addresses', href: '/dashboard/addresses', icon: MapPin, color: 'text-navy-600', bg: 'bg-navy-50' },
+            { label: 'Profile Settings', href: '/dashboard/profile', icon: User, color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: 'Security', href: '/dashboard/security', icon: Lock, color: 'text-slate-600', bg: 'bg-slate-50' },
+          ].map(({ label, href, icon: Icon, color, bg }) => (
+            <Link key={href} href={href} className="flex items-center justify-between p-4 hover:bg-gray-50 active:bg-gray-100 transition-colors group">
+              <div className="flex items-center gap-3.5">
+                <div className={cn("h-11 w-11 rounded-2xl flex items-center justify-center transition-transform group-active:scale-95 shadow-sm", bg, color)}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-bold text-gray-900">{label}</span>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-brand-400 group-active:translate-x-1 transition-all" />
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

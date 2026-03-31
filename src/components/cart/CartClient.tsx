@@ -161,6 +161,14 @@ export default function CartClient() {
               {cart.items
                 .filter((item: CartItem) => item.product)
                 .map((item: CartItem) => (
+                  (() => {
+                    const isCorporateGift = (item.product?.giftOccasions || []).some(
+                      (o) => String(o).trim().toLowerCase() === "corporate"
+                    );
+                    const minQty = isCorporateGift
+                      ? Math.max(item.product?.minOrderQty || 1, 10)
+                      : Math.max(item.product?.minOrderQty || 1, 1);
+                    return (
                   <div key={item.variant.sku} className='p-5 flex gap-4'>
                     <Link
                       href={`/shop/${item.product?.slug || "#"}`}
@@ -188,14 +196,42 @@ export default function CartClient() {
                             {item.product?.name || "Product"}
                           </Link>
                           <p className='text-xs text-gray-500 mt-1'>
-                            {[
-                              item.variant.size && `Size ${item.variant.size}`,
-                              item.variant.color && item.variant.color,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </p>
-                        </div>
+                             {[
+                               item.variant.size && `Size ${item.variant.size}`,
+                               item.variant.color && item.variant.color,
+                             ]
+                               .filter(Boolean)
+                               .join(" · ")}
+                           </p>
+                           {/* Gifting Custom Fields */}
+                           {item.customFieldAnswers && item.customFieldAnswers.length > 0 && (
+                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                               {item.customFieldAnswers.map((ans, i) => {
+                                 const isImage = typeof ans.value === "string" && /^https?:\/\//.test(ans.value);
+                                 return (
+                                   <div key={i} className="rounded-md bg-gold-50 border border-gold-100 px-2 py-1.5">
+                                     <p className="text-[10px] font-semibold text-gold-700">{ans.label}</p>
+                                     {isImage ? (
+                                       <a href={ans.value} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1">
+                                         <span className="relative h-9 w-9 rounded overflow-hidden border border-gold-200 bg-white">
+                                           <Image src={ans.value} alt={ans.label} fill sizes="36px" className="object-cover" />
+                                         </span>
+                                         <span className="text-[10px] font-semibold text-brand-600">View</span>
+                                       </a>
+                                     ) : (
+                                       <p className="text-[10px] font-medium text-gray-700 break-words">{ans.value}</p>
+                                     )}
+                                   </div>
+                                 );
+                               })}
+                             </div>
+                           )}
+                           {minQty > 1 && (
+                             <p className='text-[11px] text-amber-700 mt-1'>
+                               Minimum quantity: {minQty}
+                             </p>
+                           )}
+                         </div>
                         <div className='text-right flex-shrink-0'>
                           <p className='font-semibold text-gray-900'>
                             {formatPrice(item.price * item.quantity)}
@@ -212,12 +248,14 @@ export default function CartClient() {
                         <div className='inline-flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden'>
                           <button
                             onClick={() =>
-                              item.quantity > 1 ?
-                                updateItem(item.variant.sku, item.quantity - 1)
-                              : removeItem(item.variant.sku)
+                              item.quantity > minQty
+                                ? updateItem(item.variant.sku, item.quantity - 1)
+                                : item.quantity === 1
+                                  ? removeItem(item.variant.sku)
+                                  : undefined
                             }
                             className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
-                            disabled={isLoading}
+                            disabled={isLoading || item.quantity <= minQty}
                             aria-label='Decrease quantity'
                           >
                             <Minus className='h-4 w-4' />
@@ -248,6 +286,7 @@ export default function CartClient() {
                       </div>
                     </div>
                   </div>
+                )})()
                 ))}
             </div>
           </div>

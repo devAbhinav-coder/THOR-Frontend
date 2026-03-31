@@ -201,7 +201,7 @@ export default function ImageUploader({
               {isDragging ? 'Drop image here' : 'Drag & drop or click to upload'}
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              JPG, PNG, WEBP · Upload hone ke baad crop kar sakte hain
+              JPG, PNG, WEBP ·
               {maxFiles > 1 && ` · ${maxFiles - total} more allowed`}
             </p>
           </div>
@@ -286,7 +286,7 @@ export default function ImageUploader({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900">Image Crop</p>
-                  <p className="text-xs text-gray-400">{RATIO_LABEL[aspectRatio]} — website pe aise hi dikhega</p>
+                  <p className="text-xs text-gray-400">{RATIO_LABEL[aspectRatio]} — Preview</p>
                 </div>
               </div>
               <button onClick={handleCropCancel}

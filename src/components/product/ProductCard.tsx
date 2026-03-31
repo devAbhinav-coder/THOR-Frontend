@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingBag, Star } from "lucide-react";
+import { Heart, ShoppingBag, Star , Gift } from "lucide-react";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { hasInStockVariant, sumVariantStock } from "@/lib/productStock";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
 
 interface ProductCardProps {
   product: Product;
@@ -25,6 +26,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   const { addToCart } = useCartStore();
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
+  const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
   const router = useRouter();
 
   const inWishlist = isInWishlist(product._id);
@@ -56,27 +58,15 @@ export default function ProductCard({ product, className }: ProductCardProps) {
       toast.error("This product is out of stock");
       return;
     }
-    const defaultVariant = product.variants.find((v) => v.stock > 0);
-    if (!defaultVariant) {
-      toast.error("No variants available");
+
+    // Gifting Logic: If it has custom fields OR is customizable, open modal
+    if (product.isCustomizable || (product.customFields && product.customFields.length > 0)) {
+      setIsGiftModalOpen(true);
       return;
     }
-    setIsAddingToCart(true);
-    try {
-      await addToCart(
-        product._id,
-        {
-          sku: defaultVariant.sku,
-          size: defaultVariant.size,
-          color: defaultVariant.color,
-        },
-        1,
-      );
-    } catch {
-      /* handled in store */
-    } finally {
-      setIsAddingToCart(false);
-    }
+
+    // Standard products (non-gifting): Redirect to PDP as "View Details" action
+    router.push(`/shop/${product.slug}`);
   };
 
   const handleBuyNow = async (e: React.MouseEvent) => {
@@ -195,22 +185,25 @@ export default function ProductCard({ product, className }: ProductCardProps) {
             </div>
           )}
 
-          {/* Action bar — slides up on hover */}
-          {!isOutOfStock && (
-            <div className='hidden sm:block absolute bottom-0 left-0 right-0 p-2.5 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 ease-out z-10'>
-              <button
-                onClick={handleAddToCart}
-                disabled={isAddingToCart}
-                className='w-full py-2.5 rounded-xl bg-white hover:bg-gray-50 text-navy-900 text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors disabled:opacity-70'
-              >
-                {isAddingToCart ?
-                  <span className='h-3.5 w-3.5 rounded-full border-2 border-navy-300 border-t-navy-900 animate-spin' />
-                : <ShoppingBag className='h-3.5 w-3.5' />}
-                {isAddingToCart ? "Adding…" : "Add to Cart"}
-              </button>
-            </div>
-          )}
-        </div>
+           {/* Action bar — slides up on hover */}
+           {!isOutOfStock && (
+             <div className='hidden sm:block absolute bottom-0 left-0 right-0 p-2.5 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 ease-out z-10'>
+               <button
+                 onClick={handleAddToCart}
+                 disabled={isAddingToCart}
+                 className={cn(
+                   'w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors disabled:opacity-70',
+                   product.isCustomizable ? 'bg-gold-500 text-white hover:bg-gold-600' : 'bg-white hover:bg-gray-50 text-navy-900'
+                 )}
+               >
+                 {isAddingToCart ?
+                   <span className='h-3.5 w-3.5 rounded-full border-2 border-navy-300 border-t-navy-900 animate-spin' />
+                 : (product.isCustomizable || (product.customFields && product.customFields.length > 0)) ? <Gift className='h-3.5 w-3.5' /> : <ShoppingBag className='h-3.5 w-3.5' />}
+                 {isAddingToCart ? "Adding…" : (product.isCustomizable || (product.customFields && product.customFields.length > 0)) ? "Customize" : "View Product"}
+               </button>
+             </div>
+           )}
+         </div>
 
         {/* ── Info: fixed vertical rhythm so every card matches on phone + desktop ── */}
         <div className='mt-3 flex min-h-0 flex-1 flex-col gap-1.5'>
@@ -237,7 +230,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           {/* Colors — one row; scroll horizontally if many (no wrapping = same card height) */}
           <div className='h-5 min-h-5 shrink-0'>
             {(() => {
-              const uniqueColors = product.variants
+              const uniqueColors = (product.variants || [])
                 .filter((v) => v.color)
                 .reduce<{ color: string; colorCode?: string }[]>((acc, v) => {
                   if (!acc.find((c) => c.color === v.color)) {
@@ -316,13 +309,13 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           </div>
 
           {/* Low stock — fixed band */}
-          <div className='flex h-[22px] min-h-[22px] shrink-0 items-center'>
+          {/* <div className='flex h-[22px] min-h-[22px] shrink-0 items-center'>
             {!isOutOfStock && sellableTotal > 0 && sellableTotal <= 5 ?
               <span className='inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-700'>
                 <span aria-hidden>⚡</span> Only a few left!
               </span>
             : null}
-          </div>
+          </div> */}
 
           {/* Fills extra row height from CSS grid so cards in a row align */}
           <div className='min-h-0 flex-1' aria-hidden />
@@ -344,11 +337,18 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           <ShoppingBag className='h-3.5 w-3.5' />
           {isAddingToCart ?
             "Adding…"
-          : isOutOfStock ?
-            "Sold Out"
-          : "Add to Cart"}
-        </button>
-      </div>
-    </div>
-  );
-}
+           : isOutOfStock ?
+             "Sold Out"
+           : (product.isCustomizable || (product.customFields && product.customFields.length > 0)) ? "Customize" : "View Details"}
+         </button>
+       </div>
+ 
+       {isGiftModalOpen && (
+         <GiftCustomizationModal
+           product={product as any}
+           onClose={() => setIsGiftModalOpen(false)}
+         />
+       )}
+     </div>
+   );
+ }

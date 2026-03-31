@@ -33,6 +33,8 @@ export default function AdminStorefrontPage() {
   const [promoBgFile, setPromoBgFile] = useState<File | null>(null);
   const [blogMainFile, setBlogMainFile] = useState<File | null>(null);
   const [blogSideFile, setBlogSideFile] = useState<File | null>(null);
+  const [giftingHeroFiles, setGiftingHeroFiles] = useState<Record<number, File | null>>({});
+  const [giftingSecondaryFiles, setGiftingSecondaryFiles] = useState<Record<number, File | null>>({});
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
 
@@ -80,11 +82,19 @@ export default function AdminStorefrontPage() {
       if (promoBgFile) fd.append('promoBackground', promoBgFile);
       if (blogMainFile) fd.append('blogMainImage', blogMainFile);
       if (blogSideFile) fd.append('blogSideImage', blogSideFile);
+      Object.entries(giftingHeroFiles).forEach(([index, file]) => {
+        if (file) fd.append(`giftingHeroImage_${index}`, file);
+      });
+      Object.entries(giftingSecondaryFiles).forEach(([index, file]) => {
+        if (file) fd.append(`giftingSecondaryImage_${index}`, file);
+      });
       await adminApi.updateStorefrontSettings(fd);
       setHeroImageFiles({});
       setPromoBgFile(null);
       setBlogMainFile(null);
       setBlogSideFile(null);
+      setGiftingHeroFiles({});
+      setGiftingSecondaryFiles({});
       toast.success('Storefront settings updated');
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Failed to save settings');
@@ -389,6 +399,126 @@ export default function AdminStorefrontPage() {
           <input className={inputCls} value={settings.blogBanner?.buttonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonLink: e.target.value } as any } : p)} placeholder="Button link" />
         </div>
         <textarea className={inputCls} rows={2} value={settings.blogBanner?.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, description: e.target.value } as any } : p)} placeholder="Description" />
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Gifting Banner 1 (Slider)</h2>
+          <button
+            type="button"
+            onClick={() =>
+              setSettings((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      giftingHeroBanners: [
+                        ...(prev.giftingHeroBanners || []),
+                        { title: '', description: '', backgroundImage: '', ctaText: 'Explore gifts', ctaLink: '/gifting', isActive: true },
+                      ],
+                    }
+                  : prev
+              )
+            }
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
+          >
+            <Plus className="h-4 w-4" /> Add banner
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">You can add 4-5 banners here. This is the top rotating gifting banner.</p>
+        {(settings.giftingHeroBanners || []).map((banner, index) => (
+          <div key={index} className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-800">Banner {index + 1}</p>
+              <button
+                type="button"
+                onClick={() =>
+                  setSettings((prev) =>
+                    prev
+                      ? { ...prev, giftingHeroBanners: (prev.giftingHeroBanners || []).filter((_, i) => i !== index) }
+                      : prev
+                  )
+                }
+                className="text-red-500"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+            <ImageUploader
+              maxFiles={1}
+              aspectRatio="16:9"
+              maxSizeMB={5}
+              existingImages={giftingHeroFiles[index] ? [] : (banner.backgroundImage ? [banner.backgroundImage] : [])}
+              onChange={(files) => setGiftingHeroFiles((prev) => ({ ...prev, [index]: files[0] || null }))}
+              label="Gifting hero image"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input className={inputCls} value={banner.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, title: e.target.value } : b) } : p)} placeholder="Title" />
+              <input className={inputCls} value={banner.ctaText || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, ctaText: e.target.value } : b) } : p)} placeholder="Button text" />
+              <input className={inputCls} value={banner.ctaLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, ctaLink: e.target.value } : b) } : p)} placeholder="Button link" />
+            </div>
+            <textarea className={inputCls} rows={2} value={banner.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, description: e.target.value } : b) } : p)} placeholder="Description" />
+          </div>
+        ))}
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Gifting Banner 2 (Cards)</h2>
+          <button
+            type="button"
+            onClick={() =>
+              setSettings((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      giftingSecondaryBanners: [
+                        ...(prev.giftingSecondaryBanners || []),
+                        { eyebrow: '', title: '', image: '', ctaText: 'Shop now', ctaLink: '/gifting', isActive: true },
+                      ],
+                    }
+                  : prev
+              )
+            }
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
+          >
+            <Plus className="h-4 w-4" /> Add card
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">You can keep 1-2 cards here for the second gifting banner section.</p>
+        {(settings.giftingSecondaryBanners || []).map((banner, index) => (
+          <div key={index} className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-800">Card {index + 1}</p>
+              <button
+                type="button"
+                onClick={() =>
+                  setSettings((prev) =>
+                    prev
+                      ? { ...prev, giftingSecondaryBanners: (prev.giftingSecondaryBanners || []).filter((_, i) => i !== index) }
+                      : prev
+                  )
+                }
+                className="text-red-500"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+            <ImageUploader
+              maxFiles={1}
+              aspectRatio="16:9"
+              maxSizeMB={5}
+              existingImages={giftingSecondaryFiles[index] ? [] : (banner.image ? [banner.image] : [])}
+              onChange={(files) => setGiftingSecondaryFiles((prev) => ({ ...prev, [index]: files[0] || null }))}
+              label="Gifting secondary image"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input className={inputCls} value={banner.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, eyebrow: e.target.value } : b) } : p)} placeholder="Eyebrow" />
+              <input className={inputCls} value={banner.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, title: e.target.value } : b) } : p)} placeholder="Title" />
+              <input className={inputCls} value={banner.ctaText || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, ctaText: e.target.value } : b) } : p)} placeholder="Button text" />
+              <input className={inputCls} value={banner.ctaLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, ctaLink: e.target.value } : b) } : p)} placeholder="Button link" />
+            </div>
+          </div>
+        ))}
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">

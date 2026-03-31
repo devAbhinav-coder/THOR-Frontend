@@ -42,7 +42,7 @@ export function SearchField({
         spellCheck={false}
         aria-label={ariaLabel}
         className={cn(
-          "w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-20 text-sm text-gray-900 shadow-sm transition-[box-shadow,border-color]",
+          "w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-20 text-sm text-gray-900 shadow-sm transition-[box-shadow,border-color] [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden",
           "placeholder:text-gray-400",
           "focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25",
           inputClassName,

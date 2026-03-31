@@ -36,6 +36,9 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [showSeo, setShowSeo] = useState(false);
+  const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
+    product?.productDetails || []
+  );
   const [variants, setVariants] = useState(
     product?.variants.length
       ? product.variants
@@ -101,6 +104,14 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       fd.append('variants', JSON.stringify(variants));
       if (form.tags.trim())
         fd.append('tags', JSON.stringify(form.tags.split(',').map((t) => t.trim()).filter(Boolean)));
+      fd.append(
+        'productDetails',
+        JSON.stringify(
+          productDetails
+            .filter((d) => d.key.trim() && d.value.trim())
+            .map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
+        )
+      );
       newFiles.forEach((f) => fd.append('images', f));
 
       if (product) {
@@ -221,7 +232,9 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                       required
                     >
                       <option value="">Select category</option>
-                      {categories.map((c) => (
+                      {categories
+                        .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== "gifting")
+                        .map((c) => (
                         <option key={c._id} value={c.name}>{c.name}</option>
                       ))}
                     </select>
@@ -348,6 +361,43 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Detail Pairs</h3>
+                  <button
+                    type="button"
+                    onClick={() => setProductDetails((p) => [...p, { key: "", value: "" }])}
+                    className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add Detail
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">These appear on product detail page as key/value rows.</p>
+                {productDetails.map((d, i) => (
+                  <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 bg-white rounded-xl p-3 border border-gray-100">
+                    <input
+                      className={inputCls}
+                      value={d.key}
+                      onChange={(e) => setProductDetails((p) => p.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
+                      placeholder="Key (e.g. Work Type)"
+                    />
+                    <input
+                      className={inputCls}
+                      value={d.value}
+                      onChange={(e) => setProductDetails((p) => p.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+                      placeholder="Value (e.g. Hand Embroidery)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setProductDetails((p) => p.filter((_, j) => j !== i))}
+                      className="h-10 w-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
 
               {/* SEO collapsible */}

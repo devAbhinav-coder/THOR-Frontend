@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, Package, ShoppingCart, Tag, Users, Star,
-  LogOut, ChevronRight, BarChart3, FolderOpen, Menu, X, Mail, FileText
+  LogOut, ChevronRight, BarChart3, FolderOpen, Menu, X, Mail, FileText, Gift
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,7 @@ const navItems = [
   { label: 'Email Campaigns', href: '/admin/emails', icon: Mail },
   { label: 'Blogs', href: '/admin/blogs', icon: FileText },
   { label: 'Products', href: '/admin/products', icon: Package },
+  { label: 'Gifting', href: '/admin/gifting', icon: Gift },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },
   { label: 'Users', href: '/admin/users', icon: Users },

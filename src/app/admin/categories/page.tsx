@@ -33,7 +33,15 @@ export default function AdminCategoriesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
 
-  const emptyForm = { name: '', description: '', subcategories: '', isActive: true };
+  const emptyForm = {
+    name: '',
+    description: '',
+    subcategories: '',
+    isActive: true,
+    isGiftCategory: false,
+    giftType: '',
+    minOrderQty: '1',
+  };
   const [form, setForm] = useState(emptyForm);
   const set = (k: keyof typeof emptyForm, v: string | boolean) =>
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -57,7 +65,15 @@ export default function AdminCategoriesPage() {
   };
 
   const openEdit = (cat: Category) => {
-    setForm({ name: cat.name, description: cat.description || '', subcategories: getSubs(cat.subcategories).join(', '), isActive: cat.isActive });
+    setForm({
+      name: cat.name,
+      description: cat.description || '',
+      subcategories: getSubs(cat.subcategories).join(', '),
+      isActive: cat.isActive,
+      isGiftCategory: Boolean(cat.isGiftCategory),
+      giftType: cat.giftType || '',
+      minOrderQty: String(cat.minOrderQty || 1),
+    });
     setNewImageFile(null);
     setEditingId(cat._id);
     setShowForm(true);
@@ -73,6 +89,9 @@ export default function AdminCategoriesPage() {
       if (form.description) fd.append('description', form.description);
       fd.append('subcategories', JSON.stringify(form.subcategories.split(',').map((s) => s.trim()).filter(Boolean)));
       fd.append('isActive', String(form.isActive));
+      fd.append('isGiftCategory', String(form.isGiftCategory));
+      if (form.giftType) fd.append('giftType', form.giftType);
+      fd.append('minOrderQty', form.minOrderQty || '1');
       if (newImageFile) fd.append('avatar', newImageFile);
 
       if (editingId) {
@@ -167,7 +186,14 @@ export default function AdminCategoriesPage() {
                 </div>
               </div>
               <div className="p-3">
-                <p className="font-semibold text-sm text-gray-900 truncate">{cat.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm text-gray-900 truncate">{cat.name}</p>
+                  {cat.isGiftCategory && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gold-100 text-gold-700 border border-gold-200">
+                      Gift
+                    </span>
+                  )}
+                </div>
                 {getSubs(cat.subcategories).length > 0 && (
                   <p className="text-xs text-gray-400 mt-1 line-clamp-1">
                     {getSubs(cat.subcategories).slice(0, 3).join(' · ')}
@@ -328,6 +354,56 @@ export default function AdminCategoriesPage() {
                   <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
               </label>
+
+              {/* Gift category settings */}
+              <label className="flex items-center justify-between cursor-pointer p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Show in gifting categories</p>
+                  <p className="text-xs text-gray-400">This category will appear on `/gifting` top image strip.</p>
+                </div>
+                <div
+                  onClick={() => set('isGiftCategory', !form.isGiftCategory)}
+                  className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${form.isGiftCategory ? 'bg-brand-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isGiftCategory ? 'translate-x-6' : 'translate-x-0'}`} />
+                </div>
+              </label>
+
+              {form.isGiftCategory && (
+                <div className="space-y-3 p-4 bg-brand-50/40 border border-brand-100 rounded-xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                        Gift Type
+                      </label>
+                      <select
+                        value={form.giftType}
+                        onChange={(e) => set('giftType', e.target.value)}
+                        className={inputCls}
+                      >
+                        <option value="">Select type</option>
+                        <option value="corporate">Corporate</option>
+                        <option value="wedding">Wedding</option>
+                        <option value="festive">Festive</option>
+                        <option value="seasonal">Seasonal</option>
+                        <option value="personal">Personal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                        Min Order Qty
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={form.minOrderQty}
+                        onChange={(e) => set('minOrderQty', e.target.value)}
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </form>
 
             {/* Drawer footer */}

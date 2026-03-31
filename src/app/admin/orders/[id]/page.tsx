@@ -13,6 +13,9 @@ import {
   CreditCard,
   Clock,
   ExternalLink,
+  Gift,
+  ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminApi } from '@/lib/api';
@@ -48,6 +51,76 @@ function getAutoTrackingUrl(carrier?: string, trackingNumber?: string) {
     return `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx?trackingid=${encodeURIComponent(awb)}`;
 
   return `https://www.google.com/search?q=${encodeURIComponent(`${carrier || 'courier'} tracking ${awb}`)}`;
+}
+
+// Collapsible Custom Gift Details
+function CustomGiftAccordion({ order }: { order: any }) {
+  const [open, setOpen] = useState(true);
+  const req = order.customRequestId;
+  if (!req && order.productType !== 'custom') return null;
+
+  return (
+    <div className="bg-gradient-to-br from-gold-50 to-amber-50/50 rounded-2xl border border-gold-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-5 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-gold-100 flex items-center justify-center">
+            <Gift className="h-5 w-5 text-gold-600" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-900 text-sm">Bespoke Custom Gift</p>
+            <p className="text-xs text-gold-700">Customer-submitted specifications</p>
+          </div>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="border-t border-gold-100 p-5 space-y-4">
+          {/* Link to request */}
+          {order.customRequestId && (
+            <a
+              href={`/admin/gifting?req=${order.customRequestId}&tab=requests`}
+              className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 bg-white px-3 py-1.5 rounded-lg border border-brand-100"
+            >
+              <Sparkles className="h-3 w-3" /> View Original Request <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+
+          {/* Items with custom field answers */}
+          <div className="space-y-3">
+            {order.items?.map((item: any, i: number) => (
+              <div key={i} className="bg-white rounded-xl border border-gold-100 p-3 space-y-2">
+                <p className="text-sm font-bold text-gray-900">{item.name}</p>
+                <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                {item.customFieldAnswers?.length > 0 && (
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    {item.customFieldAnswers.map((a: any, j: number) => (
+                      <div key={j} className="bg-gold-50 rounded-lg px-2.5 py-1.5 border border-gold-100">
+                        <p className="text-[10px] text-gold-600 font-bold">{a.label}</p>
+                        {typeof a.value === "string" && /^https?:\/\//.test(a.value) ? (
+                          <a href={a.value} target="_blank" rel="noreferrer" className="block mt-1">
+                            <div className="relative h-16 w-16 rounded-md overflow-hidden border border-gold-200 bg-white">
+                              <Image src={a.value} alt={a.label} fill sizes="64px" className="object-cover" />
+                            </div>
+                            <span className="text-[10px] font-semibold text-brand-600 mt-1 block">Open full image</span>
+                          </a>
+                        ) : (
+                          <p className="text-xs font-semibold text-gray-900 mt-0.5">{a.value || '—'}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminOrderDetailsPage() {
@@ -180,13 +253,19 @@ export default function AdminOrderDetailsPage() {
         >
           <ArrowLeft className="h-4 w-4" /> Back to Orders
         </button>
-        <div className="flex items-center gap-2">
-          <span className={cn('text-xs font-semibold px-3 py-1.5 rounded-full capitalize', getOrderStatusColor(order.status))}>
-            {order.status}
-          </span>
-          <span className={cn('text-xs font-semibold px-3 py-1.5 rounded-full capitalize', getPaymentStatusColor(order.paymentStatus))}>
-            {order.paymentStatus}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 font-medium">Order:</span>
+            <span className={cn('text-xs font-semibold px-3 py-1.5 rounded-full capitalize', getOrderStatusColor(order.status))}>
+              {order.status}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 font-medium">Payment:</span>
+            <span className={cn('text-xs font-semibold px-3 py-1.5 rounded-full capitalize', getPaymentStatusColor(order.paymentStatus))}>
+              {order.paymentStatus}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -195,7 +274,14 @@ export default function AdminOrderDetailsPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Order</p>
-            <h1 className="text-xl sm:text-2xl font-serif font-bold text-gray-900">{order.orderNumber}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-serif font-bold text-gray-900">{order.orderNumber}</h1>
+              {order.productType === 'custom' && (
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gold-100 text-gold-700 border border-gold-200 flex items-center gap-1">
+                  <Gift className="h-2.5 w-2.5" /> Bespoke Gift
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 mt-1">{formatDateTime(order.createdAt)}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -243,6 +329,9 @@ export default function AdminOrderDetailsPage() {
               ))}
             </div>
           </div>
+
+          {/* Custom gift details — shown only for bespoke orders */}
+          {order.productType === 'custom' && <CustomGiftAccordion order={order} />}
 
           {/* Status history */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">

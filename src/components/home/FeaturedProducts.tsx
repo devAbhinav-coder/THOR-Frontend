@@ -27,7 +27,7 @@ export default function FeaturedProducts() {
   }, []);
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-6 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-10">
           <div>
@@ -42,11 +42,13 @@ export default function FeaturedProducts() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch [&>*]:h-full [&>*]:min-h-0">
+        <div className="flex gap-4 overflow-x-auto pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {isLoading
             ? [...Array(4)].map((_, i) => <ProductCardSkeleton key={i} />)
             : products.slice(0, 4).map((product) => (
-                <ProductCard key={product._id} product={product} />
+     <div className="min-w-[220px] max-w-[220px] sm:min-w-[240px] sm:max-w-[240px] lg:min-w-[260px] lg:max-w-[260px] flex-shrink-0">
+  <ProductCard product={product} className="w-full" />
+</div>
               ))}
         </div>
 

@@ -126,7 +126,7 @@ export const productApi = {
 
 export const cartApi = {
   get: () => unwrapAxios("cart.get", api.get("/cart"), schemas.cartPayload),
-  add: (data: { productId: string; variant: object; quantity: number }) =>
+  add: (data: { productId: string; variant: object; quantity: number; customFieldAnswers?: Array<{ label: string; value: string }> }) =>
     unwrapAxios("cart.add", api.post("/cart/add", data), schemas.cartPayload),
   update: (sku: string, quantity: number) =>
     unwrapAxios("cart.update", api.patch(`/cart/item/${sku}`, { quantity }), schemas.cartPayload),
@@ -136,6 +136,12 @@ export const cartApi = {
   applyCoupon: (couponCode: string) =>
     unwrapAxios("cart.applyCoupon", api.post("/cart/apply-coupon", { couponCode }), schemas.cartApplyCoupon),
   removeCoupon: () => unwrapAxios("cart.removeCoupon", api.delete("/cart/coupon"), schemas.cartPayload),
+  uploadCustomFieldImage: (data: FormData) =>
+    unwrapAxios(
+      "cart.customFieldImage",
+      api.post("/cart/custom-field-image", data, { headers: { "Content-Type": "multipart/form-data" } }),
+      schemas.successMessageData,
+    ),
 };
 
 export const orderApi = {
@@ -152,6 +158,7 @@ export const orderApi = {
   getMyOrders: (params?: object) =>
     unwrapAxios("orders.myOrders", api.get("/orders/my-orders", { params }), schemas.ordersMyList),
   getById: (id: string) => unwrapAxios("orders.getById", api.get(`/orders/${id}`), schemas.orderSingle),
+  preparePayment: (orderId: string) => api.post(`/orders/${orderId}/prepare-payment`).then(res => res.data),
   cancel: (id: string, reason?: string) =>
     unwrapAxios("orders.cancel", api.patch(`/orders/${id}/cancel`, { reason }), schemas.orderSingle),
 };
@@ -173,6 +180,8 @@ export const reviewApi = {
   delete: (id: string) => del204("reviews.delete", api.delete(`/reviews/${id}`)),
   voteHelpful: (id: string) =>
     unwrapAxios("reviews.vote", api.patch(`/reviews/${id}/helpful`), schemas.reviewVote),
+  report: (id: string, data: { reason: "spam" | "abusive" | "misleading" | "other"; details?: string }) =>
+    unwrapAxios("reviews.report", api.patch(`/reviews/${id}/report`, data), schemas.successMessageData),
 };
 
 export const wishlistApi = {
@@ -283,6 +292,22 @@ export const notificationApi = {
   markAsRead: (id: string) => api.patch(`/notifications/${id}/read`).then(res => res.data),
   markAllAsRead: () => api.patch("/notifications/mark-all-read").then(res => res.data),
   clearAll: () => api.delete("/notifications/clear-all").then(res => res.data),
+};
+
+export const giftingApi = {
+  getProducts: (params?: Record<string, string | number>) => api.get("/gifting/products", { params }).then(res => res.data),
+  getCategories: () => api.get("/gifting/categories").then(res => res.data),
+  submitRequest: (data: FormData | Record<string, unknown>) =>
+    data instanceof FormData
+      ? api.post("/gifting/requests", data, { headers: { "Content-Type": "multipart/form-data" } }).then(res => res.data)
+      : api.post("/gifting/requests", data).then(res => res.data),
+  getMyRequests: (params?: Record<string, string | number>) => api.get("/gifting/my-requests", { params }).then(res => res.data),
+  getRequestById: (id: string) => api.get(`/gifting/requests/${id}`).then(res => res.data),
+  respondToQuote: (id: string, action: 'accept' | 'reject', shippingAddress?: Record<string, string>) =>
+    api.post(`/gifting/requests/${id}/respond`, { action, shippingAddress }).then(res => res.data),
+  // Admin
+  getRequests: (params?: Record<string, string | number>) => api.get("/gifting/requests", { params }).then(res => res.data),
+  updateRequest: (id: string, data: Record<string, unknown>) => api.patch(`/gifting/requests/${id}`, data).then(res => res.data),
 };
 
 export default api;

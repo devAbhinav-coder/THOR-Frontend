@@ -46,7 +46,8 @@ export default function OrdersPage() {
       const params: Record<string, string | number> = { page, limit: 10 };
       if (filter === 'delivered') params.status = 'delivered';
       else if (filter === 'cancelled') params.status = 'cancelled';
-      else if (filter === 'active') params.status = 'shipped'; // approximation
+      else if (filter === 'active') params.status = 'pending,confirmed,processing,shipped';
+      
       const res = await orderApi.getMyOrders(params);
       const incoming = res.data.orders as Order[];
       const nextPagination =
@@ -88,9 +89,7 @@ export default function OrdersPage() {
     return () => observer.disconnect();
   }, [hasMore, isLoading, isLoadingMore, pagination.currentPage, activeFilter]);
 
-  const displayOrders = activeFilter === 'active'
-    ? orders.filter((o) => ['pending', 'confirmed', 'processing', 'shipped'].includes(o.status))
-    : orders;
+  const displayOrders = orders; // Fully filtered by backend now
 
   if (!isLoading && orders.length === 0 && activeFilter === '') {
     return (
@@ -110,23 +109,34 @@ export default function OrdersPage() {
   return (
     <div className="space-y-4">
       {/* Filter tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-        <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
-        {FILTER_TABS.map(({ label, value }) => (
-          <button
-            key={value}
-            onClick={() => setActiveFilter(value)}
-            className={cn(
-              'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all',
-              activeFilter === value
-                ? 'bg-navy-900 text-white shadow-sm'
-                : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-            )}
-          >
-            {label}
-          </button>
-        ))}
-        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">{pagination.total} order{pagination.total !== 1 ? 's' : ''}</span>
+      <div className="flex items-center overflow-x-auto no-scrollbar pb-3 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-1.5 p-1.5 bg-gray-100/80 border border-gray-200/60 rounded-[1.25rem] flex-shrink-0">
+          <div className="px-3 flex items-center gap-1">
+            <Filter className="h-4 w-4 text-brand-600 drop-shadow-sm" />
+          </div>
+          <div className="h-6 w-px bg-gray-300 mix-blend-multiply mx-1" />
+          
+          {FILTER_TABS.map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => setActiveFilter(value)}
+              className={cn(
+                'flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300',
+                activeFilter === value
+                  ? 'bg-white text-navy-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] scale-100'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 scale-95 hover:scale-100'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        
+        <div className="ml-4 pl-4 border-l border-gray-200 flex-shrink-0 pr-4 sm:pr-0">
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
+            {pagination.total} result{pagination.total !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Order cards */}

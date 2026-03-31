@@ -20,16 +20,17 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 420);
   const [quickFilter, setQuickFilter] = useState<'all' | 'featured' | 'active' | 'inactive'>('all');
+  const [sortBy, setSortBy] = useState<'-createdAt' | '-viewCount' | 'viewCount' | '-soldCount' | 'soldCount'>('-createdAt');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalProducts: 0 });
 
-  const fetchProducts = useCallback(async (page = 1, query = '') => {
+  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt') => {
     setIsLoading(true);
     try {
-      const params: Record<string, string | number> = { page, limit: 20 };
+      const params: Record<string, string | number> = { page, limit: 20, sort };
       if (query) params.search = query;
       const res = await productApi.getAll(params);
       setProducts(res.data.products);
@@ -47,8 +48,8 @@ export default function AdminProductsPage() {
   }, []);
 
   useEffect(() => {
-    fetchProducts(1, debouncedSearch);
-  }, [debouncedSearch, fetchProducts]);
+    fetchProducts(1, debouncedSearch, sortBy);
+  }, [debouncedSearch, sortBy, fetchProducts]);
 
   const filtered = products.filter((p) => {
     if (quickFilter === 'featured') return !!p.isFeatured;
@@ -62,7 +63,7 @@ export default function AdminProductsPage() {
       await productApi.delete(id);
       toast.success('Product deleted');
       setDeleteConfirm(null);
-      fetchProducts(1, debouncedSearch);
+      fetchProducts(1, debouncedSearch, sortBy);
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || 'Failed to delete product');
@@ -72,7 +73,7 @@ export default function AdminProductsPage() {
   const handleSave = () => {
     setIsModalOpen(false);
     setEditProduct(null);
-    fetchProducts(1, debouncedSearch);
+    fetchProducts(1, debouncedSearch, sortBy);
   };
 
   const stockMeta = (p: Product) => {
@@ -113,6 +114,18 @@ export default function AdminProductsPage() {
             />
 
             <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+              >
+                <option value="-createdAt">Newest First</option>
+                <option value="-soldCount">Top Sold</option>
+                <option value="soldCount">Least Sold</option>
+                <option value="-viewCount">Most Viewed</option>
+                <option value="viewCount">Least Viewed</option>
+              </select>
+
               <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white mr-1">
                 <button
                   type="button"
@@ -169,7 +182,7 @@ export default function AdminProductsPage() {
                 <th className="text-left px-4 py-3">Category</th>
                 <th className="text-left px-4 py-3">Price</th>
                 <th className="text-left px-4 py-3">Stock</th>
-                <th className="text-left px-4 py-3">Rating</th>
+                <th className="text-left px-4 py-3">Metrics</th>
                 <th className="text-left px-4 py-3">Status</th>
                 <th className="text-right px-4 py-3">Actions</th>
               </tr>
@@ -230,10 +243,16 @@ export default function AdminProductsPage() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-gray-600">
-                      {product.ratings.average > 0 ? `${product.ratings.average} ★` : '—'}
-                    </span>
+                  <td className="px-4 py-3 text-xs">
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="inline-flex items-center gap-1 bg-gray-50 text-gray-600 px-2 py-0.5 rounded font-medium border border-gray-100">
+                        <List className="h-3 w-3" /> {product.soldCount || 0} sold
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-medium border border-indigo-100">
+                        <EyeOff className="h-3 w-3 hidden" /><svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" /></svg>
+                        {product.viewCount || 0} views
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={product.isActive ? 'success' : 'error'} className="text-xs">
@@ -293,6 +312,13 @@ export default function AdminProductsPage() {
                       <span className="block font-normal text-gray-400 text-[10px]">Variants: {sm.breakdown}</span>
                     )}
                   </p>
+                  <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs font-medium text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" /></svg>
+                      {product.viewCount || 0}
+                    </span>
+                    <span className="text-navy-700 bg-navy-50 px-2.5 py-0.5 rounded-full">{product.soldCount || 0} sold</span>
+                  </div>
                   <div className="mt-3 flex items-center justify-end gap-2">
                     <button onClick={() => { setEditProduct(product); setIsModalOpen(true); }} className="p-1.5 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors">
                       <Pencil className="h-4 w-4" />

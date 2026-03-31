@@ -109,55 +109,80 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-sm">
-        <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-100">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-brand-100 to-navy-100 flex items-center justify-center ring-2 ring-brand-50">
-              {user?.avatar ? (
-                <img src={user.avatar} alt={user.name} className="h-16 w-16 rounded-full object-cover" />
-              ) : (
-                <span className="text-brand-700 font-bold text-2xl">{user?.name.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onAvatarChange}
-            />
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={isUploadingAvatar}
-              className="absolute bottom-0 right-0 h-6 w-6 bg-brand-600 rounded-full flex items-center justify-center text-white hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60"
-            >
-              {isUploadingAvatar ? <span className="h-3 w-3 rounded-full border border-white/40 border-t-white animate-spin" /> : <Camera className="h-3 w-3" />}
-            </button>
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-900 text-lg">{user?.name}</h2>
-            <p className="text-sm text-gray-500">{user?.email}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Manage your account details here</p>
-          </div>
+    <div className="space-y-6 max-w-4xl mx-auto pb-10">
+      {/* Profile Header & Info Card */}
+      <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm relative">
+        {/* Cover Photo Area */}
+        <div className="h-28 sm:h-36 bg-gradient-to-tr from-navy-900 via-brand-800 to-brand-600 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
         </div>
 
-        <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4">
-          <Input {...register('name')} label="Full Name" error={errors.name?.message} />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-            <input
-              type="email"
-              value={user?.email}
-              disabled
-              className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
-            />
-            <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+        <div className="px-5 sm:px-8 pb-8">
+          <div className="flex justify-between items-start sm:items-end -mt-10 sm:-mt-12 mb-6 flex-col sm:flex-row gap-4">
+            {/* Avatar Group */}
+            <div className="relative z-10">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-white flex items-center justify-center p-1 shadow-lg border-2 border-white">
+                <div className="h-full w-full rounded-full bg-gradient-to-br from-navy-50 to-brand-50 flex items-center justify-center overflow-hidden relative group">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  ) : (
+                    <span className="text-brand-700 font-black text-3xl">{user?.name.charAt(0).toUpperCase()}</span>
+                  )}
+                  {/* Hover Overlay for desktop */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center justify-center cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                    <Camera className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </div>
+              
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onAvatarChange}
+              />
+              {/* Mobile explicitly visible camera button */}
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 h-8 w-8 bg-white border border-gray-100 rounded-full flex items-center justify-center text-navy-800 hover:text-brand-600 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-60"
+              >
+                {isUploadingAvatar ? <span className="h-4 w-4 rounded-full border-2 border-brand-200 border-t-brand-600 animate-spin" /> : <Camera className="h-4 w-4" />}
+              </button>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight truncate">{user?.name}</h2>
+              <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+            </div>
           </div>
-          <Input {...register('phone')} type="tel" label="Phone Number" error={errors.phone?.message} maxLength={10} />
-          <Button type="submit" variant="brand" loading={isUpdating} className="w-full sm:w-auto">Save Changes</Button>
-        </form>
+
+          <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Input {...register('name')} label="Full Name" placeholder="Your full name" error={errors.name?.message} className="bg-gray-50/50" />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5 focus-within:text-brand-600 transition-colors">Email Address</label>
+                <input
+                  type="email"
+                  value={user?.email}
+                  disabled
+                  className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-400 cursor-not-allowed shadow-inner"
+                />
+                <p className="text-[10px] font-medium text-gray-400 mt-1.5 px-1 uppercase tracking-wider">Email is verified & linked</p>
+              </div>
+              <div className="sm:col-span-2 md:col-span-1">
+                <Input {...register('phone')} type="tel" label="Phone Number" placeholder="e.g. 9876543210" error={errors.phone?.message} maxLength={10} className="bg-gray-50/50" />
+              </div>
+            </div>
+            <div className="pt-2 border-t border-gray-100">
+              <Button type="submit" variant="brand" loading={isUpdating} className="w-full sm:w-auto px-8 rounded-xl font-bold shadow-lg shadow-brand-500/20">
+                Save Profile Changes
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-sm">
@@ -199,25 +224,52 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="bg-gradient-to-r from-navy-900 to-brand-700 rounded-2xl p-5 text-white">
-        <p className="text-xs uppercase tracking-widest text-white/70 font-semibold">Account security</p>
-        <p className="text-sm text-white/90 mt-1">Need to update your password or secure account settings?</p>
-        <Link href="/dashboard/security" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold bg-white text-navy-900 px-3.5 py-2 rounded-xl hover:bg-gray-100 transition-colors">
-          Open Security Settings <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Security Widget */}
+        <div className="bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg shadow-navy-900/20">
+          {/* Subtle bg accent */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-500 rounded-full blur-3xl opacity-20"></div>
+          
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-white/90 mb-4 border border-white/5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-brand-400" /> Account Secured
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-2">Password & Security</h3>
+              <p className="text-sm text-white/60 leading-relaxed max-w-sm">Keep your account safe. Update your password regularly and monitor connected devices.</p>
+            </div>
+            
+            <div className="mt-8">
+              <Link href="/dashboard/security" className="inline-flex items-center justify-between w-full sm:w-auto gap-3 text-sm font-bold bg-white text-navy-900 px-6 py-3.5 rounded-xl hover:bg-gray-50 transition-all shadow-md active:scale-95 group">
+                Open Security Hub <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </div>
 
-      <div className="pt-1">
-        <p className="text-[11px] uppercase tracking-widest text-gray-500 font-semibold">Need to close your account?</p>
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          className="mt-2"
-          onClick={() => setIsDeleteModalOpen(true)}
-        >
-          <Trash2 className="h-4 w-4 mr-2" /> Delete Account
-        </Button>
+        {/* Danger Zone */}
+        <div className="bg-white rounded-3xl border border-red-100 p-6 sm:p-8 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          {/* Subtle bg accent */}
+          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-red-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-full text-[10px] uppercase tracking-widest font-black mb-4 border border-red-100">
+              Danger Zone
+            </div>
+            <h3 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight mb-2">Delete Account</h3>
+            <p className="text-sm text-gray-500 leading-relaxed">Permanently delete your account and remove all personal data, order history, and saved addresses. This action is irreversible.</p>
+          </div>
+
+          <div className="mt-8 relative z-10">
+            <button
+              type="button"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold text-red-600 bg-white border-2 border-red-100 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all active:scale-95"
+              onClick={() => setIsDeleteModalOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" /> Permanently Delete
+            </button>
+          </div>
+        </div>
       </div>
 
       {isDeleteModalOpen && (

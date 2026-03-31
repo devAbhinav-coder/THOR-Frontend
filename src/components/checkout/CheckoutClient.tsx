@@ -17,15 +17,17 @@ import {
   Package,
   Tag,
   Truck,
+  Loader2,
 } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { couponApi, orderApi } from "@/lib/api";
-import { formatPrice, cn } from "@/lib/utils";
+import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CartItem, Coupon } from "@/types";
+import { CartItem, Coupon, Order } from "@/types";
 import toast from "react-hot-toast";
+import { useSearchParams } from "next/navigation";
 
 const addressSchema = z.object({
   name: z.string().min(2, "Full name is required").max(80, "Name is too long"),
@@ -93,6 +95,12 @@ export default function CheckoutClient() {
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [isAllCouponsOpen, setIsAllCouponsOpen] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
+  
+  // Custom Order support
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get("orderId");
+  const [existingOrder, setExistingOrder] = useState<Order | null>(null);
+  const [isOrderLoading, setIsOrderLoading] = useState(!!orderId);
 
   const { cart, fetchCart, applyCoupon, removeCoupon, resetCart, appliedCouponCode } =
     useCartStore();
@@ -117,8 +125,33 @@ export default function CheckoutClient() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetchCart().catch(() => {});
-  }, [isAuthenticated, fetchCart]);
+    if (orderId) {
+      const fetchOrder = async () => {
+        try {
+          const res = await orderApi.getById(orderId);
+          setExistingOrder(res.data.order);
+          // Pre-fill address if available
+          const addr = res.data.order.shippingAddress;
+          if (addr && addr.name) {
+             setValue("name", addr.name);
+             setValue("phone", addr.phone);
+             setValue("street", addr.street);
+             setValue("city", addr.city);
+             setValue("state", addr.state);
+             setValue("pincode", addr.pincode);
+          }
+        } catch (err: any) {
+          toast.error(err?.message || "Failed to load order");
+          router.replace("/dashboard/gifting");
+        } finally {
+          setIsOrderLoading(false);
+        }
+      };
+      fetchOrder();
+    } else {
+      fetchCart().catch(() => {});
+    }
+  }, [isAuthenticated, fetchCart, orderId, router, setValue]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -137,14 +170,15 @@ export default function CheckoutClient() {
     fetchEligibleCoupons();
   }, [cart?.subtotal, cart?.items?.length, isAuthenticated]);
 
-  const paymentMethod = "cod" as const;
+  const paymentMethod = existingOrder ? "razorpay" : ("cod" as const);
 
-  const subtotalAfterDiscount = cart ? cart.subtotal - cart.discount : 0;
-  const shippingCharge =
-    subtotalAfterDiscount >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE;
-  const tax = Math.round(subtotalAfterDiscount * TAX_RATE * 100) / 100;
-  const total = subtotalAfterDiscount + shippingCharge + tax;
-  const hasAppliedCoupon = !!cart?.discount;
+  const subtotal = existingOrder ? existingOrder.subtotal : (cart?.subtotal || 0);
+  const discount = existingOrder ? existingOrder.discount : (cart?.discount || 0);
+  const subtotalAfterDiscount = subtotal - discount;
+  const shippingCharge = existingOrder ? existingOrder.shippingCharge : (subtotalAfterDiscount >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE);
+  const tax = existingOrder ? existingOrder.tax : Math.round(subtotalAfterDiscount * TAX_RATE * 100) / 100;
+  const total = existingOrder ? existingOrder.total : (subtotalAfterDiscount + shippingCharge + tax);
+  const hasAppliedCoupon = existingOrder ? !!existingOrder.coupon : !!cart?.discount;
 
   const offerText = useMemo(() => {
     if (!cart) return "";
@@ -153,9 +187,14 @@ export default function CheckoutClient() {
     return `Add ${formatPrice(SHIPPING_THRESHOLD - subtotalAfterDiscount)} more for FREE shipping`;
   }, [cart, subtotalAfterDiscount]);
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || isOrderLoading) return (
+    <div className="max-w-7xl mx-auto px-4 py-24 text-center">
+      <Loader2 className="h-10 w-10 text-brand-500 animate-spin mx-auto mb-4" />
+      <p className="text-gray-500">Preparing checkout...</p>
+    </div>
+  );
 
-  if (!cart || cart.items.length === 0) {
+  if (!existingOrder && (!cart || cart.items.length === 0)) {
     return (
       <div className='max-w-7xl mx-auto px-4 py-16 text-center'>
         <h2 className='text-2xl font-bold mb-4'>Your cart is empty</h2>
@@ -181,28 +220,74 @@ export default function CheckoutClient() {
 
   const onSubmit = async (addressData: AddressForm) => {
     setIsPlacingOrder(true);
-    const idempotencyKey =
-      typeof crypto !== "undefined" && crypto.randomUUID ?
-        crypto.randomUUID()
-      : `k${Date.now()}_${Math.floor(Math.random() * 1e12)}`;
     try {
       const normalizedPhone =
         parsePhoneNumberFromString(addressData.phone.replace(/\s+/g, ""), "IN")?.number ||
         addressData.phone;
-      const res = await orderApi.create(
-        {
-          shippingAddress: { ...addressData, phone: normalizedPhone },
-          paymentMethod,
-        },
-        { idempotencyKey }
-      );
-      const { order } = res.data;
-      resetCart();
-      toast.success("Order placed successfully!");
-      router.push(`/dashboard/orders/${order._id}`);
+
+      if (existingOrder) {
+        // 1. Prepare payment
+        const prepRes = await orderApi.preparePayment(existingOrder._id);
+        const { razorpayOrder } = prepRes.data;
+
+        // 2. Load script
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) throw new Error("Razorpay SDK failed to load");
+
+        // 3. Open Razorpay
+        const options = {
+          key: razorpayOrder.keyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: "The House of Rani",
+          description: `Order ${existingOrder.orderNumber}`,
+          order_id: razorpayOrder.id,
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await orderApi.verifyPayment({
+                orderId: existingOrder._id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+              toast.success("Payment successful!");
+              router.push(`/dashboard/orders/${verifyRes.data.order._id}`);
+            } catch (err: any) {
+              toast.error(err?.message || "Payment verification failed");
+            }
+          },
+          prefill: {
+            name: addressData.name,
+            email: user?.email,
+            contact: normalizedPhone,
+          },
+          theme: { color: "#e8604c" },
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      } else {
+        // COD logic (existing)
+        const idempotencyKey =
+          typeof crypto !== "undefined" && crypto.randomUUID ?
+            crypto.randomUUID()
+          : `k${Date.now()}_${Math.floor(Math.random() * 1e12)}`;
+        
+        const res = await orderApi.create(
+          {
+            shippingAddress: { ...addressData, phone: normalizedPhone },
+            paymentMethod,
+          },
+          { idempotencyKey }
+        );
+        const { order } = res.data;
+        resetCart();
+        toast.success("Order placed successfully!");
+        router.push(`/dashboard/orders/${order._id}`);
+      }
     } catch (err: unknown) {
       const error = err as { message?: string };
-      toast.error(error.message || "Failed to place order");
+      toast.error(error.message || "Failed to process order");
     } finally {
       setIsPlacingOrder(false);
     }
@@ -215,7 +300,7 @@ export default function CheckoutClient() {
           Checkout
         </h1>
         <p className='text-sm text-gray-500 mb-8'>
-          Secure checkout. Cash on delivery is available for your order.
+          Secure checkout. {existingOrder ? "Online payment via Razorpay." : "Cash on delivery is available for your order."}
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className='min-w-0'>
@@ -359,13 +444,17 @@ export default function CheckoutClient() {
                 </div>
                 <div className='p-4 rounded-xl border-2 border-brand-500 bg-brand-50'>
                   <div className='flex items-start gap-3'>
-                    <CheckCircle2 className='h-5 w-5 text-green-600 mt-0.5' />
+                    {existingOrder ? (
+                       <CheckCircle2 className='h-5 w-5 text-brand-600 mt-0.5' />
+                    ) : (
+                       <CheckCircle2 className='h-5 w-5 text-green-600 mt-0.5' />
+                    )}
                     <div>
                       <p className='font-medium text-gray-900'>
-                        Cash on Delivery
+                        {existingOrder ? "Online Payment (Razorpay)" : "Cash on Delivery"}
                       </p>
                       <p className='text-sm text-gray-500'>
-                        Pay when your order arrives at your doorstep.
+                        {existingOrder ? "Pay securely via cards, UPI, or netbanking." : "Pay when your order arrives at your doorstep."}
                       </p>
                     </div>
                   </div>
@@ -402,7 +491,7 @@ export default function CheckoutClient() {
                         <div className='min-w-0 flex-1'>
                           <p className='text-sm font-medium text-green-900 break-words'>
                             <span className='font-semibold tracking-wide'>{appliedCouponCode || "Coupon"}</span>
-                            <span className='text-green-800'> · You save {formatPrice(cart.discount)}</span>
+                            <span className='text-green-800'> · You save {formatPrice(cart?.discount || 0)}</span>
                           </p>
                           <p className='text-xs text-green-800/75 mt-1'>
                             The discount is reflected in your order total below.
@@ -514,7 +603,7 @@ export default function CheckoutClient() {
                   <div className='flex items-center gap-2 min-w-0'>
                     <Package className='h-5 w-5 text-brand-600 shrink-0' />
                     <h2 className='text-lg font-semibold text-gray-900 truncate text-left'>
-                      Order Items ({cart.items.length})
+                      Order Items ({existingOrder ? existingOrder.items.length : (cart?.items?.length || 0)})
                     </h2>
                   </div>
                   <span className='lg:hidden'>
@@ -527,15 +616,15 @@ export default function CheckoutClient() {
                 <div
                   className={`space-y-3 mb-5 ${showItems ? "block" : "hidden lg:block"}`}
                 >
-                  {cart.items.map((item: CartItem) => (
-                    <div key={item.variant.sku} className='flex gap-3 min-w-0'>
+                  {(existingOrder ? existingOrder.items : (cart?.items || [])).map((item: any) => (
+                    <div key={existingOrder ? (item as any)._id : item.variant.sku} className='flex gap-3 min-w-0'>
                       <div className='relative w-14 h-16 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0'>
                         <Image
                           src={
-                            item.product?.images?.[0]?.url ||
+                            (existingOrder ? item.image : item.product?.images?.[0]?.url) ||
                             "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70"
                           }
-                          alt={item.product?.name || "Product"}
+                          alt={item.name || "Product"}
                           fill
                           sizes='56px'
                           className='object-cover'
@@ -546,13 +635,36 @@ export default function CheckoutClient() {
                       </div>
                       <div className='flex-1 min-w-0'>
                         <p className='text-sm font-medium text-gray-900 line-clamp-2'>
-                          {item.product?.name || "Product"}
+                          {item.name || "Product"}
                         </p>
                         <p className='text-xs text-gray-500 mt-0.5'>
-                          {[item.variant.size, item.variant.color]
-                            .filter(Boolean)
-                            .join(" · ")}
+                          {existingOrder ? 
+                             [item.variant?.size, item.variant?.color].filter(Boolean).join(" · ") :
+                             [item.variant.size, item.variant.color].filter(Boolean).join(" · ")
+                          }
                         </p>
+                        {item.customFieldAnswers?.length > 0 && (
+                          <div className='mt-1.5 grid grid-cols-1 gap-1'>
+                            {item.customFieldAnswers.map((ans: { label: string; value: string }, i: number) => {
+                              const isImage = typeof ans.value === "string" && /^https?:\/\//.test(ans.value);
+                              return (
+                                <div key={i} className='inline-flex items-center gap-2 text-[10px] bg-gold-50 border border-gold-100 rounded-md px-2 py-1'>
+                                  <span className='font-semibold text-gold-700'>{ans.label}:</span>
+                                  {isImage ? (
+                                    <a href={ans.value} target='_blank' rel='noreferrer' className='inline-flex items-center gap-1'>
+                                      <span className='relative h-7 w-7 rounded overflow-hidden border border-gold-200 bg-white'>
+                                        <Image src={ans.value} alt={ans.label} fill sizes='28px' className='object-cover' />
+                                      </span>
+                                      <span className='font-semibold text-brand-600'>View</span>
+                                    </a>
+                                  ) : (
+                                    <span className='font-medium text-gray-700 break-words'>{ans.value}</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                       <p className='text-sm font-semibold text-gray-900 flex-shrink-0 tabular-nums'>
                         {formatPrice(item.price * item.quantity)}
@@ -564,12 +676,12 @@ export default function CheckoutClient() {
                 <div className='border-t border-gray-100 pt-4 space-y-2 text-sm'>
                   <div className='flex justify-between text-gray-600'>
                     <span>Subtotal</span>
-                    <span>{formatPrice(cart.subtotal)}</span>
+                    <span>{formatPrice(subtotal)}</span>
                   </div>
-                  {cart.discount > 0 && (
+                  {discount > 0 && (
                     <div className='flex justify-between text-green-600'>
                       <span>Discount</span>
-                      <span>- {formatPrice(cart.discount)}</span>
+                      <span>- {formatPrice(discount)}</span>
                     </div>
                   )}
                   <div className='flex justify-between text-gray-600'>
@@ -595,7 +707,7 @@ export default function CheckoutClient() {
                   className='w-full mt-5 text-center whitespace-normal leading-snug px-3 max-w-full'
                   loading={isPlacingOrder}
                 >
-                  Place Order — {formatPrice(total)}
+                  {existingOrder ? `Pay Now — ${formatPrice(total)}` : `Place Order — ${formatPrice(total)}`}
                 </Button>
 
                 <p className='text-xs text-gray-400 text-center mt-3'>

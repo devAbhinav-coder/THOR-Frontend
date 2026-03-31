@@ -94,7 +94,7 @@ export default function CategorySection() {
   }
 
   return (
-    <section className='py-16 sm:py-20 bg-[#faf9f7]'>
+    <section className='py-6 sm:py-6 bg-[#faf9f7]'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         {/* Header */}
         <div className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8'>
@@ -116,14 +116,14 @@ export default function CategorySection() {
         </div>
 
         {/* Simple uniform portrait grid */}
-        <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5'>
+        <div className='flex gap-4 overflow-x-auto pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
           {categories.map((cat, index) => {
             const imgSrc = getImageForCategory(cat);
             return (
               <Link
                 key={cat._id}
                 href={`/shop?category=${encodeURIComponent(cat.name)}`}
-                className='group block'
+              className='group block min-w-[150px] sm:min-w-[160px] lg:min-w-[200px]'
               >
                 {/* Portrait card — object-contain so full image always shows */}
                 <div

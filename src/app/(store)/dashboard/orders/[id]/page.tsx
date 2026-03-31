@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   ArrowLeft, Package, MapPin, CreditCard, Clock, Star,
-  CheckCircle2, Truck, AlertCircle, Check, Sparkles,
+  CheckCircle2, Truck, AlertCircle, Check, Sparkles, Gift, ChevronDown, Plus, X,
 } from 'lucide-react';
 import { orderApi, reviewApi } from '@/lib/api';
 import { Order, OrderItem } from '@/types';
@@ -60,6 +60,89 @@ function getAutoTrackingUrl(carrier?: string, trackingNumber?: string) {
 
   // Fallback: Google search with carrier + AWB
   return `https://www.google.com/search?q=${encodeURIComponent(`${carrier || 'courier'} tracking ${awb}`)}`;
+}
+
+// Custom gift details accordion
+function CustomGiftDetails({ order }: { order: Order & { productType?: string; customRequestId?: string } }) {
+  const [open, setOpen] = useState(true);
+  if (order.productType !== 'custom') return null;
+
+  return (
+    <div className="bg-gradient-to-br from-gold-50 to-amber-50/30 rounded-2xl border border-gold-200 overflow-hidden shadow-sm">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-5 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gold-100 flex items-center justify-center">
+            <Gift className="h-5 w-5 text-gold-600" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-900 text-sm">Your Bespoke Gift Order</p>
+            <p className="text-xs text-gold-700 mt-0.5">Custom specifications & personalization details</p>
+          </div>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="border-t border-gold-100 p-5 space-y-4">
+          {/* Team message */}
+          <div className="bg-white/80 border border-gold-100 rounded-xl px-4 py-3 flex gap-3">
+            <Sparkles className="h-4 w-4 text-gold-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-gray-700 leading-relaxed">
+              Our team will contact you to arrange payment and confirm production details.
+              Once confirmed, your order will move to processing.
+            </p>
+          </div>
+
+          {/* Items with custom fields */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">What you ordered</p>
+            {order.items.map((item: OrderItem, i: number) => (
+              <div key={i} className="bg-white rounded-xl border border-gold-100 p-3 space-y-2">
+                <div className="flex gap-3">
+                  <div className="relative h-12 w-10 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 border border-gold-100">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Package className="h-4 w-4 text-gray-200" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 leading-snug">{item.name}</p>
+                    <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                  </div>
+                </div>
+                {item.customFieldAnswers && item.customFieldAnswers.length > 0 && (
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    {item.customFieldAnswers.map((a: { label: string; value: string }, j: number) => (
+                      <div key={j} className="bg-gold-50 rounded-lg px-2.5 py-1.5 border border-gold-100">
+                        <p className="text-[10px] text-gold-600 font-bold">{a.label}</p>
+                        <p className="text-xs font-semibold text-gray-900 mt-0.5">{a.value || '—'}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Link to original request */}
+          {order.customRequestId && (
+            <a
+              href={`/dashboard/gifting/${order.customRequestId}`}
+              className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 bg-white px-4 py-2 rounded-xl border border-brand-100 hover:border-brand-300 transition-colors"
+            >
+              <Gift className="h-3.5 w-3.5" /> View full request details →
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Stars that are always visible — hover to preview, click to open review form */
@@ -144,6 +227,8 @@ export default function OrderDetailPage() {
   const [reviewEligibility, setReviewEligibility] = useState<Record<string, { canReview: boolean; hasReviewed: boolean; orderId: string | null }>>({});
   const [openReviewFor, setOpenReviewFor] = useState<string | null>(null);
   const [reviewForms, setReviewForms] = useState<Record<string, ReviewFormState>>({});
+  const [reviewImages, setReviewImages] = useState<Record<string, File[]>>({});
+  const [reviewImagePreviews, setReviewImagePreviews] = useState<Record<string, string[]>>({});
   const [submittingFor, setSubmittingFor] = useState<string | null>(null);
   const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
   const [reviewedRatings, setReviewedRatings] = useState<Record<string, number>>({});
@@ -214,10 +299,13 @@ export default function OrderDetailPage() {
       fd.append('title', form.title || '');
       fd.append('comment', form.comment);
       fd.append('orderId', eligibility.orderId);
+      (reviewImages[productId] || []).forEach((file) => fd.append('images', file));
       await reviewApi.create(productId, fd);
       setReviewedItems((prev) => new Set([...Array.from(prev), productId]));
       setReviewedRatings((prev) => ({ ...prev, [productId]: form.rating }));
       setOpenReviewFor(null);
+      setReviewImages((prev) => ({ ...prev, [productId]: [] }));
+      setReviewImagePreviews((prev) => ({ ...prev, [productId]: [] }));
       toast.success('Thank you for your review! 🙏');
     } catch (err: unknown) {
       toast.error((err as { message?: string })?.message || 'Failed to submit review');
@@ -237,6 +325,26 @@ export default function OrderDetailPage() {
         [productId]: { ...base, [field]: value },
       };
     });
+  };
+
+  const onReviewImagesChange = (productId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const incoming = Array.from(e.target.files || []);
+    const current = reviewImages[productId] || [];
+    if (incoming.length + current.length > 3) {
+      toast.error('You can upload up to 3 images.');
+      return;
+    }
+    const next = [...current, ...incoming].slice(0, 3);
+    setReviewImages((prev) => ({ ...prev, [productId]: next }));
+    const previews = next.map((f) => URL.createObjectURL(f));
+    setReviewImagePreviews((prev) => ({ ...prev, [productId]: previews }));
+  };
+
+  const removeReviewImage = (productId: string, index: number) => {
+    const files = reviewImages[productId] || [];
+    const previews = reviewImagePreviews[productId] || [];
+    setReviewImages((prev) => ({ ...prev, [productId]: files.filter((_, i) => i !== index) }));
+    setReviewImagePreviews((prev) => ({ ...prev, [productId]: previews.filter((_, i) => i !== index) }));
   };
 
   if (isLoading) {
@@ -366,6 +474,9 @@ export default function OrderDetailPage() {
           </div>
         )}
 
+      {/* Custom gift details — shown for bespoke orders */}
+      {(order as any).productType === 'custom' && <CustomGiftDetails order={order as any} />}
+
       {/* ── Order Items ── */}
       <div id="review-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -385,6 +496,7 @@ export default function OrderDetailPage() {
             const canReview = !!(eligibility?.canReview && !reviewedItems.has(productId));
             const isReviewOpen = openReviewFor === productId;
             const formData = reviewForms[productId] || { rating: 5, title: '', comment: '' };
+            const localReviewPreviews = reviewImagePreviews[productId] || [];
 
             return (
               <div key={i} className="space-y-0">
@@ -489,6 +601,37 @@ export default function OrderDetailPage() {
                           className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 placeholder-gray-400 resize-none transition-all"
                         />
                         <p className="text-xs text-gray-400 text-right mt-0.5">{formData.comment.length}/1000</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold text-gray-600 mb-2">Photos (up to 3)</p>
+                        <div className="flex flex-wrap gap-2.5">
+                          {localReviewPreviews.map((preview, idx) => (
+                            <div key={idx} className="relative h-16 w-16 rounded-xl overflow-hidden border border-gray-200 bg-white">
+                              <Image src={preview} alt="Review image preview" fill sizes="64px" className="object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => removeReviewImage(productId, idx)}
+                                className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-black/70 text-white flex items-center justify-center"
+                                aria-label="Remove image"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          {localReviewPreviews.length < 3 && (
+                            <label className="h-16 w-16 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:border-brand-400 hover:text-brand-600 bg-white flex items-center justify-center cursor-pointer">
+                              <Plus className="h-4 w-4" />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => onReviewImagesChange(productId, e)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex gap-2.5 pt-1">

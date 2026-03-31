@@ -72,9 +72,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Toaster
             position="top-right"
             toastOptions={{
-              duration: 3000,
-              style: { background: '#fff', color: '#333', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' },
-              success: { iconTheme: { primary: '#be185d', secondary: '#fff' } },
+              duration: 4000,
+              className: 'text-sm font-semibold !rounded-2xl !shadow-xl !px-5 !py-4 !border !border-gray-100',
+              success: {
+                iconTheme: { primary: '#10b981', secondary: '#fff' },
+                style: { background: '#f0fdf4', color: '#065f46', borderColor: '#bbf7d0' },
+              },
+              error: {
+                iconTheme: { primary: '#ef4444', secondary: '#fff' },
+                style: { background: '#fef2f2', color: '#991b1b', borderColor: '#fecaca' },
+              },
+              style: {
+                background: '#fff',
+                color: '#1f2937',
+              },
             }}
           />
         </AuthProvider>

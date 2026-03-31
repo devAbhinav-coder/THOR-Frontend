@@ -57,9 +57,24 @@ export interface Product {
   tags: string[];
   isFeatured: boolean;
   isActive: boolean;
+  // Gifting
+  isGiftable?: boolean;
+  isCustomizable?: boolean;
+  minOrderQty?: number;
+  giftOccasions?: string[];
+  customFields?: {
+    _id: string;
+    label: string;
+    placeholder?: string;
+    fieldType: "text" | "textarea" | "select" | "image";
+    options?: string[];
+    isRequired: boolean;
+  }[];
+  productDetails?: { key: string; value: string }[];
   ratings: { average: number; count: number };
   /** PDP views (server-incremented) */
   viewCount?: number;
+  soldCount?: number;
   seoTitle?: string;
   seoDescription?: string;
   createdAt: string;
@@ -75,6 +90,7 @@ export interface CartItem {
   };
   quantity: number;
   price: number;
+  customFieldAnswers?: { label: string; value: string }[]; // Gifting
 }
 
 export interface Cart {
@@ -93,6 +109,7 @@ export interface OrderItem {
   variant: { size?: string; color?: string; sku: string };
   quantity: number;
   price: number;
+  customFieldAnswers?: { label: string; value: string }[]; // Gifting
 }
 
 export type OrderStatus =
@@ -122,6 +139,9 @@ export interface Order {
   shippingCharge: number;
   tax: number;
   total: number;
+  coupon?: string | { _id: string; code: string };
+  productType?: 'standard' | 'custom';
+  customRequestId?: string;
   statusHistory: { status: string; timestamp: string; note?: string }[];
   shippingCarrier?: string;
   trackingNumber?: string;
@@ -213,6 +233,9 @@ export interface Category {
   image?: string;
   subcategories: string[];
   isActive: boolean;
+  isGiftCategory?: boolean;
+  giftType?: "corporate" | "wedding" | "seasonal" | "festive" | "personal";
+  minOrderQty?: number;
   productCount: number;
   createdAt: string;
 }
@@ -300,6 +323,24 @@ export interface StorefrontSettings {
     buttonLink?: string;
     isActive?: boolean;
   };
+  giftingHeroBanners?: Array<{
+    title?: string;
+    description?: string;
+    backgroundImage?: string;
+    backgroundImagePublicId?: string;
+    ctaText?: string;
+    ctaLink?: string;
+    isActive?: boolean;
+  }>;
+  giftingSecondaryBanners?: Array<{
+    eyebrow?: string;
+    title?: string;
+    image?: string;
+    imagePublicId?: string;
+    ctaText?: string;
+    ctaLink?: string;
+    isActive?: boolean;
+  }>;
   footer: {
     description?: string;
     contactAddress?: string;
@@ -343,3 +384,30 @@ export interface BlogComment {
   updatedAt: string;
 }
 
+export interface GiftingRequestItem {
+  product: string | Product;
+  name: string;
+  quantity: number;
+  customFieldAnswers: { fieldId: string; label: string; value: string }[];
+}
+
+export interface GiftingRequest {
+  _id: string;
+  user?: string | User;
+  name: string;
+  email: string;
+  phone?: string;
+  occasion: string;
+  items: GiftingRequestItem[];
+  recipientMessage?: string;
+  customizationNote?: string;
+  packagingPreference: 'standard' | 'premium' | 'luxury';
+  referenceImages?: { url: string; publicId: string }[];
+  status: 'new' | 'price_quoted' | 'approved_by_user' | 'rejected_by_user' | 'cancelled' | 'contacted' | 'confirmed' | 'rejected';
+  proposedPrice?: number;
+  quotedPrice?: number;
+  deliveryTime?: string;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}

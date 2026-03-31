@@ -239,7 +239,7 @@ export default function ShopClient() {
   ].filter(Boolean).length;
 
   return (
-    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+    <div className='max-w-7xl mx-auto px-3 sm:px-5 lg:px-6 py-7'>
       <div className='mb-6'>
         <h1 className='text-3xl font-serif font-bold text-gray-900'>
           {filters.isFeatured ?
@@ -255,15 +255,15 @@ export default function ShopClient() {
         </p>
       </div>
 
-      <div className='flex gap-8'>
+      <div className='flex gap-4 lg:gap-5'>
         <aside
-          className={cn(
+            className={cn(
             "flex-shrink-0",
             // Mobile drawer vs desktop sidebar
             isSidebarOpen ?
               "fixed top-2 bottom-2 left-0 z-50 w-80 max-w-[92vw] bg-white shadow-2xl overflow-y-auto rounded-2xl border border-gray-100"
             : "hidden",
-            "lg:static lg:block lg:w-64 lg:bg-transparent lg:shadow-none lg:overflow-visible",
+            "lg:static lg:block lg:w-60 xl:w-64 lg:bg-transparent lg:shadow-none lg:overflow-visible",
           )}
         >
           {isSidebarOpen && (

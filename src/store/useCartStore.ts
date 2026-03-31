@@ -9,44 +9,49 @@ interface CartState {
   itemCount: number;
   appliedCouponCode: string | null;
   fetchCart: () => Promise<void>;
-  addToCart: (productId: string, variant: CartItem['variant'], quantity: number) => Promise<void>;
-  updateItem: (sku: string, quantity: number) => Promise<void>;
-  removeItem: (sku: string) => Promise<void>;
-  clearCart: () => Promise<void>;
-  applyCoupon: (code: string) => Promise<void>;
-  removeCoupon: () => Promise<void>;
-  resetCart: () => void;
-}
-
-export const useCartStore = create<CartState>((set, get) => ({
-  cart: null,
-  isLoading: false,
-  itemCount: 0,
-  appliedCouponCode: null,
-
-  fetchCart: async () => {
-    set({ isLoading: true });
-    try {
-      const body = await cartApi.get();
-      const cart = body.data.cart;
-      const couponCode =
-        typeof cart?.coupon === 'object' && cart?.coupon?.code ? cart.coupon.code : null;
-      set({
-        cart,
-        itemCount: cart?.items?.reduce((acc: number, item: CartItem) => acc + item.quantity, 0) || 0,
-        appliedCouponCode: couponCode,
-      });
-    } catch {
-      // silent fail
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  addToCart: async (productId, variant, quantity) => {
-    set({ isLoading: true });
-    try {
-      const body = await cartApi.add({ productId, variant, quantity });
+  addToCart: (
+    productId: string,
+    variant: CartItem['variant'],
+    quantity: number,
+    customFieldAnswers?: Array<{ label: string; value: string }>
+  ) => Promise<void>;
+   updateItem: (sku: string, quantity: number) => Promise<void>;
+   removeItem: (sku: string) => Promise<void>;
+   clearCart: () => Promise<void>;
+   applyCoupon: (code: string) => Promise<void>;
+   removeCoupon: () => Promise<void>;
+   resetCart: () => void;
+ }
+ 
+ export const useCartStore = create<CartState>((set, get) => ({
+   cart: null,
+   isLoading: false,
+   itemCount: 0,
+   appliedCouponCode: null,
+ 
+   fetchCart: async () => {
+     set({ isLoading: true });
+     try {
+       const body = await cartApi.get();
+       const cart = body.data.cart;
+       const couponCode =
+         typeof cart?.coupon === 'object' && cart?.coupon?.code ? cart.coupon.code : null;
+       set({
+         cart,
+         itemCount: cart?.items?.reduce((acc: number, item: CartItem) => acc + item.quantity, 0) || 0,
+         appliedCouponCode: couponCode,
+       });
+     } catch {
+       // silent fail
+     } finally {
+       set({ isLoading: false });
+     }
+   },
+ 
+   addToCart: async (productId, variant, quantity, customFieldAnswers) => {
+     set({ isLoading: true });
+     try {
+       const body = await cartApi.add({ productId, variant, quantity, customFieldAnswers });
       const cart = body.data.cart;
       set({
         cart,

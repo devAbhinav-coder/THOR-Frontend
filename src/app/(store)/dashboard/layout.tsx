@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Package, Heart, MapPin, Lock, LayoutDashboard } from 'lucide-react';
+import { User, Package, Heart, MapPin, Lock, LayoutDashboard, Gift } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { loginUrlWithRedirect } from '@/lib/safeRedirect';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
   { label: 'My Orders', href: '/dashboard/orders', icon: Package },
+  { label: 'Custom Gifts', href: '/dashboard/gifting', icon: Gift },
   { label: 'Wishlist', href: '/dashboard/wishlist', icon: Heart },
   { label: 'Profile', href: '/dashboard/profile', icon: User },
   { label: 'Addresses', href: '/dashboard/addresses', icon: MapPin },
@@ -44,42 +45,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="bg-[#faf9f7] min-h-screen">
-      {/* Hero bar */}
-      <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-brand-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center ring-2 ring-white/30 flex-shrink-0">
-            <span className="text-xl font-bold text-white">{user?.name?.charAt(0).toUpperCase()}</span>
-          </div>
-          <div>
-            <p className="text-white/70 text-xs font-medium uppercase tracking-widest">Welcome back</p>
-            <h1 className="text-xl sm:text-2xl font-serif font-bold leading-tight">{user?.name}</h1>
+      {/* Hero bar - Only show on root dashboard overview */}
+      {pathname === '/dashboard' && (
+        <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-brand-700 text-white relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex items-center gap-4">
+            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center ring-2 ring-white/20 shadow-xl flex-shrink-0">
+              <span className="text-xl sm:text-2xl font-black text-white">{user?.name?.charAt(0).toUpperCase()}</span>
+            </div>
+            <div>
+              <p className="text-white/70 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-0.5">Welcome back</p>
+              <h1 className="text-lg sm:text-2xl font-serif font-bold leading-tight truncate">{user?.name}</h1>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Mobile horizontal tabs */}
-        <div className="sm:hidden overflow-x-auto scrollbar-hide">
-          <div className="flex px-4 pb-0 gap-0 min-w-max">
-            {navItems.map(({ label, href, icon: Icon }) => {
-              const active = pathname === href;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap',
-                    active
-                      ? 'border-white text-white'
-                      : 'border-transparent text-white/60 hover:text-white/90'
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </Link>
-              );
-            })}
-          </div>
+      {/* Mobile Back Button Context Header */}
+      {pathname !== '/dashboard' && (
+        <div className="sm:hidden bg-white border-b border-gray-100 flex items-center px-4 py-3 sticky top-14 z-40">
+          <button 
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="flex items-center gap-2 text-sm font-bold text-gray-700 hover:text-navy-900 transition-colors"
+          >
+            <div className="h-7 w-7 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 shadow-sm">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </div>
+            Back to Dashboard
+          </button>
         </div>
-      </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row gap-6">
@@ -87,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <aside className="hidden sm:block w-52 flex-shrink-0">
             <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden sticky top-20">
               {navItems.map(({ label, href, icon: Icon }) => {
-                const active = pathname === href;
+                const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
                 return (
                   <Link
                     key={href}
