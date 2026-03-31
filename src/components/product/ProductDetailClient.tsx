@@ -1145,9 +1145,8 @@ export default function ProductDetailClient({ slug }: Props) {
             </div>
 
             {/* Inline Gifting Fields */}
-            {!product.isCustomizable &&
-              product.customFields &&
-              product.customFields.length > 0 && (
+            {
+              Array.isArray(product?.customFields) && product.customFields.length > 0 && (
                 <div className='bg-gold-50/30 border border-gold-100/50 rounded-2xl p-5 space-y-4'>
                   <div className='flex items-center gap-2 mb-1'>
                     <Gift className='h-4 w-4 text-gold-600' />
@@ -1157,7 +1156,7 @@ export default function ProductDetailClient({ slug }: Props) {
                   </div>
                   <div className='space-y-3.5'>
                     {product.customFields.map((field) => (
-                      <div key={field.label} className='space-y-1.5'>
+                      <div key={product._id + field.label} className='space-y-1.5'>
                         <label className='block text-xs font-bold text-gray-700 uppercase tracking-tight'>
                           {field.label}{" "}
                           {field.isRequired && (
