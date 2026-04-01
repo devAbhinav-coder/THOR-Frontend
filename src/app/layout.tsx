@@ -73,6 +73,9 @@ export const metadata: Metadata = {
     description:
       "Shop premium sarees, bridal looks, and thoughtful gifting collections at The House of Rani.",
   },
+  verification: {
+    google: "c-mAKK6c-M5IbneZfLyOePUcU6LaG0a8H2QVX3vQz2M",
+  },
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     shortcut: ["/favicon.svg"],
