@@ -297,8 +297,7 @@ export default function GiftingPage() {
             giftingSecondaryBanners
           : [
               {
-                image:
-                  blog?.mainImage || promo?.backgroundImage || "/hero-bg.jpg",
+                image: blog?.mainImage || promo?.backgroundImage || "/logo.jpg",
                 eyebrow: blog?.eyebrow || "Gifting made premium",
                 title: blog?.title || "Curated picks for every celebration",
                 ctaText: "Explore",
@@ -313,7 +312,7 @@ export default function GiftingPage() {
                 className='relative h-[110px] sm:h-[140px] rounded-2xl overflow-hidden border border-gray-100'
               >
                 <Image
-                  src={banner.image || "/hero-bg.jpg"}
+                  src={banner.image || "/logo.jpg"}
                   alt='Gifting secondary banner'
                   fill
                   sizes='100vw'

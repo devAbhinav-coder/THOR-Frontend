@@ -494,6 +494,10 @@ export default function ProductDetailClient({ slug }: Props) {
       </div>
     );
   }
+  const isGiftingVisual =
+    product.category?.toLowerCase() === "gifting" ||
+    !!product.isGiftable ||
+    !!product.isCustomizable;
 
   /* Actions */
   const requireAuth = (msg: string) => {
@@ -805,7 +809,7 @@ export default function ProductDetailClient({ slug }: Props) {
                         "border-brand-600 ring-2 ring-brand-100"
                       : "border-gray-200 hover:border-brand-400",
                     )}
-                    style={{ aspectRatio: "3/4" }}
+                    style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
                   >
                     <div className='relative w-full h-full'>
                       <Image
@@ -813,7 +817,7 @@ export default function ProductDetailClient({ slug }: Props) {
                         alt={img.alt || `${product.name} ${i + 1}`}
                         fill
                         sizes='88px'
-                        className='object-contain'
+                        className={isGiftingVisual ? "object-cover" : "object-contain"}
                       />
                     </div>
                   </button>
@@ -825,7 +829,7 @@ export default function ProductDetailClient({ slug }: Props) {
             <div className='flex-1 space-y-3'>
               <div
                 className='relative w-full overflow-hidden rounded-2xl bg-gray-50'
-                style={{ aspectRatio: "3/4" }}
+                style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
               >
                 {product.images[selectedImage]?.url ?
                   <Image
@@ -833,7 +837,10 @@ export default function ProductDetailClient({ slug }: Props) {
                     alt={product.images[selectedImage].alt || product.name}
                     fill
                     sizes='(max-width: 1024px) 100vw, 50vw'
-                    className='object-contain transition-opacity duration-200'
+                    className={cn(
+                      "transition-opacity duration-200",
+                      isGiftingVisual ? "object-cover" : "object-contain",
+                    )}
                     priority
                   />
                 : <div className='absolute inset-0 flex items-center justify-center text-gray-300'>
@@ -928,7 +935,7 @@ export default function ProductDetailClient({ slug }: Props) {
                           "border-brand-600 ring-2 ring-brand-200"
                         : "border-transparent hover:border-brand-400",
                       )}
-                      style={{ aspectRatio: "3/4" }}
+                      style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
                     >
                       <div className='relative w-full h-full'>
                         <Image
@@ -936,7 +943,7 @@ export default function ProductDetailClient({ slug }: Props) {
                           alt={img.alt || `${product.name} ${i + 1}`}
                           fill
                           sizes='56px'
-                          className='object-contain'
+                          className={isGiftingVisual ? "object-cover" : "object-contain"}
                         />
                       </div>
                     </button>
