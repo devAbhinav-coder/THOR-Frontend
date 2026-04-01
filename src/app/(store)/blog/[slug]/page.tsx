@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
 
 import { blogApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Blog, BlogComment, ApiResponse } from "@/types";
+import { Blog, BlogComment } from "@/types";
 
 function escapeHtml(input: string): string {
   return input
@@ -32,8 +32,8 @@ export default function BlogDetailPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["blog", slug],
     queryFn: async () => {
-      const res: ApiResponse<{ blog: Blog; comments: BlogComment[] }> = await blogApi.getBySlug(slug);
-      return res.data;
+      const res = await blogApi.getBySlug(slug);
+      return (res.data ?? null) as { blog: Blog; comments: BlogComment[] } | null;
     },
     enabled: !!slug,
   });

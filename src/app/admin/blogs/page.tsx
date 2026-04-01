@@ -8,7 +8,7 @@ import { Plus, Edit, Trash2, Search, Eye, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { blogApi } from '@/lib/api';
-import { Blog, ApiResponse } from '@/types';
+import { Blog } from '@/types';
 
 export default function AdminBlogsPage() {
   const queryClient = useQueryClient();
@@ -18,7 +18,7 @@ export default function AdminBlogsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-blogs', page, search],
     queryFn: async () => {
-      const res: ApiResponse<{ blogs: Blog[] }> = await blogApi.getAdminAll({ page, limit: 10, search });
+      const res = await blogApi.getAdminAll({ page, limit: 10, search });
       return res;
     },
   });

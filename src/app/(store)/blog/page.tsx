@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, MessageCircle, ChevronRight, Eye, Sparkles } from "lucide-react";
 import { blogApi } from "@/lib/api";
-import { Blog, ApiResponse } from "@/types";
+import { Blog } from "@/types";
 
 export default function BlogListingPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -19,7 +19,7 @@ export default function BlogListingPage() {
   const fetchBlogs = async (pageParam: number) => {
     try {
       setIsLoading(true);
-      const res: ApiResponse<{ blogs: Blog[] }> = await blogApi.getAll({ page: pageParam, limit: 6 });
+      const res = await blogApi.getAll({ page: pageParam, limit: 6 });
       
       if (res.data?.blogs) {
         if (pageParam === 1) {

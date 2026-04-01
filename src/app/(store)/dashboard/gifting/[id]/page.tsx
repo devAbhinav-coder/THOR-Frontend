@@ -159,8 +159,8 @@ export default function UserRequestDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["my-gifting-requests"] });
       if (vars.action === 'accept') {
         toast.success("Order confirmed! Our team will contact you for payment & delivery.");
-        const orderId = res.data.orderId;
-        router.push(`/dashboard/orders/${orderId}`);
+        const orderId = res.data?.orderId;
+        router.push(orderId ? `/dashboard/orders/${orderId}` : "/dashboard/orders");
       } else {
         toast.success("Quote rejected.");
       }
