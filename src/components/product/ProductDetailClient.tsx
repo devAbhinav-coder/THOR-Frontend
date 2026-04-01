@@ -138,21 +138,21 @@ function RatingBar({
 }
 
 export default function ProductDetailClient({ slug }: Props) {
-  /* â”€â”€ Core â”€â”€ */
+  /* Core */
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  /* â”€â”€ Gallery â”€â”€ */
+  /* Gallery */
   const [selectedImage, setSelectedImage] = useState(0);
   const thumbsRef = useRef<HTMLDivElement>(null);
 
-  /* â”€â”€ Variant / Qty â”€â”€ */
+  /* Variant / Qty */
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     null,
   );
   const [quantity, setQuantity] = useState(1);
 
-  /* â”€â”€ Actions â”€â”€ */
+  /* Actions */
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -164,17 +164,17 @@ export default function ProductDetailClient({ slug }: Props) {
     Record<string, boolean>
   >({});
 
-  /* â”€â”€ Info tabs (Description / Product Details) â”€â”€ */
+  /* Info tabs (Description / Product Details) */
   const [activeInfoTab, setActiveInfoTab] = useState<"description" | "details">(
     "description",
   );
   const [descExpanded, setDescExpanded] = useState(false);
 
-  /* â”€â”€ Related + More â”€â”€ */
+  /* Related + More */
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [moreProducts, setMoreProducts] = useState<Product[]>([]);
 
-  /* â”€â”€ Reviews â”€â”€ */
+  /* Reviews */
   const [reviews, setReviews] = useState<Review[]>([]);
   const [ratingDistribution, setRatingDistribution] = useState<
     { _id: number; count: number }[]
@@ -219,7 +219,7 @@ export default function ProductDetailClient({ slug }: Props) {
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
-  /* â”€â”€ Initial fetch â”€â”€ */
+  /* Initial fetch */
   useEffect(() => {
     setIsLoading(true);
     setSelectedImage(0);
@@ -399,7 +399,7 @@ export default function ProductDetailClient({ slug }: Props) {
     fetchAll();
   }, [slug]);
 
-  /* â”€â”€ Review eligibility (only when authenticated & product loaded) â”€â”€ */
+  /* Review eligibility (only when authenticated & product loaded) */
   useEffect(() => {
     if (!isAuthenticated || !product) return;
     reviewApi
@@ -415,7 +415,7 @@ export default function ProductDetailClient({ slug }: Props) {
       .catch(() => {});
   }, [isAuthenticated, product]);
 
-  /* â”€â”€ Analytics: one counted view per product per browser session â”€â”€ */
+  /* Analytics: one counted view per product per browser session */
   useEffect(() => {
     if (!product?.slug) return;
     const key = `hor_pv_${product.slug}`;
@@ -430,7 +430,7 @@ export default function ProductDetailClient({ slug }: Props) {
     productApi.recordView(product.slug).catch(() => {});
   }, [product?.slug]);
 
-  /* â”€â”€ Derived â”€â”€ */
+  /* Derived */
   const inWishlist = product ? isInWishlist(product._id) : false;
   const discountPct = useMemo(
     () =>
@@ -495,7 +495,7 @@ export default function ProductDetailClient({ slug }: Props) {
     );
   }
 
-  /* â”€â”€ Actions â”€â”€ */
+  /* Actions */
   const requireAuth = (msg: string) => {
     toast.error(msg);
     router.push(
@@ -748,14 +748,14 @@ export default function ProductDetailClient({ slug }: Props) {
     }
   };
 
-  /* â”€â”€ JSX â”€â”€ */
+  /* JSX */
   /* Bottom padding for store mobile tab bar only (CTAs are inline, not fixed) */
   const mobileBottomReserve =
     "pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8";
 
   return (
     <div className={cn("bg-white min-h-screen", mobileBottomReserve)}>
-      {/* â”€â”€ Breadcrumb â”€â”€ */}
+      {/* Breadcrumb */}
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2'>
         <nav className='flex items-center gap-1.5 text-xs text-gray-400 flex-wrap'>
           <Link href='/' className='hover:text-brand-600 transition-colors'>
@@ -779,10 +779,10 @@ export default function ProductDetailClient({ slug }: Props) {
         </nav>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• HERO â€” Gallery + Info â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* HERO - Gallery + Info */}
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-6'>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 xl:gap-10'>
-          {/* â”€â”€ Gallery â”€â”€ */}
+          {/* Gallery */}
           <div className='relative flex gap-3.5 lg:gap-5 overflow-visible'>
             {/* Desktop vertical thumbnail strip */}
             {product.images.length > 1 && (
@@ -946,7 +946,7 @@ export default function ProductDetailClient({ slug }: Props) {
             </div>
           </div>
 
-          {/* â”€â”€ Product Info â”€â”€ */}
+          {/* Product Info */}
           <div className='space-y-4 sm:space-y-5'>
             {/* Category chips */}
             <div className='flex flex-wrap items-center gap-2'>
@@ -1026,7 +1026,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 </p>
               )}
               <p className='text-xs text-gray-400'>
-                Inclusive of all taxes Â· Free delivery above â‚¹999
+                Inclusive of all taxes - Free delivery above Rs. 999
               </p>
             </div>
 
@@ -1153,7 +1153,7 @@ export default function ProductDetailClient({ slug }: Props) {
                     </span>
                   : selectedVariant.stock <= 5 ?
                     <span className='text-sm font-semibold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full animate-pulse'>
-                      âš¡ Only a few left!
+                      Only a few left!
                     </span>
                   : null}
                 </div>
@@ -1269,7 +1269,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 </div>
               )}
 
-            {/* CTA â€“ Triple-CTA Architecture */}
+            {/* CTA - Triple-CTA Architecture */}
             <div className='flex flex-col gap-4 pt-4'>
               {/* Primary Add/Buy Buttons */}
               <div className='flex gap-3 min-w-0'>
@@ -1286,7 +1286,7 @@ export default function ProductDetailClient({ slug }: Props) {
                   {isAddingToCart ?
                     <>
                       <span className='h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin' />{" "}
-                      Addingâ€¦
+                      Adding...
                     </>
                   : <>
                       <ShoppingBag className='h-4 w-4' /> Add to Cart
@@ -1307,7 +1307,7 @@ export default function ProductDetailClient({ slug }: Props) {
                   {isBuyingNow ?
                     <>
                       <span className='h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin' />{" "}
-                      Processingâ€¦
+                      Processing...
                     </>
                   : <>
                       <Zap className='h-4 w-4' /> Buy Now
@@ -1349,7 +1349,7 @@ export default function ProductDetailClient({ slug }: Props) {
             {/* Trust badges */}
             <div className='grid grid-cols-3 gap-3'>
               {[
-                { icon: Truck, label: "Free Delivery", sub: "Above â‚¹999" },
+                { icon: Truck, label: "Free Delivery", sub: "Above Rs. 999" },
                 { icon: RotateCcw, label: "Easy Return", sub: "7 days" },
                 {
                   icon: ShieldCheck,
@@ -1377,7 +1377,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 <span className='font-semibold'>
                   Estimated delivery in 3-7 business days.
                 </span>{" "}
-                Free shipping on orders above â‚¹999. Express delivery available
+                Free shipping on orders above Rs. 999. Express delivery available
                 at checkout.
               </p>
             </div>
@@ -1400,7 +1400,7 @@ export default function ProductDetailClient({ slug }: Props) {
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• DESCRIPTION / DETAILS â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* DESCRIPTION / DETAILS */}
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 mt-4'>
         <div className='border border-gray-100 rounded-2xl overflow-hidden'>
           {/* Tab header */}
@@ -1500,7 +1500,7 @@ export default function ProductDetailClient({ slug }: Props) {
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• REVIEWS â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* REVIEWS */}
       <section id='reviews-section' className='py-8 sm:py-12 bg-[#faf9f7]'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
           {/* Section header */}
