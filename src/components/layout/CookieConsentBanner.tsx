@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 const CONSENT_KEY = "hor_cookie_consent_v1";
 
@@ -46,14 +47,26 @@ export default function CookieConsentBanner() {
   if (!visible) return null;
 
   return (
-    <div className='fixed inset-x-0 bottom-0 z-[70] px-3 pb-3 sm:px-5 sm:pb-5'>
+    <div className='fixed inset-x-0 bottom-[4.5rem] sm:bottom-0 z-[700] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]  '>
       <div className='mx-auto max-w-5xl rounded-2xl border border-navy-700 bg-navy-950/95 text-white shadow-2xl backdrop-blur'>
         <div className='p-4 sm:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
           <div>
             <p className='text-sm font-semibold'>Cookie Preferences</p>
             <p className='mt-1 text-xs sm:text-sm text-white/70'>
-              We use essential cookies for secure login and checkout. You can also
-              allow analytics cookies to help us improve your shopping experience.
+              We use essential cookies for secure login and checkout. You can
+              also allow analytics cookies to help us improve your shopping
+              experience.
+            </p>
+            <p className='mt-1 text-[11px] text-white/55'>
+              Read our{" "}
+              <Link href='/privacy' className='underline hover:text-white/80'>
+                Privacy Policy
+              </Link>{" "}
+              and{" "}
+              <Link href='/terms' className='underline hover:text-white/80'>
+                Terms of Service
+              </Link>
+              .
             </p>
           </div>
           <div className='flex items-center gap-2 sm:justify-end'>
