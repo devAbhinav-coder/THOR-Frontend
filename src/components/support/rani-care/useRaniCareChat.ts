@@ -9,6 +9,9 @@ import { detectIntent, findOrderIdByNumber } from "./intent";
 import { botMessage, formatOrderDetailText, summarizeOrder, userMessage } from "./orderFormat";
 import type { ChatMessage, OrderSummary, QuickAction } from "./types";
 
+const SUPPORT_PHONE = "834031103";
+const SUPPORT_EMAIL = "hello@thehouseofrani@gmail.com";
+
 export function useRaniCareChat() {
   const { isAuthenticated } = useAuthStore();
   const [open, setOpen] = useState(false);
@@ -16,8 +19,8 @@ export function useRaniCareChat() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [contactPhone, setContactPhone] = useState("+91 98765 43210");
-  const [contactEmail, setContactEmail] = useState("hello@houseofrani.in");
+  const [contactPhone] = useState(SUPPORT_PHONE);
+  const [contactEmail] = useState(SUPPORT_EMAIL);
   const endRef = useRef<HTMLDivElement | null>(null);
   const recentOrdersRef = useRef<Order[]>([]);
 
@@ -60,17 +63,6 @@ export function useRaniCareChat() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing, loadingOrders]);
-
-  useEffect(() => {
-    storefrontApi
-      .getSettings()
-      .then((body) => {
-        const settings: StorefrontSettings | undefined = body.data?.settings;
-        if (settings?.footer?.contactPhone) setContactPhone(settings.footer.contactPhone);
-        if (settings?.footer?.contactEmail) setContactEmail(settings.footer.contactEmail);
-      })
-      .catch(() => {});
-  }, []);
 
   const pushBot = (text: string, actions?: QuickAction[], orders?: OrderSummary[], delay = 420) => {
     setTyping(true);

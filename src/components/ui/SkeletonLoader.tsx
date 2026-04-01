@@ -13,7 +13,7 @@ export function Skeleton({ className }: SkeletonProps) {
 /** Matches `ProductCard` layout: 3:4 image + fixed text bands + mobile CTA slot */
 export function ProductCardSkeleton() {
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-[420px] sm:min-h-[460px] flex-col">
       <div className="relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-2xl bg-gray-100">
         <Skeleton className="h-full w-full rounded-2xl" />
       </div>

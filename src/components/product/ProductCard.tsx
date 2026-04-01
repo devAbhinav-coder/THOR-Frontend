@@ -102,7 +102,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   return (
     <div
       className={cn(
-        "group relative flex h-full min-h-0 flex-col",
+        "group relative flex h-full min-h-[420px] sm:min-h-[460px] flex-col",
         className,
       )}
     >

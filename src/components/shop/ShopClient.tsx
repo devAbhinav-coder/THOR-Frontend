@@ -20,6 +20,7 @@ const SORT_OPTIONS = [
   { label: "Top Rated", value: "-ratings.average" },
   { label: "Most Popular", value: "-ratings.count" },
 ];
+const SEARCH_MAX_LEN = 30;
 
 export default function ShopClient() {
   const searchParams = useSearchParams();
@@ -55,8 +56,8 @@ export default function ShopClient() {
     isFeatured: searchParams.get("isFeatured") || "",
   });
 
-  const [searchDraft, setSearchDraft] = useState(
-    () => searchParams.get("search") || "",
+  const [searchDraft, setSearchDraft] = useState(() =>
+    (searchParams.get("search") || "").slice(0, SEARCH_MAX_LEN),
   );
   const debouncedSearch = useDebouncedValue(searchDraft.trim(), 380);
   const searchPending = searchDraft.trim() !== debouncedSearch;
@@ -71,7 +72,7 @@ export default function ShopClient() {
       maxPrice: searchParams.get("maxPrice") || "",
       rating: searchParams.get("rating") || "",
       sort: searchParams.get("sort") || "-createdAt",
-      search: searchParams.get("search") || "",
+      search: (searchParams.get("search") || "").slice(0, SEARCH_MAX_LEN),
       isFeatured: searchParams.get("isFeatured") || "",
     });
   }, [searchParamsKey, searchParams]);
@@ -84,23 +85,22 @@ export default function ShopClient() {
       return;
     }
     searchCommitQueue.current = [];
-    setSearchDraft(searchParams.get("search") || "");
+    setSearchDraft((searchParams.get("search") || "").slice(0, SEARCH_MAX_LEN));
   }, [searchParamsKey, searchParams]);
 
   useEffect(() => {
-    const urlQ = (searchParams.get("search") || "").trim();
+    const urlQ = (searchParams.get("search") || "")
+      .trim()
+      .slice(0, SEARCH_MAX_LEN);
     if (debouncedSearch === urlQ) return;
     /* Clear-all: field is empty and URL has no search, but debounce still holds old query — do not re-apply it */
-    if (
-      searchDraft.trim() === "" &&
-      urlQ === "" &&
-      debouncedSearch !== ""
-    ) {
+    if (searchDraft.trim() === "" && urlQ === "" && debouncedSearch !== "") {
       return;
     }
     searchCommitQueue.current.push(debouncedSearch);
     const params = new URLSearchParams(searchParams.toString());
-    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (debouncedSearch)
+      params.set("search", debouncedSearch.slice(0, SEARCH_MAX_LEN));
     else params.delete("search");
     const qs = params.toString();
     router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
@@ -149,7 +149,8 @@ export default function ShopClient() {
         if (filters.minPrice) params["price[gte]"] = filters.minPrice;
         if (filters.maxPrice) params["price[lte]"] = filters.maxPrice;
         if (filters.rating) params["ratings.average[gte]"] = filters.rating;
-        if (filters.search) params.search = filters.search;
+        if (filters.search)
+          params.search = filters.search.slice(0, SEARCH_MAX_LEN);
         if (filters.isFeatured) params.isFeatured = filters.isFeatured;
 
         const res = await productApi.getAll(params);
@@ -237,15 +238,21 @@ export default function ShopClient() {
     filters.rating,
     filters.search,
   ].filter(Boolean).length;
+  const searchTitle =
+    filters.search.length > 28 ?
+      `${filters.search.slice(0, 28)}...`
+    : filters.search;
+  const productGridClass =
+    "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0";
 
   return (
-    <div className='max-w-7xl mx-auto px-3 sm:px-5 lg:px-6 py-7'>
+    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 overflow-x-clip'>
       <div className='mb-6'>
-        <h1 className='text-3xl font-serif font-bold text-gray-900'>
+        <h1 className='text-3xl font-serif font-bold text-gray-900 break-words max-w-[42rem]'>
           {filters.isFeatured ?
             "Featured Products"
           : filters.category || filters.search ?
-            filters.category || `Search: "${filters.search}"`
+            filters.category || `Search: "${searchTitle}"`
           : "All Products"}
         </h1>
         <p className='text-gray-500 mt-1'>
@@ -255,15 +262,15 @@ export default function ShopClient() {
         </p>
       </div>
 
-      <div className='flex gap-4 lg:gap-5'>
+      <div className='lg:flex lg:items-start lg:gap-6'>
         <aside
-            className={cn(
+          className={cn(
             "flex-shrink-0",
             // Mobile drawer vs desktop sidebar
             isSidebarOpen ?
               "fixed top-2 bottom-2 left-0 z-50 w-80 max-w-[92vw] bg-white shadow-2xl overflow-y-auto rounded-2xl border border-gray-100"
             : "hidden",
-            "lg:static lg:block lg:w-60 xl:w-64 lg:bg-transparent lg:shadow-none lg:overflow-visible",
+            "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:pl-1 lg:sticky lg:top-24 lg:self-start",
           )}
         >
           {isSidebarOpen && (
@@ -275,7 +282,7 @@ export default function ShopClient() {
             </div>
           )}
 
-          <div className='space-y-6 p-4 sm:p-5 lg:p-0 lg:sticky lg:top-20'>
+          <div className='space-y-6 p-4 sm:p-5 lg:p-0'>
             {activeFilterCount > 0 && (
               <button
                 onClick={clearFilters}
@@ -407,64 +414,70 @@ export default function ShopClient() {
           />
         )}
 
-        <div className='flex-1 min-w-0'>
+        <div className='w-full min-w-0 lg:flex-1 lg:min-h-[70vh]'>
           <div className='mb-4 flex flex-col gap-3 sm:gap-4'>
-            <SearchField
-              value={searchDraft}
-              onChange={setSearchDraft}
-              placeholder='Search products by name, style, fabric, occasion…'
-              isLoading={searchPending}
-              className='w-full sm:max-w-xl'
-              aria-label='Search products'
-            />
+            <div className='w-full flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4'>
+              <div className='w-full min-w-0 lg:flex-1 lg:basis-0'>
+                <SearchField
+                  value={searchDraft}
+                  onChange={(v) => setSearchDraft(v.slice(0, SEARCH_MAX_LEN))}
+                  placeholder='Search products by name, style, fabric, occasion…'
+                  isLoading={searchPending}
+                  className='w-full min-w-0'
+                  aria-label='Search products'
+                />
+              </div>
 
-            <div className='flex flex-wrap items-center justify-between gap-3'>
-              <Button
-                variant='outline'
-                size='sm'
-                className='lg:hidden flex items-center gap-2 rounded-xl'
-                onClick={() => setIsSidebarOpen(true)}
-              >
-                <SlidersHorizontal className='h-4 w-4' />
-                Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-              </Button>
-
-              <div className='flex items-center gap-2 sm:ml-auto'>
-                <span className='text-sm text-gray-500 hidden sm:inline'>
-                  Sort by:
-                </span>
-                <select
-                  value={filters.sort}
-                  onChange={(e) => updateFilter("sort", e.target.value)}
-                  className='rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/25'
+              <div className='flex items-center justify-between gap-2 lg:justify-end lg:w-[220px] lg:min-w-[220px] lg:flex-none'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='lg:hidden flex items-center gap-2 rounded-xl'
+                  onClick={() => setIsSidebarOpen(true)}
                 >
-                  {SORT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  <SlidersHorizontal className='h-4 w-4' />
+                  Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+                </Button>
+
+                <div className='flex items-center gap-2 sm:ml-auto'>
+                  <span className='text-sm text-gray-500 hidden sm:inline'>
+                    Sort by:
+                  </span>
+                  <select
+                    value={filters.sort}
+                    onChange={(e) => updateFilter("sort", e.target.value)}
+                    className='rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/25'
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
           {isLoading ?
-            <div className='grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
+            <div className={productGridClass}>
               {[...Array(9)].map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
           : products.length === 0 ?
-            <div className='text-center py-16'>
-              <p className='text-gray-500 text-lg mb-4'>
-                No products found matching your filters.
-              </p>
-              <Button variant='brand' onClick={clearFilters}>
-                Clear Filters
-              </Button>
+            <div className='w-full'>
+              <div className='w-full rounded-2xl border border-gray-100 bg-white min-h-[420px] sm:min-h-[460px] flex flex-col items-start justify-start text-left px-6 pt-10'>
+                <p className='text-gray-500 text-lg mb-4'>
+                  No products found matching your filters.
+                </p>
+                <Button variant='brand' onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              </div>
             </div>
           : <>
-              <div className='grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
+              <div className={productGridClass}>
                 {products.map((product) => (
                   <ProductCard key={product._id} product={product} />
                 ))}
@@ -474,7 +487,7 @@ export default function ShopClient() {
               <div ref={loadMoreRef} className='h-10' />
 
               {isLoadingMore && (
-                <div className='mt-6 grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
+                <div className={`mt-6 ${productGridClass}`}>
                   {[...Array(6)].map((_, i) => (
                     <ProductCardSkeleton key={`more-${i}`} />
                   ))}

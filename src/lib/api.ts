@@ -275,39 +275,59 @@ export const adminApi = {
 };
 
 export const blogApi = {
-  getAll: (params?: Record<string, string | number | boolean>) => api.get("/blogs", { params }).then(res => res.data),
-  getBySlug: (slug: string) => api.get(`/blogs/${slug}`).then(res => res.data),
-  like: (id: string) => api.post(`/blogs/${id}/like`).then(res => res.data),
-  addComment: (id: string, content: string) => api.post(`/blogs/${id}/comments`, { content }).then(res => res.data),
-  getAdminAll: (params?: Record<string, string | number>) => api.get("/blogs/admin/all", { params }).then(res => res.data),
-  create: (data: FormData) => api.post("/blogs", data, { headers: { "Content-Type": "multipart/form-data" } }).then(res => res.data),
-  update: (id: string, data: FormData) => api.patch(`/blogs/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }).then(res => res.data),
-  delete: (id: string) => api.delete(`/blogs/${id}`).then(res => res.data),
-  deleteImage: (id: string, publicId: string) => api.delete(`/blogs/${id}/images/${publicId}`).then(res => res.data),
-  deleteComment: (id: string, commentId: string) => api.delete(`/blogs/${id}/comments/${commentId}`).then(res => res.data),
+  getAll: (params?: Record<string, string | number | boolean>) => 
+    unwrapAxios("blogs.getAll", api.get("/blogs", { params }), schemas.blogsPaginated),
+  getBySlug: (slug: string) => 
+    unwrapAxios("blogs.getBySlug", api.get(`/blogs/${slug}`), schemas.blogSingle),
+  like: (id: string) => 
+    unwrapAxios("blogs.like", api.post(`/blogs/${id}/like`), schemas.successData),
+  addComment: (id: string, content: string) => 
+    unwrapAxios("blogs.addComment", api.post(`/blogs/${id}/comments`, { content }), schemas.successData),
+  getAdminAll: (params?: Record<string, string | number>) => 
+    unwrapAxios("blogs.getAdminAll", api.get("/blogs/admin/all", { params }), schemas.blogsPaginated),
+  create: (data: FormData) => 
+    unwrapAxios("blogs.create", api.post("/blogs", data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.blogSingle),
+  update: (id: string, data: FormData) => 
+    unwrapAxios("blogs.update", api.patch(`/blogs/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.blogSingle),
+  delete: (id: string) => 
+    unwrapAxios("blogs.delete", api.delete(`/blogs/${id}`), schemas.successData),
+  deleteImage: (id: string, publicId: string) => 
+    unwrapAxios("blogs.deleteImage", api.delete(`/blogs/${id}/images/${publicId}`), schemas.successData),
+  deleteComment: (id: string, commentId: string) => 
+    unwrapAxios("blogs.deleteComment", api.delete(`/blogs/${id}/comments/${commentId}`), schemas.successData),
 };
 
 export const notificationApi = {
-  getAll: (params?: Record<string, string | number | boolean>) => api.get("/notifications", { params }).then(res => res.data),
-  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`).then(res => res.data),
-  markAllAsRead: () => api.patch("/notifications/mark-all-read").then(res => res.data),
-  clearAll: () => api.delete("/notifications/clear-all").then(res => res.data),
+  getAll: (params?: Record<string, string | number | boolean>) => 
+    unwrapAxios("notifications.getAll", api.get("/notifications", { params }), schemas.notificationsList),
+  markAsRead: (id: string) => 
+    unwrapAxios("notifications.markAsRead", api.patch(`/notifications/${id}/read`), schemas.notificationSingle),
+  markAllAsRead: () => 
+    unwrapAxios("notifications.markAllAsRead", api.patch("/notifications/mark-all-read"), schemas.successData),
+  clearAll: () => 
+    unwrapAxios("notifications.clearAll", api.delete("/notifications/clear-all"), schemas.successData),
 };
 
 export const giftingApi = {
-  getProducts: (params?: Record<string, string | number>) => api.get("/gifting/products", { params }).then(res => res.data),
-  getCategories: () => api.get("/gifting/categories").then(res => res.data),
+  getProducts: (params?: Record<string, string | number>) => 
+    unwrapAxios("gifting.getProducts", api.get("/gifting/products", { params }), schemas.giftingProductsList),
+  getCategories: () => 
+    unwrapAxios("gifting.getCategories", api.get("/gifting/categories"), schemas.categoriesList),
   submitRequest: (data: FormData | Record<string, unknown>) =>
     data instanceof FormData
-      ? api.post("/gifting/requests", data, { headers: { "Content-Type": "multipart/form-data" } }).then(res => res.data)
-      : api.post("/gifting/requests", data).then(res => res.data),
-  getMyRequests: (params?: Record<string, string | number>) => api.get("/gifting/my-requests", { params }).then(res => res.data),
-  getRequestById: (id: string) => api.get(`/gifting/requests/${id}`).then(res => res.data),
+      ? unwrapAxios("gifting.submitRequest", api.post("/gifting/requests", data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.giftingRequestSingle)
+      : unwrapAxios("gifting.submitRequest", api.post("/gifting/requests", data), schemas.giftingRequestSingle),
+  getMyRequests: (params?: Record<string, string | number>) => 
+    unwrapAxios("gifting.getMyRequests", api.get("/gifting/my-requests", { params }), schemas.giftingRequestsList),
+  getRequestById: (id: string) => 
+    unwrapAxios("gifting.getRequestById", api.get(`/gifting/requests/${id}`), schemas.giftingRequestSingle),
   respondToQuote: (id: string, action: 'accept' | 'reject', shippingAddress?: Record<string, string>) =>
-    api.post(`/gifting/requests/${id}/respond`, { action, shippingAddress }).then(res => res.data),
+    unwrapAxios("gifting.respondToQuote", api.post(`/gifting/requests/${id}/respond`, { action, shippingAddress }), schemas.giftingRequestSingle),
   // Admin
-  getRequests: (params?: Record<string, string | number>) => api.get("/gifting/requests", { params }).then(res => res.data),
-  updateRequest: (id: string, data: Record<string, unknown>) => api.patch(`/gifting/requests/${id}`, data).then(res => res.data),
+  getRequests: (params?: Record<string, string | number>) => 
+    unwrapAxios("gifting.getRequests", api.get("/gifting/requests", { params }), schemas.giftingRequestsList),
+  updateRequest: (id: string, data: Record<string, unknown>) => 
+    unwrapAxios("gifting.updateRequest", api.patch(`/gifting/requests/${id}`, data), schemas.giftingRequestSingle),
 };
 
 export default api;

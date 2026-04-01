@@ -6,8 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Facebook,
   Instagram,
-  Twitter,
-  Youtube,
   Mail,
   Phone,
   MapPin,
@@ -71,28 +69,20 @@ export default function Footer() {
               {[
                 {
                   Icon: Facebook,
-                  href: footer?.facebookUrl || "#",
+                  href: "https://www.facebook.com/share/1AmK6AQ1sV/",
                   label: "Facebook",
                 },
                 {
                   Icon: Instagram,
-                  href: footer?.instagramUrl || "#",
+                  href: "https://www.instagram.com/housofrani?igsh=NTFxZTMzb25jdThx",
                   label: "Instagram",
-                },
-                {
-                  Icon: Twitter,
-                  href: footer?.twitterUrl || "#",
-                  label: "Twitter",
-                },
-                {
-                  Icon: Youtube,
-                  href: footer?.youtubeUrl || "#",
-                  label: "YouTube",
                 },
               ].map(({ Icon, href, label }) => (
                 <a
                   key={label}
                   href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={label}
                   className='h-9 w-9 rounded-full bg-navy-800 border border-navy-700 flex items-center justify-center hover:bg-brand-700 hover:border-brand-600 transition-colors'
                 >
@@ -149,26 +139,25 @@ export default function Footer() {
               <li className='flex items-start gap-2'>
                 <MapPin className='h-4 w-4 mt-0.5 text-brand-500 flex-shrink-0' />
                 <span>
-                  {footer?.contactAddress ||
-                    "123 Silk Road, Textile Market, Surat, Gujarat 395003"}
+                  Noida Sector 76, India
                 </span>
               </li>
               <li className='flex items-center gap-2'>
                 <Phone className='h-4 w-4 text-brand-500 flex-shrink-0' />
                 <a
-                  href={`tel:${(footer?.contactPhone || "+91 98765 43210").replace(/\s+/g, "")}`}
+                  href='tel:834031103'
                   className='hover:text-brand-400 transition-colors'
                 >
-                  {footer?.contactPhone || "+91 98765 43210"}
+                  834031103
                 </a>
               </li>
               <li className='flex items-center gap-2'>
                 <Mail className='h-4 w-4 text-brand-500 flex-shrink-0' />
                 <a
-                  href={`mailto:${footer?.contactEmail || "hello@houseofrani.in"}`}
+                  href='mailto:hello@thehouseofrani@gmail.com'
                   className='hover:text-brand-400 transition-colors'
                 >
-                  {footer?.contactEmail || "hello@houseofrani.in"}
+                  hello@thehouseofrani@gmail.com
                 </a>
               </li>
             </ul>
@@ -198,6 +187,12 @@ export default function Footer() {
             © {new Date().getFullYear()} The House of Rani. All rights reserved.
           </p>
           <div className='flex gap-4'>
+            <Link
+              href='/faq'
+              className='hover:text-brand-400 transition-colors'
+            >
+              FAQ
+            </Link>
             <Link
               href='/privacy'
               className='hover:text-brand-400 transition-colors'

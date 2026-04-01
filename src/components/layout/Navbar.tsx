@@ -43,7 +43,6 @@ export default function Navbar() {
   const searchDesktopRef = useRef<HTMLInputElement>(null);
   const searchMobileRef = useRef<HTMLInputElement>(null);
 
-
   const { user, isAuthenticated, logout } = useAuthStore();
   const { itemCount } = useCartStore();
   const { products: wishlistProducts } = useWishlistStore();
@@ -126,7 +125,7 @@ export default function Navbar() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const q = searchQuery.trim();
+    const q = searchQuery.trim().slice(0, 30);
     if (q) {
       setIsSearchSubmitting(true);
       router.push(`/shop?search=${encodeURIComponent(q)}`);
@@ -179,7 +178,8 @@ export default function Navbar() {
   const isShopActive = pathname === "/shop" || pathname.startsWith("/shop");
   const isOrdersActive = pathname.startsWith("/dashboard/orders");
   const isCartActive = pathname === "/cart" || pathname.startsWith("/cart");
-  const isGiftingActive = pathname === "/gifting" || pathname.startsWith("/gifting");
+  const isGiftingActive =
+    pathname === "/gifting" || pathname.startsWith("/gifting");
   const showGlobalStoreSearch = !isGiftingActive;
 
   return (
@@ -301,8 +301,11 @@ export default function Navbar() {
                     ref={searchDesktopRef}
                     type='search'
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) =>
+                      setSearchQuery(e.target.value.slice(0, 30))
+                    }
                     placeholder='Search sarees, lehengas, kurtis…'
+                    maxLength={30}
                     autoComplete='off'
                     aria-label='Search store'
                     className='w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 pr-[7.25rem] text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden'
@@ -324,7 +327,6 @@ export default function Navbar() {
                       <X className='h-3.5 w-3.5' />
                     </button>
                   : null}
-                
                 </div>
               </form>
             )}
@@ -371,9 +373,7 @@ export default function Navbar() {
                 </button>
               )}
 
-              {isAuthenticated && (
-                <NotificationBell />
-              )}
+              {isAuthenticated && <NotificationBell />}
 
               {isAuthenticated ?
                 <div className='hidden lg:block relative'>
@@ -466,8 +466,11 @@ export default function Navbar() {
                     ref={searchMobileRef}
                     type='search'
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder='Search sarees, kalamkari, etc.'
+                    onChange={(e) =>
+                      setSearchQuery(e.target.value.slice(0, 30))
+                    }
+                    placeholder='Search kalamkari sarees , chiffon sarees, etc.'
+                    maxLength={30}
                     autoComplete='off'
                     aria-label='Search store'
                     className='w-full rounded-xl border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden'
@@ -524,38 +527,80 @@ export default function Navbar() {
             <nav className='flex-1 overflow-y-auto no-scrollbar p-5 space-y-7'>
               {/* Main Nav */}
               <div className='space-y-1'>
-                <Link onClick={() => setIsMenuOpen(false)} href='/' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'><Home className='w-4 h-4' /></div> 
+                <Link
+                  onClick={() => setIsMenuOpen(false)}
+                  href='/'
+                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                >
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                    <Home className='w-4 h-4' />
+                  </div>
                   Home
                 </Link>
-                <Link onClick={() => setIsMenuOpen(false)} href='/shop' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'><Store className='w-4 h-4' /></div> 
+                <Link
+                  onClick={() => setIsMenuOpen(false)}
+                  href='/shop'
+                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                >
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                    <Store className='w-4 h-4' />
+                  </div>
                   All Products
                 </Link>
-                <Link onClick={() => setIsMenuOpen(false)} href='/shop?sort=-createdAt' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
-                  <div className='p-2 rounded-xl bg-gold-400/10 text-gold-400 group-hover:bg-gold-500 group-hover:text-white transition-colors'><Package className='w-4 h-4' /></div> 
+                <Link
+                  onClick={() => setIsMenuOpen(false)}
+                  href='/shop?sort=-createdAt'
+                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                >
+                  <div className='p-2 rounded-xl bg-gold-400/10 text-gold-400 group-hover:bg-gold-500 group-hover:text-white transition-colors'>
+                    <Package className='w-4 h-4' />
+                  </div>
                   New Arrivals
                 </Link>
-                <Link onClick={() => setIsMenuOpen(false)} href='/gifting' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
-                  <div className='p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors'><Gift className='w-4 h-4' /></div> 
+                <Link
+                  onClick={() => setIsMenuOpen(false)}
+                  href='/gifting'
+                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                >
+                  <div className='p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors'>
+                    <Gift className='w-4 h-4' />
+                  </div>
                   Bespoke Gifting
                 </Link>
-                <Link onClick={() => setIsMenuOpen(false)} href='/blog' className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'>
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'><LayoutDashboard className='w-4 h-4' /></div> 
+                <Link
+                  onClick={() => setIsMenuOpen(false)}
+                  href='/blog'
+                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                >
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                    <LayoutDashboard className='w-4 h-4' />
+                  </div>
                   The Rani Blog
+                </Link>
+                <Link
+                  onClick={() => setIsMenuOpen(false)}
+                  href='/faq'
+                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                >
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                    <Shield className='w-4 h-4' />
+                  </div>
+                  FAQ
                 </Link>
               </div>
 
               {/* Categories */}
               {navCategories.length > 0 && (
                 <div>
-                  <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>Curated Collections</p>
+                  <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>
+                    Curated Collections
+                  </p>
                   <div className='space-y-0.5'>
                     {navCategories.map((cat) => (
-                      <Link 
-                        key={cat._id} 
-                        onClick={() => setIsMenuOpen(false)} 
-                        href={`/shop?category=${encodeURIComponent(cat.name)}`} 
+                      <Link
+                        key={cat._id}
+                        onClick={() => setIsMenuOpen(false)}
+                        href={`/shop?category=${encodeURIComponent(cat.name)}`}
                         className='block px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-navy-800/60 rounded-xl transition-colors'
                       >
                         {cat.name}
@@ -567,33 +612,63 @@ export default function Navbar() {
 
               {/* Account Section */}
               <div className='pb-6'>
-                <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>Your Account</p>
-                {isAuthenticated ? (
+                <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>
+                  Your Account
+                </p>
+                {isAuthenticated ?
                   <div className='space-y-1 bg-navy-900/50 p-2 rounded-3xl border border-navy-800/50'>
-                    <Link onClick={() => setIsMenuOpen(false)} href='/dashboard' className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'>
+                    <Link
+                      onClick={() => setIsMenuOpen(false)}
+                      href='/dashboard'
+                      className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                    >
                       <User className='w-4 h-4 text-white/40' /> Dashboard
                     </Link>
-                    <Link onClick={() => setIsMenuOpen(false)} href='/dashboard/orders' className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'>
+                    <Link
+                      onClick={() => setIsMenuOpen(false)}
+                      href='/dashboard/orders'
+                      className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                    >
                       <Package className='w-4 h-4 text-white/40' /> My Orders
                     </Link>
-                    <Link onClick={() => setIsMenuOpen(false)} href='/dashboard/wishlist' className='flex items-center justify-between px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'>
-                      <span className='flex items-center gap-3'><Heart className='w-4 h-4 text-white/40' /> Wishlist</span>
-                      {wishlistProducts.length > 0 && <span className='bg-brand-500/20 text-brand-300 text-[10px] font-bold px-2 py-0.5 rounded-full'>{wishlistProducts.length}</span>}
+                    <Link
+                      onClick={() => setIsMenuOpen(false)}
+                      href='/dashboard/wishlist'
+                      className='flex items-center justify-between px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                    >
+                      <span className='flex items-center gap-3'>
+                        <Heart className='w-4 h-4 text-white/40' /> Wishlist
+                      </span>
+                      {wishlistProducts.length > 0 && (
+                        <span className='bg-brand-500/20 text-brand-300 text-[10px] font-bold px-2 py-0.5 rounded-full'>
+                          {wishlistProducts.length}
+                        </span>
+                      )}
                     </Link>
-                    <button onClick={handleLogout} className='w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/20 border border-transparent rounded-2xl transition-all'>
+                    <button
+                      onClick={handleLogout}
+                      className='w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/20 border border-transparent rounded-2xl transition-all'
+                    >
                       <LogOut className='w-4 h-4' /> Sign Out
                     </button>
                   </div>
-                ) : (
-                  <div className='flex gap-2.5 mt-2'>
-                    <Link onClick={() => setIsMenuOpen(false)} href='/auth/login' className='flex-1 py-3 text-xs font-bold text-white bg-navy-800 border border-navy-700 hover:bg-navy-700 hover:border-navy-600 rounded-2xl text-center transition-all shadow-sm'>
+                : <div className='flex gap-2.5 mt-2'>
+                    <Link
+                      onClick={() => setIsMenuOpen(false)}
+                      href='/auth/login'
+                      className='flex-1 py-3 text-xs font-bold text-white bg-navy-800 border border-navy-700 hover:bg-navy-700 hover:border-navy-600 rounded-2xl text-center transition-all shadow-sm'
+                    >
                       Sign In
                     </Link>
-                    <Link onClick={() => setIsMenuOpen(false)} href='/auth/signup' className='flex-1 py-3 text-xs font-bold bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white rounded-2xl text-center shadow-lg shadow-brand-900/40 transition-all'>
+                    <Link
+                      onClick={() => setIsMenuOpen(false)}
+                      href='/auth/signup'
+                      className='flex-1 py-3 text-xs font-bold bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white rounded-2xl text-center shadow-lg shadow-brand-900/40 transition-all'
+                    >
                       Create Account
                     </Link>
                   </div>
-                )}
+                }
               </div>
             </nav>
           </div>
@@ -647,17 +722,17 @@ export default function Navbar() {
             />
             Shop
           </Link>
-          <Link 
-            href="/gifting" 
+          <Link
+            href='/gifting'
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isGiftingActive ? "text-white" : "text-white/70 hover:text-white"
+              isGiftingActive ? "text-white" : "text-white/70 hover:text-white",
             )}
           >
-            <Gift 
+            <Gift
               className={cn(
                 "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isGiftingActive ? "text-brand-400" : "text-white/75"
+                isGiftingActive ? "text-brand-400" : "text-white/75",
               )}
               strokeWidth={isGiftingActive ? 2.5 : 2}
             />
@@ -706,15 +781,23 @@ export default function Navbar() {
             href={isAuthenticated ? "/dashboard" : "/auth/login"}
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              (pathname === "/dashboard" || pathname === "/auth/login") ? "text-white" : "text-white/70 hover:text-white",
+              pathname === "/dashboard" || pathname === "/auth/login" ?
+                "text-white"
+              : "text-white/70 hover:text-white",
             )}
           >
             <User
               className={cn(
                 "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                (pathname === "/dashboard" || pathname === "/auth/login") ? "text-brand-400" : "text-white/75",
+                pathname === "/dashboard" || pathname === "/auth/login" ?
+                  "text-brand-400"
+                : "text-white/75",
               )}
-              strokeWidth={(pathname === "/dashboard" || pathname === "/auth/login") ? 2.5 : 2}
+              strokeWidth={
+                pathname === "/dashboard" || pathname === "/auth/login" ?
+                  2.5
+                : 2
+              }
             />
             Profile
           </Link>

@@ -314,3 +314,55 @@ export const categorySingle = z.object({
 export const categoryStats = z.object({ status: z.string(), data: z.unknown() });
 
 export const orderCreateResponse = z.union([orderCreatedRazorpay, orderCreatedCod]);
+
+// ------------------------------------------------------------------
+// NEW SCHEMAS FOR BLOG, NOTIFICATION, GIFTING
+// ------------------------------------------------------------------
+
+export const blogsPaginated = z
+  .object({
+    status: z.string(),
+    pagination: z
+      .object({
+        currentPage: z.number(),
+        totalPages: z.number(),
+        total: z.number().optional(),
+        hasNextPage: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional(),
+    data: z.object({ blogs: z.array(doc) }).passthrough().optional(),
+  })
+  .passthrough();
+
+export const blogSingle = z.object({
+  status: z.string(),
+  data: z.object({ blog: doc, comments: z.array(doc).optional() }).passthrough().optional(),
+}).passthrough();
+
+export const notificationsList = z.object({
+  status: z.string(),
+  data: z.object({ notifications: z.array(doc), unreadCount: z.number().optional() }).passthrough().optional(),
+}).passthrough();
+
+export const notificationSingle = z.object({
+  status: z.string(),
+  data: z.object({ notification: doc }).passthrough().optional(),
+}).passthrough();
+
+export const giftingProductsList = z.object({
+  status: z.string(),
+  pagination: z.any().optional(),
+  data: z.object({ products: z.array(doc) }).passthrough().optional(),
+}).passthrough();
+
+export const giftingRequestsList = z.object({
+  status: z.string(),
+  pagination: z.any().optional(),
+  data: z.object({ requests: z.array(doc) }).passthrough().optional(),
+}).passthrough();
+
+export const giftingRequestSingle = z.object({
+  status: z.string(),
+  data: z.object({ request: doc }).passthrough().optional(),
+}).passthrough();

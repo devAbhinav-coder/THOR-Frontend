@@ -87,7 +87,7 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
 
       {isOpen && (
         <div className={cn(
-          "absolute mt-3 flex flex-col w-80 md:w-96 max-h-[85vh] sm:max-h-[80vh] rounded-2xl bg-white dark:bg-neutral-900 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 dark:border-neutral-800 overflow-hidden z-[100] animate-in slide-in-from-top-2 duration-200",
+          "absolute mt-3 flex flex-col w-80 md:w-96 max-h-[80vh] sm:max-h-[60vh] rounded-2xl bg-white dark:bg-neutral-900 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 dark:border-neutral-800 overflow-hidden z-[200] animate-in slide-in-from-top-2 duration-200",
           align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left"
         )}>
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 bg-white dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-800">
@@ -96,17 +96,17 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
                 {unreadCount > 0 && (
                   <button
                     onClick={() => markAllAsReadMutation.mutate()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
                   >
-                    <Check className="w-3.5 h-3.5" /> Mark Read
+                    <Check className="w-3 h-3" /> Mark Read 
                   </button>
                 )}
                 {notifications.length > 0 && (
                   <button
                     onClick={() => clearAllMutation.mutate()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors"
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Clear All
+                    <Trash2 className="w-3 h-3" /> Clear All
                   </button>
                 )}
               </div>
@@ -132,7 +132,7 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
                         handleNotificationClick(n._id, n.isRead);
                       }}
                       className={cn(
-                        "flex items-start gap-4 p-5 hover:bg-gray-50 dark:hover:bg-neutral-800/80 transition-colors relative group border-b border-gray-100 last:border-0",
+                        "flex items-start gap-3 p-2 hover:bg-gray-50 dark:hover:bg-neutral-800/80 transition-colors relative group border-b border-gray-100 last:border-0",
                         !n.isRead ? "bg-white dark:bg-neutral-900" : "bg-gray-50/50 dark:bg-neutral-900/50 opacity-75 hover:opacity-100"
                       )}
                     >

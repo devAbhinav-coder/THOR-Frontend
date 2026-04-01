@@ -594,7 +594,6 @@ function GiftProductCard({ product }: { product: Product }) {
   const ratingCount = Number(product.ratings?.count || 0);
   const hasRating = ratingCount > 0;
   const ratingAverage = Number(product.ratings?.average || 0);
-  console.log(product.isCustomizable );
   return (
     <Link
       href={`/shop/${product.slug}`}
@@ -622,12 +621,12 @@ function GiftProductCard({ product }: { product: Product }) {
             sizes='(max-width:640px) 50vw, 25vw'
           />
         )}
-        {product.isCustomizable == true  && (
+        {product.isCustomizable == true && (
           <span className='absolute top-2 left-2 bg-navy-900 text-white text-[10px] font-semibold px-2 py-1 rounded-md'>
             Customizable
           </span>
         )}
-        
+
         <span className='absolute top-2 right-2 bg-white/90 text-gray-800 text-[10px] font-semibold px-2 py-1 rounded-md border border-gray-200'>
           {product.giftOccasions?.[0] || ""}
         </span>

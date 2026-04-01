@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -56,6 +56,7 @@ const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function SignupPageClient() {
   const [showPassword, setShowPassword] = useState(false);
+  const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [pendingEmail, setPendingEmail] = useState('');
   const { signupStart, signupVerify, loginWithGoogle, isLoading } = useAuthStore();
@@ -114,10 +115,23 @@ export default function SignupPageClient() {
     }
   };
 
+  useEffect(() => {
+    const updateGoogleButtonWidth = () => {
+      const viewport = window.innerWidth;
+      if (viewport < 380) setGoogleButtonWidth(230);
+      else if (viewport < 430) setGoogleButtonWidth(250);
+      else if (viewport < 500) setGoogleButtonWidth(280);
+      else setGoogleButtonWidth(320);
+    };
+    updateGoogleButtonWidth();
+    window.addEventListener('resize', updateGoogleButtonWidth);
+    return () => window.removeEventListener('resize', updateGoogleButtonWidth);
+  }, []);
+
   if (step === 'otp') {
     return (
       <div className="w-full max-w-md">
-        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
+        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
           <div className="text-center mb-6">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
               <Mail className="h-6 w-6" />
@@ -160,18 +174,18 @@ export default function SignupPageClient() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
+      <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-serif font-bold text-white">Create Account</h2>
           <p className="text-white/50 mt-1 text-sm">Join The House of Rani — verify your email to finish</p>
         </div>
 
         {googleClientId ? (
-          <div className="mb-6 w-full flex flex-col items-center">
+          <div className="mb-6 w-full flex flex-col items-center overflow-hidden">
             <GoogleLogin
               theme="outline"
               size="large"
-              width={320}
+              width={googleButtonWidth}
               text="signup_with"
               shape="rectangular"
               logo_alignment="center"

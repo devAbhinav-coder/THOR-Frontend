@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -11,6 +11,15 @@ import toast from "react-hot-toast";
 import { blogApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Blog, BlogComment, ApiResponse } from "@/types";
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 export default function BlogDetailPage() {
   const { slug } = useParams() as { slug: string };
@@ -66,6 +75,66 @@ export default function BlogDetailPage() {
      }
   });
 
+  const blog = data?.blog;
+  const comments = data?.comments || [];
+  const safeContentHtml = escapeHtml(blog?.content || "").replace(/\n/g, "<br />");
+  const isLikedByMe = isAuthenticated && user ? blog?.likes?.includes(user._id) : false;
+  const blogPostingLd = useMemo(() => {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+    return {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: blog?.title || "The House of Rani Journal",
+      description: String(blog?.content || "")
+        .replace(/<[^>]*>?/gm, "")
+        .trim()
+        .slice(0, 180),
+      image: (blog?.images || []).map((img) => img.url).filter(Boolean),
+      datePublished: blog?.createdAt,
+      dateModified: blog?.updatedAt || blog?.createdAt,
+      author: {
+        "@type": "Person",
+        name: blog?.author?.name || "The House of Rani",
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "The House of Rani",
+        logo: {
+          "@type": "ImageObject",
+          url: `${appUrl}/logo.png`,
+        },
+      },
+      mainEntityOfPage: `${appUrl}/blog/${slug}`,
+    };
+  }, [blog, slug]);
+  const breadcrumbLd = useMemo(() => {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+    return {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: `${appUrl}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Blog",
+          item: `${appUrl}/blog`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: blog?.title || "Journal Story",
+          item: `${appUrl}/blog/${slug}`,
+        },
+      ],
+    };
+  }, [blog?.title, slug]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-navy-950 flex flex-col items-center justify-center pt-5">
@@ -75,7 +144,7 @@ export default function BlogDetailPage() {
     );
   }
 
-  if (error || !data?.blog) {
+  if (error || !blog) {
     return (
       <div className="min-h-screen bg-navy-950 flex flex-col items-center justify-center pt-5 text-white selection:bg-brand-500/30">
         <h1 className="text-4xl font-extrabold mb-4 text-white">Story Not Found</h1>
@@ -89,9 +158,6 @@ export default function BlogDetailPage() {
       </div>
     );
   }
-
-  const { blog, comments } = data;
-  const isLikedByMe = isAuthenticated && user ? blog.likes?.includes(user._id) : false;
 
   const handleLike = () => {
     if (!isAuthenticated) {
@@ -115,6 +181,14 @@ export default function BlogDetailPage() {
 
   return (
     <div className="bg-navy-950 min-h-screen overflow-x-clip pt-5 pb-2 selection:bg-brand-500/30">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
       
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -186,7 +260,7 @@ export default function BlogDetailPage() {
 
         {/* Rich Text Body */}
         <article className="prose prose-invert md:prose-lg max-w-none mb-16 font-light leading-relaxed text-white/80 prose-headings:font-bold prose-headings:text-white prose-a:text-brand-400 hover:prose-a:text-brand-300 prose-blockquote:border-l-brand-500 prose-blockquote:bg-white/5 prose-blockquote:p-4 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-white/90">
-          <div dangerouslySetInnerHTML={{ __html: blog.content.replace(/\n/g, '<br />') }} />
+          <div dangerouslySetInnerHTML={{ __html: safeContentHtml }} />
         </article>
 
         {/* In-body Image Gallery (Skipping the first one if it was used as hero) */}

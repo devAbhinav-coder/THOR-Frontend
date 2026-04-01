@@ -1,12 +1,12 @@
-import { Truck, ShieldCheck, RotateCcw, Headphones, CreditCard, Award } from 'lucide-react';
+import { Truck, ShieldCheck, RotateCcw, Gift, Sparkles, Award } from 'lucide-react';
 
 const features = [
+  { icon: Gift, title: 'Thoughtful Gifting', description: 'Handpicked gifts curated for every special moment' },
+  { icon: ShieldCheck, title: 'Authentic Ethnic Wear', description: 'Premium sarees crafted with tradition and elegance' },
   { icon: Truck, title: 'Free Shipping', description: 'Free delivery on orders above ₹999 across India' },
-  { icon: ShieldCheck, title: 'Authentic Products', description: '100% genuine handcrafted ethnic wear' },
-  { icon: RotateCcw, title: 'Easy Returns', description: '7-day hassle-free return and exchange policy' },
-  { icon: Headphones, title: '24/7 Support', description: 'Dedicated customer support whenever you need us' },
-  { icon: CreditCard, title: 'Secure Payments', description: 'Encrypted payments via Razorpay — safe and fast' },
-  { icon: Award, title: 'Premium Quality', description: 'Curated fabrics with strict quality standards' },
+  { icon: Sparkles, title: 'Customizable Gifts', description: 'Add names, messages and personal touches to your gifts' },
+  { icon: RotateCcw, title: 'Easy Returns', description: '7-day hassle-free returns and exchanges' },
+  { icon: Award, title: 'Premium Quality', description: 'Carefully curated fabrics with strict quality checks' },
 ];
 
 export default function WhyChooseUs() {

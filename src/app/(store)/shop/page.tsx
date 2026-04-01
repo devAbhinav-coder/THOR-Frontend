@@ -4,7 +4,11 @@ import ShopClient from '@/components/shop/ShopClient';
 
 export const metadata: Metadata = {
   title: 'Shop | The House of Rani',
-  description: 'Browse our complete collection of Indian ethnic wear — sarees, lehengas, kurtis, and more. Filter by category, fabric, price and rating.',
+  description:
+    'Shop premium sarees, lehengas, and ethnic wear at The House of Rani. Filter by category, fabric, price, and rating to find your perfect look.',
+  alternates: {
+    canonical: '/shop',
+  },
 };
 
 export default function ShopPage() {

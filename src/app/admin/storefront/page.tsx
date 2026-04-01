@@ -6,7 +6,7 @@ import { adminApi, categoryApi } from '@/lib/api';
 import { Category, HeroSlide, StorefrontSettings } from '@/types';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
-
+import { ChevronDown, ChevronUp } from 'lucide-react';
 const inputCls =
   'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all';
 
@@ -37,7 +37,7 @@ export default function AdminStorefrontPage() {
   const [giftingSecondaryFiles, setGiftingSecondaryFiles] = useState<Record<number, File | null>>({});
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
-
+  const [activeSection, setActiveSection] = useState<string | null>("announcement");
   useEffect(() => {
     if (pendingFocusSlide === null) return;
     const el = slideRefs.current[pendingFocusSlide];
@@ -137,400 +137,1053 @@ export default function AdminStorefrontPage() {
         </button>
       </div>
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-        <h2 className="font-semibold text-gray-900">Top Announcement Messages</h2>
-        <p className="text-xs text-gray-500">Easy mode: message likho, Add karo. Ye navbar ke neeche auto-rotate hoga.</p>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            className={inputCls}
-            value={announcementDraft}
-            onChange={(e) => setAnnouncementDraft(e.target.value)}
-            placeholder="e.g. Use code WELCOME10 on first order"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              const value = announcementDraft.trim();
-              if (!value) return;
-              setSettings((prev) =>
-                prev
-                  ? { ...prev, announcementMessages: [...prev.announcementMessages, value] }
-                  : prev
-              );
-              setAnnouncementDraft('');
-            }}
-            className="px-4 py-2 rounded-xl bg-navy-900 text-white text-sm font-semibold hover:bg-navy-800"
-          >
-            Add
-          </button>
-        </div>
-        <div className="space-y-2">
-          {settings.announcementMessages.map((msg, idx) => (
-            <div key={`${msg}-${idx}`} className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-500 w-5">{idx + 1}.</span>
-              <input
-                className="flex-1 bg-transparent text-sm text-gray-800 focus:outline-none"
-                value={msg}
-                onChange={(e) => {
-                  const next = [...settings.announcementMessages];
-                  next[idx] = e.target.value;
-                  setSettings((prev) => (prev ? { ...prev, announcementMessages: next } : prev));
-                }}
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setSettings((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          announcementMessages: prev.announcementMessages.filter((_, i) => i !== idx),
-                        }
-                      : prev
-                  )
-                }
-                className="text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
+  <section className="bg-white rounded-2xl border border-gray-100">
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Hero Slides</h2>
-          <button
-            onClick={() => {
-              setSettings((prev) => {
-                if (!prev) return prev;
-                const nextIndex = prev.heroSlides.length;
-                setPendingFocusSlide(nextIndex);
-                return { ...prev, heroSlides: [...prev.heroSlides, { ...emptySlide }] };
-              });
-            }}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
-          >
-            <Plus className="h-4 w-4" /> Add slide
-          </button>
-        </div>
-        {settings.heroSlides.map((slide, index) => (
-          <div
-            key={index}
-            ref={(el) => {
-              slideRefs.current[index] = el;
-            }}
-            className="rounded-xl border border-gray-200 p-4 space-y-3"
-          >
-            <div className="flex justify-between">
-              <p className="text-sm font-semibold text-gray-800">Slide {index + 1}</p>
-              <button
-                onClick={() => setSettings((prev) => prev ? { ...prev, heroSlides: prev.heroSlides.filter((_, i) => i !== index) } : prev)}
-                className="text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className={inputCls} value={slide.title} onChange={(e) => updateSlide(index, 'title', e.target.value)} placeholder="Title" />
-              <input className={inputCls} value={slide.subtitle || ''} onChange={(e) => updateSlide(index, 'subtitle', e.target.value)} placeholder="Subtitle" />
-              <input className={inputCls} value={slide.badge || ''} onChange={(e) => updateSlide(index, 'badge', e.target.value)} placeholder="Badge" />
-              <input className={inputCls} value={slide.ctaText || ''} onChange={(e) => updateSlide(index, 'ctaText', e.target.value)} placeholder="Primary button text" />
-              <input className={inputCls} value={slide.ctaLink || ''} onChange={(e) => updateSlide(index, 'ctaLink', e.target.value)} placeholder="Primary button link" />
-              <input className={inputCls} value={slide.secondaryCtaText || ''} onChange={(e) => updateSlide(index, 'secondaryCtaText', e.target.value)} placeholder="Secondary button text" />
-              <input className={inputCls} value={slide.secondaryCtaLink || ''} onChange={(e) => updateSlide(index, 'secondaryCtaLink', e.target.value)} placeholder="Secondary button link" />
-            </div>
-            <ImageUploader
-              maxFiles={1}
-              aspectRatio="16:9"
-              maxSizeMB={5}
-              existingImages={heroImageFiles[index] ? [] : (slide.image ? [slide.image] : [])}
-              onChange={(files) => setHeroImageFiles((prev) => ({ ...prev, [index]: files[0] || null }))}
-              label="Slide background"
-            />
-            {slide.image && !heroImageFiles[index] && (
-              <button
-                type="button"
-                className="text-xs text-red-600"
-                onClick={() =>
-                  setSettings((prev) => {
-                    if (!prev) return prev;
-                    const next = [...prev.heroSlides];
-                    next[index] = { ...next[index], image: '', imagePublicId: undefined };
-                    return { ...prev, heroSlides: next };
-                  })
-                }
-              >
-                Remove current image
-              </button>
-            )}
-            {heroImageFiles[index] && (
-              <button
-                type="button"
-                className="text-xs text-red-600"
-                onClick={() => setHeroImageFiles((prev) => ({ ...prev, [index]: null }))}
-              >
-                Remove new selected image
-              </button>
-            )}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-gray-500">Quick link:</span>
-              <button type="button" onClick={() => updateSlide(index, 'ctaLink', '/shop')} className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200">Shop All</button>
-              <button type="button" onClick={() => updateSlide(index, 'ctaLink', '/shop?sort=-createdAt')} className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200">New Arrivals</button>
-              <button type="button" onClick={() => updateSlide(index, 'ctaLink', '/shop?isFeatured=true')} className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200">Featured</button>
-              <select
-                className="h-8 rounded-md border border-gray-200 px-2"
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  updateSlide(index, 'ctaLink', `/shop?category=${encodeURIComponent(e.target.value)}`);
-                }}
-                defaultValue=""
-              >
-                <option value="">Category...</option>
-                {categories.map((cat) => (
-                  <option key={cat._id} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <textarea
-              rows={2}
-              className={inputCls}
-              value={slide.description || ''}
-              onChange={(e) => updateSlide(index, 'description', e.target.value)}
-              placeholder="Slide description"
-            />
-          </div>
-        ))}
-      </section>
+  {/* HEADER */}
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "announcement" ? null : "announcement")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">
+      Top Announcement Messages
+    </h2>
+    <span>{activeSection === "announcement" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-        <h2 className="font-semibold text-gray-900">Mid Home Promo Banner</h2>
-        <ImageUploader
-          maxFiles={1}
-          aspectRatio="16:9"
-          maxSizeMB={5}
-          existingImages={promoBgFile ? [] : (settings.promoBanner.backgroundImage ? [settings.promoBanner.backgroundImage] : [])}
-          onChange={(files) => setPromoBgFile(files[0] || null)}
-          label="Promo background image"
+  {/* ✅ CONTENT (IMPORTANT CHANGE) */}
+  {activeSection === "announcement" && (
+    <div className="px-5 pb-5 space-y-3">
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          className={inputCls}
+          value={announcementDraft}
+          onChange={(e) => setAnnouncementDraft(e.target.value)}
+          placeholder="e.g. Use code WELCOME10 on first order"
         />
-        {settings.promoBanner.backgroundImage && !promoBgFile && (
-          <button
-            type="button"
-            className="text-xs text-red-600"
-            onClick={() =>
-              setSettings((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      promoBanner: {
-                        ...prev.promoBanner,
-                        backgroundImage: '',
-                        backgroundImagePublicId: undefined,
+        <button
+          type="button"
+          onClick={() => {
+            const value = announcementDraft.trim();
+            if (!value) return;
+            setSettings((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    announcementMessages: [
+                      ...prev.announcementMessages,
+                      value,
+                    ],
+                  }
+                : prev
+            );
+            setAnnouncementDraft("");
+          }}
+          className="px-4 py-2 rounded-xl bg-navy-900 text-white text-sm font-semibold hover:bg-navy-800"
+        >
+          Add
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {settings.announcementMessages.map((msg, idx) => (
+          <div
+            key={`${msg}-${idx}`}
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2"
+          >
+            <span className="text-xs text-gray-500 w-5">{idx + 1}.</span>
+            <input
+              className="flex-1 bg-transparent text-sm text-gray-800 focus:outline-none"
+              value={msg}
+              onChange={(e) => {
+                const next = [...settings.announcementMessages];
+                next[idx] = e.target.value;
+                setSettings((prev) =>
+                  prev ? { ...prev, announcementMessages: next } : prev
+                );
+              }}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setSettings((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        announcementMessages:
+                          prev.announcementMessages.filter((_, i) => i !== idx),
+                      }
+                    : prev
+                )
+              }
+              className="text-red-500"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  )}
+</section>
+
+ <section className="bg-white rounded-2xl border border-gray-100">
+
+  {/* HEADER */}
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "hero" ? null : "hero")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">Hero Slides</h2>
+    <span>{activeSection === "hero" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {/* CONTENT */}
+  {activeSection === "hero" && (
+    <div className="px-5 pb-5 space-y-4">
+
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => {
+            setSettings((prev) => {
+              if (!prev) return prev;
+              const nextIndex = prev.heroSlides.length;
+              setPendingFocusSlide(nextIndex);
+              return {
+                ...prev,
+                heroSlides: [...prev.heroSlides, { ...emptySlide }],
+              };
+            });
+          }}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
+        >
+          <Plus className="h-4 w-4" /> Add slide
+        </button>
+      </div>
+
+      {settings.heroSlides.map((slide, index) => (
+        <div
+          key={index}
+          ref={(el) => {
+            slideRefs.current[index] = el;
+          }}
+          className="rounded-xl border border-gray-200 p-4 space-y-3"
+        >
+          <div className="flex justify-between">
+            <p className="text-sm font-semibold text-gray-800">
+              Slide {index + 1}
+            </p>
+            <button
+              onClick={() =>
+                setSettings((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        heroSlides: prev.heroSlides.filter(
+                          (_, i) => i !== index
+                        ),
+                      }
+                    : prev
+                )
+              }
+              className="text-red-500"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input className={inputCls} value={slide.title} onChange={(e) => updateSlide(index, 'title', e.target.value)} placeholder="Title" />
+            <input className={inputCls} value={slide.subtitle || ''} onChange={(e) => updateSlide(index, 'subtitle', e.target.value)} placeholder="Subtitle" />
+            <input className={inputCls} value={slide.badge || ''} onChange={(e) => updateSlide(index, 'badge', e.target.value)} placeholder="Badge" />
+            <input className={inputCls} value={slide.ctaText || ''} onChange={(e) => updateSlide(index, 'ctaText', e.target.value)} placeholder="Primary button text" />
+            <input className={inputCls} value={slide.ctaLink || ''} onChange={(e) => updateSlide(index, 'ctaLink', e.target.value)} placeholder="Primary button link" />
+            <input className={inputCls} value={slide.secondaryCtaText || ''} onChange={(e) => updateSlide(index, 'secondaryCtaText', e.target.value)} placeholder="Secondary button text" />
+            <input className={inputCls} value={slide.secondaryCtaLink || ''} onChange={(e) => updateSlide(index, 'secondaryCtaLink', e.target.value)} placeholder="Secondary button link" />
+          </div>
+
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="16:9"
+            maxSizeMB={5}
+            existingImages={
+              heroImageFiles[index]
+                ? []
+                : slide.image
+                ? [slide.image]
+                : []
+            }
+            onChange={(files) =>
+              setHeroImageFiles((prev) => ({
+                ...prev,
+                [index]: files[0] || null,
+              }))
+            }
+            label="Slide background"
+          />
+
+          {slide.image && !heroImageFiles[index] && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setSettings((prev) => {
+                  if (!prev) return prev;
+                  const next = [...prev.heroSlides];
+                  next[index] = {
+                    ...next[index],
+                    image: '',
+                    imagePublicId: undefined,
+                  };
+                  return { ...prev, heroSlides: next };
+                })
+              }
+            >
+              Remove current image
+            </button>
+          )}
+
+          {heroImageFiles[index] && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setHeroImageFiles((prev) => ({
+                  ...prev,
+                  [index]: null,
+                }))
+              }
+            >
+              Remove new selected image
+            </button>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-gray-500">Quick link:</span>
+            <button onClick={() => updateSlide(index, 'ctaLink', '/shop')} className="px-2 py-1 bg-gray-100 rounded-md">Shop All</button>
+            <button onClick={() => updateSlide(index, 'ctaLink', '/shop?sort=-createdAt')} className="px-2 py-1 bg-gray-100 rounded-md">New Arrivals</button>
+            <button onClick={() => updateSlide(index, 'ctaLink', '/shop?isFeatured=true')} className="px-2 py-1 bg-gray-100 rounded-md">Featured</button>
+          </div>
+
+          <textarea
+            rows={2}
+            className={inputCls}
+            value={slide.description || ''}
+            onChange={(e) =>
+              updateSlide(index, 'description', e.target.value)
+            }
+            placeholder="Slide description"
+          />
+        </div>
+      ))}
+
+    </div>
+  )}
+</section>
+
+<section className="bg-white rounded-2xl border border-gray-100">
+
+  {/* HEADER */}
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "promo" ? null : "promo")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">
+      Mid Home Promo Banner
+    </h2>
+    <span>{activeSection === "promo" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {/* CONTENT */}
+  {activeSection === "promo" && (
+    <div className="px-5 pb-5 space-y-3">
+
+      <ImageUploader
+        maxFiles={1}
+        aspectRatio="16:9"
+        maxSizeMB={5}
+        existingImages={
+          promoBgFile
+            ? []
+            : settings.promoBanner.backgroundImage
+            ? [settings.promoBanner.backgroundImage]
+            : []
+        }
+        onChange={(files) => setPromoBgFile(files[0] || null)}
+        label="Promo background image"
+      />
+
+      {settings.promoBanner.backgroundImage && !promoBgFile && (
+        <button
+          type="button"
+          className="text-xs text-red-600"
+          onClick={() =>
+            setSettings((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    promoBanner: {
+                      ...prev.promoBanner,
+                      backgroundImage: "",
+                      backgroundImagePublicId: undefined,
+                    },
+                  }
+                : prev
+            )
+          }
+        >
+          Remove current promo image
+        </button>
+      )}
+
+      {promoBgFile && (
+        <button
+          type="button"
+          className="text-xs text-red-600"
+          onClick={() => setPromoBgFile(null)}
+        >
+          Remove new selected promo image
+        </button>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input className={inputCls} value={settings.promoBanner.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, eyebrow: e.target.value } } : p)} placeholder="Eyebrow text" />
+        <input className={inputCls} value={settings.promoBanner.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, title: e.target.value } } : p)} placeholder="Title" />
+        <input className={inputCls} value={settings.promoBanner.primaryButtonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, primaryButtonText: e.target.value } } : p)} placeholder="Primary button text" />
+        <input className={inputCls} value={settings.promoBanner.primaryButtonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, primaryButtonLink: e.target.value } } : p)} placeholder="Primary button link" />
+        <input className={inputCls} value={settings.promoBanner.secondaryButtonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, secondaryButtonText: e.target.value } } : p)} placeholder="Secondary button text" />
+        <input className={inputCls} value={settings.promoBanner.secondaryButtonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, secondaryButtonLink: e.target.value } } : p)} placeholder="Secondary button link" />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-gray-500">Quick link preset:</span>
+        <button type="button" onClick={() => applyPresetLink('promo', 'primaryButtonLink', '/shop')} className="px-2 py-1 bg-gray-100 rounded-md">Shop All</button>
+        <button type="button" onClick={() => applyPresetLink('promo', 'primaryButtonLink', '/shop?sort=-createdAt')} className="px-2 py-1 bg-gray-100 rounded-md">New Arrivals</button>
+        <button type="button" onClick={() => applyPresetLink('promo', 'primaryButtonLink', '/shop?isFeatured=true')} className="px-2 py-1 bg-gray-100 rounded-md">Featured</button>
+
+        <select
+          className="h-8 rounded-md border border-gray-200 px-2"
+          onChange={(e) => {
+            if (!e.target.value) return;
+            applyPresetLink(
+              "promo",
+              "primaryButtonLink",
+              `/shop?category=${encodeURIComponent(e.target.value)}`
+            );
+          }}
+          defaultValue=""
+        >
+          <option value="">Category...</option>
+          {categories.map((cat) => (
+            <option key={cat._id} value={cat.name}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <textarea
+        className={inputCls}
+        rows={2}
+        value={settings.promoBanner.description || ""}
+        onChange={(e) =>
+          setSettings((p) =>
+            p
+              ? {
+                  ...p,
+                  promoBanner: {
+                    ...p.promoBanner,
+                    description: e.target.value,
+                  },
+                }
+              : p
+          )
+        }
+        placeholder="Promo description"
+      />
+
+      <input
+        className={inputCls}
+        value={(settings.promoBanner.perks || []).join(", ")}
+        onChange={(e) =>
+          setSettings((p) =>
+            p
+              ? {
+                  ...p,
+                  promoBanner: {
+                    ...p.promoBanner,
+                    perks: e.target.value
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  },
+                }
+              : p
+          )
+        }
+        placeholder="Perks comma separated"
+      />
+
+    </div>
+  )}
+</section>
+
+ <section className="bg-white rounded-2xl border border-gray-100">
+
+  {/* HEADER */}
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "blog" ? null : "blog")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">
+      Blog Banner
+    </h2>
+    <span>{activeSection === "blog" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {/* CONTENT */}
+  {activeSection === "blog" && (
+    <div className="px-5 pb-5 space-y-4">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* MAIN IMAGE */}
+        <div className="space-y-3">
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="4:5"
+            maxSizeMB={5}
+            existingImages={
+              blogMainFile
+                ? []
+                : settings.blogBanner?.mainImage
+                ? [settings.blogBanner.mainImage]
+                : []
+            }
+            onChange={(files) => setBlogMainFile(files[0] || null)}
+            label="Main Image (Portrait)"
+          />
+
+          {settings.blogBanner?.mainImage && !blogMainFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        blogBanner: {
+                          ...p.blogBanner,
+                          mainImage: "",
+                          mainImagePublicId: undefined,
+                        } as any,
+                      }
+                    : p
+                )
+              }
+            >
+              Remove main image
+            </button>
+          )}
+        </div>
+
+        {/* SIDE IMAGE */}
+        <div className="space-y-3">
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="1:1"
+            maxSizeMB={5}
+            existingImages={
+              blogSideFile
+                ? []
+                : settings.blogBanner?.sideImage
+                ? [settings.blogBanner.sideImage]
+                : []
+            }
+            onChange={(files) => setBlogSideFile(files[0] || null)}
+            label="Side Floating Image (Square)"
+          />
+
+          {settings.blogBanner?.sideImage && !blogSideFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        blogBanner: {
+                          ...p.blogBanner,
+                          sideImage: "",
+                          sideImagePublicId: undefined,
+                        } as any,
+                      }
+                    : p
+                )
+              }
+            >
+              Remove side image
+            </button>
+          )}
+        </div>
+
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+        <input className={inputCls} value={settings.blogBanner?.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, eyebrow: e.target.value } as any } : p)} placeholder="Eyebrow text" />
+        <input className={inputCls} value={settings.blogBanner?.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, title: e.target.value } as any } : p)} placeholder="Title" />
+        <input className={inputCls} value={settings.blogBanner?.buttonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonText: e.target.value } as any } : p)} placeholder="Button text" />
+        <input className={inputCls} value={settings.blogBanner?.buttonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonLink: e.target.value } as any } : p)} placeholder="Button link" />
+      </div>
+
+      <textarea
+        className={inputCls}
+        rows={2}
+        value={settings.blogBanner?.description || ''}
+        onChange={(e) =>
+          setSettings((p) =>
+            p
+              ? {
+                  ...p,
+                  blogBanner: {
+                    ...p.blogBanner,
+                    description: e.target.value,
+                  } as any,
+                }
+              : p
+          )
+        }
+        placeholder="Description"
+      />
+
+    </div>
+  )}
+</section>
+
+<section className="bg-white rounded-2xl border border-gray-100">
+
+  {/* HEADER */}
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "gifting1" ? null : "gifting1")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">
+      Gifting Banner 1 (Slider)
+    </h2>
+    <span>{activeSection === "gifting1" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {/* CONTENT */}
+  {activeSection === "gifting1" && (
+    <div className="px-5 pb-5 space-y-4">
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">
+          You can add 4-5 banners here. This is the top rotating gifting banner.
+        </p>
+
+        <button
+          type="button"
+          onClick={() =>
+            setSettings((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    giftingHeroBanners: [
+                      ...(prev.giftingHeroBanners || []),
+                      {
+                        title: "",
+                        description: "",
+                        backgroundImage: "",
+                        ctaText: "Explore gifts",
+                        ctaLink: "/gifting",
+                        isActive: true,
                       },
-                    }
-                  : prev
-              )
-            }
-          >
-            Remove current promo image
-          </button>
-        )}
-        {promoBgFile && (
-          <button
-            type="button"
-            className="text-xs text-red-600"
-            onClick={() => setPromoBgFile(null)}
-          >
-            Remove new selected promo image
-          </button>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input className={inputCls} value={settings.promoBanner.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, eyebrow: e.target.value } } : p)} placeholder="Eyebrow text" />
-          <input className={inputCls} value={settings.promoBanner.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, title: e.target.value } } : p)} placeholder="Title" />
-          <input className={inputCls} value={settings.promoBanner.primaryButtonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, primaryButtonText: e.target.value } } : p)} placeholder="Primary button text" />
-          <input className={inputCls} value={settings.promoBanner.primaryButtonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, primaryButtonLink: e.target.value } } : p)} placeholder="Primary button link" />
-          <input className={inputCls} value={settings.promoBanner.secondaryButtonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, secondaryButtonText: e.target.value } } : p)} placeholder="Secondary button text" />
-          <input className={inputCls} value={settings.promoBanner.secondaryButtonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, secondaryButtonLink: e.target.value } } : p)} placeholder="Secondary button link" />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-gray-500">Quick link preset:</span>
-          <button type="button" onClick={() => applyPresetLink('promo', 'primaryButtonLink', '/shop')} className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200">Shop All</button>
-          <button type="button" onClick={() => applyPresetLink('promo', 'primaryButtonLink', '/shop?sort=-createdAt')} className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200">New Arrivals</button>
-          <button type="button" onClick={() => applyPresetLink('promo', 'primaryButtonLink', '/shop?isFeatured=true')} className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200">Featured</button>
-          <select
-            className="h-8 rounded-md border border-gray-200 px-2"
-            onChange={(e) => {
-              if (!e.target.value) return;
-              applyPresetLink('promo', 'primaryButtonLink', `/shop?category=${encodeURIComponent(e.target.value)}`);
-            }}
-            defaultValue=""
-          >
-            <option value="">Category...</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <textarea className={inputCls} rows={2} value={settings.promoBanner.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, description: e.target.value } } : p)} placeholder="Promo description" />
-        <input className={inputCls} value={(settings.promoBanner.perks || []).join(', ')} onChange={(e) => setSettings((p) => p ? { ...p, promoBanner: { ...p.promoBanner, perks: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } } : p)} placeholder="Perks comma separated" />
-      </section>
+                    ],
+                  }
+                : prev
+            )
+          }
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
+        >
+          <Plus className="h-4 w-4" /> Add banner
+        </button>
+      </div>
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-        <h2 className="font-semibold text-gray-900">Blog / Journal Banner</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-             <ImageUploader maxFiles={1} aspectRatio="4:5" maxSizeMB={5} existingImages={blogMainFile ? [] : (settings.blogBanner?.mainImage ? [settings.blogBanner.mainImage] : [])} onChange={(files) => setBlogMainFile(files[0] || null)} label="Main Image (Portrait)" />
-             {settings.blogBanner?.mainImage && !blogMainFile && <button type="button" className="text-xs text-red-600" onClick={() => setSettings(p => p ? { ...p, blogBanner: { ...p.blogBanner, mainImage: '', mainImagePublicId: undefined } as any } : p)}>Remove main image</button>}
-          </div>
-          <div className="space-y-3">
-             <ImageUploader maxFiles={1} aspectRatio="1:1" maxSizeMB={5} existingImages={blogSideFile ? [] : (settings.blogBanner?.sideImage ? [settings.blogBanner.sideImage] : [])} onChange={(files) => setBlogSideFile(files[0] || null)} label="Side Floating Image (Square)" />
-             {settings.blogBanner?.sideImage && !blogSideFile && <button type="button" className="text-xs text-red-600" onClick={() => setSettings(p => p ? { ...p, blogBanner: { ...p.blogBanner, sideImage: '', sideImagePublicId: undefined } as any } : p)}>Remove side image</button>}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-          <input className={inputCls} value={settings.blogBanner?.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, eyebrow: e.target.value } as any } : p)} placeholder="Eyebrow text" />
-          <input className={inputCls} value={settings.blogBanner?.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, title: e.target.value } as any } : p)} placeholder="Title" />
-          <input className={inputCls} value={settings.blogBanner?.buttonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonText: e.target.value } as any } : p)} placeholder="Button text" />
-          <input className={inputCls} value={settings.blogBanner?.buttonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonLink: e.target.value } as any } : p)} placeholder="Button link" />
-        </div>
-        <textarea className={inputCls} rows={2} value={settings.blogBanner?.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, description: e.target.value } as any } : p)} placeholder="Description" />
-      </section>
+      {(settings.giftingHeroBanners || []).map((banner, index) => (
+        <div
+          key={index}
+          className="rounded-xl border border-gray-200 p-4 space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-800">
+              Banner {index + 1}
+            </p>
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Gifting Banner 1 (Slider)</h2>
-          <button
-            type="button"
-            onClick={() =>
-              setSettings((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      giftingHeroBanners: [
-                        ...(prev.giftingHeroBanners || []),
-                        { title: '', description: '', backgroundImage: '', ctaText: 'Explore gifts', ctaLink: '/gifting', isActive: true },
-                      ],
-                    }
-                  : prev
-              )
+            <button
+              type="button"
+              onClick={() =>
+                setSettings((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        giftingHeroBanners: (
+                          prev.giftingHeroBanners || []
+                        ).filter((_, i) => i !== index),
+                      }
+                    : prev
+                )
+              }
+              className="text-red-500"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="16:9"
+            maxSizeMB={5}
+            existingImages={
+              giftingHeroFiles[index]
+                ? []
+                : banner.backgroundImage
+                ? [banner.backgroundImage]
+                : []
             }
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
-          >
-            <Plus className="h-4 w-4" /> Add banner
-          </button>
-        </div>
-        <p className="text-xs text-gray-500">You can add 4-5 banners here. This is the top rotating gifting banner.</p>
-        {(settings.giftingHeroBanners || []).map((banner, index) => (
-          <div key={index} className="rounded-xl border border-gray-200 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800">Banner {index + 1}</p>
-              <button
-                type="button"
-                onClick={() =>
-                  setSettings((prev) =>
-                    prev
-                      ? { ...prev, giftingHeroBanners: (prev.giftingHeroBanners || []).filter((_, i) => i !== index) }
-                      : prev
-                  )
-                }
-                className="text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-            <ImageUploader
-              maxFiles={1}
-              aspectRatio="16:9"
-              maxSizeMB={5}
-              existingImages={giftingHeroFiles[index] ? [] : (banner.backgroundImage ? [banner.backgroundImage] : [])}
-              onChange={(files) => setGiftingHeroFiles((prev) => ({ ...prev, [index]: files[0] || null }))}
-              label="Gifting hero image"
+            onChange={(files) =>
+              setGiftingHeroFiles((prev) => ({
+                ...prev,
+                [index]: files[0] || null,
+              }))
+            }
+            label="Gifting hero image"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              className={inputCls}
+              value={banner.title || ""}
+              onChange={(e) =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        giftingHeroBanners: (
+                          p.giftingHeroBanners || []
+                        ).map((b, i) =>
+                          i === index ? { ...b, title: e.target.value } : b
+                        ),
+                      }
+                    : p
+                )
+              }
+              placeholder="Title"
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className={inputCls} value={banner.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, title: e.target.value } : b) } : p)} placeholder="Title" />
-              <input className={inputCls} value={banner.ctaText || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, ctaText: e.target.value } : b) } : p)} placeholder="Button text" />
-              <input className={inputCls} value={banner.ctaLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, ctaLink: e.target.value } : b) } : p)} placeholder="Button link" />
-            </div>
-            <textarea className={inputCls} rows={2} value={banner.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingHeroBanners: (p.giftingHeroBanners || []).map((b, i) => i === index ? { ...b, description: e.target.value } : b) } : p)} placeholder="Description" />
-          </div>
-        ))}
-      </section>
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Gifting Banner 2 (Cards)</h2>
-          <button
-            type="button"
-            onClick={() =>
-              setSettings((prev) =>
-                prev
+            <input
+              className={inputCls}
+              value={banner.ctaText || ""}
+              onChange={(e) =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        giftingHeroBanners: (
+                          p.giftingHeroBanners || []
+                        ).map((b, i) =>
+                          i === index ? { ...b, ctaText: e.target.value } : b
+                        ),
+                      }
+                    : p
+                )
+              }
+              placeholder="Button text"
+            />
+
+            <input
+              className={inputCls}
+              value={banner.ctaLink || ""}
+              onChange={(e) =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        giftingHeroBanners: (
+                          p.giftingHeroBanners || []
+                        ).map((b, i) =>
+                          i === index ? { ...b, ctaLink: e.target.value } : b
+                        ),
+                      }
+                    : p
+                )
+              }
+              placeholder="Button link"
+            />
+          </div>
+
+          <textarea
+            className={inputCls}
+            rows={2}
+            value={banner.description || ""}
+            onChange={(e) =>
+              setSettings((p) =>
+                p
                   ? {
-                      ...prev,
-                      giftingSecondaryBanners: [
-                        ...(prev.giftingSecondaryBanners || []),
-                        { eyebrow: '', title: '', image: '', ctaText: 'Shop now', ctaLink: '/gifting', isActive: true },
-                      ],
+                      ...p,
+                      giftingHeroBanners: (
+                        p.giftingHeroBanners || []
+                      ).map((b, i) =>
+                        i === index
+                          ? { ...b, description: e.target.value }
+                          : b
+                      ),
                     }
-                  : prev
+                  : p
               )
             }
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
-          >
-            <Plus className="h-4 w-4" /> Add card
-          </button>
+            placeholder="Description"
+          />
         </div>
-        <p className="text-xs text-gray-500">You can keep 1-2 cards here for the second gifting banner section.</p>
-        {(settings.giftingSecondaryBanners || []).map((banner, index) => (
-          <div key={index} className="rounded-xl border border-gray-200 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800">Card {index + 1}</p>
-              <button
-                type="button"
-                onClick={() =>
-                  setSettings((prev) =>
-                    prev
-                      ? { ...prev, giftingSecondaryBanners: (prev.giftingSecondaryBanners || []).filter((_, i) => i !== index) }
-                      : prev
-                  )
-                }
-                className="text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-            <ImageUploader
-              maxFiles={1}
-              aspectRatio="16:9"
-              maxSizeMB={5}
-              existingImages={giftingSecondaryFiles[index] ? [] : (banner.image ? [banner.image] : [])}
-              onChange={(files) => setGiftingSecondaryFiles((prev) => ({ ...prev, [index]: files[0] || null }))}
-              label="Gifting secondary image"
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className={inputCls} value={banner.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, eyebrow: e.target.value } : b) } : p)} placeholder="Eyebrow" />
-              <input className={inputCls} value={banner.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, title: e.target.value } : b) } : p)} placeholder="Title" />
-              <input className={inputCls} value={banner.ctaText || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, ctaText: e.target.value } : b) } : p)} placeholder="Button text" />
-              <input className={inputCls} value={banner.ctaLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, giftingSecondaryBanners: (p.giftingSecondaryBanners || []).map((b, i) => i === index ? { ...b, ctaLink: e.target.value } : b) } : p)} placeholder="Button link" />
-            </div>
-          </div>
-        ))}
-      </section>
+      ))}
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-        <h2 className="font-semibold text-gray-900">Footer Settings</h2>
-        <textarea className={inputCls} rows={2} value={settings.footer.description || ''} onChange={(e) => setSettings((p) => p ? { ...p, footer: { ...p.footer, description: e.target.value } } : p)} placeholder="Footer description" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input className={inputCls} value={settings.footer.contactAddress || ''} onChange={(e) => setSettings((p) => p ? { ...p, footer: { ...p.footer, contactAddress: e.target.value } } : p)} placeholder="Contact address" />
-          <input className={inputCls} value={settings.footer.contactPhone || ''} onChange={(e) => setSettings((p) => p ? { ...p, footer: { ...p.footer, contactPhone: e.target.value } } : p)} placeholder="Contact phone" />
-          <input className={inputCls} value={settings.footer.contactEmail || ''} onChange={(e) => setSettings((p) => p ? { ...p, footer: { ...p.footer, contactEmail: e.target.value } } : p)} placeholder="Contact email" />
-          <input className={inputCls} type="number" value={settings.footer.categoryLimit || 7} onChange={(e) => setSettings((p) => p ? { ...p, footer: { ...p.footer, categoryLimit: Number(e.target.value) || 7 } } : p)} placeholder="Category limit" />
+    </div>
+  )}
+</section>
+
+<section className="bg-white rounded-2xl border border-gray-100">
+
+  {/* HEADER */}
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "gifting2" ? null : "gifting2")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">
+      Gifting Banner 2 (Cards)
+    </h2>
+    <span>{activeSection === "gifting2" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {/* CONTENT */}
+  {activeSection === "gifting2" && (
+    <div className="px-5 pb-5 space-y-4">
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">
+          You can keep 1-2 cards here for the second gifting banner section.
+        </p>
+
+        <button
+          type="button"
+          onClick={() =>
+            setSettings((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    giftingSecondaryBanners: [
+                      ...(prev.giftingSecondaryBanners || []),
+                      {
+                        eyebrow: "",
+                        title: "",
+                        image: "",
+                        ctaText: "Shop now",
+                        ctaLink: "/gifting",
+                        isActive: true,
+                      },
+                    ],
+                  }
+                : prev
+            )
+          }
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600"
+        >
+          <Plus className="h-4 w-4" /> Add card
+        </button>
+      </div>
+
+      {(settings.giftingSecondaryBanners || []).map((banner, index) => (
+        <div
+          key={index}
+          className="rounded-xl border border-gray-200 p-4 space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-800">
+              Card {index + 1}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                setSettings((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        giftingSecondaryBanners: (
+                          prev.giftingSecondaryBanners || []
+                        ).filter((_, i) => i !== index),
+                      }
+                    : prev
+                )
+              }
+              className="text-red-500"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="16:9"
+            maxSizeMB={5}
+            existingImages={
+              giftingSecondaryFiles[index]
+                ? []
+                : banner.image
+                ? [banner.image]
+                : []
+            }
+            onChange={(files) =>
+              setGiftingSecondaryFiles((prev) => ({
+                ...prev,
+                [index]: files[0] || null,
+              }))
+            }
+            label="Gifting secondary image"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              className={inputCls}
+              value={banner.eyebrow || ""}
+              onChange={(e) =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        giftingSecondaryBanners: (
+                          p.giftingSecondaryBanners || []
+                        ).map((b, i) =>
+                          i === index
+                            ? { ...b, eyebrow: e.target.value }
+                            : b
+                        ),
+                      }
+                    : p
+                )
+              }
+              placeholder="Eyebrow"
+            />
+
+            <input
+              className={inputCls}
+              value={banner.title || ""}
+              onChange={(e) =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        giftingSecondaryBanners: (
+                          p.giftingSecondaryBanners || []
+                        ).map((b, i) =>
+                          i === index
+                            ? { ...b, title: e.target.value }
+                            : b
+                        ),
+                      }
+                    : p
+                )
+              }
+              placeholder="Title"
+            />
+
+            <input
+              className={inputCls}
+              value={banner.ctaText || ""}
+              onChange={(e) =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        giftingSecondaryBanners: (
+                          p.giftingSecondaryBanners || []
+                        ).map((b, i) =>
+                          i === index
+                            ? { ...b, ctaText: e.target.value }
+                            : b
+                        ),
+                      }
+                    : p
+                )
+              }
+              placeholder="Button text"
+            />
+
+            <input
+              className={inputCls}
+              value={banner.ctaLink || ""}
+              onChange={(e) =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        giftingSecondaryBanners: (
+                          p.giftingSecondaryBanners || []
+                        ).map((b, i) =>
+                          i === index
+                            ? { ...b, ctaLink: e.target.value }
+                            : b
+                        ),
+                      }
+                    : p
+                )
+              }
+              placeholder="Button link"
+            />
+          </div>
+
         </div>
-      </section>
+      ))}
+
+    </div>
+  )}
+</section>
+
+    <section className="bg-white rounded-2xl border border-gray-100">
+
+  {/* HEADER */}
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "footer" ? null : "footer")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">
+      Footer Settings
+    </h2>
+    <span>{activeSection === "footer" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {/* CONTENT */}
+  {activeSection === "footer" && (
+    <div className="px-5 pb-5 space-y-3">
+
+      <textarea
+        className={inputCls}
+        rows={2}
+        value={settings.footer.description || ""}
+        onChange={(e) =>
+          setSettings((p) =>
+            p
+              ? {
+                  ...p,
+                  footer: {
+                    ...p.footer,
+                    description: e.target.value,
+                  },
+                }
+              : p
+          )
+        }
+        placeholder="Footer description"
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input
+          className={inputCls}
+          value={settings.footer.contactAddress || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      contactAddress: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Contact address"
+        />
+
+        <input
+          className={inputCls}
+          value={settings.footer.contactPhone || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      contactPhone: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Contact phone"
+        />
+
+        <input
+          className={inputCls}
+          value={settings.footer.contactEmail || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      contactEmail: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Contact email"
+        />
+
+        <input
+          className={inputCls}
+          type="number"
+          value={settings.footer.categoryLimit || 7}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      categoryLimit: Number(e.target.value) || 7,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Category limit"
+        />
+      </div>
+
+    </div>
+  )}
+</section>
     </div>
   );
 }

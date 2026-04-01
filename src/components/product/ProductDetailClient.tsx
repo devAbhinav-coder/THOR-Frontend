@@ -202,10 +202,12 @@ export default function ProductDetailClient({ slug }: Props) {
     index: number;
   } | null>(null);
   const [showAllReviewsModal, setShowAllReviewsModal] = useState(false);
-  const [isVotingHelpful, setIsVotingHelpful] = useState<Record<string, boolean>>(
-    {},
+  const [isVotingHelpful, setIsVotingHelpful] = useState<
+    Record<string, boolean>
+  >({});
+  const [reportingReviewId, setReportingReviewId] = useState<string | null>(
+    null,
   );
-  const [reportingReviewId, setReportingReviewId] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<Review | null>(null);
   const [reportReason, setReportReason] = useState<
     "spam" | "abusive" | "misleading" | "other"
@@ -434,7 +436,8 @@ export default function ProductDetailClient({ slug }: Props) {
     () =>
       product?.comparePrice ?
         Math.round(
-          ((product.comparePrice - (product?.price || 0)) / product.comparePrice) *
+          ((product.comparePrice - (product?.price || 0)) /
+            product.comparePrice) *
             100,
         )
       : 0,
@@ -444,11 +447,13 @@ export default function ProductDetailClient({ slug }: Props) {
   const isOutOfStock = !selectedVariant || selectedVariant.stock === 0;
   const variants = product?.variants || [];
   const sizes = useMemo(
-    () => Array.from(new Set(variants.filter((v) => v.size).map((v) => v.size!))),
+    () =>
+      Array.from(new Set(variants.filter((v) => v.size).map((v) => v.size!))),
     [variants],
   );
   const colors = useMemo(
-    () => Array.from(new Set(variants.filter((v) => v.color).map((v) => v.color!))),
+    () =>
+      Array.from(new Set(variants.filter((v) => v.color).map((v) => v.color!))),
     [variants],
   );
   const getVariant = (size?: string, color?: string) =>
@@ -464,7 +469,8 @@ export default function ProductDetailClient({ slug }: Props) {
   const positiveReviewsPercent = useMemo(
     () =>
       Math.round(
-        (reviews.filter((r) => r.rating >= 4).length / (reviews.length || 1)) * 100,
+        (reviews.filter((r) => r.rating >= 4).length / (reviews.length || 1)) *
+          100,
       ),
     [reviews],
   );
@@ -589,7 +595,10 @@ export default function ProductDetailClient({ slug }: Props) {
     }
   };
 
-  const handleCustomFieldImageUpload = async (fieldLabel: string, file?: File) => {
+  const handleCustomFieldImageUpload = async (
+    fieldLabel: string,
+    file?: File,
+  ) => {
     if (!file) return;
     if (!isAuthenticated) {
       requireAuth("Sign in to upload image");
@@ -605,7 +614,9 @@ export default function ProductDetailClient({ slug }: Props) {
       setCustomFieldAnswers((prev) => ({ ...prev, [fieldLabel]: imageUrl }));
       toast.success("Image attached");
     } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || "Failed to upload image");
+      toast.error(
+        (err as { message?: string })?.message || "Failed to upload image",
+      );
     } finally {
       setUploadingFieldImages((prev) => ({ ...prev, [fieldLabel]: false }));
     }
@@ -680,7 +691,10 @@ export default function ProductDetailClient({ slug }: Props) {
     }
   };
 
-  const updateHelpfulCountLocally = (reviewId: string, helpfulCount: number) => {
+  const updateHelpfulCountLocally = (
+    reviewId: string,
+    helpfulCount: number,
+  ) => {
     const votes = Array.from({ length: helpfulCount }, () => "");
     setReviews((prev) =>
       prev.map((review) =>
@@ -726,7 +740,9 @@ export default function ProductDetailClient({ slug }: Props) {
       setReportTarget(null);
       setReportDetails("");
     } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || "Failed to report review");
+      toast.error(
+        (err as { message?: string })?.message || "Failed to report review",
+      );
     } finally {
       setReportingReviewId(null);
     }
@@ -1145,8 +1161,8 @@ export default function ProductDetailClient({ slug }: Props) {
             </div>
 
             {/* Inline Gifting Fields */}
-            {
-              Array.isArray(product?.customFields) && product.customFields.length > 0 && (
+            {Array.isArray(product?.customFields) &&
+              product.customFields.length > 0 && (
                 <div className='bg-gold-50/30 border border-gold-100/50 rounded-2xl p-5 space-y-4'>
                   <div className='flex items-center gap-2 mb-1'>
                     <Gift className='h-4 w-4 text-gold-600' />
@@ -1155,8 +1171,11 @@ export default function ProductDetailClient({ slug }: Props) {
                     </h3>
                   </div>
                   <div className='space-y-3.5'>
-                    {product.customFields.map((field) => (
-                      <div key={product._id + field.label} className='space-y-1.5'>
+                    {(product.customFields || []).map((field) => (
+                      <div
+                        key={product._id + field.label}
+                        className='space-y-1.5'
+                      >
                         <label className='block text-xs font-bold text-gray-700 uppercase tracking-tight'>
                           {field.label}{" "}
                           {field.isRequired && (
@@ -1200,7 +1219,9 @@ export default function ProductDetailClient({ slug }: Props) {
                         : field.fieldType === "image" ?
                           <div className='space-y-2'>
                             <label className='inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 cursor-pointer hover:bg-gray-50'>
-                              {uploadingFieldImages[field.label] ? "Uploading..." : "Upload image"}
+                              {uploadingFieldImages[field.label] ?
+                                "Uploading..."
+                              : "Upload image"}
                               <input
                                 type='file'
                                 accept='image/*'
@@ -1722,8 +1743,7 @@ export default function ProductDetailClient({ slug }: Props) {
                       Rating Breakdown
                     </span>
                     <span className='text-[11px] font-black text-brand-600 uppercase tracking-wider'>
-                      {positiveReviewsPercent}
-                      % Positive
+                      {positiveReviewsPercent}% Positive
                     </span>
                   </div>
                   {[5, 4, 3, 2, 1].map((star) => {
@@ -2027,7 +2047,10 @@ export default function ProductDetailClient({ slug }: Props) {
               </button>
             </div>
 
-            <form onSubmit={handleReportReview} className='p-4 sm:p-6 space-y-4'>
+            <form
+              onSubmit={handleReportReview}
+              className='p-4 sm:p-6 space-y-4'
+            >
               <div className='space-y-2'>
                 <label className='text-xs font-bold text-gray-700 uppercase tracking-tight'>
                   Reason
@@ -2036,7 +2059,11 @@ export default function ProductDetailClient({ slug }: Props) {
                   value={reportReason}
                   onChange={(e) =>
                     setReportReason(
-                      e.target.value as "spam" | "abusive" | "misleading" | "other",
+                      e.target.value as
+                        | "spam"
+                        | "abusive"
+                        | "misleading"
+                        | "other",
                     )
                   }
                   className='w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400'
@@ -2078,7 +2105,9 @@ export default function ProductDetailClient({ slug }: Props) {
                   disabled={reportingReviewId === reportTarget._id}
                   className='px-4 py-2.5 rounded-xl bg-navy-900 text-white text-sm font-semibold hover:bg-black disabled:opacity-60'
                 >
-                  {reportingReviewId === reportTarget._id ? "Submitting..." : "Submit report"}
+                  {reportingReviewId === reportTarget._id ?
+                    "Submitting..."
+                  : "Submit report"}
                 </button>
               </div>
             </form>

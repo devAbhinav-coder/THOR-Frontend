@@ -330,7 +330,7 @@ export default function CheckoutClient() {
                       Saved Addresses
                     </p>
                     <div className='space-y-2'>
-                      {user.addresses.map((addr) => (
+                      {(user.addresses || []).map((addr) => (
                         <label
                           key={addr._id}
                           className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
@@ -645,7 +645,7 @@ export default function CheckoutClient() {
                         </p>
                         {item.customFieldAnswers?.length > 0 && (
                           <div className='mt-1.5 grid grid-cols-1 gap-1'>
-                            {item.customFieldAnswers.map((ans: { label: string; value: string }, i: number) => {
+                            {(item.customFieldAnswers || []).map((ans: { label: string; value: string }, i: number) => {
                               const isImage = typeof ans.value === "string" && /^https?:\/\//.test(ans.value);
                               return (
                                 <div key={i} className='inline-flex items-center gap-2 text-[10px] bg-gold-50 border border-gold-100 rounded-md px-2 py-1'>

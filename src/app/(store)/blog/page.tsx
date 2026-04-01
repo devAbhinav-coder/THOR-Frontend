@@ -29,8 +29,7 @@ export default function BlogListingPage() {
         }
         setHasMore(res.pagination?.hasNextPage || false);
       }
-    } catch (error) {
-      console.error("Failed to fetch blogs:", error);
+    } catch {
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +142,7 @@ export default function BlogListingPage() {
                 </h2>
                 
                 <p className="text-base text-white/50 line-clamp-3 mb-8 flex-1 font-light leading-relaxed">
-                  {blog.content.replace(/<[^>]*>?/gm, '')}
+                  {blog.content ? blog.content.replace(/<[^>]*>?/gm, '') : ''}
                 </p>
                 
                 <div className="flex items-center w-full justify-between mt-auto pt-5 border-t border-white/5">
