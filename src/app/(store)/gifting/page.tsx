@@ -165,7 +165,7 @@ export default function GiftingPage() {
           description:
             promo?.description ||
             "Premium gifts for every occasion, tailored to your style.",
-          backgroundImage: promo?.backgroundImage || "/hero-bg.jpg",
+          backgroundImage: promo?.backgroundImage || "/logo.jpg",
           ctaText: promo?.primaryButtonText || "Explore gifts",
           ctaLink: promo?.primaryButtonLink || "/gifting",
         },
@@ -179,7 +179,7 @@ export default function GiftingPage() {
       <section className='relative'>
         <div className='relative h-[176px] sm:h-[240px] lg:h-[280px] overflow-hidden'>
           <Image
-            src={activeHero?.backgroundImage || "/hero-bg.jpg"}
+            src={activeHero?.backgroundImage || "/logo.jpg"}
             alt='Gifting banner'
             fill
             sizes='100vw'

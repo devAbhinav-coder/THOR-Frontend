@@ -230,8 +230,10 @@ export const wishlistGet = z.object({
 
 export const wishlistToggle = z.object({
   status: z.string(),
-  action: z.string(),
-  data: z.object({ wishlistCount: z.number() }),
+  data: z.object({
+    wishlistCount: z.number(),
+    action: z.string(),
+  }),
 });
 
 /** Admin / generic success with `data` object */

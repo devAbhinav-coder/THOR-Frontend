@@ -83,8 +83,11 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           sku: defaultVariant.sku,
           size: defaultVariant.size,
           color: defaultVariant.color,
+          colorCode: defaultVariant.colorCode,
         },
         1,
+        undefined,
+        product,
       );
       router.push("/checkout");
     } catch {
@@ -96,7 +99,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) return requireAuth("Sign in to save to wishlist");
-    await toggleWishlist(product._id);
+    await toggleWishlist(product._id, product);
   };
 
   return (

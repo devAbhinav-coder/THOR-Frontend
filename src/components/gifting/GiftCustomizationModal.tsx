@@ -182,9 +182,11 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
           sku: variant.sku,
           size: variant.size,
           color: variant.color,
+          colorCode: variant.colorCode,
         },
         quantity,
-        answers.map((a) => ({ label: a.label, value: a.value }))
+        answers.map((a) => ({ label: a.label, value: a.value })),
+        product as ProductType,
       );
       onClose();
     } catch {

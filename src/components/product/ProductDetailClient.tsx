@@ -534,9 +534,11 @@ export default function ProductDetailClient({ slug }: Props) {
           sku: selectedVariant.sku,
           size: selectedVariant.size,
           color: selectedVariant.color,
+          colorCode: selectedVariant.colorCode,
         },
         quantity,
         answersArray.length > 0 ? answersArray : undefined,
+        product,
       );
     } catch {
       /* handled */
@@ -571,9 +573,11 @@ export default function ProductDetailClient({ slug }: Props) {
           sku: selectedVariant.sku,
           size: selectedVariant.size,
           color: selectedVariant.color,
+          colorCode: selectedVariant.colorCode,
         },
         quantity,
         answersArray.length > 0 ? answersArray : undefined,
+        product,
       );
       router.push("/checkout");
     } catch {
@@ -585,7 +589,7 @@ export default function ProductDetailClient({ slug }: Props) {
 
   const handleWishlist = async () => {
     if (!isAuthenticated) return requireAuth("Sign in to save to wishlist");
-    await toggleWishlist(product._id);
+    await toggleWishlist(product._id, product);
   };
 
   const handleShare = async () => {

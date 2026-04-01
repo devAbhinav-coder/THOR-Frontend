@@ -23,9 +23,10 @@ import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
+import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CartItem, Coupon, Order } from "@/types";
+import { Coupon, Order } from "@/types";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 
@@ -616,14 +617,21 @@ export default function CheckoutClient() {
                 <div
                   className={`space-y-3 mb-5 ${showItems ? "block" : "hidden lg:block"}`}
                 >
-                  {(existingOrder ? existingOrder.items : (cart?.items || [])).map((item: any) => (
-                    <div key={existingOrder ? (item as any)._id : item.variant.sku} className='flex gap-3 min-w-0'>
+                  {(existingOrder ? existingOrder.items : (cart?.items || [])).map((item: any) => {
+                    const rowKey = cartLineReactKey({
+                      product: item.product,
+                      variant: item.variant,
+                      customFieldAnswers: item.customFieldAnswers,
+                    });
+                    const thumb =
+                      (existingOrder ? item.image : item.product?.images?.[0]?.url) ||
+                      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
+                    return (
+                    <div key={rowKey} className='flex gap-3 min-w-0'>
                       <div className='relative w-14 h-16 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0'>
                         <Image
-                          src={
-                            (existingOrder ? item.image : item.product?.images?.[0]?.url) ||
-                            "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70"
-                          }
+                          key={rowKey}
+                          src={thumb}
                           alt={item.name || "Product"}
                           fill
                           sizes='56px'
@@ -670,7 +678,8 @@ export default function CheckoutClient() {
                         {formatPrice(item.price * item.quantity)}
                       </p>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
 
                 <div className='border-t border-gray-100 pt-4 space-y-2 text-sm'>

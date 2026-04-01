@@ -16,12 +16,16 @@ import {
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { formatPrice, cn } from "@/lib/utils";
+import { cartLineReactKey } from "@/lib/cartLineKey";
 import { couponApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CartItem, Coupon } from "@/types";
 
 const SHIPPING_THRESHOLD = 1000;
 const SHIPPING_CHARGE = 100;
+
+const PLACEHOLDER_IMAGE =
+  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
 
 export default function CartClient() {
   const {
@@ -168,17 +172,18 @@ export default function CartClient() {
                     const minQty = isCorporateGift
                       ? Math.max(item.product?.minOrderQty || 1, 10)
                       : Math.max(item.product?.minOrderQty || 1, 1);
+                    const thumb =
+                      item.product?.images?.[0]?.url || PLACEHOLDER_IMAGE;
+                    const rowKey = cartLineReactKey(item);
                     return (
-                  <div key={item.variant.sku} className='p-5 flex gap-4'>
+                  <div key={rowKey} className='p-5 flex gap-4'>
                     <Link
                       href={`/shop/${item.product?.slug || "#"}`}
                       className='relative w-20 h-24 sm:w-24 sm:h-28 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 ring-1 ring-gray-100'
                     >
                       <Image
-                        src={
-                          item.product?.images?.[0]?.url ||
-                          "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70"
-                        }
+                        key={rowKey}
+                        src={thumb}
                         alt={item.product?.name || "Product"}
                         fill
                         sizes='96px'
