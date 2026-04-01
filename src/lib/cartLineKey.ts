@@ -3,6 +3,7 @@
  * variant is added twice with different customFieldAnswers — duplicate keys cause
  * row reuse and wrong product images after quantity/remove updates.
  */
+
 export function cartLineReactKey(item: {
   product?: unknown;
   variant: { sku: string };

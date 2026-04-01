@@ -91,13 +91,13 @@ function CustomGiftAccordion({ order }: { order: any }) {
 
           {/* Items with custom field answers */}
           <div className="space-y-3">
-            {order.items?.map((item: any, i: number) => (
+            {(order.items ?? []).map((item: any, i: number) => (
               <div key={i} className="bg-white rounded-xl border border-gold-100 p-3 space-y-2">
                 <p className="text-sm font-bold text-gray-900">{item.name}</p>
                 <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                {item.customFieldAnswers?.length > 0 && (
+                {(item.customFieldAnswers?.length ?? 0) > 0 && (
                   <div className="grid grid-cols-2 gap-1.5 pt-1">
-                    {item.customFieldAnswers.map((a: any, j: number) => (
+                    {(item.customFieldAnswers ?? []).map((a: any, j: number) => (
                       <div key={j} className="bg-gold-50 rounded-lg px-2.5 py-1.5 border border-gold-100">
                         <p className="text-[10px] text-gold-600 font-bold">{a.label}</p>
                         {typeof a.value === "string" && /^https?:\/\//.test(a.value) ? (
@@ -242,6 +242,7 @@ export default function AdminOrderDetailsPage() {
 
   const user =
     typeof order.user === 'object' ? (order.user as { name?: string; email?: string; phone?: string }) : null;
+  const orderItems = order.items ?? [];
 
   return (
     <div className="p-4 sm:p-6 xl:p-8 space-y-6">
@@ -305,18 +306,20 @@ export default function AdminOrderDetailsPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
             <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4">
-              <Package className="h-4 w-4 text-brand-600" /> Items ({order.items.length})
+              <Package className="h-4 w-4 text-brand-600" /> Items ({orderItems.length})
             </h2>
             <div className="space-y-4">
-              {order.items.map((it: OrderItem, idx) => (
+              {orderItems.map((it: OrderItem, idx) => (
                 <div key={idx} className="flex gap-3">
                   <div className="relative h-16 w-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-                    <Image src={it.image} alt={it.name} fill sizes="56px" className="object-cover" />
+                    {it.image ?
+                      <Image src={it.image} alt={it.name || 'Product'} fill sizes="56px" className="object-cover" />
+                    : <div className="h-full w-full bg-gray-100" aria-hidden />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 line-clamp-2">{it.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {[it.variant.size, it.variant.color, it.variant.sku].filter(Boolean).join(' · ')}
+                      {[it.variant?.size, it.variant?.color, it.variant?.sku].filter(Boolean).join(' · ')}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       Qty {it.quantity} · {formatPrice(it.price)}

@@ -20,7 +20,8 @@ export default function AdminCouponsPage() {
     setIsLoading(true);
     try {
       const res = await couponApi.getAll();
-      setCoupons(res.data.coupons);
+      const list = res.data?.coupons;
+      setCoupons(Array.isArray(list) ? list : []);
     } catch {
       // silent fail
     } finally {

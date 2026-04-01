@@ -330,7 +330,7 @@ export default function AdminOrdersPage() {
                     <p className="text-xs text-gray-400 mt-0.5">{typeof order.user === 'object' ? order.user.email : ''}</p>
                   </td>
                   <td className="px-4 py-3.5 text-sm text-gray-500">{formatDate(order.createdAt)}</td>
-                  <td className="px-4 py-3.5 text-sm text-gray-600">{order.items.length}</td>
+                  <td className="px-4 py-3.5 text-sm text-gray-600">{(order.items ?? []).length}</td>
                   <td className="px-4 py-3.5 text-sm font-bold text-gray-900">{formatPrice(order.total)}</td>
                   <td className="px-4 py-3.5">
                     <span className={cn(
@@ -392,7 +392,7 @@ export default function AdminOrdersPage() {
                 </div>
                 <div className="mt-3 text-xs text-gray-500 space-y-1">
                   <p>Date: <span className="text-gray-700">{formatDate(order.createdAt)}</span></p>
-                  <p>Items: <span className="text-gray-700">{order.items.length}</span></p>
+                  <p>Items: <span className="text-gray-700">{(order.items ?? []).length}</span></p>
                   <p>Total: <span className="text-gray-900 font-bold">{formatPrice(order.total)}</span></p>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
@@ -430,16 +430,19 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
             ))
-          ) : filteredOrders.map((order) => (
+          ) : filteredOrders.map((order) => {
+            const lineItems = order.items ?? [];
+            const firstLine = lineItems[0];
+            return (
             <div key={order._id} className="p-4">
               <div
                 className="flex items-start gap-3 cursor-pointer"
                 onClick={() => router.push(`/admin/orders/${order._id}`)}
               >
                 {/* Product thumbnail */}
-                {order.items[0]?.image && (
+                {firstLine?.image && (
                   <div className="relative h-14 w-11 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-                    <Image src={order.items[0].image} alt={order.items[0].name} fill sizes="44px" className="object-cover" />
+                    <Image src={firstLine.image} alt={firstLine.name} fill sizes="44px" className="object-cover" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -459,7 +462,10 @@ export default function AdminOrdersPage() {
 
               {expandedOrder === order._id && (
                 <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 animate-fadeIn">
-                  <p className="text-xs text-gray-500">{order.items.length} item{order.items.length > 1 ? 's' : ''} · Payment: <span className="font-semibold">{order.paymentStatus}</span></p>
+                  <p className="text-xs text-gray-500">
+                    {lineItems.length} item{lineItems.length !== 1 ? 's' : ''} · Payment:{' '}
+                    <span className="font-semibold">{order.paymentStatus}</span>
+                  </p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {ORDER_STATUSES.filter((s) => s !== order.status).map((status) => (
                       <button
@@ -478,7 +484,8 @@ export default function AdminOrdersPage() {
                 </div>
               )}
             </div>
-          ))}
+          );
+          })}
         </div>
 
         {!isLoading && filteredOrders.length === 0 && (
