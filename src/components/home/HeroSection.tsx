@@ -104,7 +104,7 @@ export default function HeroSection() {
   if (!slide || slides.length === 0) return null;
 
   return (
-    <section className='relative h-[88vh] min-h-[520px] overflow-hidden bg-navy-950'>
+    <section className='relative h-[min(42svh,320px)] sm:h-[min(80svh,700px)] overflow-hidden bg-navy-950'>
       {slides.map((s, i) => (
         <div
           key={`${s.image}-${s.title}-${i}`}
@@ -119,40 +119,48 @@ export default function HeroSection() {
             fill
             priority={i === 0}
             sizes='100vw'
-            className='object-cover object-center'
+            className='object-cover object-[center_top]'
           />
-          {/* Navy-to-transparent overlay — keeps brand feel */}
-          <div className='absolute inset-0 bg-gradient-to-r from-navy-950/85 via-navy-900/50 to-transparent' />
-          <div className='absolute inset-0 bg-gradient-to-t from-navy-950/60 via-transparent to-transparent' />
+          <div className='absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10' />
         </div>
       ))}
 
-      <div className='relative h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center'>
+      <div className='relative h-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center pt-3 '>
         <div className='max-w-xl animate-fadeIn'>
           {slide.badge && (
-            <span className='inline-flex items-center gap-1.5 bg-brand-600/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-widest shadow-lg'>
+            <span className='inline-flex items-center gap-1.5 bg-brand-600/90 text-white text-[9px] sm:text-xs font-semibold px-2 sm:px-3 py-1 sm:py-1.5 rounded-full mb-1.5 sm:mb-5 uppercase tracking-widest shadow-lg'>
               <span className='w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse' />
               {slide.badge}
             </span>
           )}
           {slide.subtitle && (
-            <p className='text-gold-400 font-medium mb-2 text-base tracking-wide'>
+            <p className='text-gold-400 font-medium mb-1 sm:mb-2 text-[11px] sm:text-base tracking-wide'>
               {slide.subtitle}
             </p>
           )}
-          <h1 className='text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight mb-5 drop-shadow-lg'>
+          <h1 className='text-lg sm:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight mb-1 sm:mb-5 drop-shadow-lg'>
             {slide.title}
           </h1>
           {slide.description && (
-            <p className='text-white/70 text-lg mb-8 leading-relaxed'>
+            <p className='hidden sm:block text-white/75 text-xs sm:text-lg mb-4 sm:mb-8 leading-relaxed line-clamp-2 sm:line-clamp-none'>
               {slide.description}
             </p>
           )}
-          <div className='flex flex-wrap gap-3'>
+          <div className='flex flex-wrap gap-1.5 sm:gap-3'>
+            <Button
+              asChild
+              size='sm'
+              className='sm:hidden bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-900/40 px-2.5 py-1.5 text-[11px]'
+            >
+              <Link href={slide.ctaLink || "/shop"}>
+                <ShoppingBag className='h-3.5 w-3.5 mr-1' />
+                {slide.ctaText || "Shop Now"}
+              </Link>
+            </Button>
             <Button
               asChild
               size='xl'
-              className='bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-900/40'
+              className='hidden sm:inline-flex bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-900/40'
             >
               <Link href={slide.ctaLink || "/shop"}>
                 <ShoppingBag className='h-5 w-5 mr-2' />
@@ -162,8 +170,18 @@ export default function HeroSection() {
             <Button
               asChild
               variant='outline'
+              size='sm'
+              className='sm:hidden border-white bg-white text-navy-900 hover:bg-gray-100 hover:border-white shadow-sm px-2.5 py-1.5 text-[11px]'
+            >
+              <Link href={slide.secondaryCtaLink || "/shop"}>
+                {slide.secondaryCtaText || "View All"}
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant='outline'
               size='xl'
-              className='border-white bg-white text-navy-900 hover:bg-gray-100 hover:border-white shadow-sm'
+              className='hidden sm:inline-flex border-white bg-white text-navy-900 hover:bg-gray-100 hover:border-white shadow-sm'
             >
               <Link href={slide.secondaryCtaLink || "/shop"}>
                 {slide.secondaryCtaText || "View All"}
@@ -173,22 +191,22 @@ export default function HeroSection() {
         </div>
       </div>
 
-      <button
+      {/* <button
         onClick={prev}
-        className='absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-navy-800/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-brand-700/70 transition-colors'
+        className=' absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-8 sm:w-8 rounded-full bg-navy-800/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-brand-700/70 transition-colors'
         aria-label='Previous slide'
       >
-        <ChevronLeft className='h-5 w-5' />
+        <ChevronLeft className='h-4 w-4 sm:h-5 sm:w-5' />
       </button>
       <button
         onClick={next}
-        className='absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-navy-800/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-brand-700/70 transition-colors'
+        className='absolute  right-2 sm:right-4 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-navy-800/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-brand-700/70 transition-colors'
         aria-label='Next slide'
       >
-        <ChevronRight className='h-5 w-5' />
-      </button>
+        <ChevronRight className='h-4 w-4 sm:h-5 sm:w-5' />
+      </button> */}
 
-      <div className='absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2'>
+      <div className='absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-2'>
         {slides.map((_, i) => (
           <button
             key={i}

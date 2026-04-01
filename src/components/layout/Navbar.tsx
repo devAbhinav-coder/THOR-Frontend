@@ -633,6 +633,23 @@ export default function Navbar() {
                     </Link>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
+                      href='/dashboard/gifting'
+                      className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                    >
+                      <Gift className='w-4 h-4 text-white/40' /> Custom Gifting
+                    </Link>
+
+                    {user?.role === "admin" && (
+                      <Link
+                        onClick={() => setIsMenuOpen(false)}
+                        href='/admin'
+                        className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                      >
+                        <Shield className='w-4 h-4 text-white/40' /> Admin Panel
+                      </Link>
+                    )}
+                    <Link
+                      onClick={() => setIsMenuOpen(false)}
                       href='/dashboard/wishlist'
                       className='flex items-center justify-between px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
                     >

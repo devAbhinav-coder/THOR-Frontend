@@ -40,7 +40,7 @@ export function RaniCareChatPanel(props: ChatProps) {
   } = props;
 
   return (
-    <div className="fixed right-4 z-[95] flex flex-col items-end gap-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 sm:right-6">
+    <div className="fixed right-3 sm:right-4 z-[95] flex flex-col items-end gap-1.5 sm:gap-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-5">
       {open && (
         <div
           data-lenis-prevent
@@ -235,25 +235,25 @@ export function RaniCareChatPanel(props: ChatProps) {
 
       {!open && (
         <div className="flex flex-col items-end gap-2 w-fit ml-auto">
-          <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0">
+          <div className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0">
             <button
               type="button"
               onClick={() => setOpen(true)}
               className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-600 to-brand-700 text-white shadow-xl hover:scale-105 active:scale-95 transition-transform inline-flex items-center justify-center"
               aria-label="Open customer support"
             >
-              <MessageCircle className="h-7 w-7 sm:h-8 sm:w-8" />
+              <MessageCircle className="h-6 w-6 sm:h-7 sm:w-7" />
             </button>
             <span
-              className="absolute top-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm ring-1 ring-white/90"
+              className="absolute top-0 right-0 h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm ring-1 ring-white/90"
               title="Support chat"
               aria-hidden
             />
           </div>
-          <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-md text-xs text-gray-600 max-w-[280px]">
-            <Sparkles className="h-3.5 w-3.5 text-brand-600 shrink-0" />
+          <div className="hidden sm:flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-md text-[11px] text-gray-600 max-w-[240px]">
+            <Sparkles className="h-3 w-3 text-brand-600 shrink-0" />
             <span className="leading-snug">Orders &amp; support</span>
-            <ArrowRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            <ArrowRight className="h-3 w-3 text-gray-400 shrink-0" />
           </div>
         </div>
       )}
