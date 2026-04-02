@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { Facebook, Instagram, Mail, Phone, MapPin, Twitter, Youtube } from "lucide-react";
+import { Facebook, Instagram, Mail, Phone, MapPin } from "lucide-react";
 import { categoryApi, storefrontApi } from "@/lib/api";
 import { Category, StorefrontSettings } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
@@ -64,8 +64,6 @@ export default function Footer() {
   const socialLinks = [
     { Icon: Facebook, href: footer?.facebookUrl || "", label: "Facebook" },
     { Icon: Instagram, href: footer?.instagramUrl || "", label: "Instagram" },
-    { Icon: Twitter, href: footer?.twitterUrl || "", label: "Twitter" },
-    { Icon: Youtube, href: footer?.youtubeUrl || "", label: "YouTube" },
   ].filter((s) => {
     const href = normalizeHref(s.href);
     return href !== "/" && href !== "#";

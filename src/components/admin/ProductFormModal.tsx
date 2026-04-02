@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
+import { isMulticolorLabel, VARIANT_MULTICOLOR_MARKER } from '@/lib/variantSwatch';
 
 interface Props {
   product: Product | null;
@@ -39,10 +40,18 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
     product?.productDetails || []
   );
-  const [variants, setVariants] = useState(
-    product?.variants.length
-      ? product.variants
-      : [{ size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}` }]
+  const initialVariants: Product['variants'] =
+    product?.variants.length ?
+      [...product.variants]
+    : [{ size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}` }];
+
+  const [variants, setVariants] = useState(initialVariants);
+  const [variantColorKinds, setVariantColorKinds] = useState<Array<'solid' | 'multicolor'>>(() =>
+    initialVariants.map((v) =>
+      (v.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER || isMulticolorLabel(v.color) ?
+        'multicolor'
+      : 'solid',
+    ),
   );
 
   const [form, setForm] = useState({
@@ -71,11 +80,47 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const addVariant = () =>
+  const addVariant = () => {
     setVariants((v) => [...v, { size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}` }]);
+    setVariantColorKinds((k) => [...k, 'solid']);
+  };
 
-  const removeVariant = (i: number) =>
+  const removeVariant = (i: number) => {
     setVariants((v) => v.filter((_, idx) => idx !== i));
+    setVariantColorKinds((k) => k.filter((_, idx) => idx !== i));
+  };
+
+  const setVariantColorKind = (i: number, kind: 'solid' | 'multicolor') => {
+    setVariantColorKinds((k) => k.map((c, idx) => (idx === i ? kind : c)));
+    if (kind === 'multicolor') {
+      setVariants((v) =>
+        v.map((row, idx) =>
+          idx === i ?
+            {
+              ...row,
+              colorCode: VARIANT_MULTICOLOR_MARKER,
+              color: row.color?.trim() ? row.color : 'Multicolor',
+            }
+          : row,
+        ),
+      );
+    } else {
+      setVariants((v) =>
+        v.map((row, idx) =>
+          idx === i ?
+            {
+              ...row,
+              colorCode:
+                String(row.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER ||
+                !String(row.colorCode || '').trim().startsWith('#') ?
+                  '#000000'
+                : row.colorCode,
+            }
+          : row,
+        ),
+      );
+    }
+  };
 
   const updateVariant = (i: number, field: string, value: string | number) =>
     setVariants((v) => v.map((item, idx) => (idx === i ? { ...item, [field]: value } : item)));
@@ -101,7 +146,24 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       fd.append('isActive', String(form.isActive));
       if (form.seoTitle) fd.append('seoTitle', form.seoTitle);
       if (form.seoDescription) fd.append('seoDescription', form.seoDescription);
-      fd.append('variants', JSON.stringify(variants));
+      fd.append(
+        'variants',
+        JSON.stringify(
+          variants.map((row, idx) => ({
+            sku: row.sku,
+            size: row.size,
+            color: row.color,
+            colorCode:
+              variantColorKinds[idx] === 'multicolor' ?
+                VARIANT_MULTICOLOR_MARKER
+              : String(row.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER ?
+                '#000000'
+              : row.colorCode,
+            stock: row.stock,
+            ...(row.price != null && row.price > 0 ? { price: row.price } : {}),
+          })),
+        ),
+      );
       if (form.tags.trim())
         fd.append('tags', JSON.stringify(form.tags.split(',').map((t) => t.trim()).filter(Boolean)));
       fd.append(
@@ -298,92 +360,170 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
 
               {/* Variants */}
               <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    Variants <span className="text-brand-500">*</span>
-                  </h3>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                      Variants <span className="text-brand-500">*</span>
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1 max-w-xl leading-relaxed">
+                      Each variant is one sellable option: same product with its own <strong>SKU</strong>,{" "}
+                      <strong>size</strong> (e.g. Free, S, M), <strong>stock</strong>, and how{" "}
+                      <strong>color</strong> appears on the site. Add another row for another size/color combo.
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={addVariant}
-                    className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full transition-colors"
+                    className="flex shrink-0 items-center gap-1.5 self-start text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full transition-colors"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add Variant
+                    <Plus className="h-3.5 w-3.5" /> Add variant
                   </button>
                 </div>
 
-                {/* Column labels (desktop) */}
-                <div className="hidden sm:grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 px-1">
-                  {["SKU *", "Size", "Color", "Stock", ""].map((h) => (
-                    <span
-                      key={h}
-                      className="text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                    >
-                      {h}
-                    </span>
-                  ))}
-                </div>
+                <div className="space-y-3">
+                  {variants.map((v, i) => {
+                    const kind = variantColorKinds[i] ?? 'solid';
+                    const hexForInputs =
+                      String(v.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER ?
+                        ''
+                      : (v.colorCode || '');
+                    const pickerValue =
+                      hexForInputs.trim().startsWith('#') ? hexForInputs.trim() : '#000000';
+                    return (
+                      <div
+                        key={i}
+                        className="bg-white rounded-2xl p-4 border border-gray-100 space-y-3 min-w-0 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                            Variant {i + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeVariant(i)}
+                            disabled={variants.length === 1}
+                            className="h-9 w-9 rounded-xl flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Remove variant"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
 
-                <div className="space-y-2">
-                  {variants.map((v, i) => (
-                    <div
-                      key={i}
-                      className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_auto] gap-2 items-center bg-white rounded-xl p-3 border border-gray-100 min-w-0"
-                    >
-                      <input
-                        placeholder="SKU001"
-                        value={v.sku}
-                        onChange={(e) => updateVariant(i, 'sku', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
-                        required
-                      />
-                      <input
-                        placeholder="Free"
-                        value={v.size || ''}
-                        onChange={(e) => updateVariant(i, 'size', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
-                      />
-                      <div className="flex items-center gap-2 min-w-0">
-                        <input
-                          type="color"
-                          value={String(v.colorCode || "#000000").trim().startsWith("#") ? String(v.colorCode || "#000000").trim() : "#000000"}
-                          onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
-                          className="h-10 w-10 shrink-0 rounded-xl border border-gray-200 bg-white p-1 cursor-pointer"
-                          aria-label="Pick color"
-                          title={v.colorCode || "Pick a color"}
-                        />
-                        <div className="grid grid-cols-2 gap-2 min-w-0 flex-1">
-                          <input
-                            placeholder="Color name (e.g. Midnight Black)"
-                            value={v.color || ''}
-                            onChange={(e) => updateVariant(i, 'color', e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
-                          />
-                          <input
-                            placeholder="#0b0f1a"
-                            value={v.colorCode || ''}
-                            onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
-                          />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Field label="SKU" required>
+                            <input
+                              placeholder="e.g. SKU-RED-FREE"
+                              value={v.sku}
+                              onChange={(e) => updateVariant(i, 'sku', e.target.value)}
+                              className={inputCls}
+                              required
+                            />
+                          </Field>
+                          <Field label="Size">
+                            <input
+                              placeholder="e.g. Free, S, M, or custom"
+                              value={v.size || ''}
+                              onChange={(e) => updateVariant(i, 'size', e.target.value)}
+                              className={inputCls}
+                            />
+                          </Field>
+                          <Field label="Stock (units)">
+                            <input
+                              type="number"
+                              placeholder="0"
+                              min={0}
+                              value={v.stock}
+                              onChange={(e) => updateVariant(i, 'stock', parseInt(e.target.value, 10) || 0)}
+                              className={inputCls}
+                            />
+                          </Field>
+                        </div>
+
+                        <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-3">
+                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                            Color on storefront
+                          </p>
+                          <div className="flex flex-wrap gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                              <input
+                                type="radio"
+                                name={`color-kind-${i}`}
+                                className="accent-brand-600"
+                                checked={kind === 'solid'}
+                                onChange={() => setVariantColorKind(i, 'solid')}
+                              />
+                              Single color
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                              <input
+                                type="radio"
+                                name={`color-kind-${i}`}
+                                className="accent-brand-600"
+                                checked={kind === 'multicolor'}
+                                onChange={() => setVariantColorKind(i, 'multicolor')}
+                              />
+                              Multicolor / print (no one swatch)
+                            </label>
+                          </div>
+
+                          {kind === 'solid' ?
+                            <div className="space-y-2">
+                              <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                                <div className="shrink-0">
+                                  <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                    Swatch
+                                  </span>
+                                  <input
+                                    type="color"
+                                    value={pickerValue}
+                                    onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
+                                    className="h-11 w-[4.5rem] rounded-xl border border-gray-200 bg-white p-1 cursor-pointer"
+                                    aria-label="Pick swatch color"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                    Color name (shown to customers)
+                                  </span>
+                                  <input
+                                    placeholder="e.g. Royal Blue, Maroon"
+                                    value={v.color || ''}
+                                    onChange={(e) => updateVariant(i, 'color', e.target.value)}
+                                    className={inputCls}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                  Hex code (optional — overrides swatch if you paste a value)
+                                </span>
+                                <input
+                                  placeholder="#0b0f1a"
+                                  value={hexForInputs}
+                                  onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
+                                  className={`${inputCls} font-mono text-sm max-w-xs`}
+                                />
+                              </div>
+                            </div>
+                          : <div>
+                              <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                Label (e.g. Multicolor, Printed, Assorted)
+                              </span>
+                              <input
+                                placeholder="Multicolor"
+                                value={v.color || ''}
+                                onChange={(e) => updateVariant(i, 'color', e.target.value)}
+                                className={inputCls}
+                              />
+                              <p className="text-[11px] text-gray-400 mt-1.5">
+                                Customers see this text and a multicolor-style badge on listings — no single color picker.
+                              </p>
+                            </div>
+                          }
                         </div>
                       </div>
-                      <input
-                        type="number"
-                        placeholder="0"
-                        min="0"
-                        value={v.stock}
-                        onChange={(e) => updateVariant(i, 'stock', parseInt(e.target.value) || 0)}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeVariant(i)}
-                        disabled={variants.length === 1}
-                        className="h-9 w-9 rounded-xl flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors sm:justify-self-end"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

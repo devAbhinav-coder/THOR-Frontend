@@ -9,6 +9,7 @@ import QueryProvider from "@/components/providers/QueryProvider";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import CookieConsentBanner from "@/components/layout/CookieConsentBanner";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -105,6 +106,20 @@ export default async function RootLayout({
     description:
       "Premium sarees, bridal collections, and thoughtful gifting for every special occasion.",
   };
+  const consentModeDefaultScript = `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', {
+  analytics_storage: 'denied',
+  ad_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+  functionality_storage: 'granted',
+  security_storage: 'granted',
+  wait_for_update: 500
+});
+`;
+
   const websiteLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -125,6 +140,12 @@ export default async function RootLayout({
       data-csp-nonce={nonce}
     >
       <head>
+        {/* Inline in head (not next/script) avoids client/server nonce hydration mismatch */}
+        <script
+          id='consent-mode-default'
+          nonce={nonce || undefined}
+          dangerouslySetInnerHTML={{ __html: consentModeDefaultScript }}
+        />
         <script
           type='application/ld+json'
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
@@ -170,6 +191,7 @@ export default async function RootLayout({
               },
             }}
           />
+          <GoogleAnalytics />
           <CookieConsentBanner />
         </AuthProvider>
       </body>

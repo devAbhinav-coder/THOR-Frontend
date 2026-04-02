@@ -26,11 +26,12 @@ import {
   ChevronUp,
   Gift,
   X,
+  ZoomIn,
 } from "lucide-react";
 import { cartApi, productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, formatDate, cn } from "@/lib/utils";
-import { normalizeCssColor } from "@/lib/normalizeCssColor";
+import { variantSwatchBackground } from "@/lib/variantSwatch";
 import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/ui/SkeletonLoader";
 import { useCartStore } from "@/store/useCartStore";
@@ -40,6 +41,7 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/product/ProductCard";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
+import ProductImageLightbox from "@/components/product/ProductImageLightbox";
 import RichTextContent from "@/components/ui/RichTextContent";
 
 interface Props {
@@ -146,6 +148,7 @@ export default function ProductDetailClient({ slug }: Props) {
 
   /* Gallery */
   const [selectedImage, setSelectedImage] = useState(0);
+  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
   const thumbsRef = useRef<HTMLDivElement>(null);
 
   /* Variant / Qty */
@@ -225,6 +228,7 @@ export default function ProductDetailClient({ slug }: Props) {
   useEffect(() => {
     setIsLoading(true);
     setSelectedImage(0);
+    setImageLightboxOpen(false);
     setReviews([]);
     setRelatedProducts([]);
     setMoreProducts([]);
@@ -764,7 +768,12 @@ export default function ProductDetailClient({ slug }: Props) {
     "pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8";
 
   return (
-    <div className={cn("bg-white min-h-screen", mobileBottomReserve)}>
+    <div
+      className={cn(
+        "bg-white min-h-screen max-w-full overflow-x-hidden",
+        mobileBottomReserve,
+      )}
+    >
       {/* Breadcrumb */}
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2'>
         <nav className='flex items-center gap-1.5 text-xs text-gray-400 flex-wrap'>
@@ -799,10 +808,10 @@ export default function ProductDetailClient({ slug }: Props) {
       </div>
 
       {/* HERO - Gallery + Info */}
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-6'>
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 xl:gap-10'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-6 min-w-0'>
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 xl:gap-10 min-w-0'>
           {/* Gallery */}
-          <div className='relative flex gap-3.5 lg:gap-5 overflow-visible'>
+          <div className='relative flex gap-3.5 lg:gap-5 min-w-0 overflow-x-hidden overflow-y-visible lg:overflow-visible'>
             {/* Desktop vertical thumbnail strip */}
             {product.images.length > 1 && (
               <div
@@ -831,7 +840,8 @@ export default function ProductDetailClient({ slug }: Props) {
                         src={img.url}
                         alt={img.alt || `${product.name} ${i + 1}`}
                         fill
-                        sizes='88px'
+                        sizes='176px'
+                        quality={90}
                         className={isGiftingVisual ? "object-cover" : "object-contain"}
                       />
                     </div>
@@ -847,24 +857,41 @@ export default function ProductDetailClient({ slug }: Props) {
                 style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
               >
                 {product.images[selectedImage]?.url ?
-                  <Image
-                    src={product.images[selectedImage].url}
-                    alt={product.images[selectedImage].alt || product.name}
-                    fill
-                    sizes='(max-width: 1024px) 100vw, 50vw'
-                    className={cn(
-                      "transition-opacity duration-200",
-                      isGiftingVisual ? "object-cover" : "object-contain",
-                    )}
-                    priority
-                  />
+                  <div className='absolute inset-0 z-0'>
+                    <Image
+                      src={product.images[selectedImage].url}
+                      alt={product.images[selectedImage].alt || product.name}
+                      fill
+                      sizes='(max-width: 1024px) 100vw, (max-width: 1536px) 50vw, 720px'
+                      quality={92}
+                      className={cn(
+                        "transition-opacity duration-200",
+                        isGiftingVisual ? "object-cover" : "object-contain",
+                      )}
+                      priority
+                    />
+                  </div>
                 : <div className='absolute inset-0 flex items-center justify-center text-gray-300'>
                     <Package className='w-20 h-20' />
                   </div>
                 }
 
+                {product.images[selectedImage]?.url && (
+                  <button
+                    type='button'
+                    className='group absolute inset-0 z-[5] flex cursor-default items-center justify-center bg-transparent transition-colors hover:bg-black/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 lg:cursor-zoom-in'
+                    aria-label='Open zoom gallery'
+                    onClick={() => setImageLightboxOpen(true)}
+                  >
+                    {/* Plus / zoom icon: desktop hover only — hidden on mobile */}
+                    <span className='pointer-events-none hidden h-9 w-9 items-center justify-center rounded-full bg-white/95 text-navy-800 shadow-md ring-1 ring-black/10 transition-all duration-200 lg:flex lg:opacity-0 lg:shadow-sm lg:ring-black/5 lg:group-hover:opacity-100'>
+                      <ZoomIn className='h-4 w-4' strokeWidth={2.25} />
+                    </span>
+                  </button>
+                )}
+
                 {/* Badges */}
-                <div className='absolute top-3 left-3 flex flex-col gap-1.5 z-10'>
+                <div className='pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5'>
                   {discountPct > 0 && (
                     <span className='text-xs font-bold bg-brand-600 text-white px-2.5 py-1 rounded-full shadow'>
                       -{discountPct}% OFF
@@ -883,9 +910,13 @@ export default function ProductDetailClient({ slug }: Props) {
                 </div>
 
                 {/* Wishlist + Share */}
-                <div className='absolute top-3 right-3 flex flex-col gap-2 z-10'>
+                <div className='absolute top-3 right-3 z-20 flex flex-col gap-2'>
                   <button
-                    onClick={handleWishlist}
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleWishlist();
+                    }}
                     className={cn(
                       "h-9 w-9 rounded-full flex items-center justify-center shadow-md transition-all",
                       inWishlist ?
@@ -899,7 +930,11 @@ export default function ProductDetailClient({ slug }: Props) {
                     />
                   </button>
                   <button
-                    onClick={handleShare}
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShare();
+                    }}
                     className='h-9 w-9 rounded-full bg-white/90 hover:bg-white text-gray-600 hover:text-navy-700 flex items-center justify-center shadow-md transition-all'
                     aria-label='Share'
                   >
@@ -913,23 +948,27 @@ export default function ProductDetailClient({ slug }: Props) {
                 {product.images.length > 1 && (
                   <>
                     <button
-                      onClick={() =>
+                      type='button'
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedImage(
                           (selectedImage - 1 + product.images.length) %
                             product.images.length,
-                        )
-                      }
-                      className='lg:hidden absolute left-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/80 hover:bg-white shadow flex items-center justify-center text-gray-600 z-10'
+                        );
+                      }}
+                      className='lg:hidden absolute left-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow hover:bg-white'
                     >
                       <ChevronLeft className='h-4 w-4' />
                     </button>
                     <button
-                      onClick={() =>
+                      type='button'
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedImage(
                           (selectedImage + 1) % product.images.length,
-                        )
-                      }
-                      className='lg:hidden absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/80 hover:bg-white shadow flex items-center justify-center text-gray-600 z-10'
+                        );
+                      }}
+                      className='lg:hidden absolute right-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow hover:bg-white'
                     >
                       <ChevronRight className='h-4 w-4' />
                     </button>
@@ -939,7 +978,7 @@ export default function ProductDetailClient({ slug }: Props) {
 
               {/* Mobile horizontal thumbnails */}
               {product.images.length > 1 && (
-                <div className='lg:hidden flex gap-2 overflow-x-auto scrollbar-hide pb-1'>
+                <div className='lg:hidden w-full min-w-0 flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide touch-pan-x pb-1'>
                   {product.images.map((img, i) => (
                     <button
                       key={i}
@@ -957,7 +996,8 @@ export default function ProductDetailClient({ slug }: Props) {
                           src={img.url}
                           alt={img.alt || `${product.name} ${i + 1}`}
                           fill
-                          sizes='56px'
+                          sizes='112px'
+                          quality={88}
                           className={isGiftingVisual ? "object-cover" : "object-contain"}
                         />
                       </div>
@@ -969,7 +1009,7 @@ export default function ProductDetailClient({ slug }: Props) {
           </div>
 
           {/* Product Info */}
-          <div className='space-y-4 sm:space-y-5'>
+          <div className='min-w-0 space-y-4 sm:space-y-5'>
             {/* Category chips */}
             <div className='flex flex-wrap items-center gap-2'>
               <span className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
@@ -1121,9 +1161,9 @@ export default function ProductDetailClient({ slug }: Props) {
                   {colors.map((color) => {
                     const v = getVariant(selectedVariant?.size, color);
                     const ok = v && v.stock > 0;
-                    const swatch = normalizeCssColor(
-                      (v as ProductVariant & { colorCode?: string })?.colorCode,
+                    const swatch = variantSwatchBackground(
                       color,
+                      (v as ProductVariant & { colorCode?: string })?.colorCode,
                     );
                     return (
                       <button
@@ -1853,7 +1893,7 @@ export default function ProductDetailClient({ slug }: Props) {
                     {/* Review photos: compact horizontal row */}
                     {review.images && review.images.length > 0 && (
                       <div className='mt-4'>
-                        <div className='flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide'>
+                        <div className='flex min-w-0 max-w-full items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide touch-pan-x'>
                           {(expandedReviewPhotos[review._id] ?
                             review.images
                           : review.images.slice(0, 3)
@@ -2031,7 +2071,7 @@ export default function ProductDetailClient({ slug }: Props) {
                     </button>
                   </div>
                   {review.images && review.images.length > 0 && (
-                    <div className='mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide'>
+                    <div className='mt-3 flex min-w-0 max-w-full gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide touch-pan-x'>
                       {review.images.slice(0, 3).map((img, i) => (
                         <button
                           key={`all_img_${review._id}_${i}`}
@@ -2154,8 +2194,8 @@ export default function ProductDetailClient({ slug }: Props) {
 
       {/* ══════════════ RELATED PRODUCTS ══════════════ */}
       {relatedProducts.length > 0 && (
-        <section className='py-8 sm:py-12 bg-[#faf9f7]'>
-          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+        <section className='py-8 sm:py-12 bg-[#faf9f7] overflow-x-hidden'>
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
             <div className='flex items-end justify-between mb-5 sm:mb-7'>
               <div>
                 <p className='text-xs font-semibold text-brand-600 uppercase tracking-widest mb-1'>
@@ -2186,11 +2226,11 @@ export default function ProductDetailClient({ slug }: Props) {
                 View all <ChevronRight className='h-4 w-4' />
               </Link>
             </div>
-            <div className='sm:hidden flex gap-3 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory'>
+            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide touch-pan-x'>
               {relatedProducts.slice(0, 8).map((p) => (
                 <div
                   key={p._id}
-                  className='w-[calc((100vw-2rem-0.75rem)/2)] min-w-[170px] max-w-[240px] flex-shrink-0 snap-start'
+                  className='w-[calc((100%-0.75rem)/2)] min-w-[170px] max-w-[240px] shrink-0 snap-start'
                 >
                   <ProductCard product={p} />
                 </div>
@@ -2207,8 +2247,8 @@ export default function ProductDetailClient({ slug }: Props) {
 
       {/* ══════════════ MORE FROM HOUSE OF RANI ══════════════ */}
       {moreProducts.length > 0 && (
-        <section className='py-8 sm:py-12 bg-white'>
-          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+        <section className='py-8 sm:py-12 bg-white overflow-x-hidden'>
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
             <div className='flex items-end justify-between mb-5 sm:mb-7'>
               <div>
                 <p className='text-xs font-semibold text-brand-600 uppercase tracking-widest mb-1'>
@@ -2239,11 +2279,11 @@ export default function ProductDetailClient({ slug }: Props) {
                 Explore all <ChevronRight className='h-4 w-4' />
               </Link>
             </div>
-            <div className='sm:hidden flex gap-3 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory'>
+            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide touch-pan-x'>
               {moreProducts.slice(0, 8).map((p) => (
                 <div
                   key={p._id}
-                  className='w-[calc((100vw-2rem-0.75rem)/2)] min-w-[170px] max-w-[240px] flex-shrink-0 snap-start'
+                  className='w-[calc((100%-0.75rem)/2)] min-w-[170px] max-w-[240px] shrink-0 snap-start'
                 >
                   <ProductCard product={p} />
                 </div>
@@ -2278,6 +2318,18 @@ export default function ProductDetailClient({ slug }: Props) {
             />
           </div>
         </div>
+      )}
+
+      {product && product.images.length > 0 && (
+        <ProductImageLightbox
+          images={product.images.map((img) => ({ url: img.url, alt: img.alt }))}
+          productName={product.name}
+          isSquareAspect={isGiftingVisual}
+          open={imageLightboxOpen}
+          initialIndex={selectedImage}
+          onClose={() => setImageLightboxOpen(false)}
+          onActiveIndexChange={setSelectedImage}
+        />
       )}
 
       {isGiftModalOpen && product && (

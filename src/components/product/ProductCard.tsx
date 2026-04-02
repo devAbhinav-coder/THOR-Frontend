@@ -11,7 +11,7 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 import { hasInStockVariant, sumVariantStock } from "@/lib/productStock";
-import { normalizeCssColor } from "@/lib/normalizeCssColor";
+import { variantSwatchBackground } from "@/lib/variantSwatch";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
@@ -267,21 +267,22 @@ export default function ProductCard({ product, className }: ProductCardProps) {
               const extra = uniqueColors.length - MAX;
               return (
                 <div className='flex h-3 sm:h-5 max-w-full items-center gap-1.5 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                  {visible.map(({ color, colorCode }) =>
-                    colorCode ?
-                      <span
-                        key={color}
-                        title={color}
-                        className='h-2 sm:h-4 w-2 sm:w-4 shrink-0 rounded-full border border-gray-200 shadow-sm'
-                        style={{ background: colorCode }}
-                      />
-                    : <span
-                        key={color}
-                        className='shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-500'
-                      >
-                        {color}
-                      </span>,
-                  )}
+                  {visible.map(({ color, colorCode }) => {
+                    const bg = variantSwatchBackground(color, colorCode);
+                    return bg ?
+                        <span
+                          key={color}
+                          title={color}
+                          className='h-2 sm:h-4 w-2 sm:w-4 shrink-0 rounded-full border border-gray-200 shadow-sm'
+                          style={{ background: bg }}
+                        />
+                      : <span
+                          key={color}
+                          className='shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-500'
+                        >
+                          {color}
+                        </span>;
+                  })}
                   {extra > 0 && (
                     <span className='shrink-0 text-[10px] font-semibold text-gray-400'>
                       +{extra}

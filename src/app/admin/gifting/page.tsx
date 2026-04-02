@@ -402,7 +402,7 @@ function GiftProductFormModal({
             <div>
               <div className="bg-gray-50 rounded-2xl p-5 sticky top-2">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Product Images</h3>
-                <ImageUploader maxFiles={5} aspectRatio="1:1" maxSizeMB={5}
+                <ImageUploader maxFiles={5} aspectRatio="1:1" maxSizeMB={12}
                   existingImages={product?.images?.map((i) => i.url) || []}
                   onChange={setNewFiles}
                   hint={product ? "New uploads will be added." : "First image becomes the cover."} />
