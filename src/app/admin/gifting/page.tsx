@@ -80,6 +80,7 @@ function GiftProductFormModal({
   onClose: () => void;
   onSave: (savedProduct?: GiftProduct) => void;
 }) {
+  const normalizeOccasion = (value: string) => String(value || "").trim().toLowerCase();
   const { data: categoriesRes } = useQuery({
     queryKey: ["admin-gift-categories-for-occasions"],
     queryFn: () => adminApi.getCategories({ active: false }),
@@ -90,7 +91,7 @@ function GiftProductFormModal({
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [form, setForm] = useState({
     name: product?.name || "",
-    description: product?.description || "",
+    description: product?.description || product?.shortDescription || "",
     price: String(product?.price || ""),
     comparePrice: String(product?.comparePrice || ""),
     minOrderQty: String(product?.minOrderQty || 1),
@@ -113,7 +114,7 @@ function GiftProductFormModal({
   useEffect(() => {
     setForm({
       name: product?.name || "",
-      description: product?.description || "",
+      description: product?.description || product?.shortDescription || "",
       price: String(product?.price || ""),
       comparePrice: String(product?.comparePrice || ""),
       minOrderQty: String(product?.minOrderQty || 1),
@@ -149,8 +150,8 @@ function GiftProductFormModal({
   const toggleOccasion = (occ: string) => {
     setForm((p) => ({
       ...p,
-      giftOccasions: p.giftOccasions.includes(occ)
-        ? p.giftOccasions.filter((o) => o !== occ)
+      giftOccasions: p.giftOccasions.some((o) => normalizeOccasion(o) === normalizeOccasion(occ))
+        ? p.giftOccasions.filter((o) => normalizeOccasion(o) !== normalizeOccasion(occ))
         : [...p.giftOccasions, occ],
     }));
   };
@@ -171,7 +172,18 @@ function GiftProductFormModal({
       fd.append("isGiftable", "true");
       fd.append("isCustomizable", String(form.isCustomizable));
       fd.append("minOrderQty", form.minOrderQty || "1");
-      fd.append("giftOccasions", JSON.stringify(form.giftOccasions));
+      fd.append(
+        "giftOccasions",
+        JSON.stringify(
+          Array.from(
+            new Set(
+              form.giftOccasions
+                .map((o) => o.trim())
+                .filter(Boolean)
+            )
+          )
+        )
+      );
       fd.append(
         "customFields",
         JSON.stringify(
@@ -247,7 +259,10 @@ function GiftProductFormModal({
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Description *</label>
-                  <textarea className={`${inputCls} resize-none`} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} placeholder="Describe the gift set, what's included, packaging..." required />
+                  <textarea className={`${inputCls} resize-none`} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={6} placeholder={"Paste rich text with line breaks/bullets, e.g.\n- Includes premium gift box\n- Personalized message card\n- Ready to ship"} required />
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    Tip: Multi-line and bullet-point content is supported and displayed cleanly on storefront.
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -278,7 +293,9 @@ function GiftProductFormModal({
                       {dynamicOccasions.map((occ) => (
                         <button key={occ} type="button" onClick={() => toggleOccasion(occ)}
                           className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                            form.giftOccasions.includes(occ) ? "bg-gold-500 text-white border-gold-500" : "bg-white text-gray-600 border-gray-200 hover:border-gold-400"
+                            form.giftOccasions.some((o) => normalizeOccasion(o) === normalizeOccasion(occ))
+                              ? "bg-gold-500 text-white border-gold-500"
+                              : "bg-white text-gray-600 border-gray-200 hover:border-gold-400"
                           )}>
                           {occ}
                         </button>

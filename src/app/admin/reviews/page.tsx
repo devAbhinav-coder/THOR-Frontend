@@ -129,10 +129,10 @@ export default function AdminReviewsPage() {
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand-600 to-navy-700 flex items-center justify-center shrink-0 shadow-sm">
-                      <span className="text-white font-bold text-sm">{review.user.name.charAt(0).toUpperCase()}</span>
+                      <span className="text-white font-bold text-sm">{String(review.user?.name || "U").charAt(0).toUpperCase()}</span>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{review.user.name}</p>
+                      <p className="text-sm font-semibold text-gray-900">{review.user?.name || "Unknown user"}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <div className="flex items-center gap-0.5">
                           {Array.from({ length: 5 }, (_, i) => (

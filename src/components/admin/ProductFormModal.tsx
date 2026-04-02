@@ -177,10 +177,13 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                     className={`${inputCls} resize-none`}
                     value={form.description}
                     onChange={(e) => set('description', e.target.value)}
-                    placeholder="Describe fabric, weave, occasion, care instructions..."
-                    rows={4}
+                    placeholder={"Paste rich text with line breaks/bullets, e.g.\n- Pure silk weave\n- Handcrafted border\n- Dry clean only"}
+                    rows={6}
                     required
                   />
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    Tip: You can paste multi-line text and bullet points; storefront now renders it in a readable format.
+                  </p>
                 </Field>
                 <Field label="Short Description">
                   <input

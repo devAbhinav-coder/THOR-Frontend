@@ -33,8 +33,17 @@ export default function Testimonials() {
   }, [reviews.length]);
 
   const visibleReviews = useMemo(() => {
-    if (reviews.length <= CHUNK_SIZE) return reviews;
-    return Array.from({ length: CHUNK_SIZE }, (_, idx) => reviews[(startIndex + idx) % reviews.length]);
+    const safe = reviews.filter(
+      (r) =>
+        !!r &&
+        typeof r.comment === 'string' &&
+        !!r.user &&
+        typeof r.user === 'object' &&
+        typeof r.user.name === 'string' &&
+        r.user.name.trim().length > 0
+    );
+    if (safe.length <= CHUNK_SIZE) return safe;
+    return Array.from({ length: CHUNK_SIZE }, (_, idx) => safe[(startIndex + idx) % safe.length]);
   }, [reviews, startIndex]);
 
   if (visibleReviews.length === 0) return null;
@@ -52,7 +61,11 @@ export default function Testimonials() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {visibleReviews.map((review) => {
-            const productName = typeof review.product === 'string' ? 'Our Collection' : review.product.name;
+            const productName =
+              typeof review.product === 'string'
+                ? 'Our Collection'
+                : (review.product?.name || 'Our Collection');
+            const reviewerName = review.user?.name || 'Customer';
             return (
             <div
               key={review._id}
@@ -63,11 +76,11 @@ export default function Testimonials() {
               <div className="flex items-center gap-3 pt-4 border-t border-navy-700">
                 <div className="h-10 w-10 rounded-full bg-brand-700 flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-sm">
-                    {review.user.name.charAt(0).toUpperCase()}
+                    {reviewerName.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div>
-                  <p className="font-semibold text-sm text-white">{review.user.name}</p>
+                  <p className="font-semibold text-sm text-white">{reviewerName}</p>
                   <p className="text-xs text-white/40">{productName}</p>
                 </div>
               </div>

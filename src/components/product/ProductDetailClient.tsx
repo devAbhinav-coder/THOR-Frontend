@@ -40,6 +40,7 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/product/ProductCard";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
+import RichTextContent from "@/components/ui/RichTextContent";
 
 interface Props {
   slug: string;
@@ -1470,9 +1471,7 @@ export default function ProductDetailClient({ slug }: Props) {
                   : "max-h-none",
                 )}
               >
-                <p className='text-gray-700 leading-8 text-[15px] whitespace-pre-wrap break-words'>
-                  {product.description}
-                </p>
+                <RichTextContent text={product.description} className='space-y-4' />
               </div>
               {product.description.length > 400 && (
                 <button
@@ -1812,12 +1811,12 @@ export default function ProductDetailClient({ slug }: Props) {
                       <div className='flex items-center gap-4'>
                         <div className='h-12 w-12 rounded-2xl bg-gradient-to-br from-brand-600 to-navy-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-100/50 rotate-3'>
                           <span className='text-white font-black text-lg'>
-                            {review.user.name.charAt(0).toUpperCase()}
+                            {String(review.user?.name || "Customer").charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
                           <p className='text-[15px] font-bold text-gray-900 tracking-tight'>
-                            {review.user.name}
+                            {review.user?.name || "Customer"}
                           </p>
                           <div className='flex items-center gap-2.5 mt-1'>
                             {review.isVerifiedPurchase && (
@@ -2003,7 +2002,7 @@ export default function ProductDetailClient({ slug }: Props) {
                   <div className='flex items-center justify-between gap-3'>
                     <div>
                       <p className='text-sm font-semibold text-gray-900'>
-                        {review.user.name}
+                        {review.user?.name || "Customer"}
                       </p>
                       <p className='text-[11px] text-gray-400'>
                         {formatDate(review.createdAt)}

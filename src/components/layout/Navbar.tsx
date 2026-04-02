@@ -389,7 +389,7 @@ export default function Navbar() {
                           className='h-full w-full object-cover'
                         />
                       : <span className='text-white font-semibold text-sm'>
-                          {user?.name.charAt(0).toUpperCase()}
+                          {String(user?.name || "U").charAt(0).toUpperCase()}
                         </span>
                       }
                     </div>

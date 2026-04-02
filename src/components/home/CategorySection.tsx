@@ -33,7 +33,7 @@ const FALLBACK_IMAGES: Record<string, string> = {
 
 function getImageForCategory(cat: Category): string {
   if (cat.image) return cat.image;
-  const lower = cat.name.toLowerCase();
+  const lower = String(cat.name || "").toLowerCase();
   for (const [key, url] of Object.entries(FALLBACK_IMAGES)) {
     if (lower.includes(key)) return url;
   }
@@ -42,7 +42,7 @@ function getImageForCategory(cat: Category): string {
 
 function isGiftCategory(cat: Category): boolean {
   if (cat.isGiftCategory) return true;
-  const name = cat.name.toLowerCase();
+  const name = String(cat.name || "").toLowerCase();
   const slug = (cat.slug || "").toLowerCase();
   return (
     name.includes("gift") || name.includes("gifting") || slug.includes("gift")
@@ -50,10 +50,12 @@ function isGiftCategory(cat: Category): boolean {
 }
 
 function sortSareeFirst(a: Category, b: Category): number {
-  const aS = /saree|sari/i.test(a.name) ? 0 : 1;
-  const bS = /saree|sari/i.test(b.name) ? 0 : 1;
+  const aName = String(a.name || "");
+  const bName = String(b.name || "");
+  const aS = /saree|sari/i.test(aName) ? 0 : 1;
+  const bS = /saree|sari/i.test(bName) ? 0 : 1;
   if (aS !== bS) return aS - bS;
-  return a.name.localeCompare(b.name);
+  return aName.localeCompare(bName);
 }
 
 /* ── Skeleton ────────────────────────────────────────────── */
@@ -94,7 +96,10 @@ export default function CategorySection() {
       .getStats()
       .then((res) =>
         setCategories(
-          (res.data as { categories: Category[] }).categories || [],
+          (((res.data as { categories: Category[] }).categories || []).filter(
+            (c): c is Category =>
+              !!c && typeof c === "object" && typeof c.name === "string" && c.name.trim().length > 0,
+          )),
         ),
       )
       .catch(() => {})

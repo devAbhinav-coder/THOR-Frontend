@@ -126,7 +126,7 @@ export default function ProfilePage() {
                   {user?.avatar ? (
                     <img src={user.avatar} alt={user.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                   ) : (
-                    <span className="text-brand-700 font-black text-3xl">{user?.name.charAt(0).toUpperCase()}</span>
+                    <span className="text-brand-700 font-black text-3xl">{String(user?.name || "U").charAt(0).toUpperCase()}</span>
                   )}
                   {/* Hover Overlay for desktop */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center justify-center cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
