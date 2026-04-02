@@ -6,6 +6,7 @@ import { TrendingUp, ShoppingBag, Users, Package, AlertCircle, ArrowUp, ArrowDow
 import { adminApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
 import { formatPrice, formatDate, getOrderStatusColor } from '@/lib/utils';
+import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -72,7 +73,7 @@ export default function AdminDashboardPage() {
     {
       label: 'Active Products',
       value: overview.totalProducts.toLocaleString(),
-      sub: `${analytics.lowStockProducts.length} low stock`,
+      sub: `${analytics.lowStockProducts.length} low (<${LOW_STOCK_ALERT_EXCLUSIVE_MAX} units)`,
       icon: Package,
       color: 'bg-amber-50 text-amber-600',
     },
@@ -245,10 +246,13 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="bg-white rounded-xl p-5 border border-gray-100">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-1">
             <AlertCircle className="h-4 w-4 text-amber-500" />
             <h3 className="font-semibold text-gray-900">Low Stock Alert</h3>
           </div>
+          <p className="text-xs text-gray-400 mb-4">
+            Under {LOW_STOCK_ALERT_EXCLUSIVE_MAX} units total (variants combined)
+          </p>
           {analytics.lowStockProducts.length === 0 ? (
             <p className="text-sm text-gray-500">All products are well stocked!</p>
           ) : (

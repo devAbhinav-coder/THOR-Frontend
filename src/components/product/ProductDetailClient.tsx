@@ -42,6 +42,7 @@ import ProductCard from "@/components/product/ProductCard";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
 import ProductImageLightbox from "@/components/product/ProductImageLightbox";
 import RichTextContent from "@/components/ui/RichTextContent";
+import { isLowInStockVariant } from "@/lib/inventoryConstants";
 
 interface Props {
   slug: string;
@@ -1305,7 +1306,7 @@ export default function ProductDetailClient({ slug }: Props) {
                     <span className='text-sm font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full'>
                       Out of Stock
                     </span>
-                  : selectedVariant.stock <= 5 ?
+                  : isLowInStockVariant(selectedVariant.stock) ?
                     <span className='text-sm font-semibold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full animate-pulse'>
                       Only a few left!
                     </span>

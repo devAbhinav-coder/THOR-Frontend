@@ -23,6 +23,8 @@ interface ImageUploaderProps {
   aspectRatio?: AspectRatio;
   maxSizeMB?: number;
   existingImages?: string[];
+  /** When set, each existing thumbnail shows a remove control (e.g. edit product in admin). */
+  onRemoveExisting?: (index: number) => void | Promise<void>;
   onChange: (files: File[]) => void;
   label?: string;
   hint?: string;
@@ -91,6 +93,7 @@ export default function ImageUploader({
   aspectRatio = '3:4',
   maxSizeMB = 5,
   existingImages = [],
+  onRemoveExisting,
   onChange,
   label,
   hint,
@@ -99,6 +102,7 @@ export default function ImageUploader({
   const [previews, setPreviews] = useState<PreviewFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [removingExistingIdx, setRemovingExistingIdx] = useState<number | null>(null);
 
   /* crop modal state */
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -172,6 +176,16 @@ export default function ImageUploader({
     onChange(updated.map((p) => p.file));
   };
 
+  const handleRemoveExisting = async (index: number) => {
+    if (!onRemoveExisting || removingExistingIdx !== null) return;
+    setRemovingExistingIdx(index);
+    try {
+      await Promise.resolve(onRemoveExisting(index));
+    } finally {
+      setRemovingExistingIdx(null);
+    }
+  };
+
   return (
     <div className={cn('space-y-3', className)}>
       {label && (
@@ -233,11 +247,35 @@ export default function ImageUploader({
           )}
         >
           {existingImages.map((url, i) => (
-            <div key={`ex-${i}`} className="relative rounded-xl overflow-hidden bg-[#f0ebe4] group"
-              style={{ aspectRatio: aspectCss }}>
+            <div
+              key={`ex-${url}-${i}`}
+              className={cn(
+                'relative rounded-xl overflow-hidden bg-[#f0ebe4] group',
+                removingExistingIdx === i && 'opacity-60 pointer-events-none',
+              )}
+              style={{ aspectRatio: aspectCss }}
+            >
               <Image src={url} alt={`Image ${i + 1}`} fill sizes="200px" className="object-contain" />
-              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded-full">Current</span>
+              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                {onRemoveExisting ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleRemoveExisting(i);
+                    }}
+                    disabled={removingExistingIdx !== null}
+                    className="h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-colors disabled:opacity-50"
+                    title="Remove image"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded-full">Current</span>
+                )}
+              </div>
+              <div className="absolute top-1.5 left-1.5">
+                <span className="text-xs bg-black/60 text-white px-1.5 py-0.5 rounded-full font-medium">{i + 1}</span>
               </div>
             </div>
           ))}

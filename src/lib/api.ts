@@ -121,7 +121,11 @@ export const productApi = {
     unwrapAxios("products.update", api.patch(`/products/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.productSingle),
   delete: (id: string) => del204("products.delete", api.delete(`/products/${id}`)),
   deleteImage: (id: string, publicId: string) =>
-    unwrapAxios("products.deleteImage", api.delete(`/products/${id}/images/${publicId}`), schemas.productSingle),
+    unwrapAxios(
+      "products.deleteImage",
+      api.delete(`/products/${id}/images/${encodeURIComponent(publicId)}`),
+      schemas.productSingle
+    ),
 };
 
 export const cartApi = {

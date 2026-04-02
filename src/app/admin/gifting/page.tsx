@@ -89,6 +89,9 @@ function GiftProductFormModal({
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [existingImageSlots, setExistingImageSlots] = useState<Product["images"]>(() =>
+    product?.images?.length ? product.images.map((i) => ({ ...i })) : [],
+  );
   const [form, setForm] = useState({
     name: product?.name || "",
     description: product?.description || product?.shortDescription || "",
@@ -133,6 +136,7 @@ function GiftProductFormModal({
     );
     setProductDetails(product?.productDetails || []);
     setNewFiles([]);
+    setExistingImageSlots(product?.images?.length ? product.images.map((i) => ({ ...i })) : []);
   }, [product]);
   const dynamicOccasions = Array.from(
     new Set(
@@ -156,9 +160,37 @@ function GiftProductFormModal({
     }));
   };
 
+  const handleRemoveExistingImage = async (index: number) => {
+    if (!product?._id) return;
+    if (existingImageSlots.length <= 1) {
+      toast.error("At least one product image is required.");
+      return;
+    }
+    const pub = existingImageSlots[index]?.publicId;
+    if (!pub) {
+      toast.error("Cannot remove this image.");
+      return;
+    }
+    try {
+      const res = await productApi.deleteImage(product._id, pub);
+      const next = (res.data?.product as GiftProduct | undefined)?.images;
+      if (next?.length) setExistingImageSlots(next);
+      else setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
+      toast.success("Image removed");
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message || "Failed to remove image");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product && newFiles.length === 0) return toast.error("Upload at least one image");
+    if (product && existingImageSlots.length === 0 && newFiles.length === 0) {
+      return toast.error("Upload at least one image");
+    }
+    if (product && existingImageSlots.length + newFiles.length > 7) {
+      return toast.error("Maximum 7 images per product (remove some or upload fewer).");
+    }
 
     setIsSaving(true);
     try {
@@ -402,10 +434,20 @@ function GiftProductFormModal({
             <div>
               <div className="bg-gray-50 rounded-2xl p-5 sticky top-2">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Product Images</h3>
-                <ImageUploader maxFiles={5} aspectRatio="1:1" maxSizeMB={12}
-                  existingImages={product?.images?.map((i) => i.url) || []}
+                <ImageUploader
+                  key={product?._id ?? "new-gift-product"}
+                  maxFiles={7}
+                  aspectRatio="1:1"
+                  maxSizeMB={12}
+                  existingImages={existingImageSlots.map((i) => i.url)}
+                  onRemoveExisting={product ? handleRemoveExistingImage : undefined}
                   onChange={setNewFiles}
-                  hint={product ? "New uploads will be added." : "First image becomes the cover."} />
+                  hint={
+                    product
+                      ? "Up to 7 images total. Hover a photo and use ✕ to remove, or add new ones."
+                      : "First image becomes the cover (up to 7 images)."
+                  }
+                />
               </div>
             </div>
           </div>

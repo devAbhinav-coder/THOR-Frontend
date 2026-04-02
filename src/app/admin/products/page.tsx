@@ -13,6 +13,7 @@ import { SearchField } from '@/components/ui/SearchField';
 import ProductFormModal from '@/components/admin/ProductFormModal';
 import toast from 'react-hot-toast';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -103,8 +104,7 @@ export default function AdminProductsPage() {
 
   const stockClass = (total: number) => {
     if (total === 0) return 'text-red-600';
-    if (total <= 2) return 'text-amber-700';
-    if (total <= 5) return 'text-amber-600';
+    if (total < LOW_STOCK_ALERT_EXCLUSIVE_MAX) return 'text-amber-600';
     return 'text-green-600';
   };
 

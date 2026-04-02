@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { Product, Category } from '@/types';
+import { Product, Category, ProductImage } from '@/types';
 import { productApi, categoryApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,9 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [existingImageSlots, setExistingImageSlots] = useState<ProductImage[]>(() =>
+    product?.images?.length ? product.images.map((i) => ({ ...i })) : [],
+  );
   const [showSeo, setShowSeo] = useState(false);
   const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
     product?.productDetails || []
@@ -73,6 +76,11 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   useEffect(() => {
     categoryApi.getAll().then((res) => setCategories(res.data.categories || [])).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setExistingImageSlots(product?.images?.length ? product.images.map((i) => ({ ...i })) : []);
+    setNewFiles([]);
+  }, [product?._id]);
 
   const selectedCategory = categories.find((c) => c.name === form.category);
   const subcategories = selectedCategory?.subcategories || [];
@@ -125,9 +133,37 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const updateVariant = (i: number, field: string, value: string | number) =>
     setVariants((v) => v.map((item, idx) => (idx === i ? { ...item, [field]: value } : item)));
 
+  const handleRemoveExistingImage = async (index: number) => {
+    if (!product?._id) return;
+    if (existingImageSlots.length <= 1) {
+      toast.error('At least one product image is required.');
+      return;
+    }
+    const pub = existingImageSlots[index]?.publicId;
+    if (!pub) {
+      toast.error('Cannot remove this image.');
+      return;
+    }
+    try {
+      const res = await productApi.deleteImage(product._id, pub);
+      const next = (res.data?.product as Product | undefined)?.images;
+      if (next?.length) setExistingImageSlots(next);
+      else setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
+      toast.success('Image removed');
+    } catch (err: unknown) {
+      toast.error((err as { message?: string }).message || 'Failed to remove image');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product && newFiles.length === 0) return toast.error('Upload at least one product image');
+    if (product && existingImageSlots.length === 0 && newFiles.length === 0) {
+      return toast.error('Upload at least one product image');
+    }
+    if (product && existingImageSlots.length + newFiles.length > 7) {
+      return toast.error('Maximum 7 images per product (remove some or upload fewer).');
+    }
     if (!form.category) return toast.error('Please select a category');
     if (variants.some((v) => !v.sku.trim())) return toast.error('Every variant needs a SKU');
 
@@ -596,15 +632,17 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 </p>
 
                 <ImageUploader
-                  maxFiles={5}
+                  key={product?._id ?? 'new-product'}
+                  maxFiles={7}
                   aspectRatio="3:4"
                   maxSizeMB={5}
-                  existingImages={product?.images.map((i) => i.url) || []}
+                  existingImages={existingImageSlots.map((i) => i.url)}
+                  onRemoveExisting={product ? handleRemoveExistingImage : undefined}
                   onChange={setNewFiles}
                   hint={
                     product
-                      ? 'New uploads will be added to existing images.'
-                      : 'First image becomes the cover photo.'
+                      ? 'Up to 7 images total. Hover a photo and use ✕ to remove it, or add new ones.'
+                      : 'First image becomes the cover photo (up to 7 images).'
                   }
                 />
 

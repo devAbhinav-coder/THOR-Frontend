@@ -17,7 +17,9 @@ import {
   Percent,
   ArrowUpRight,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
+import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -59,7 +61,12 @@ export default function AnalyticsPage() {
     { label: 'Total revenue', value: formatPrice(overview.totalRevenue), sub: `${formatPrice(overview.monthRevenue)} this month`, icon: TrendingUp },
     { label: 'Total orders', value: overview.totalOrders.toLocaleString(), sub: `${overview.monthOrders} this month`, icon: ShoppingBag },
     { label: 'Customers', value: overview.totalUsers.toLocaleString(), sub: `${overview.newUsersThisMonth} new`, icon: Users },
-    { label: 'Catalogue', value: overview.totalProducts.toLocaleString(), sub: 'Active products', icon: BarChart3 },
+    {
+      label: 'Catalogue',
+      value: overview.totalProducts.toLocaleString(),
+      sub: `${analytics.lowStockProducts?.length ?? 0} low stock (<${LOW_STOCK_ALERT_EXCLUSIVE_MAX} units)`,
+      icon: BarChart3,
+    },
   ];
 
   const secondaryKpis = [
@@ -243,6 +250,41 @@ export default function AnalyticsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+            <div>
+              <h2 className="font-semibold text-gray-900">Low stock alert</h2>
+              <p className="text-xs text-gray-400">
+                Under {LOW_STOCK_ALERT_EXCLUSIVE_MAX} units total (variants combined) — same rule as dashboard
+              </p>
+            </div>
+          </div>
+        </div>
+        {(analytics.lowStockProducts?.length ?? 0) === 0 ? (
+          <p className="text-sm text-gray-500 py-4">All products are well stocked.</p>
+        ) : (
+          <div className="space-y-2 divide-y divide-gray-50">
+            {analytics.lowStockProducts.map((product) => (
+              <div key={String(product._id)} className="flex items-center justify-between gap-3 py-3 first:pt-0">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                  <p className="text-xs text-gray-500">{product.category}</p>
+                </div>
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${
+                    product.totalStock === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
+                  {product.totalStock === 0 ? 'Out' : `${product.totalStock} left`}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

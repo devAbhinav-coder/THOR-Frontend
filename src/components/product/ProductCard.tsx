@@ -15,6 +15,7 @@ import { variantSwatchBackground } from "@/lib/variantSwatch";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
+import { isLowInventoryTotal } from "@/lib/inventoryConstants";
 
 interface ProductCardProps {
   product: Product;
@@ -333,7 +334,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
 
           {/* Low stock — fixed band */}
           {/* <div className='flex h-[22px] min-h-[22px] shrink-0 items-center'>
-            {!isOutOfStock && sellableTotal > 0 && sellableTotal <= 5 ?
+            {!isOutOfStock && isLowInventoryTotal(sellableTotal) ?
               <span className='inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-700'>
                 <span aria-hidden>⚡</span> Only a few left!
               </span>
