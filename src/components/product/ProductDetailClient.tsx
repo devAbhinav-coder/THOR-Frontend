@@ -26,7 +26,6 @@ import {
   ChevronUp,
   Gift,
   X,
-  ZoomIn,
 } from "lucide-react";
 import { cartApi, productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
@@ -150,6 +149,14 @@ export default function ProductDetailClient({ slug }: Props) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
   const thumbsRef = useRef<HTMLDivElement>(null);
+  const pdpMainImageRef = useRef<HTMLDivElement>(null);
+  /** Desktop hover magnifier on main PDP image (coordinates relative to main frame). */
+  const [pdpHoverLens, setPdpHoverLens] = useState<{
+    mx: number;
+    my: number;
+    cw: number;
+    ch: number;
+  } | null>(null);
 
   /* Variant / Qty */
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
@@ -223,6 +230,10 @@ export default function ProductDetailClient({ slug }: Props) {
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
+
+  useEffect(() => {
+    setPdpHoverLens(null);
+  }, [selectedImage]);
 
   /* Initial fetch */
   useEffect(() => {
@@ -504,6 +515,26 @@ export default function ProductDetailClient({ slug }: Props) {
     product.category?.toLowerCase() === "gifting" ||
     !!product.isGiftable ||
     !!product.isCustomizable;
+
+  /** Desktop-only hover magnifier on PDP main image (click still opens lightbox). */
+  const PDP_MAIN_LENS_PX = 120;
+  const PDP_MAIN_LENS_ZOOM = 2.45;
+
+  const onPdpMainImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
+    const el = pdpMainImageRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const mx = e.clientX - r.left;
+    const my = e.clientY - r.top;
+    if (mx < 0 || my < 0 || mx > r.width || my > r.height) {
+      setPdpHoverLens(null);
+      return;
+    }
+    setPdpHoverLens({ mx, my, cw: r.width, ch: r.height });
+  };
+
+  const onPdpMainImageMouseLeave = () => setPdpHoverLens(null);
 
   /* Actions */
   const requireAuth = (msg: string) => {
@@ -853,8 +884,11 @@ export default function ProductDetailClient({ slug }: Props) {
             {/* Main image */}
             <div className='flex-1 space-y-3'>
               <div
+                ref={pdpMainImageRef}
                 className='relative w-full overflow-hidden rounded-2xl bg-gray-50'
                 style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
+                onMouseMove={onPdpMainImageMouseMove}
+                onMouseLeave={onPdpMainImageMouseLeave}
               >
                 {product.images[selectedImage]?.url ?
                   <div className='absolute inset-0 z-0'>
@@ -876,17 +910,58 @@ export default function ProductDetailClient({ slug }: Props) {
                   </div>
                 }
 
+                {pdpHoverLens &&
+                  product.images[selectedImage]?.url && (
+                    <div
+                      className='pointer-events-none absolute z-[7] hidden overflow-hidden rounded-xl border-2 border-white shadow-2xl ring-2 ring-black/15 lg:block'
+                      style={{
+                        width: PDP_MAIN_LENS_PX,
+                        height: PDP_MAIN_LENS_PX,
+                        left: Math.max(
+                          0,
+                          Math.min(
+                            pdpHoverLens.cw - PDP_MAIN_LENS_PX,
+                            pdpHoverLens.mx - PDP_MAIN_LENS_PX / 2,
+                          ),
+                        ),
+                        top: Math.max(
+                          0,
+                          Math.min(
+                            pdpHoverLens.ch - PDP_MAIN_LENS_PX,
+                            pdpHoverLens.my - PDP_MAIN_LENS_PX / 2,
+                          ),
+                        ),
+                      }}
+                      aria-hidden
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={product.images[selectedImage].url}
+                        alt=''
+                        draggable={false}
+                        className='absolute max-w-none object-cover'
+                        style={{
+                          width: pdpHoverLens.cw * PDP_MAIN_LENS_ZOOM,
+                          height: pdpHoverLens.ch * PDP_MAIN_LENS_ZOOM,
+                          left:
+                            PDP_MAIN_LENS_PX / 2 -
+                            pdpHoverLens.mx * PDP_MAIN_LENS_ZOOM,
+                          top:
+                            PDP_MAIN_LENS_PX / 2 -
+                            pdpHoverLens.my * PDP_MAIN_LENS_ZOOM,
+                        }}
+                      />
+                    </div>
+                  )}
+
                 {product.images[selectedImage]?.url && (
                   <button
                     type='button'
-                    className='group absolute inset-0 z-[5] flex cursor-default items-center justify-center bg-transparent transition-colors hover:bg-black/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 lg:cursor-zoom-in'
+                    className='absolute inset-0 z-[5] cursor-default bg-transparent transition-colors hover:bg-black/[0.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 lg:cursor-zoom-in'
                     aria-label='Open zoom gallery'
                     onClick={() => setImageLightboxOpen(true)}
                   >
-                    {/* Plus / zoom icon: desktop hover only — hidden on mobile */}
-                    <span className='pointer-events-none hidden h-9 w-9 items-center justify-center rounded-full bg-white/95 text-navy-800 shadow-md ring-1 ring-black/10 transition-all duration-200 lg:flex lg:opacity-0 lg:shadow-sm lg:ring-black/5 lg:group-hover:opacity-100'>
-                      <ZoomIn className='h-4 w-4' strokeWidth={2.25} />
-                    </span>
+                    <span className='sr-only'>Open zoom gallery</span>
                   </button>
                 )}
 

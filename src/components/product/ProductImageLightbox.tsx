@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 
 export type LightboxImage = { url: string; alt?: string };
 
-const ZOOM_SCALE = 2.35;
+/** Magnification for the right (or stacked) zoom panel only — main preview stays fixed at 1×. */
+const ZOOM_LENS_SCALE = 3.05;
 
 interface ProductImageLightboxProps {
   images: LightboxImage[];
@@ -105,9 +106,6 @@ export default function ProductImageLightbox({
     },
     [],
   );
-
-  const desktopZoom = !coarsePointer && hoveringZoom;
-  const scale = desktopZoom ? ZOOM_SCALE : 1;
 
   const onMainMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (coarsePointer) return;
@@ -223,17 +221,17 @@ export default function ProductImageLightbox({
       <div className='flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center px-2 pb-6 pt-2 sm:px-4 sm:pb-4 sm:pt-4'>
         <p className='mb-2 hidden text-center text-xs text-white/70 sm:block'>
           {!coarsePointer ?
-            "Hover the image to zoom "
+            "Hover the image to zoom"
           : "Swipe left or right on the image for more photos"}
         </p>
 
-        <div className='flex w-full max-w-5xl flex-1 flex-col items-center gap-3 min-[1100px]:flex-row min-[1100px]:items-stretch min-[1100px]:justify-center min-[1100px]:gap-4'>
+        <div className='flex w-full max-w-6xl flex-1 flex-col items-center gap-3 min-[1100px]:flex-row min-[1100px]:items-stretch min-[1100px]:justify-center min-[1100px]:gap-5'>
           <div
             ref={mainRef}
             className={cn(
               "relative w-full max-w-2xl overflow-hidden rounded-2xl bg-gray-100 sm:bg-white/5 ring-1 ring-black/5 sm:ring-white/10",
               aspectClass,
-              "max-h-[min(78vh,900px)] min-[1100px]:max-h-[85vh] min-[1100px]:flex-1",
+              "max-h-[min(78vh,900px)] min-[1100px]:max-h-[85vh] min-[1100px]:min-w-0 min-[1100px]:flex-1",
               !coarsePointer ? "cursor-crosshair" : "cursor-default",
             )}
             onMouseEnter={() => !coarsePointer && setHoveringZoom(true)}
@@ -246,19 +244,16 @@ export default function ProductImageLightbox({
             onTouchMove={onMainTouchMove}
             onTouchEnd={onMainTouchEnd}
           >
+            {/* Main preview: always 1× — zoom only in the side/below panel */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={cur.url}
               alt={cur.alt || `${productName} — image ${idx + 1}`}
               draggable={false}
               className={cn(
-                "h-full w-full select-none transition-transform duration-100 ease-out",
+                "h-full w-full select-none",
                 isSquareAspect ? "object-cover" : "object-contain",
               )}
-              style={{
-                transform: `scale(${scale})`,
-                transformOrigin: `${focal.x}% ${focal.y}%`,
-              }}
             />
 
             {!coarsePointer && (
@@ -271,7 +266,9 @@ export default function ProductImageLightbox({
                 )}
               >
                 <ZoomIn className='h-3.5 w-3.5 shrink-0' />
-                {hoveringZoom ? "Move to pan zoom" : "Hover to zoom"}
+                {hoveringZoom ?
+                  "Move on image — zoom on the right"
+                : "Hover to see zoom on the right"}
               </div>
             )}
           </div>
@@ -279,8 +276,9 @@ export default function ProductImageLightbox({
           {!coarsePointer && (
             <div
               className={cn(
-                "relative hidden w-full max-w-md overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-black/5 min-[1100px]:block min-[1100px]:max-h-[85vh] min-[1100px]:flex-1",
+                "relative w-full max-w-lg overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-black/5",
                 aspectClass,
+                "mx-auto max-h-[min(42vh,420px)] min-[1100px]:mx-0 min-[1100px]:max-h-[85vh] min-[1100px]:max-w-xl min-[1100px]:flex-1",
                 hoveringZoom ? "opacity-100" : "opacity-40",
               )}
               aria-hidden
@@ -290,11 +288,11 @@ export default function ProductImageLightbox({
                 src={cur.url}
                 alt=''
                 className={cn(
-                  "h-full w-full select-none transition-transform duration-100 ease-out",
+                  "h-full w-full select-none transition-transform duration-100 ease-out will-change-transform",
                   isSquareAspect ? "object-cover" : "object-contain",
                 )}
                 style={{
-                  transform: `scale(${hoveringZoom ? ZOOM_SCALE * 1.12 : 1})`,
+                  transform: `scale(${hoveringZoom ? ZOOM_LENS_SCALE : 1})`,
                   transformOrigin: `${focal.x}% ${focal.y}%`,
                 }}
               />

@@ -184,7 +184,7 @@ export default function Navbar() {
 
   return (
     <>
-      {announcementMessages.length > 0 && (
+      {announcementMessages.length > 0 && pathname === "/" && (
         <div className='bg-navy-950 min-h-8 border-b border-navy-700 flex items-center justify-center px-3 py-1.5 text-center relative z-40 group cursor-default'>
           <p className='text-xs sm:text-sm text-gold-300 font-medium leading-snug max-w-4xl animate-fadeIn'>
             {announcementMessages[announcementIndex]}
@@ -202,7 +202,7 @@ export default function Navbar() {
         )}
       >
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
-          <div className='flex items-center justify-between h-14 gap-2'>
+          <div className='flex items-center justify-between h-16 gap-2'>
             <div className='flex items-center gap-1 sm:gap-2 lg:gap-0'>
               <button
                 type='button'
@@ -220,9 +220,9 @@ export default function Navbar() {
                 <Image
                   src='/logo.jpg'
                   alt='The House of Rani'
-                  width={160}
-                  height={48}
-                  className='h-9 sm:h-12 w-auto max-w-[140px] sm:max-w-none object-contain object-left'
+                  width={200}
+                  height={58}
+                  className='h-11 w-auto max-w-[168px] sm:max-w-none sm:h-[3.35rem] lg:h-[3.5rem] object-contain object-left'
                   priority
                 />
               </Link>
@@ -512,9 +512,9 @@ export default function Navbar() {
               <Image
                 src='/logo.jpg'
                 alt='The House of Rani'
-                width={140}
-                height={42}
-                className='h-9 w-auto object-contain'
+                width={176}
+                height={52}
+                className='h-11 w-auto max-w-[200px] object-contain'
               />
               <button
                 onClick={() => setIsMenuOpen(false)}
