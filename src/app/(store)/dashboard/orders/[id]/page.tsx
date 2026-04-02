@@ -133,7 +133,7 @@ function CustomGiftDetails({ order }: { order: Order & { productType?: string; c
           {/* Link to original request */}
           {order.customRequestId && (
             <a
-              href={`/dashboard/gifting/${order.customRequestId}`}
+              href={`/dashboard/gifting/${encodeURIComponent(order.customRequestId)}`}
               className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 bg-white px-4 py-2 rounded-xl border border-brand-100 hover:border-brand-300 transition-colors"
             >
               <Gift className="h-3.5 w-3.5" /> View full request details →
@@ -503,7 +503,7 @@ export default function OrderDetailPage() {
                 {/* Item row — clickable to product page */}
                 <div className="flex gap-3 sm:gap-4">
                   {productSlug ? (
-                    <Link href={`/shop/${productSlug}`} className="relative w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 hover:opacity-90 hover:shadow-md transition-all ring-0 hover:ring-2 ring-brand-200">
+                    <Link href={`/shop/${encodeURIComponent(productSlug)}`} className="relative w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 hover:opacity-90 hover:shadow-md transition-all ring-0 hover:ring-2 ring-brand-200">
                       <Image src={item.image} alt={item.name} fill sizes="80px" className="object-cover" />
                     </Link>
                   ) : (
@@ -514,7 +514,7 @@ export default function OrderDetailPage() {
 
                   <div className="flex-1 min-w-0">
                     {productSlug ? (
-                      <Link href={`/shop/${productSlug}`} className="text-sm font-semibold text-gray-900 hover:text-brand-600 transition-colors leading-snug block">
+                      <Link href={`/shop/${encodeURIComponent(productSlug)}`} className="text-sm font-semibold text-gray-900 hover:text-brand-600 transition-colors leading-snug block">
                         {item.name}
                       </Link>
                     ) : (

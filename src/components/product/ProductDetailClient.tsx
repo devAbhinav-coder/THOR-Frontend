@@ -30,6 +30,7 @@ import {
 import { cartApi, productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, formatDate, cn } from "@/lib/utils";
+import { normalizeCssColor } from "@/lib/normalizeCssColor";
 import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/ui/SkeletonLoader";
 import { useCartStore } from "@/store/useCartStore";
@@ -774,12 +775,21 @@ export default function ProductDetailClient({ slug }: Props) {
             Shop
           </Link>
           <ChevronRight className='h-3 w-3' />
+
           <Link
             href={`/shop?category=${encodeURIComponent(product.category)}`}
             className='hover:text-brand-600 transition-colors'
           >
             {product.category}
           </Link>
+          {isGiftingVisual && product.giftOccasions?.[0] && (
+            <>
+              <ChevronRight className='h-3 w-3' />
+              <Link href='/gift' className='hover:text-brand-600 transition-colors'>
+                {product.giftOccasions?.[0]}
+              </Link>
+            </>
+          )}
           <ChevronRight className='h-3 w-3' />
           <span className='text-gray-600 font-medium truncate max-w-[180px]'>
             {product.name}
@@ -964,6 +974,22 @@ export default function ProductDetailClient({ slug }: Props) {
               <span className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
                 {product.category}
               </span>
+              {isGiftingVisual && product.giftOccasions?.[0] && (
+                //loop for all gift occasions
+                product.giftOccasions.map((occasion) => (
+                  <span key={occasion} className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
+                    {occasion}
+                  </span>
+                ))
+              )}
+              
+              {isGiftingVisual && product.isCustomizable && (
+                <span className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
+                  Customizable
+                </span>
+              )}
+
+              
               {product.fabric && (
                 <span className='text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full'>
                   {product.fabric}
@@ -1094,6 +1120,10 @@ export default function ProductDetailClient({ slug }: Props) {
                   {colors.map((color) => {
                     const v = getVariant(selectedVariant?.size, color);
                     const ok = v && v.stock > 0;
+                    const swatch = normalizeCssColor(
+                      (v as ProductVariant & { colorCode?: string })?.colorCode,
+                      color,
+                    );
                     return (
                       <button
                         key={color}
@@ -1108,14 +1138,11 @@ export default function ProductDetailClient({ slug }: Props) {
                           : "border-gray-100 text-gray-300 cursor-not-allowed",
                         )}
                       >
-                        {(v as ProductVariant & { colorCode?: string })
-                          ?.colorCode && (
+                        {swatch && (
                           <span
                             className='h-3.5 w-3.5 rounded-full border border-white/50 shadow-inner'
                             style={{
-                              background: (
-                                v as ProductVariant & { colorCode?: string }
-                              )?.colorCode,
+                              background: swatch,
                             }}
                           />
                         )}

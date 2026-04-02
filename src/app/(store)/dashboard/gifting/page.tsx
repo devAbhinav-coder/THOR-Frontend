@@ -69,7 +69,7 @@ export default function UserGiftingRequestsPage() {
             return (
               <Link
                 key={req._id}
-                href={`/dashboard/gifting/${req._id}`}
+                href={`/dashboard/gifting/${encodeURIComponent(req._id)}`}
                 className="bg-white rounded-2xl border border-gray-100 p-4 hover:border-brand-200 hover:shadow-md transition-all group flex items-center gap-4"
               >
                 <div className="relative h-16 w-16 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-50">

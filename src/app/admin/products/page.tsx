@@ -63,6 +63,11 @@ export default function AdminProductsPage() {
       await productApi.delete(id);
       toast.success('Product deleted');
       setDeleteConfirm(null);
+      setProducts((prev) => prev.filter((p) => p._id !== id));
+      setPagination((prev) => ({
+        ...prev,
+        totalProducts: Math.max(0, prev.totalProducts - 1),
+      }));
       fetchProducts(1, debouncedSearch, sortBy);
     } catch (err: unknown) {
       const error = err as { message?: string };
@@ -70,9 +75,23 @@ export default function AdminProductsPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = (savedProduct?: Product) => {
     setIsModalOpen(false);
     setEditProduct(null);
+    if (savedProduct?._id) {
+      setProducts((prev) => {
+        const idx = prev.findIndex((p) => p._id === savedProduct._id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = savedProduct;
+          return next;
+        }
+        return [savedProduct, ...prev];
+      });
+      if (!products.some((p) => p._id === savedProduct._id)) {
+        setPagination((prev) => ({ ...prev, totalProducts: prev.totalProducts + 1 }));
+      }
+    }
     fetchProducts(1, debouncedSearch, sortBy);
   };
 

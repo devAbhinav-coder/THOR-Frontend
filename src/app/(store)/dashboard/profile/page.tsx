@@ -204,7 +204,7 @@ export default function ProfilePage() {
         ) : (
           <div className="space-y-2">
             {recentOrders.map((o) => (
-              <Link key={o._id} href={`/dashboard/orders/${o._id}`} className="block p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-gray-50 transition-all">
+              <Link key={o._id} href={`/dashboard/orders/${encodeURIComponent(o._id)}`} className="block p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-gray-50 transition-all">
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{o.orderNumber}</p>

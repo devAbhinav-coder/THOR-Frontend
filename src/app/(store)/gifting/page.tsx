@@ -10,6 +10,7 @@ import { giftingApi, storefrontApi } from "@/lib/api";
 import { cn, formatPrice } from "@/lib/utils";
 import type { Category, Product, StorefrontSettings } from "@/types";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { Skeleton } from "@/components/ui/SkeletonLoader";
 
 type SortKey =
   | "relevance"
@@ -25,6 +26,7 @@ type PriceFilterKey =
   | "1000_3000"
   | "3000_7000"
   | "above_7000";
+const SEARCH_MAX_LEN = 80;
 
 type GiftingProductsResponse = {
   data?: {
@@ -46,14 +48,17 @@ export default function GiftingPage() {
   const [minRating, setMinRating] = useState<number>(0);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const handleSearchChange = (value: string) =>
+    setSearch(value.slice(0, SEARCH_MAX_LEN));
+  const clearSearch = () => setSearch("");
 
-  const { data: categoriesBody } = useQuery({
+  const { data: categoriesBody, isLoading: categoriesLoading } = useQuery({
     queryKey: ["gifting-categories"],
     queryFn: () => giftingApi.getCategories(),
     staleTime: 120_000,
   });
 
-  const { data: settingsBody } = useQuery({
+  const { data: settingsBody, isLoading: settingsLoading } = useQuery({
     queryKey: ["storefront-settings-gifting"],
     queryFn: () => storefrontApi.getSettings(),
     staleTime: 120_000,
@@ -177,43 +182,60 @@ export default function GiftingPage() {
     <div className='min-h-screen bg-white'>
       {/* Banner 1 */}
       <section className='relative'>
-        <div className='relative h-[176px] sm:h-[240px] lg:h-[280px] overflow-hidden'>
-          <Image
-            src={activeHero?.backgroundImage || "/logo.jpg"}
-            alt='Gifting banner'
-            fill
-            sizes='100vw'
-            className='object-cover'
-            priority
-          />
-          <div className='absolute inset-0 bg-black/35' />
-          <div className='absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center'>
-            <div className='max-w-xl text-white'>
-              <h1 className='text-xl sm:text-3xl lg:text-4xl font-serif font-bold leading-tight'>
-                {activeHero?.title || "Smart gifting made easy"}
-              </h1>
-              <p className='mt-2 text-xs sm:text-sm text-white/90'>
-                {activeHero?.description ||
-                  "Premium gifts for every occasion, tailored to your style."}
-              </p>
-            </div>
-          </div>
-          {heroSlides.length > 1 && (
-            <div className='absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5'>
-              {heroSlides.map((_, i) => (
-                <button
-                  key={i}
-                  type='button'
-                  onClick={() => setActiveHeroIndex(i)}
-                  className={cn(
-                    "h-2 rounded-full transition-all",
-                    i === activeHeroIndex ? "w-6 bg-white" : "w-2 bg-white/60",
-                  )}
-                  aria-label={`Go to banner ${i + 1}`}
-                />
-              ))}
-            </div>
-          )}
+        <div className='relative h-[176px] sm:h-[240px] lg:h-[280px] overflow-hidden bg-gray-100'>
+          {settingsLoading ?
+            <>
+              <Skeleton className='absolute inset-0 rounded-none' />
+              <div className='absolute inset-0 bg-black/25' />
+              <div className='absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center'>
+                <div className='max-w-xl space-y-3'>
+                  <Skeleton className='h-7 sm:h-10 w-72 sm:w-[28rem] bg-white/25' />
+                  <Skeleton className='h-4 w-80 bg-white/20' />
+                  <Skeleton className='h-4 w-64 bg-white/15' />
+                </div>
+              </div>
+            </>
+          : <>
+              <Image
+                src={activeHero?.backgroundImage || "/logo.jpg"}
+                alt='Gifting banner'
+                fill
+                sizes='100vw'
+                className='object-cover'
+                priority
+              />
+              <div className='absolute inset-0 bg-black/35' />
+              <div className='absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center'>
+                <div className='max-w-xl text-white'>
+                  <h1 className='text-xl sm:text-3xl lg:text-4xl font-serif font-bold leading-tight'>
+                    {activeHero?.title || "Smart gifting made easy"}
+                  </h1>
+                  <p className='mt-2 text-xs sm:text-sm text-white/90'>
+                    {activeHero?.description ||
+                      "Premium gifts for every occasion, tailored to your style."}
+                  </p>
+                </div>
+              </div>
+              {heroSlides.length > 1 && (
+                <div className='absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5'>
+                  {heroSlides.map((_, i) => (
+                    <button
+                      key={i}
+                      type='button'
+                      onClick={() => setActiveHeroIndex(i)}
+                      className={cn(
+                        "h-2 rounded-full transition-all",
+                        i === activeHeroIndex ?
+                          "w-6 bg-white"
+                        : "w-2 bg-white/60",
+                      )}
+                      aria-label={`Go to banner ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          }
         </div>
       </section>
       {/* Categories heading */}
@@ -229,60 +251,69 @@ export default function GiftingPage() {
         </h2>
       </section>
       {/* Admin categories image strip */}
-      {giftCategories.length > 0 && (
-        <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
-          <div className='flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-            <button
-              type='button'
-              onClick={() => setActiveOccasion("all")}
-              className={cn(
-                "flex-shrink-0 w-[84px] sm:w-[92px] text-center",
-                activeOccasion === "all" && "opacity-100",
-              )}
-            >
-              <div className='h-14 w-14 sm:h-16 sm:w-16 rounded-full border border-gray-200 mx-auto bg-gray-100 grid place-items-center text-gray-500'>
-                <Gift className='h-5 w-5' />
+      <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
+        <div className='flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+          {categoriesLoading ?
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className='flex-shrink-0 w-[84px] sm:w-[92px] text-center'>
+                <Skeleton className='h-14 w-14 sm:h-16 sm:w-16 rounded-full mx-auto bg-gray-100' />
+                <Skeleton className='mt-2 h-3 w-16 rounded mx-auto bg-gray-100' />
               </div>
-              <p className='mt-1 text-[11px] font-medium text-gray-700 line-clamp-2'>
-                All
-              </p>
-            </button>
-            {giftCategories.map((cat) => (
+            ))
+          : giftCategories.length > 0 ?
+            <>
               <button
-                key={cat._id}
                 type='button'
-                onClick={() => setActiveOccasion(cat.name)}
-                className={cn("flex-shrink-0 w-[84px] sm:w-[92px] text-center")}
+                onClick={() => setActiveOccasion("all")}
+                className={cn(
+                  "flex-shrink-0 w-[84px] sm:w-[92px] text-center",
+                  activeOccasion === "all" && "opacity-100",
+                )}
               >
-                <div
-                  className={cn(
-                    "relative h-14 w-14 sm:h-16 sm:w-16 rounded-full overflow-hidden border mx-auto bg-gray-100",
-                    activeOccasion === cat.name ?
-                      "border-brand-500 ring-2 ring-brand-100"
-                    : "border-gray-200",
-                  )}
-                >
-                  {cat.image ?
-                    <Image
-                      src={cat.image}
-                      alt={cat.name}
-                      fill
-                      sizes='64px'
-                      className='object-cover'
-                    />
-                  : <div className='absolute inset-0 grid place-items-center text-gray-300'>
-                      <Gift className='h-5 w-5' />
-                    </div>
-                  }
+                <div className='h-14 w-14 sm:h-16 sm:w-16 rounded-full border border-gray-200 mx-auto bg-gray-100 grid place-items-center text-gray-500'>
+                  <Gift className='h-5 w-5' />
                 </div>
-                <p className='mt-1 text-[11px] font-medium text-gray-700 line-clamp-2 leading-tight'>
-                  {cat.name}
+                <p className='mt-1 text-[11px] font-medium text-gray-700 line-clamp-2'>
+                  All
                 </p>
               </button>
-            ))}
-          </div>
-        </section>
-      )}
+              {giftCategories.map((cat) => (
+                <button
+                  key={cat._id}
+                  type='button'
+                  onClick={() => setActiveOccasion(cat.name)}
+                  className={cn("flex-shrink-0 w-[84px] sm:w-[92px] text-center")}
+                >
+                  <div
+                    className={cn(
+                      "relative h-14 w-14 sm:h-16 sm:w-16 rounded-full overflow-hidden border mx-auto bg-gray-100",
+                      activeOccasion === cat.name ?
+                        "border-brand-500 ring-2 ring-brand-100"
+                      : "border-gray-200",
+                    )}
+                  >
+                    {cat.image ?
+                      <Image
+                        src={cat.image}
+                        alt={cat.name}
+                        fill
+                        sizes='64px'
+                        className='object-cover'
+                      />
+                    : <div className='absolute inset-0 grid place-items-center text-gray-300'>
+                        <Gift className='h-5 w-5' />
+                      </div>
+                    }
+                  </div>
+                  <p className='mt-1 text-[11px] font-medium text-gray-700 line-clamp-2 leading-tight'>
+                    {cat.name}
+                  </p>
+                </button>
+              ))}
+            </>
+          : null}
+        </div>
+      </section>
       {/* Banner 2 */}
       <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
         <div
@@ -293,7 +324,22 @@ export default function GiftingPage() {
             : "grid-cols-1",
           )}
         >
-          {(giftingSecondaryBanners.length > 0 ?
+          {settingsLoading ?
+            Array.from({ length: 2 }).map((_, i) => (
+              <div
+                key={i}
+                className='relative h-[110px] sm:h-[140px] rounded-2xl overflow-hidden border border-gray-100 bg-gray-100'
+              >
+                <Skeleton className='absolute inset-0' />
+                <div className='absolute inset-0 px-4 sm:px-6 flex items-center justify-between gap-3'>
+                  <div className='space-y-2'>
+                    <Skeleton className='h-3 w-32 bg-white/20' />
+                    <Skeleton className='h-6 w-56 bg-white/20' />
+                  </div>
+                </div>
+              </div>
+            ))
+          : (giftingSecondaryBanners.length > 0 ?
             giftingSecondaryBanners
           : [
               {
@@ -359,15 +405,19 @@ export default function GiftingPage() {
               <div className='relative w-full sm:max-w-xl'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
                 <input
-                  type='search'
+                  type='text'
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   placeholder='Search by product name, category, or occasion'
                   className='w-full h-10 rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20'
+                  autoComplete='off'
+                  spellCheck={false}
+                  inputMode='search'
                 />
                 {search && (
                   <button
-                    onClick={() => setSearch("")}
+                    type='button'
+                    onClick={clearSearch}
                     className='absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 text-gray-500 grid place-items-center'
                     aria-label='Clear search'
                   >
@@ -540,15 +590,8 @@ export default function GiftingPage() {
       <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-4'>
         {isLoading ?
           <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5'>
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className='animate-pulse rounded-xl border border-gray-100 p-2.5'
-              >
-                <div className='aspect-[3/4] bg-gray-100 rounded-lg mb-2.5' />
-                <div className='h-3 bg-gray-100 rounded w-3/4 mb-1.5' />
-                <div className='h-3 bg-gray-100 rounded w-1/2' />
-              </div>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <GiftProductCardSkeleton key={i} />
             ))}
           </div>
         : products.length === 0 ?
@@ -571,13 +614,38 @@ export default function GiftingPage() {
             </div>
             <div ref={sentinelRef} className='h-10' />
             {isFetchingNextPage && (
-              <p className='text-center text-sm text-gray-500 pb-8'>
-                Loading more...
-              </p>
+              <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 pb-8'>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <GiftProductCardSkeleton key={i} />
+                ))}
+              </div>
             )}
           </>
         }
       </section>
+    </div>
+  );
+}
+
+function GiftProductCardSkeleton() {
+  return (
+    <div className='rounded-xl border border-gray-100 bg-white overflow-hidden'>
+      <div className='relative aspect-[4/5] bg-gray-50'>
+        <Skeleton className='absolute inset-0 rounded-none' />
+        <Skeleton className='absolute top-2 left-2 h-5 w-24 rounded-md bg-white/70' />
+        <Skeleton className='absolute top-2 right-2 h-5 w-20 rounded-md bg-white/70' />
+      </div>
+      <div className='p-2.5 sm:p-3 space-y-2'>
+        <div className='space-y-1'>
+          <Skeleton className='h-4 w-full' />
+          <Skeleton className='h-4 w-4/5' />
+        </div>
+        <div className='flex items-center justify-between gap-2'>
+          <Skeleton className='h-4 w-20' />
+          <Skeleton className='h-4 w-14' />
+        </div>
+        <Skeleton className='h-10 w-full rounded-lg' />
+      </div>
     </div>
   );
 }
@@ -595,7 +663,7 @@ function GiftProductCard({ product }: { product: Product }) {
   const ratingAverage = Number(product.ratings?.average || 0);
   return (
     <Link
-      href={`/shop/${product.slug}`}
+      href={`/shop/${encodeURIComponent(product.slug)}`}
       className='group block rounded-xl border border-gray-100 bg-white overflow-hidden hover:shadow-md transition-shadow'
     >
       <div className='relative aspect-[4/5] bg-gray-50'>

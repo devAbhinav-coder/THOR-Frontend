@@ -2,12 +2,19 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react";
-import { productApi } from "@/lib/api";
-import { Product, FilterOptions } from "@/types";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  SlidersHorizontal,
+  X,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+} from "lucide-react";
+import { productApi, storefrontApi } from "@/lib/api";
+import { Product, FilterOptions, StorefrontSettings } from "@/types";
 import ProductCard from "@/components/product/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
-import { SearchField } from "@/components/ui/SearchField";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -22,6 +29,15 @@ const SORT_OPTIONS = [
 ];
 const SEARCH_MAX_LEN = 30;
 
+const defaultShopBanner = {
+  title: "Shop Our Collection",
+  subtitle: "Discover premium ethnic wear crafted for every occasion.",
+  centerImage: "",
+  leftImage: "",
+  rightImage: "",
+  isActive: true,
+};
+
 export default function ShopClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -32,6 +48,8 @@ export default function ShopClient() {
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(
     null,
   );
+  const [storefrontSettings, setStorefrontSettings] =
+    useState<StorefrontSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -133,6 +151,13 @@ export default function ShopClient() {
     fetchFilters();
   }, []);
 
+  useEffect(() => {
+    storefrontApi
+      .getSettings()
+      .then((res) => setStorefrontSettings(res.data?.settings || null))
+      .catch(() => {});
+  }, []);
+
   const fetchProducts = useCallback(
     async (nextPage: number, mode: "replace" | "append") => {
       if (mode === "replace") setIsLoading(true);
@@ -211,7 +236,8 @@ export default function ShopClient() {
     Object.entries(newFilters).forEach(([k, v]) => {
       if (v && v !== "-createdAt" && v !== "1") params.set(k, String(v));
     });
-    router.push(`/shop?${params.toString()}`, { scroll: false });
+    const qs = params.toString();
+    router.push(qs ? `/shop?${qs}` : "/shop", { scroll: false });
   };
 
   const clearFilters = () => {
@@ -242,26 +268,158 @@ export default function ShopClient() {
     filters.search.length > 28 ?
       `${filters.search.slice(0, 28)}...`
     : filters.search;
+  const shopBanner = useMemo(() => {
+    const raw =
+      ((storefrontSettings as StorefrontSettings & {
+        shopBanner?: Partial<typeof defaultShopBanner>;
+      } | null)?.shopBanner as Partial<typeof defaultShopBanner> | undefined) ||
+      {};
+    return {
+      ...defaultShopBanner,
+      ...raw,
+      isActive: raw.isActive !== false,
+    };
+  }, [storefrontSettings]);
+  const headingText =
+    filters.isFeatured ? "Featured Products" : "Shop Collection";
+  const breadcrumbContext = useMemo(() => {
+    if (filters.search) return `Search Products: "${searchTitle}"`;
+    if (filters.category) return filters.category;
+    if (filters.fabric) return `${filters.fabric} Collection`;
+    if (filters.rating) return `${filters.rating}★ & Above`;
+    if (filters.minPrice || filters.maxPrice) return "Price Filter";
+    if (filters.isFeatured) return "Featured Products";
+    return "All Products";
+  }, [
+    filters.search,
+    filters.category,
+    filters.fabric,
+    filters.rating,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.isFeatured,
+    searchTitle,
+  ]);
   const productGridClass =
     "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0";
 
   return (
-    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 overflow-x-clip'>
-      <div className='mb-6'>
-        <h1 className='text-3xl font-serif font-bold text-gray-900 break-words max-w-[42rem]'>
-          {filters.isFeatured ?
-            "Featured Products"
-          : filters.category || filters.search ?
-            filters.category || `Search: "${searchTitle}"`
-          : "All Products"}
-        </h1>
-        <p className='text-gray-500 mt-1'>
-          {isLoading ?
-            "Loading..."
-          : `${pagination.totalProducts} products found`}
-        </p>
+    <div>
+      {shopBanner.isActive && (
+        <section className='relative border-y border-gray-200/70 overflow-x-clip'>
+          {shopBanner.centerImage ? (
+            <div className='relative h-[130px] sm:h-[180px] lg:h-[210px]'>
+              <Image
+                src={shopBanner.centerImage}
+                alt='Shop banner'
+                fill
+                className='object-cover object-center'
+                sizes='100vw'
+                priority
+              />
+              <div className='absolute inset-0 bg-black/20' />
+              <div className='absolute inset-0 flex flex-col items-center justify-center px-4 text-center'>
+                <h1 className='font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight drop-shadow-md'>
+                  {shopBanner.title || "Shop Our Collection"}
+                </h1>
+                <p className='mt-2 text-sm sm:text-lg text-white/95 max-w-2xl mx-auto drop-shadow'>
+                  {shopBanner.subtitle ||
+                    "Discover premium ethnic wear crafted for every occasion."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className='bg-[#f2eceb]'>
+              <div className='max-w-[1800px] mx-auto px-2 sm:px-4'>
+                <div className='grid grid-cols-1 sm:grid-cols-[150px_1fr_150px] lg:grid-cols-[220px_1fr_220px] items-stretch min-h-[130px] sm:min-h-[180px] lg:min-h-[210px]'>
+                  <div className='relative hidden sm:block'>
+                    {shopBanner.leftImage && (
+                      <Image
+                        src={shopBanner.leftImage}
+                        alt='Shop banner left'
+                        fill
+                        className='object-cover object-center'
+                        sizes='220px'
+                        priority
+                      />
+                    )}
+                  </div>
+                  <div className='flex flex-col items-center justify-center px-4 sm:px-5 text-center'>
+                    <h1 className='font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight'>
+                      {shopBanner.title || "Shop Our Collection"}
+                    </h1>
+                    <p className='mt-2 text-sm sm:text-lg text-gray-700 max-w-2xl mx-auto'>
+                      {shopBanner.subtitle ||
+                        "Discover premium ethnic wear crafted for every occasion."}
+                    </p>
+                  </div>
+                  <div className='relative hidden sm:block'>
+                    {shopBanner.rightImage && (
+                      <Image
+                        src={shopBanner.rightImage}
+                        alt='Shop banner right'
+                        fill
+                        className='object-cover object-center'
+                        sizes='220px'
+                        priority
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5'>
+        <div className='flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-500'>
+          <Link href='/' className='hover:text-brand-700 transition-colors'>
+            Home
+          </Link>
+          <ChevronRight className='h-3.5 w-3.5' />
+          <span>Buy</span>
+          <ChevronRight className='h-3.5 w-3.5' />
+          <span className='truncate max-w-[56vw] sm:max-w-none normal-case tracking-normal text-gray-700'>
+            {breadcrumbContext}
+          </span>
+        </div>
+
+        <div className='mt-4 mb-2 sm:mb-3 flex flex-wrap items-end justify-between gap-3'>
+          <div>
+            <h2 className='text-xl sm:text-2xl font-serif font-semibold text-gray-900'>
+              {headingText}
+            </h2>
+            <p className='text-sm text-gray-500 mt-1'>
+              {isLoading ? "Loading..." : `${pagination.totalProducts} products`}
+            </p>
+          </div>
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='lg:hidden flex items-center gap-2 rounded-xl'
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <SlidersHorizontal className='h-4 w-4' />
+              Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+            </Button>
+            <select
+              value={filters.sort}
+              onChange={(e) => updateFilter("sort", e.target.value)}
+              className='h-10 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/25'
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-7'>
       <div className='lg:flex lg:items-start lg:gap-6'>
         <aside
           className={cn(
@@ -270,7 +428,7 @@ export default function ShopClient() {
             isSidebarOpen ?
               "fixed top-2 bottom-2 left-0 z-50 w-80 max-w-[92vw] bg-white shadow-2xl overflow-y-auto rounded-2xl border border-gray-100"
             : "hidden",
-            "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:pl-1 lg:sticky lg:top-24 lg:self-start",
+            "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:pl-1 lg:sticky lg:top-20 lg:self-start lg:h-fit lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto",
           )}
         >
           {isSidebarOpen && (
@@ -282,7 +440,7 @@ export default function ShopClient() {
             </div>
           )}
 
-          <div className='space-y-6 p-4 sm:p-5 lg:p-0'>
+          <div className='space-y-5 p-4 sm:p-5 lg:p-0 lg:pr-2'>
             {activeFilterCount > 0 && (
               <button
                 onClick={clearFilters}
@@ -414,50 +572,7 @@ export default function ShopClient() {
           />
         )}
 
-        <div className='w-full min-w-0 lg:flex-1 lg:min-h-[70vh]'>
-          <div className='mb-4 flex flex-col gap-3 sm:gap-4'>
-            <div className='w-full flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4'>
-              <div className='w-full min-w-0 lg:flex-1 lg:basis-0'>
-                <SearchField
-                  value={searchDraft}
-                  onChange={(v) => setSearchDraft(v.slice(0, SEARCH_MAX_LEN))}
-                  placeholder='Search products by name, style, fabric, occasion…'
-                  isLoading={searchPending}
-                  className='w-full min-w-0'
-                  aria-label='Search products'
-                />
-              </div>
-
-              <div className='flex items-center justify-between gap-2 lg:justify-end lg:w-[220px] lg:min-w-[220px] lg:flex-none'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  className='lg:hidden flex items-center gap-2 rounded-xl'
-                  onClick={() => setIsSidebarOpen(true)}
-                >
-                  <SlidersHorizontal className='h-4 w-4' />
-                  Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-                </Button>
-
-                <div className='flex items-center gap-2 sm:ml-auto'>
-                  <span className='text-sm text-gray-500 hidden sm:inline'>
-                    Sort by:
-                  </span>
-                  <select
-                    value={filters.sort}
-                    onChange={(e) => updateFilter("sort", e.target.value)}
-                    className='rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/25'
-                  >
-                    {SORT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className='w-full min-w-0 lg:flex-1 lg:min-h-[70vh] lg:-mt-1'>
 
           {isLoading ?
             <div className={productGridClass}>
@@ -502,6 +617,7 @@ export default function ShopClient() {
             </>
           }
         </div>
+      </div>
       </div>
     </div>
   );

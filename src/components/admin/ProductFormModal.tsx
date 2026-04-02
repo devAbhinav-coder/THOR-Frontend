@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 interface Props {
   product: Product | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (savedProduct?: Product) => void;
 }
 
 const FABRICS = [
@@ -114,14 +114,17 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       );
       newFiles.forEach((f) => fd.append('images', f));
 
+      let saved: Product | undefined;
       if (product) {
-        await productApi.update(product._id, fd);
+        const res = await productApi.update(product._id, fd);
+        saved = (res.data?.product || undefined) as Product | undefined;
         toast.success('Product updated');
       } else {
-        await productApi.create(fd);
+        const res = await productApi.create(fd);
+        saved = (res.data?.product || undefined) as Product | undefined;
         toast.success('Product created');
       }
-      onSave();
+      onSave(saved);
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Failed to save product');
     } finally {
@@ -306,7 +309,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 </div>
 
                 {/* Column labels (desktop) */}
-                <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 px-1">
+                <div className="hidden sm:grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 px-1">
                   {["SKU *", "Size", "Color", "Stock", ""].map((h) => (
                     <span
                       key={h}
@@ -321,7 +324,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                   {variants.map((v, i) => (
                     <div
                       key={i}
-                      className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center bg-white rounded-xl p-3 border border-gray-100 min-w-0"
+                      className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_auto] gap-2 items-center bg-white rounded-xl p-3 border border-gray-100 min-w-0"
                     >
                       <input
                         placeholder="SKU001"
@@ -336,12 +339,30 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                         onChange={(e) => updateVariant(i, 'size', e.target.value)}
                         className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
                       />
-                      <input
-                        placeholder="Red"
-                        value={v.color || ''}
-                        onChange={(e) => updateVariant(i, 'color', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
-                      />
+                      <div className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="color"
+                          value={String(v.colorCode || "#000000").trim().startsWith("#") ? String(v.colorCode || "#000000").trim() : "#000000"}
+                          onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
+                          className="h-10 w-10 shrink-0 rounded-xl border border-gray-200 bg-white p-1 cursor-pointer"
+                          aria-label="Pick color"
+                          title={v.colorCode || "Pick a color"}
+                        />
+                        <div className="grid grid-cols-2 gap-2 min-w-0 flex-1">
+                          <input
+                            placeholder="Color name (e.g. Midnight Black)"
+                            value={v.color || ''}
+                            onChange={(e) => updateVariant(i, 'color', e.target.value)}
+                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
+                          />
+                          <input
+                            placeholder="#0b0f1a"
+                            value={v.colorCode || ''}
+                            onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
+                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-400 bg-gray-50 w-full min-w-0"
+                          />
+                        </div>
+                      </div>
                       <input
                         type="number"
                         placeholder="0"

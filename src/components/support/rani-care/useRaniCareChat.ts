@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { orderApi, storefrontApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Order, StorefrontSettings } from "@/types";
@@ -9,8 +9,11 @@ import { detectIntent, findOrderIdByNumber } from "./intent";
 import { botMessage, formatOrderDetailText, summarizeOrder, userMessage } from "./orderFormat";
 import type { ChatMessage, OrderSummary, QuickAction } from "./types";
 
-const SUPPORT_PHONE = "834031103";
+const SUPPORT_PHONE = "8340311033";
 const SUPPORT_EMAIL = "hello@thehouseofrani@gmail.com";
+const greeting = "Hi, I am your support assistant.";
+const GREETING_RE = /^(hi|hey|hello|hola|namaste|hii+|heyy+)\b[!. ]*$/i;
+const THANKS_RE = /\b(thanks|thank you|thx|shukriya|dhanyavaad)\b/i;
 
 export function useRaniCareChat() {
   const { isAuthenticated } = useAuthStore();
@@ -23,15 +26,6 @@ export function useRaniCareChat() {
   const [contactEmail] = useState(SUPPORT_EMAIL);
   const endRef = useRef<HTMLDivElement | null>(null);
   const recentOrdersRef = useRef<Order[]>([]);
-
-  const welcome = useMemo(
-    () =>
-      botMessage(
-        "Welcome. I can help with your recent orders, delivery status, cancellations before dispatch, returns, and payments. Choose an option below or type your question.",
-        INITIAL_ACTIONS,
-      ),
-    [],
-  );
 
   useEffect(() => {
     try {
@@ -48,8 +42,8 @@ export function useRaniCareChat() {
     } catch {
       // ignore
     }
-    setMessages([welcome]);
-  }, [welcome]);
+    setMessages([]);
+  }, []);
 
   useEffect(() => {
     if (!messages.length) return;
@@ -200,7 +194,7 @@ export function useRaniCareChat() {
       await orderApi.cancel(orderId, "Cancelled via customer support chat");
       await fetchRecentOrders();
       pushBot(
-        "Your order has been cancelled. If you paid online, your refund will be processed according to your bank or card issuer—typically within a few business days.",
+        "Your order has been cancelled. If you paid online, your refund will be processed according to your bank or card issuer—typically within a few business days.\n\nThank you. If you need anything else, I am here.",
         [
           { label: "View orders", value: "action:recent_orders" },
           { label: "Email us", value: "email support" },
@@ -221,6 +215,16 @@ export function useRaniCareChat() {
   };
 
   const respondWithIntent = async (rawInput: string) => {
+    const trimmed = rawInput.trim();
+    if (THANKS_RE.test(trimmed)) {
+      pushBot("Thank you. Glad I could help. If you need anything else, just message me anytime.", INITIAL_ACTIONS, undefined, 180);
+      return;
+    }
+    if (GREETING_RE.test(trimmed)) {
+      pushBot(`${greeting} How can I help you today?`, INITIAL_ACTIONS, undefined, 180);
+      return;
+    }
+
     const intent = detectIntent(rawInput);
 
     if (intent === "show_orders" || intent === "cancel_help") {
@@ -336,7 +340,7 @@ export function useRaniCareChat() {
     }
 
     pushBot(
-      "How can we help? You can ask about orders, delivery, returns, payments, or use the shortcuts below.",
+      "Sorry, I could not understand that clearly. Please choose one option below, or send your order number and I will check it for you.",
       INITIAL_ACTIONS,
     );
   };
@@ -379,7 +383,7 @@ export function useRaniCareChat() {
       return;
     }
     if (value.startsWith("open_order:")) {
-      window.location.href = `/dashboard/orders/${value.slice("open_order:".length)}`;
+      window.location.href = `/dashboard/orders/${encodeURIComponent(value.slice("open_order:".length))}`;
       return;
     }
 

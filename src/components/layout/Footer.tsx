@@ -3,16 +3,28 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Facebook,
-  Instagram,
-  Mail,
-  Phone,
-  MapPin,
-} from "lucide-react";
+import { Facebook, Instagram, Mail, Phone, MapPin, Twitter, Youtube } from "lucide-react";
 import { categoryApi, storefrontApi } from "@/lib/api";
 import { Category, StorefrontSettings } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
+
+function normalizeHref(href: string): string {
+  const raw = String(href || "").trim();
+  if (!raw) return "/";
+  if (/^(https?:|mailto:|tel:)/i.test(raw)) return raw;
+  if (!raw.startsWith("/")) return `/${raw}`;
+  try {
+    const url = new URL(raw, "https://dummy.local");
+    const normalized = new URLSearchParams();
+    url.searchParams.forEach((value, key) => {
+      normalized.append(key, value);
+    });
+    const qs = normalized.toString();
+    return `${url.pathname}${qs ? `?${qs}` : ""}${url.hash || ""}`;
+  } catch {
+    return raw;
+  }
+}
 
 export default function Footer() {
   const { data: categories = [] } = useQuery({
@@ -30,7 +42,8 @@ export default function Footer() {
       const body = await storefrontApi.getSettings();
       return (body.data.settings ?? null) as StorefrontSettings | null;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const footer = settings?.footer;
@@ -45,6 +58,18 @@ export default function Footer() {
         { label: "Cart", href: "/cart" },
       ];
   const categoryLimit = footer?.categoryLimit || 7;
+  const contactAddress = footer?.contactAddress || "Noida Sector 76, India";
+  const contactPhone = footer?.contactPhone || "8340311033";
+  const contactEmail = footer?.contactEmail || "hello@thehouseofrani@gmail.com";
+  const socialLinks = [
+    { Icon: Facebook, href: footer?.facebookUrl || "", label: "Facebook" },
+    { Icon: Instagram, href: footer?.instagramUrl || "", label: "Instagram" },
+    { Icon: Twitter, href: footer?.twitterUrl || "", label: "Twitter" },
+    { Icon: Youtube, href: footer?.youtubeUrl || "", label: "YouTube" },
+  ].filter((s) => {
+    const href = normalizeHref(s.href);
+    return href !== "/" && href !== "#";
+  });
 
   return (
     <footer className='bg-navy-900 text-white/70'>
@@ -66,23 +91,12 @@ export default function Footer() {
                 "Your destination for exquisite Indian ethnic wear. Curated collections of sarees, lehengas, and more — crafted with love and tradition."}
             </p>
             <div className='flex space-x-2'>
-              {[
-                {
-                  Icon: Facebook,
-                  href: "https://www.facebook.com/share/1AmK6AQ1sV/",
-                  label: "Facebook",
-                },
-                {
-                  Icon: Instagram,
-                  href: "https://www.instagram.com/housofrani?igsh=NTFxZTMzb25jdThx",
-                  label: "Instagram",
-                },
-              ].map(({ Icon, href, label }) => (
+              {socialLinks.map(({ Icon, href, label }) => (
                 <a
                   key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={normalizeHref(href)}
+                  target='_blank'
+                  rel='noopener noreferrer'
                   aria-label={label}
                   className='h-9 w-9 rounded-full bg-navy-800 border border-navy-700 flex items-center justify-center hover:bg-brand-700 hover:border-brand-600 transition-colors'
                 >
@@ -100,12 +114,14 @@ export default function Footer() {
             <ul className='space-y-2 text-sm'>
               {quickLinks.map(({ label, href }) => (
                 <li key={label}>
-                  <Link
-                    href={href}
-                    className='hover:text-brand-400 transition-colors'
-                  >
-                    {label}
-                  </Link>
+                  {/^(https?:|mailto:|tel:)/i.test(href) ?
+                    <a href={normalizeHref(href)} className='hover:text-brand-400 transition-colors'>
+                      {label}
+                    </a>
+                  : <Link href={normalizeHref(href)} className='hover:text-brand-400 transition-colors'>
+                      {label}
+                    </Link>
+                  }
                 </li>
               ))}
             </ul>
@@ -138,26 +154,24 @@ export default function Footer() {
             <ul className='space-y-3 text-sm mb-6'>
               <li className='flex items-start gap-2'>
                 <MapPin className='h-4 w-4 mt-0.5 text-brand-500 flex-shrink-0' />
-                <span>
-                  Noida Sector 76, India
-                </span>
+                <span>{contactAddress}</span>
               </li>
               <li className='flex items-center gap-2'>
                 <Phone className='h-4 w-4 text-brand-500 flex-shrink-0' />
                 <a
-                  href='tel:834031103'
+                  href={`tel:${contactPhone.replace(/\s+/g, "")}`}
                   className='hover:text-brand-400 transition-colors'
                 >
-                  834031103
+                  {contactPhone}
                 </a>
               </li>
               <li className='flex items-center gap-2'>
                 <Mail className='h-4 w-4 text-brand-500 flex-shrink-0' />
                 <a
-                  href='mailto:hello@thehouseofrani@gmail.com'
+                  href={`mailto:${contactEmail}`}
                   className='hover:text-brand-400 transition-colors'
                 >
-                  hello@thehouseofrani@gmail.com
+                  {contactEmail}
                 </a>
               </li>
             </ul>

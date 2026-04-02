@@ -8,7 +8,7 @@ import { Upload, X, AlertCircle, CheckCircle2, ZoomIn, ZoomOut, Crop } from 'luc
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────────── */
-export type AspectRatio = '1:1' | '3:4' | '4:3' | '16:9' | '4:5';
+export type AspectRatio = '1:1' | '3:4' | '4:3' | '16:9' | '4:5' | '5:1';
 
 interface PreviewFile {
   id: string;
@@ -35,6 +35,7 @@ const RATIO_NUM: Record<AspectRatio, number> = {
   '4:3': 4 / 3,
   '16:9': 16 / 9,
   '4:5': 4 / 5,
+  '5:1': 5 / 1,
 };
 
 const RATIO_CSS: Record<AspectRatio, string> = {
@@ -43,6 +44,7 @@ const RATIO_CSS: Record<AspectRatio, string> = {
   '4:3': '4/3',
   '16:9': '16/9',
   '4:5': '4/5',
+  '5:1': '5/1',
 };
 
 const RATIO_LABEL: Record<AspectRatio, string> = {
@@ -51,6 +53,7 @@ const RATIO_LABEL: Record<AspectRatio, string> = {
   '4:3': '4:3 landscape',
   '16:9': '16:9 wide',
   '4:5': '4:5 portrait',
+  '5:1': '5:1 banner',
 };
 
 function formatBytes(bytes: number) {

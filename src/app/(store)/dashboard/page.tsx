@@ -143,7 +143,7 @@ export default function DashboardPage() {
             {recentOrders.map((order) => (
               <Link
                 key={order._id}
-                href={`/dashboard/orders/${order._id}`}
+                href={`/dashboard/orders/${encodeURIComponent(order._id)}`}
                 className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50/80 transition-colors group"
               >
                 {/* Product thumbnails */}

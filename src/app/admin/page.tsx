@@ -206,7 +206,7 @@ export default function AdminDashboardPage() {
             {topViewed.slice(0, 5).map((p, i) => (
               <Link
                 key={String(p._id)}
-                href={`/shop/${p.slug}`}
+                href={`/shop/${encodeURIComponent(p.slug)}`}
                 target="_blank"
                 className="flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 p-2 transition-colors"
               >

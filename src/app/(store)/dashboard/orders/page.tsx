@@ -155,7 +155,7 @@ export default function OrdersPage() {
           return (
             <div
               key={order._id}
-              onClick={() => router.push(`/dashboard/orders/${order._id}`)}
+              onClick={() => router.push(`/dashboard/orders/${encodeURIComponent(order._id)}`)}
               className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:border-brand-200 hover:shadow-md transition-all cursor-pointer group"
             >
               {/* Card header */}
@@ -230,7 +230,7 @@ export default function OrdersPage() {
                   <div className="flex items-center gap-2">
                     {isDelivered && (
                       <Link
-                        href={`/dashboard/orders/${order._id}#review`}
+                        href={`/dashboard/orders/${encodeURIComponent(order._id)}#review`}
                         className="flex items-center gap-1.5 text-xs font-semibold text-gold-600 bg-gold-50 hover:bg-gold-100 px-3 py-1.5 rounded-xl transition-all border border-gold-200"
                         onClick={(e) => e.stopPropagation()}
                       >

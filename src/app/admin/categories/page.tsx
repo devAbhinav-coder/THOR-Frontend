@@ -94,12 +94,26 @@ export default function AdminCategoriesPage() {
       fd.append('minOrderQty', form.minOrderQty || '1');
       if (newImageFile) fd.append('avatar', newImageFile);
 
+      let savedCategory: Category | undefined;
       if (editingId) {
-        await adminApi.updateCategory(editingId, fd);
+        const res = await adminApi.updateCategory(editingId, fd);
+        savedCategory = res.data?.category as Category | undefined;
         toast.success('Category updated');
       } else {
-        await adminApi.createCategory(fd);
+        const res = await adminApi.createCategory(fd);
+        savedCategory = res.data?.category as Category | undefined;
         toast.success('Category created');
+      }
+      if (savedCategory?._id) {
+        setCategories((prev) => {
+          const idx = prev.findIndex((c) => c._id === savedCategory!._id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = savedCategory!;
+            return next;
+          }
+          return [savedCategory!, ...prev];
+        });
       }
       setShowForm(false);
       fetchCategories();
@@ -113,6 +127,7 @@ export default function AdminCategoriesPage() {
     try {
       await adminApi.deleteCategory(id);
       toast.success('Deleted');
+      setCategories((prev) => prev.filter((c) => c._id !== id));
       fetchCategories();
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Cannot delete');

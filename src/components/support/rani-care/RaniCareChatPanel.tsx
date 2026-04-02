@@ -52,9 +52,9 @@ export function RaniCareChatPanel(props: ChatProps) {
                 <p className="text-[11px] uppercase tracking-widest text-gold-300 font-semibold">Customer support</p>
                 <h3 className="text-base font-bold flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-gold-300" />
-                  RaniCare
+                  Support Assistant
                 </h3>
-                <p className="text-xs text-white/75 mt-0.5">Orders, delivery, and account help</p>
+                <p className="text-xs text-white/75 mt-0.5">Hi there - order, delivery, and account help</p>
               </div>
               <button
                 onClick={() => setOpen(false)}
@@ -68,6 +68,28 @@ export function RaniCareChatPanel(props: ChatProps) {
 
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y px-3 py-3 bg-[#f7f8fb]">
             <div className="space-y-3">
+              {messages.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-gray-300 bg-white/90 px-4 py-5 text-center">
+                  <p className="text-sm font-semibold text-gray-800">Start chatting</p>
+                  <p className="mt-1 text-xs text-gray-500">Just say “Hey” and tell us what you need.</p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void submitUserText("Hey")}
+                      className="text-xs px-2.5 py-1.5 rounded-full border border-brand-200 text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors"
+                    >
+                      Say Hey
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleAction("action:recent_orders")}
+                      className="text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      My orders
+                    </button>
+                  </div>
+                </div>
+              )}
               {messages.map((message: ChatMessage) => (
                 <div
                   key={message.id}

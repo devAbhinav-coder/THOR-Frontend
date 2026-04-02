@@ -160,7 +160,7 @@ export default function UserRequestDetailPage() {
       if (vars.action === 'accept') {
         toast.success("Order confirmed! Our team will contact you for payment & delivery.");
         const orderId = res.data?.orderId;
-        router.push(orderId ? `/dashboard/orders/${orderId}` : "/dashboard/orders");
+        router.push(orderId ? `/dashboard/orders/${encodeURIComponent(String(orderId))}` : "/dashboard/orders");
       } else {
         toast.success("Quote rejected.");
       }
@@ -257,7 +257,7 @@ export default function UserRequestDetailPage() {
           {/* Linked Order Card — shown after approval */}
           {request.status === 'approved_by_user' && request.linkedOrderId && (
             <Link
-              href={`/dashboard/orders/${request.linkedOrderId}`}
+              href={`/dashboard/orders/${encodeURIComponent(request.linkedOrderId)}`}
               className="flex items-center gap-4 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 hover:bg-emerald-100/60 transition-colors group"
             >
               <div className="h-12 w-12 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">

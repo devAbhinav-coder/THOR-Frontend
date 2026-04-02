@@ -252,7 +252,7 @@ export default function CheckoutClient() {
                 razorpaySignature: response.razorpay_signature,
               });
               toast.success("Payment successful!");
-              router.push(`/dashboard/orders/${verifyRes.data.order._id}`);
+              router.push(`/dashboard/orders/${encodeURIComponent(verifyRes.data.order._id)}`);
             } catch (err: any) {
               toast.error(err?.message || "Payment verification failed");
             }
@@ -284,7 +284,7 @@ export default function CheckoutClient() {
         const { order } = res.data;
         resetCart();
         toast.success("Order placed successfully!");
-        router.push(`/dashboard/orders/${order._id}`);
+        router.push(`/dashboard/orders/${encodeURIComponent(order._id)}`);
       }
     } catch (err: unknown) {
       const error = err as { message?: string };

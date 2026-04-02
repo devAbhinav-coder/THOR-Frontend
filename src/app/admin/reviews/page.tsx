@@ -111,7 +111,7 @@ export default function AdminReviewsPage() {
                   <div className="mb-4">
                     {review.product.slug ? (
                       <Link
-                        href={`/shop/${review.product.slug}`}
+                        href={`/shop/${encodeURIComponent(review.product.slug)}`}
                         className="inline-flex items-center gap-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-1.5 hover:border-brand-300 hover:bg-brand-50 transition-colors"
                       >
                         <span className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Product</span>

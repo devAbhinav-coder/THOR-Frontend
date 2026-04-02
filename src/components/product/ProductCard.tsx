@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingBag, Star , Gift } from "lucide-react";
+import { Heart, ShoppingBag, Star, Gift } from "lucide-react";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
@@ -11,6 +11,7 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 import { hasInStockVariant, sumVariantStock } from "@/lib/productStock";
+import { normalizeCssColor } from "@/lib/normalizeCssColor";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
@@ -60,13 +61,16 @@ export default function ProductCard({ product, className }: ProductCardProps) {
     }
 
     // Gifting Logic: If it has custom fields OR is customizable, open modal
-    if (product.isCustomizable || (product.customFields && product.customFields.length > 0)) {
+    if (
+      product.isCustomizable ||
+      (product.customFields && product.customFields.length > 0)
+    ) {
       setIsGiftModalOpen(true);
       return;
     }
 
     // Standard products (non-gifting): Redirect to PDP as "View Details" action
-    router.push(`/shop/${product.slug}`);
+    router.push(`/shop/${encodeURIComponent(product.slug)}`);
   };
 
   const handleBuyNow = async (e: React.MouseEvent) => {
@@ -110,7 +114,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
       )}
     >
       <Link
-        href={`/shop/${product.slug}`}
+        href={`/shop/${encodeURIComponent(product.slug)}`}
         className='flex min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2 rounded-2xl'
       >
         {/* ── Image – 3:4 portrait (same on every card / breakpoint) ── */}
@@ -188,37 +192,51 @@ export default function ProductCard({ product, className }: ProductCardProps) {
             </div>
           )}
 
-           {/* Action bar — slides up on hover */}
-           {!isOutOfStock && (
-             <div className='hidden sm:block absolute bottom-0 left-0 right-0 p-2.5 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 ease-out z-10'>
-               <button
-                 onClick={handleAddToCart}
-                 disabled={isAddingToCart}
-                 className={cn(
-                   'w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors disabled:opacity-70',
-                   product.isCustomizable ? 'bg-gold-500 text-white hover:bg-gold-600' : 'bg-white hover:bg-gray-50 text-navy-900'
-                 )}
-               >
-                 {isAddingToCart ?
-                   <span className='h-3.5 w-3.5 rounded-full border-2 border-navy-300 border-t-navy-900 animate-spin' />
-                 : (product.isCustomizable || (product.customFields && product.customFields.length > 0)) ? <Gift className='h-3.5 w-3.5' /> : <ShoppingBag className='h-3.5 w-3.5' />}
-                 {isAddingToCart ? "Adding…" : (product.isCustomizable || (product.customFields && product.customFields.length > 0)) ? "Customize" : "View Product"}
-               </button>
-             </div>
-           )}
-         </div>
+          {/* Action bar — slides up on hover */}
+          {!isOutOfStock && (
+            <div className='hidden sm:block absolute bottom-0 left-0 right-0 p-2.5 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 ease-out z-10'>
+              <button
+                onClick={handleAddToCart}
+                disabled={isAddingToCart}
+                className={cn(
+                  "w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors disabled:opacity-70",
+                  product.isCustomizable ?
+                    "bg-gold-500 text-white hover:bg-gold-600"
+                  : "bg-white hover:bg-gray-50 text-navy-900",
+                )}
+              >
+                {isAddingToCart ?
+                  <span className='h-3.5 w-3.5 rounded-full border-2 border-navy-300 border-t-navy-900 animate-spin' />
+                : (
+                  product.isCustomizable ||
+                  (product.customFields && product.customFields.length > 0)
+                ) ?
+                  <Gift className='h-3.5 w-3.5' />
+                : <ShoppingBag className='h-3.5 w-3.5' />}
+                {isAddingToCart ?
+                  "Adding…"
+                : (
+                  product.isCustomizable ||
+                  (product.customFields && product.customFields.length > 0)
+                ) ?
+                  "Customize"
+                : "View Product"}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* ── Info: fixed vertical rhythm so every card matches on phone + desktop ── */}
-        <div className='mt-3 flex min-h-0 flex-1 flex-col gap-1.5'>
+        <div className='flex min-h-0 flex-1 flex-col gap-0.5 sm:gap-1'>
           {/* Meta — single line */}
-          <div className='flex h-4 min-h-4 shrink-0 items-center gap-1.5 overflow-hidden'>
+          <div className='flex h-4 min-h-4 shrink-0 items-center gap-0.5 overflow-hidden'>
             <span className='truncate text-[10px] font-bold uppercase tracking-wider text-brand-600'>
               {product.category}
             </span>
             {product.fabric ?
               <>
-                <span className='shrink-0 text-[10px] text-gray-300'>·</span>
-                <span className='truncate text-[10px] font-semibold uppercase tracking-wide text-gray-500'>
+                <span className='shrink-0 text-[8px] sm:text-[10px] text-gray-300'>·</span>
+                <span className='truncate text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-gray-500'>
                   {product.fabric}
                 </span>
               </>
@@ -226,12 +244,12 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           </div>
 
           {/* Title — exactly two lines tall everywhere */}
-          <h3 className='line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-gray-900'>
+          <h3 className='line-clamp-2 min-h-8 text-xs sm:text-sm font-semibold leading-4 sm:leading-5 text-gray-900'>
             {product.name}
           </h3>
-
+              
           {/* Colors — one row; scroll horizontally if many (no wrapping = same card height) */}
-          <div className='h-5 min-h-5 shrink-0'>
+          <div className='h-3 sm:h-5 min-h-3 sm:min-h-5 shrink-0'>
             {(() => {
               const uniqueColors = (product.variants || [])
                 .filter((v) => v.color)
@@ -242,29 +260,27 @@ export default function ProductCard({ product, className }: ProductCardProps) {
                   return acc;
                 }, []);
               if (uniqueColors.length === 0) {
-                return <div className='h-5' aria-hidden />;
+                return <div className='h-3 sm:h-5' aria-hidden />;
               }
               const MAX = 5;
               const visible = uniqueColors.slice(0, MAX);
               const extra = uniqueColors.length - MAX;
               return (
-                <div className='flex h-5 max-w-full items-center gap-1.5 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                <div className='flex h-3 sm:h-5 max-w-full items-center gap-1.5 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                   {visible.map(({ color, colorCode }) =>
-                    colorCode ? (
+                    colorCode ?
                       <span
                         key={color}
                         title={color}
-                        className='h-4 w-4 shrink-0 rounded-full border border-gray-200 shadow-sm'
+                        className='h-2 sm:h-4 w-2 sm:w-4 shrink-0 rounded-full border border-gray-200 shadow-sm'
                         style={{ background: colorCode }}
                       />
-                    ) : (
-                      <span
+                    : <span
                         key={color}
                         className='shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-500'
                       >
                         {color}
-                      </span>
-                    ),
+                      </span>,
                   )}
                   {extra > 0 && (
                     <span className='shrink-0 text-[10px] font-semibold text-gray-400'>
@@ -277,13 +293,16 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           </div>
 
           {/* Ratings — same row height whether 0 or many reviews */}
-          <div className='flex h-4 min-h-4 shrink-0 items-center gap-1'>
+          <div className='flex h-2 sm:h-4 min-h-2 mt-0.2 sm:min-h-4 shrink-0 items-center gap-0.5'>
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
                 className={cn(
                   "h-3 w-3 shrink-0",
-                  product.ratings.count > 0 && i < Math.round(product.ratings.average) ?
+                  (
+                    product.ratings.count > 0 &&
+                      i < Math.round(product.ratings.average)
+                  ) ?
                     "fill-gold-400 text-gold-400"
                   : "fill-gray-200 text-gray-200",
                 )}
@@ -321,7 +340,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           </div> */}
 
           {/* Fills extra row height from CSS grid so cards in a row align */}
-          <div className='min-h-0 flex-1' aria-hidden />
+          {/* <div className='min-h-0 flex-1' aria-hidden /> */}
         </div>
       </Link>
 
@@ -340,18 +359,23 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           <ShoppingBag className='h-3.5 w-3.5' />
           {isAddingToCart ?
             "Adding…"
-           : isOutOfStock ?
-             "Sold Out"
-           : (product.isCustomizable || (product.customFields && product.customFields.length > 0)) ? "Customize" : "View Details"}
-         </button>
-       </div>
- 
-       {isGiftModalOpen && (
-         <GiftCustomizationModal
-           product={product as any}
-           onClose={() => setIsGiftModalOpen(false)}
-         />
-       )}
-     </div>
-   );
- }
+          : isOutOfStock ?
+            "Sold Out"
+          : (
+            product.isCustomizable ||
+            (product.customFields && product.customFields.length > 0)
+          ) ?
+            "Customize"
+          : "View Details"}
+        </button>
+      </div>
+
+      {isGiftModalOpen && (
+        <GiftCustomizationModal
+          product={product as any}
+          onClose={() => setIsGiftModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+}

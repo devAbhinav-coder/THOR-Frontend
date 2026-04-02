@@ -9,8 +9,10 @@ import { Heart, MessageCircle, ChevronLeft, Send, Trash2, Calendar, User as User
 import toast from "react-hot-toast";
 
 import { blogApi } from "@/lib/api";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Blog, BlogComment } from "@/types";
+import { Skeleton } from "@/components/ui/SkeletonLoader";
 
 function escapeHtml(input: string): string {
   return input
@@ -137,9 +139,38 @@ export default function BlogDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-navy-950 flex flex-col items-center justify-center pt-5">
-        <div className="w-12 h-12 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
-        <p className="mt-4 text-brand-300/50 text-sm tracking-[0.2em] font-bold uppercase animate-pulse">Loading Story</p>
+      <div className="min-h-screen bg-navy-950 pt-5 pb-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-full bg-white/10" />
+              <Skeleton className="h-4 w-40 rounded bg-white/10" />
+            </div>
+
+            <div className="space-y-3">
+              <Skeleton className="h-11 w-full rounded-xl bg-white/10" />
+              <Skeleton className="h-11 w-4/5 rounded-xl bg-white/10" />
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Skeleton className="h-7 w-28 rounded-full bg-white/10" />
+                <Skeleton className="h-7 w-24 rounded-full bg-white/10" />
+                <Skeleton className="h-7 w-24 rounded-full bg-white/10" />
+              </div>
+            </div>
+
+            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-navy-900/40 border border-white/5">
+              <Skeleton className="absolute inset-0 bg-white/10" />
+            </div>
+
+            <div className="space-y-3">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Skeleton
+                  key={i}
+                  className={`h-4 rounded bg-white/10 ${i % 5 === 4 ? "w-2/3" : "w-full"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -334,7 +365,7 @@ export default function BlogDetailPage() {
               <h4 className="text-xl font-bold text-white mb-2">Join the Conversation</h4>
               <p className="text-white/50 mb-6 max-w-sm mx-auto text-sm">Create an account to share your thoughts, style tips, and connect with our community.</p>
               <Link 
-                href={`/auth/login?redirect=/blog/${slug}`}
+                href={loginUrlWithRedirect(`/blog/${slug}`)}
                 className="inline-flex bg-white text-navy-950 px-6 py-2.5 rounded-full text-sm font-bold hover:bg-gold-50 transition-all hover:scale-105 shadow-lg"
               >
                 Log In to Respond

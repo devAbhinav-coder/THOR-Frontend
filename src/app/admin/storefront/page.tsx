@@ -33,6 +33,9 @@ export default function AdminStorefrontPage() {
   const [promoBgFile, setPromoBgFile] = useState<File | null>(null);
   const [blogMainFile, setBlogMainFile] = useState<File | null>(null);
   const [blogSideFile, setBlogSideFile] = useState<File | null>(null);
+  const [shopBannerLeftFile, setShopBannerLeftFile] = useState<File | null>(null);
+  const [shopBannerCenterFile, setShopBannerCenterFile] = useState<File | null>(null);
+  const [shopBannerRightFile, setShopBannerRightFile] = useState<File | null>(null);
   const [giftingHeroFiles, setGiftingHeroFiles] = useState<Record<number, File | null>>({});
   const [giftingSecondaryFiles, setGiftingSecondaryFiles] = useState<Record<number, File | null>>({});
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -82,6 +85,9 @@ export default function AdminStorefrontPage() {
       if (promoBgFile) fd.append('promoBackground', promoBgFile);
       if (blogMainFile) fd.append('blogMainImage', blogMainFile);
       if (blogSideFile) fd.append('blogSideImage', blogSideFile);
+      if (shopBannerLeftFile) fd.append('shopBannerLeftImage', shopBannerLeftFile);
+      if (shopBannerCenterFile) fd.append('shopBannerCenterImage', shopBannerCenterFile);
+      if (shopBannerRightFile) fd.append('shopBannerRightImage', shopBannerRightFile);
       Object.entries(giftingHeroFiles).forEach(([index, file]) => {
         if (file) fd.append(`giftingHeroImage_${index}`, file);
       });
@@ -93,6 +99,9 @@ export default function AdminStorefrontPage() {
       setPromoBgFile(null);
       setBlogMainFile(null);
       setBlogSideFile(null);
+      setShopBannerLeftFile(null);
+      setShopBannerCenterFile(null);
+      setShopBannerRightFile(null);
       setGiftingHeroFiles({});
       setGiftingSecondaryFiles({});
       toast.success('Storefront settings updated');
@@ -120,6 +129,17 @@ export default function AdminStorefrontPage() {
       return prev;
     });
   };
+  const ensureShopBanner = (p: StorefrontSettings) => ({
+    title: p.shopBanner?.title || "",
+    subtitle: p.shopBanner?.subtitle || "",
+    leftImage: p.shopBanner?.leftImage || "",
+    leftImagePublicId: p.shopBanner?.leftImagePublicId,
+    centerImage: p.shopBanner?.centerImage || "",
+    centerImagePublicId: p.shopBanner?.centerImagePublicId,
+    rightImage: p.shopBanner?.rightImage || "",
+    rightImagePublicId: p.shopBanner?.rightImagePublicId,
+    isActive: p.shopBanner?.isActive !== false,
+  });
 
   return (
     <div className="p-6 xl:p-8 space-y-6">
@@ -672,6 +692,219 @@ export default function AdminStorefrontPage() {
 </section>
 
 <section className="bg-white rounded-2xl border border-gray-100">
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "shopBanner" ? null : "shopBanner")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <h2 className="font-semibold text-gray-900">Shop Page Banner</h2>
+    <span>{activeSection === "shopBanner" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {activeSection === "shopBanner" && (
+    <div className="px-5 pb-5 space-y-3">
+      <p className="text-xs text-gray-500">
+        Prefer single full-width banner image. If center image is present, it overrides side images.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input
+          className={inputCls}
+          value={settings.shopBanner?.title || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    shopBanner: {
+                      ...ensureShopBanner(p),
+                      title: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Title (e.g. Sara Ali Khan Spotted)"
+        />
+        <input
+          className={inputCls}
+          value={settings.shopBanner?.subtitle || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    shopBanner: {
+                      ...ensureShopBanner(p),
+                      subtitle: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Subtitle (e.g. Shop all celebrity styles)"
+        />
+      </div>
+      <div className="space-y-2">
+        <ImageUploader
+          maxFiles={1}
+          aspectRatio="5:1"
+          maxSizeMB={5}
+          existingImages={
+            shopBannerCenterFile ? [] : settings.shopBanner?.centerImage ? [settings.shopBanner.centerImage] : []
+          }
+          onChange={(files) => setShopBannerCenterFile(files[0] || null)}
+          label="Main full-width banner image (recommended)"
+          hint="When set, this one image is used full-width on shop banner."
+        />
+        {settings.shopBanner?.centerImage && !shopBannerCenterFile && (
+          <button
+            type="button"
+            className="text-xs text-red-600"
+            onClick={() =>
+              setSettings((p) =>
+                p
+                  ? {
+                      ...p,
+                      shopBanner: {
+                        ...ensureShopBanner(p),
+                        centerImage: "",
+                        centerImagePublicId: undefined,
+                      },
+                    }
+                  : p
+              )
+            }
+          >
+            Remove current main banner image
+          </button>
+        )}
+        {shopBannerCenterFile && (
+          <button
+            type="button"
+            className="text-xs text-red-600"
+            onClick={() => setShopBannerCenterFile(null)}
+          >
+            Remove newly selected main banner image
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="3:4"
+            maxSizeMB={5}
+            existingImages={
+              shopBannerLeftFile ? [] : settings.shopBanner?.leftImage ? [settings.shopBanner.leftImage] : []
+            }
+            onChange={(files) => setShopBannerLeftFile(files[0] || null)}
+            label="Left side image"
+            hint="Used only when main full-width image is not set."
+          />
+          {settings.shopBanner?.leftImage && !shopBannerLeftFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        shopBanner: {
+                          ...ensureShopBanner(p),
+                          leftImage: "",
+                          leftImagePublicId: undefined,
+                        },
+                      }
+                    : p
+                )
+              }
+            >
+              Remove current left image
+            </button>
+          )}
+          {shopBannerLeftFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() => setShopBannerLeftFile(null)}
+            >
+              Remove newly selected left image
+            </button>
+          )}
+        </div>
+        <div className="space-y-2">
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="3:4"
+            maxSizeMB={5}
+            existingImages={
+              shopBannerRightFile ? [] : settings.shopBanner?.rightImage ? [settings.shopBanner.rightImage] : []
+            }
+            onChange={(files) => setShopBannerRightFile(files[0] || null)}
+            label="Right side image"
+            hint="Used only when main full-width image is not set."
+          />
+          {settings.shopBanner?.rightImage && !shopBannerRightFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setSettings((p) =>
+                  p
+                    ? {
+                        ...p,
+                        shopBanner: {
+                          ...ensureShopBanner(p),
+                          rightImage: "",
+                          rightImagePublicId: undefined,
+                        },
+                      }
+                    : p
+                )
+              }
+            >
+              Remove current right image
+            </button>
+          )}
+          {shopBannerRightFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() => setShopBannerRightFile(null)}
+            >
+              Remove newly selected right image
+            </button>
+          )}
+        </div>
+      </div>
+      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={settings.shopBanner?.isActive !== false}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    shopBanner: {
+                      ...ensureShopBanner(p),
+                      isActive: e.target.checked,
+                    },
+                  }
+                : p
+            )
+          }
+        />
+        Show this banner on shop page
+      </label>
+    </div>
+  )}
+</section>
+
+<section className="bg-white rounded-2xl border border-gray-100">
 
   {/* HEADER */}
   <div
@@ -1178,6 +1411,82 @@ export default function AdminStorefrontPage() {
             )
           }
           placeholder="Category limit"
+        />
+
+        <input
+          className={inputCls}
+          value={settings.footer.facebookUrl || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      facebookUrl: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Facebook URL"
+        />
+
+        <input
+          className={inputCls}
+          value={settings.footer.instagramUrl || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      instagramUrl: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Instagram URL"
+        />
+
+        <input
+          className={inputCls}
+          value={settings.footer.twitterUrl || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      twitterUrl: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Twitter/X URL"
+        />
+
+        <input
+          className={inputCls}
+          value={settings.footer.youtubeUrl || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    footer: {
+                      ...p.footer,
+                      youtubeUrl: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="YouTube URL"
         />
       </div>
 

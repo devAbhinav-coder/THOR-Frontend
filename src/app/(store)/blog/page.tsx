@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Heart, MessageCircle, ChevronRight, Eye, Sparkles } from "lucide-react";
 import { blogApi } from "@/lib/api";
 import { Blog } from "@/types";
+import { Skeleton } from "@/components/ui/SkeletonLoader";
 
 export default function BlogListingPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -88,7 +89,40 @@ export default function BlogListingPage() {
 
         {/* Dynamic Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 xl:gap-10">
-          {blogs.map((blog, idx) => (
+          {isLoading && blogs.length === 0 ?
+            Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col bg-navy-900/40 backdrop-blur-xl border border-white/5 rounded-[2rem] overflow-hidden relative isolate"
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-navy-900/40">
+                  <Skeleton className="absolute inset-0 bg-white/10" />
+                  <div className="absolute bottom-5 left-5 flex gap-3 z-30">
+                    <Skeleton className="h-7 w-16 rounded-full bg-white/10" />
+                    <Skeleton className="h-7 w-16 rounded-full bg-white/10" />
+                  </div>
+                </div>
+                <div className="flex flex-col flex-1 p-6 sm:p-8 bg-[#0e172a]/20 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-24 rounded-full bg-white/10" />
+                    <Skeleton className="h-3 w-20 rounded-full bg-white/10" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-full rounded-lg bg-white/10" />
+                    <Skeleton className="h-7 w-4/5 rounded-lg bg-white/10" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full rounded bg-white/10" />
+                    <Skeleton className="h-4 w-5/6 rounded bg-white/10" />
+                    <Skeleton className="h-4 w-2/3 rounded bg-white/10" />
+                  </div>
+                  <div className="pt-5 mt-auto border-t border-white/5">
+                    <Skeleton className="h-5 w-36 rounded bg-white/10" />
+                  </div>
+                </div>
+              </div>
+            ))
+          : blogs.map((blog, idx) => (
             <Link 
               href={`/blog/${blog.slug}`} 
               key={blog._id}

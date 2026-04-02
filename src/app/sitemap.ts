@@ -44,23 +44,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const products: ProductLite[] = productJson?.data?.products || [];
     const blogs: BlogLite[] = blogJson?.data?.blogs || [];
 
-    const productUrls: MetadataRoute.Sitemap = products
-      .filter((p) => !!p?.slug)
-      .map((p) => ({
-        url: `${appUrl}/shop/${p.slug}`,
+    const productUrls: MetadataRoute.Sitemap = products.flatMap((p) => {
+      if (!p?.slug) return [];
+      return [{
+        url: `${appUrl}/shop/${encodeURIComponent(p.slug)}`,
         lastModified: p.updatedAt ? new Date(p.updatedAt) : undefined,
-        changeFrequency: "weekly",
+        changeFrequency: "weekly" as const,
         priority: 0.8,
-      }));
+      }];
+    });
 
-    const blogUrls: MetadataRoute.Sitemap = blogs
-      .filter((b) => !!b?.slug)
-      .map((b) => ({
-        url: `${appUrl}/blog/${b.slug}`,
+    const blogUrls: MetadataRoute.Sitemap = blogs.flatMap((b) => {
+      if (!b?.slug) return [];
+      return [{
+        url: `${appUrl}/blog/${encodeURIComponent(b.slug)}`,
         lastModified: b.updatedAt ? new Date(b.updatedAt) : undefined,
-        changeFrequency: "weekly",
+        changeFrequency: "weekly" as const,
         priority: 0.7,
-      }));
+      }];
+    });
 
     return [...baseRoutes, ...productUrls, ...blogUrls];
   } catch {

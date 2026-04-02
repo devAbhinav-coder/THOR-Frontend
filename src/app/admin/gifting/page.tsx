@@ -78,7 +78,7 @@ function GiftProductFormModal({
 }: {
   product: GiftProduct | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (savedProduct?: GiftProduct) => void;
 }) {
   const { data: categoriesRes } = useQuery({
     queryKey: ["admin-gift-categories-for-occasions"],
@@ -198,14 +198,17 @@ function GiftProductFormModal({
       );
       newFiles.forEach((f) => fd.append("images", f));
 
+      let saved: GiftProduct | undefined;
       if (product) {
-        await productApi.update(product._id, fd);
+        const res = await productApi.update(product._id, fd);
+        saved = (res.data?.product || undefined) as GiftProduct | undefined;
         toast.success("Gift product updated");
       } else {
-        await productApi.create(fd);
+        const res = await productApi.create(fd);
+        saved = (res.data?.product || undefined) as GiftProduct | undefined;
         toast.success("Gift product created");
       }
-      onSave();
+      onSave(saved);
     } catch (err: unknown) {
       toast.error((err as { message?: string })?.message || "Failed to save");
     } finally {
@@ -694,7 +697,7 @@ function RequestExpandPanel({ req, updateMutation }: { req: GiftingRequest; upda
             {/* View linked order — appears once customer has approved */}
             {req.status === 'approved_by_user' && req.linkedOrderId && (
               <a
-                href={`/admin/orders/${req.linkedOrderId}`}
+                href={`/admin/orders/${encodeURIComponent(req.linkedOrderId)}`}
                 className="ml-auto inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
               >
                 <ShoppingBag className="h-3.5 w-3.5" /> View Linked Order →
@@ -972,7 +975,25 @@ export default function AdminGiftingPage() {
           key={editProduct?._id || "new-gift-product"}
           product={editProduct}
           onClose={() => { setIsModalOpen(false); setEditProduct(null); }}
-          onSave={() => { setIsModalOpen(false); setEditProduct(null); refetchProducts(); }}
+          onSave={(saved) => {
+            setIsModalOpen(false);
+            setEditProduct(null);
+            if (saved?._id) {
+              queryClient.setQueryData(
+                ["gifting-products-admin"],
+                (prev: { data?: { products?: GiftProduct[] } } | undefined) => {
+                  const list = prev?.data?.products || [];
+                  const idx = list.findIndex((p) => p._id === saved._id);
+                  const nextList =
+                    idx >= 0
+                      ? list.map((p, i) => (i === idx ? saved : p))
+                      : [saved, ...list];
+                  return { ...(prev || {}), data: { ...(prev?.data || {}), products: nextList } };
+                }
+              );
+            }
+            refetchProducts();
+          }}
         />
       )}
     </div>

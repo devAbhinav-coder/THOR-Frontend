@@ -320,7 +320,7 @@ export default function AdminOrdersPage() {
                 <tr
                   key={order._id}
                   className="hover:bg-gray-50/80 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/admin/orders/${order._id}`)}
+                  onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)}
                 >
                   <td className="px-5 py-3.5">
                     <p className="text-sm font-semibold text-brand-600">{order.orderNumber}</p>
@@ -397,7 +397,7 @@ export default function AdminOrdersPage() {
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <button
-                    onClick={() => router.push(`/admin/orders/${order._id}`)}
+                    onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)}
                     className="text-xs font-semibold text-brand-600 hover:text-brand-700"
                   >
                     View details
@@ -437,7 +437,7 @@ export default function AdminOrdersPage() {
             <div key={order._id} className="p-4">
               <div
                 className="flex items-start gap-3 cursor-pointer"
-                onClick={() => router.push(`/admin/orders/${order._id}`)}
+                onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)}
               >
                 {/* Product thumbnail */}
                 {firstLine?.image && (

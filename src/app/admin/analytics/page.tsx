@@ -199,7 +199,7 @@ export default function AnalyticsPage() {
                       <td className="py-2.5 text-right tabular-nums text-brand-700 font-medium">{p.conversionPercent}%</td>
                       <td className="py-2.5 pr-2">
                         <Link
-                          href={`/shop/${p.slug}`}
+                          href={`/shop/${encodeURIComponent(p.slug)}`}
                           target="_blank"
                           className="text-brand-600 hover:text-brand-700 p-1 inline-flex"
                           aria-label="View on store"

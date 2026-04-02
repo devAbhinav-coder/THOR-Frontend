@@ -82,7 +82,7 @@ function CustomGiftAccordion({ order }: { order: any }) {
           {/* Link to request */}
           {order.customRequestId && (
             <a
-              href={`/admin/gifting?req=${order.customRequestId}&tab=requests`}
+              href={`/admin/gifting?req=${encodeURIComponent(order.customRequestId)}&tab=requests`}
               className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 bg-white px-3 py-1.5 rounded-lg border border-brand-100"
             >
               <Sparkles className="h-3 w-3" /> View Original Request <ExternalLink className="h-3 w-3" />

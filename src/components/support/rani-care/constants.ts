@@ -1,6 +1,6 @@
 import type { QuickAction } from "./types";
 
-export const STORAGE_KEY = "rani-care-chat-v2";
+export const STORAGE_KEY = "rani-care-chat-v3";
 export const OPEN_KEY = "rani-care-open-v1";
 export const MAX_MESSAGES = 48;
 export const RECENT_ORDER_LIMIT = 5;

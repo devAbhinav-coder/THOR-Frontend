@@ -299,6 +299,17 @@ export interface HeroSlide {
 export interface StorefrontSettings {
   announcementMessages: string[];
   heroSlides: HeroSlide[];
+  shopBanner?: {
+    title?: string;
+    subtitle?: string;
+    leftImage?: string;
+    leftImagePublicId?: string;
+    centerImage?: string;
+    centerImagePublicId?: string;
+    rightImage?: string;
+    rightImagePublicId?: string;
+    isActive?: boolean;
+  };
   promoBanner: {
     eyebrow?: string;
     title?: string;

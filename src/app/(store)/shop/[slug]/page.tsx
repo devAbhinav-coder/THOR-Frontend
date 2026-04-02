@@ -7,10 +7,11 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const safeSlug = encodeURIComponent(slug);
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
   try {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/products/${slug}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/products/${safeSlug}`,
       { next: { revalidate: 3600 } }
     );
     if (!res.ok) return { title: 'Product Not Found' };
@@ -21,14 +22,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: product.seoTitle || product.name,
       description: product.seoDescription || product.shortDescription || product.description.slice(0, 160),
       alternates: {
-        canonical: `/shop/${slug}`,
+        canonical: `/shop/${safeSlug}`,
       },
       openGraph: {
         title: product.name,
         description: product.shortDescription || product.description.slice(0, 160),
         images: [{ url: product.images[0]?.url, alt: product.name }],
         type: 'article',
-        url: `${appUrl}/shop/${slug}`,
+        url: `${appUrl}/shop/${safeSlug}`,
       },
     };
   } catch {
@@ -38,6 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
+  const safeSlug = encodeURIComponent(slug);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
   let productLd: Record<string, unknown> | null = null;
@@ -45,7 +47,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   if (apiUrl) {
     try {
-      const res = await fetch(`${apiUrl}/products/${slug}`, {
+      const res = await fetch(`${apiUrl}/products/${safeSlug}`, {
         next: { revalidate: 3600 },
       });
       if (res.ok) {
@@ -72,7 +74,7 @@ export default async function ProductDetailPage({ params }: Props) {
                 "@type": "ListItem",
                 position: 3,
                 name: product.name,
-                item: `${appUrl}/shop/${slug}`,
+                item: `${appUrl}/shop/${safeSlug}`,
               },
             ],
           };
@@ -89,7 +91,7 @@ export default async function ProductDetailPage({ params }: Props) {
             brand: { "@type": "Brand", name: "The House of Rani" },
             offers: {
               "@type": "Offer",
-              url: `${appUrl}/shop/${slug}`,
+              url: `${appUrl}/shop/${safeSlug}`,
               priceCurrency: "INR",
               price: String(product.price || 0),
               availability:
