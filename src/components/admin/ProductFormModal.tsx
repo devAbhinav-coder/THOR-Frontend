@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
 import { isMulticolorLabel, VARIANT_MULTICOLOR_MARKER } from '@/lib/variantSwatch';
+import { bulkTextFromPairs, pairsFromBulkInput } from '@/lib/productDetailsBulk';
+import ProductDetailsBulkFields from '@/components/admin/ProductDetailsBulkFields';
 
 interface Props {
   product: Product | null;
@@ -40,9 +42,8 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     product?.images?.length ? product.images.map((i) => ({ ...i })) : [],
   );
   const [showSeo, setShowSeo] = useState(false);
-  const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
-    product?.productDetails || []
-  );
+  const [detailsKeysText, setDetailsKeysText] = useState('');
+  const [detailsValuesText, setDetailsValuesText] = useState('');
   const initialVariants: Product['variants'] =
     product?.variants.length ?
       [...product.variants]
@@ -80,6 +81,12 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   useEffect(() => {
     setExistingImageSlots(product?.images?.length ? product.images.map((i) => ({ ...i })) : []);
     setNewFiles([]);
+  }, [product?._id]);
+
+  useEffect(() => {
+    const { keysText, valuesText } = bulkTextFromPairs(product?.productDetails || []);
+    setDetailsKeysText(keysText);
+    setDetailsValuesText(valuesText);
   }, [product?._id]);
 
   const selectedCategory = categories.find((c) => c.name === form.category);
@@ -167,6 +174,9 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     if (!form.category) return toast.error('Please select a category');
     if (variants.some((v) => !v.sku.trim())) return toast.error('Every variant needs a SKU');
 
+    const detailsParsed = pairsFromBulkInput(detailsKeysText, detailsValuesText);
+    if (!detailsParsed.ok) return toast.error(detailsParsed.error);
+
     setIsSaving(true);
     try {
       const fd = new FormData();
@@ -205,9 +215,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       fd.append(
         'productDetails',
         JSON.stringify(
-          productDetails
-            .filter((d) => d.key.trim() && d.value.trim())
-            .map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
+          detailsParsed.pairs.map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
         )
       );
       newFiles.forEach((f) => fd.append('images', f));
@@ -564,40 +572,19 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               </div>
 
               <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Detail Pairs</h3>
-                  <button
-                    type="button"
-                    onClick={() => setProductDetails((p) => [...p, { key: "", value: "" }])}
-                    className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full transition-colors"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Add Detail
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400">These appear on product detail page as key/value rows.</p>
-                {productDetails.map((d, i) => (
-                  <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 bg-white rounded-xl p-3 border border-gray-100">
-                    <input
-                      className={inputCls}
-                      value={d.key}
-                      onChange={(e) => setProductDetails((p) => p.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
-                      placeholder="Key (e.g. Work Type)"
-                    />
-                    <input
-                      className={inputCls}
-                      value={d.value}
-                      onChange={(e) => setProductDetails((p) => p.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
-                      placeholder="Value (e.g. Hand Embroidery)"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setProductDetails((p) => p.filter((_, j) => j !== i))}
-                      className="h-10 w-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  Product detail table (keys & values)
+                </h3>
+                <p className="text-xs text-gray-400">
+                  Shown on the product page as a specs table — same payload as before, faster to paste.
+                </p>
+                <ProductDetailsBulkFields
+                  keysText={detailsKeysText}
+                  valuesText={detailsValuesText}
+                  onKeysChange={setDetailsKeysText}
+                  onValuesChange={setDetailsValuesText}
+                  textareaCls={`${inputCls} resize-y min-h-[140px] font-mono text-[13px] leading-relaxed`}
+                />
               </div>
 
               {/* SEO collapsible */}

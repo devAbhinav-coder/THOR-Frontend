@@ -225,9 +225,9 @@ export default function GiftingPage() {
                       onClick={() => setActiveHeroIndex(i)}
                       className={cn(
                         "h-2 rounded-full transition-all",
-                        i === activeHeroIndex ?
-                          "w-6 bg-white"
-                        : "w-2 bg-white/60",
+                        i === activeHeroIndex ? "w-6 bg-white" : (
+                          "w-2 bg-white/60"
+                        ),
                       )}
                       aria-label={`Go to banner ${i + 1}`}
                     />
@@ -343,43 +343,45 @@ export default function GiftingPage() {
               </div>
             ))
           : (giftingSecondaryBanners.length > 0 ?
-            giftingSecondaryBanners
-          : [
-              {
-                image: blog?.mainImage || promo?.backgroundImage || "/logo.png",
-                eyebrow: blog?.eyebrow || "Gifting made premium",
-                title: blog?.title || "Curated picks for every celebration",
-                ctaText: "Explore",
-                ctaLink: "/gifting",
-              },
-            ]
-          )
-            .slice(0, 2)
-            .map((banner, idx) => (
-              <div
-                key={idx}
-                className='relative h-[110px] sm:h-[140px] rounded-2xl overflow-hidden border border-gray-100'
-              >
-                <Image
-                  src={banner.image || "/logo.png"}
-                  alt='Gifting secondary banner'
-                  fill
-                  sizes='100vw'
-                  className='object-cover'
-                />
-                <div className='absolute inset-0 bg-black/30' />
-                <div className='absolute inset-0 px-4 sm:px-6 flex items-center justify-between gap-3'>
-                  <div className='text-white'>
-                    <p className='text-[11px] uppercase tracking-wider text-white/85'>
-                      {banner.eyebrow || "Gifting made premium"}
-                    </p>
-                    <p className='text-sm sm:text-lg font-semibold'>
-                      {banner.title || "Curated picks for every celebration"}
-                    </p>
+              giftingSecondaryBanners
+            : [
+                {
+                  image:
+                    blog?.mainImage || promo?.backgroundImage || "/logo.png",
+                  eyebrow: blog?.eyebrow || "Gifting made premium",
+                  title: blog?.title || "Curated picks for every celebration",
+                  ctaText: "Explore",
+                  ctaLink: "/gifting",
+                },
+              ]
+            )
+              .slice(0, 2)
+              .map((banner, idx) => (
+                <div
+                  key={idx}
+                  className='relative h-[110px] sm:h-[140px] rounded-2xl overflow-hidden border border-gray-100'
+                >
+                  <Image
+                    src={banner.image || "/logo.png"}
+                    alt='Gifting secondary banner'
+                    fill
+                    sizes='100vw'
+                    className='object-cover'
+                  />
+                  <div className='absolute inset-0 bg-black/30' />
+                  <div className='absolute inset-0 px-4 sm:px-6 flex items-center justify-between gap-3'>
+                    <div className='text-white'>
+                      <p className='text-[11px] uppercase tracking-wider text-white/85'>
+                        {banner.eyebrow || "Gifting made premium"}
+                      </p>
+                      <p className='text-sm sm:text-lg font-semibold'>
+                        {banner.title || "Curated picks for every celebration"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+          }
         </div>
       </section>
       {/* Search (below second banner) */}
@@ -739,11 +741,7 @@ function GiftProductCard({ product }: { product: Product }) {
             </span>
           )}
         </div>
-        {minPurchaseQty > 1 && (
-          <p className='mt-1 text-[11px] font-medium text-amber-700'>
-            Minimum order quantity: {minPurchaseQty}
-          </p>
-        )}
+
         <div className='mt-2 h-9 rounded-lg border border-gray-200 bg-white text-navy-900 text-xs font-semibold inline-flex items-center justify-center w-full'>
           View details
         </div>

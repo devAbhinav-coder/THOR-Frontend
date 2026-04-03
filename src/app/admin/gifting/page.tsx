@@ -16,6 +16,8 @@ import { formatPrice, formatDate } from "@/lib/utils";
 import ImageUploader from "@/components/ui/ImageUploader";
 import toast from "react-hot-toast";
 import type { Product } from "@/types";
+import { bulkTextFromPairs, pairsFromBulkInput } from "@/lib/productDetailsBulk";
+import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const STATUS_OPTIONS = ["new", "price_quoted", "approved_by_user", "rejected_by_user", "cancelled"] as const;
@@ -111,9 +113,8 @@ function GiftProductFormModal({
       isRequired: f.isRequired ?? true,
     }))
   );
-  const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
-    product?.productDetails || []
-  );
+  const [detailsKeysText, setDetailsKeysText] = useState("");
+  const [detailsValuesText, setDetailsValuesText] = useState("");
   useEffect(() => {
     setForm({
       name: product?.name || "",
@@ -134,7 +135,9 @@ function GiftProductFormModal({
         isRequired: f.isRequired ?? true,
       }))
     );
-    setProductDetails(product?.productDetails || []);
+    const { keysText, valuesText } = bulkTextFromPairs(product?.productDetails || []);
+    setDetailsKeysText(keysText);
+    setDetailsValuesText(valuesText);
     setNewFiles([]);
     setExistingImageSlots(product?.images?.length ? product.images.map((i) => ({ ...i })) : []);
   }, [product]);
@@ -192,6 +195,9 @@ function GiftProductFormModal({
       return toast.error("Maximum 7 images per product (remove some or upload fewer).");
     }
 
+    const detailsParsed = pairsFromBulkInput(detailsKeysText, detailsValuesText);
+    if (!detailsParsed.ok) return toast.error(detailsParsed.error);
+
     setIsSaving(true);
     try {
       const fd = new FormData();
@@ -231,9 +237,7 @@ function GiftProductFormModal({
       fd.append(
         "productDetails",
         JSON.stringify(
-          productDetails
-            .filter((d) => d.key.trim() && d.value.trim())
-            .map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
+          detailsParsed.pairs.map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
         )
       );
       fd.append(
@@ -410,24 +414,19 @@ function GiftProductFormModal({
               </div>
 
               <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Detail Pairs</h3>
-                  <button type="button" onClick={() => setProductDetails((p) => [...p, { key: "", value: "" }])}
-                    className="flex items-center gap-1 text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-full transition-colors">
-                    <Plus className="h-3 w-3" /> Add Detail
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {productDetails.map((d, i) => (
-                    <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 bg-white rounded-xl p-3 border border-gray-100">
-                      <input className={inputCls} value={d.key} onChange={(e) => setProductDetails((p) => p.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} placeholder="Key" />
-                      <input className={inputCls} value={d.value} onChange={(e) => setProductDetails((p) => p.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="Value" />
-                      <button type="button" onClick={() => setProductDetails((p) => p.filter((_, j) => j !== i))} className="h-10 w-10 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 grid place-items-center">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  Product detail table (keys & values)
+                </h3>
+                <p className="text-xs text-gray-400">
+                  Same as main product form — specs table on the gift product page.
+                </p>
+                <ProductDetailsBulkFields
+                  keysText={detailsKeysText}
+                  valuesText={detailsValuesText}
+                  onKeysChange={setDetailsKeysText}
+                  onValuesChange={setDetailsValuesText}
+                  textareaCls={`${inputCls} resize-y min-h-[140px] font-mono text-[13px] leading-relaxed`}
+                />
               </div>
             </div>
 
