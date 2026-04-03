@@ -77,7 +77,7 @@ export default function Footer() {
           <div className='lg:col-span-1'>
             <Link href='/'>
               <Image
-                src='/logo.jpg'
+                src='/logo.png'
                 alt='The House of Rani'
                 width={160}
                 height={50}

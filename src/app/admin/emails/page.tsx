@@ -180,7 +180,7 @@ export default function AdminEmailsPage() {
                 <div className='px-4 py-3 bg-[linear-gradient(135deg,#0f172a,#1f2937)] text-white'>
                   <div className='flex items-center justify-between gap-2'>
                     <img
-                      src='/logo.jpg'
+                      src='/logo.png'
                       alt='The House of Rani'
                       className='h-8 w-auto object-contain'
                     />

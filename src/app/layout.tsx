@@ -24,6 +24,12 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+const SITE_URL =
+  (process.env.NEXT_PUBLIC_APP_URL || "https://www.thehouseofrani.com").replace(
+    /\/+$/,
+    "",
+  );
+
 export const metadata: Metadata = {
   title: {
     default: "The House of Rani | Premium Indian Ethnic Wear & Gifting",
@@ -57,12 +63,12 @@ export const metadata: Metadata = {
   applicationName: "The House of Rani",
   category: "fashion",
   alternates: {
-    canonical: "/",
+    canonical: SITE_URL,
   },
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: process.env.NEXT_PUBLIC_APP_URL,
+    url: SITE_URL,
     siteName: "The House of Rani",
     title: "The House of Rani | Premium Indian Ethnic Wear & Gifting",
     description:
@@ -78,14 +84,12 @@ export const metadata: Metadata = {
     google: "c-mAKK6c-M5IbneZfLyOePUcU6LaG0a8H2QVX3vQz2M",
   },
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    shortcut: ["/favicon.svg"],
-    apple: [{ url: "/favicon.svg" }],
+    icon: [{ url: "/favicon.ico", type: "image/x-icon" }],
+    shortcut: ["/favicon.ico"],
+    apple: [{ url: "/logo.png", type: "image/png" }],
   },
   robots: { index: true, follow: true },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "http://www.thehouseofrani.com",
-  ),
+  metadataBase: new URL(SITE_URL),
 };
 
 export default async function RootLayout({
@@ -94,13 +98,12 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const nonce = (await headers()).get("x-nonce") ?? "";
-  const appUrl = (
-    process.env.NEXT_PUBLIC_APP_URL || "http://www.thehouseofrani.com"
-  ).replace(/\/+$/, "");
+  const appUrl = SITE_URL;
   const organizationLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "The House of Rani",
+    alternateName: ["House of Rani", "TheHouseOfRani"],
     url: appUrl,
     logo: `${appUrl}/logo.png`,
     description:
@@ -124,6 +127,7 @@ gtag('consent', 'default', {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "The House of Rani",
+    alternateName: ["House of Rani", "TheHouseOfRani"],
     url: appUrl,
     potentialAction: {
       "@type": "SearchAction",

@@ -11,7 +11,7 @@ type BlogLite = {
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.thehouseofrani.com").replace(/\/+$/, "");
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const now = new Date();
 

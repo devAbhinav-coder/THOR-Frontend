@@ -26,7 +26,7 @@ export default function AuthLayout({
         <header className='p-6'>
           <Link href='/' className='inline-block'>
             <Image
-              src='/logo.jpg'
+              src='/logo.png'
               alt='The House of Rani'
               width={140}
               height={44}

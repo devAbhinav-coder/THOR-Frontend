@@ -170,7 +170,7 @@ export default function GiftingPage() {
           description:
             promo?.description ||
             "Premium gifts for every occasion, tailored to your style.",
-          backgroundImage: promo?.backgroundImage || "/logo.jpg",
+          backgroundImage: promo?.backgroundImage || "/logo.png",
           ctaText: promo?.primaryButtonText || "Explore gifts",
           ctaLink: promo?.primaryButtonLink || "/gifting",
         },
@@ -197,7 +197,7 @@ export default function GiftingPage() {
             </>
           : <>
               <Image
-                src={activeHero?.backgroundImage || "/logo.jpg"}
+                src={activeHero?.backgroundImage || "/logo.png"}
                 alt='Gifting banner'
                 fill
                 sizes='100vw'
@@ -346,7 +346,7 @@ export default function GiftingPage() {
             giftingSecondaryBanners
           : [
               {
-                image: blog?.mainImage || promo?.backgroundImage || "/logo.jpg",
+                image: blog?.mainImage || promo?.backgroundImage || "/logo.png",
                 eyebrow: blog?.eyebrow || "Gifting made premium",
                 title: blog?.title || "Curated picks for every celebration",
                 ctaText: "Explore",
@@ -361,7 +361,7 @@ export default function GiftingPage() {
                 className='relative h-[110px] sm:h-[140px] rounded-2xl overflow-hidden border border-gray-100'
               >
                 <Image
-                  src={banner.image || "/logo.jpg"}
+                  src={banner.image || "/logo.png"}
                   alt='Gifting secondary banner'
                   fill
                   sizes='100vw'

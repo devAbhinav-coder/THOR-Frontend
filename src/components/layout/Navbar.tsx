@@ -218,7 +218,7 @@ export default function Navbar() {
                 className='flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0'
               >
                 <Image
-                  src='/logo.jpg'
+                  src='/logo.png'
                   alt='The House of Rani'
                   width={200}
                   height={58}
@@ -506,7 +506,7 @@ export default function Navbar() {
             {/* Drawer header */}
             <div className='flex items-center justify-between p-5 border-b border-navy-800 bg-navy-900/50'>
               <Image
-                src='/logo.jpg'
+                src='/logo.png'
                 alt='The House of Rani'
                 width={176}
                 height={52}
