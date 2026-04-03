@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
 import AdminConcierge from '@/components/admin/AdminConcierge';
 import NotificationBell from '@/components/layout/NotificationBell';
+import BrowserNotificationPrompt from '@/components/layout/BrowserNotificationPrompt';
 
 /** If persist never calls onRehydrateStorage (edge case), unblock admin shell */
 function useAuthHydrationFallback() {
@@ -72,6 +73,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex flex-col h-dvh max-h-dvh bg-gray-50 overflow-hidden overscroll-none">
+      <BrowserNotificationPrompt />
       {/* Mobile top bar */}
       <div className="lg:hidden shrink-0 z-40 bg-gray-900 text-white border-b border-gray-800">
         <div className="h-14 px-4 flex items-center justify-between">

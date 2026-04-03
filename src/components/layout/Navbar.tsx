@@ -29,6 +29,7 @@ import { Category, StorefrontSettings } from "@/types";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
+import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -184,6 +185,7 @@ export default function Navbar() {
 
   return (
     <>
+      <BrowserNotificationPrompt />
       {announcementMessages.length > 0 && pathname === "/" && (
         <div className='bg-navy-950 min-h-8 border-b border-navy-700 flex items-center justify-center px-3 py-1.5 text-center relative z-40 group cursor-default'>
           <p className='text-xs sm:text-sm text-gold-300 font-medium leading-snug max-w-4xl animate-fadeIn'>
