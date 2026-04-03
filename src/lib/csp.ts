@@ -27,6 +27,9 @@ export function buildContentSecurityPolicy(nonce: string): string {
   const connectParts = [
     "'self'",
     api,
+    "https://www.google-analytics.com",
+    "https://region1.google-analytics.com",
+    "https://stats.g.doubleclick.net",
     "https://accounts.google.com",
     "https://www.googleapis.com",
     "https://*.google.com",
@@ -42,7 +45,8 @@ export function buildContentSecurityPolicy(nonce: string): string {
 
   const directives = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' https://accounts.google.com https://apis.google.com https://www.gstatic.com${scriptSrcExtra}`,
+    // With a nonce in script-src, browsers ignore 'unsafe-inline'; omit it to avoid confusion.
+    `script-src 'self' 'nonce-${nonce}' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com${scriptSrcExtra}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",

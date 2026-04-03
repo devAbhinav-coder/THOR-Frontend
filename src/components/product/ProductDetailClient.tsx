@@ -827,7 +827,10 @@ export default function ProductDetailClient({ slug }: Props) {
           {isGiftingVisual && product.giftOccasions?.[0] && (
             <>
               <ChevronRight className='h-3 w-3' />
-              <Link href='/gift' className='hover:text-brand-600 transition-colors'>
+              <Link
+                href='/gift'
+                className='hover:text-brand-600 transition-colors'
+              >
                 {product.giftOccasions?.[0]}
               </Link>
             </>
@@ -874,7 +877,9 @@ export default function ProductDetailClient({ slug }: Props) {
                         fill
                         sizes='176px'
                         quality={90}
-                        className={isGiftingVisual ? "object-cover" : "object-contain"}
+                        className={
+                          isGiftingVisual ? "object-cover" : "object-contain"
+                        }
                       />
                     </div>
                   </button>
@@ -911,49 +916,48 @@ export default function ProductDetailClient({ slug }: Props) {
                   </div>
                 }
 
-                {pdpHoverLens &&
-                  product.images[selectedImage]?.url && (
-                    <div
-                      className='pointer-events-none absolute z-[7] hidden overflow-hidden rounded-xl border-2 border-white shadow-2xl ring-2 ring-black/15 lg:block'
+                {pdpHoverLens && product.images[selectedImage]?.url && (
+                  <div
+                    className='pointer-events-none absolute z-[7] hidden overflow-hidden rounded-xl border-2 border-white shadow-2xl ring-2 ring-black/15 lg:block'
+                    style={{
+                      width: PDP_MAIN_LENS_PX,
+                      height: PDP_MAIN_LENS_PX,
+                      left: Math.max(
+                        0,
+                        Math.min(
+                          pdpHoverLens.cw - PDP_MAIN_LENS_PX,
+                          pdpHoverLens.mx - PDP_MAIN_LENS_PX / 2,
+                        ),
+                      ),
+                      top: Math.max(
+                        0,
+                        Math.min(
+                          pdpHoverLens.ch - PDP_MAIN_LENS_PX,
+                          pdpHoverLens.my - PDP_MAIN_LENS_PX / 2,
+                        ),
+                      ),
+                    }}
+                    aria-hidden
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={product.images[selectedImage].url}
+                      alt=''
+                      draggable={false}
+                      className='absolute max-w-none object-cover'
                       style={{
-                        width: PDP_MAIN_LENS_PX,
-                        height: PDP_MAIN_LENS_PX,
-                        left: Math.max(
-                          0,
-                          Math.min(
-                            pdpHoverLens.cw - PDP_MAIN_LENS_PX,
-                            pdpHoverLens.mx - PDP_MAIN_LENS_PX / 2,
-                          ),
-                        ),
-                        top: Math.max(
-                          0,
-                          Math.min(
-                            pdpHoverLens.ch - PDP_MAIN_LENS_PX,
-                            pdpHoverLens.my - PDP_MAIN_LENS_PX / 2,
-                          ),
-                        ),
+                        width: pdpHoverLens.cw * PDP_MAIN_LENS_ZOOM,
+                        height: pdpHoverLens.ch * PDP_MAIN_LENS_ZOOM,
+                        left:
+                          PDP_MAIN_LENS_PX / 2 -
+                          pdpHoverLens.mx * PDP_MAIN_LENS_ZOOM,
+                        top:
+                          PDP_MAIN_LENS_PX / 2 -
+                          pdpHoverLens.my * PDP_MAIN_LENS_ZOOM,
                       }}
-                      aria-hidden
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={product.images[selectedImage].url}
-                        alt=''
-                        draggable={false}
-                        className='absolute max-w-none object-cover'
-                        style={{
-                          width: pdpHoverLens.cw * PDP_MAIN_LENS_ZOOM,
-                          height: pdpHoverLens.ch * PDP_MAIN_LENS_ZOOM,
-                          left:
-                            PDP_MAIN_LENS_PX / 2 -
-                            pdpHoverLens.mx * PDP_MAIN_LENS_ZOOM,
-                          top:
-                            PDP_MAIN_LENS_PX / 2 -
-                            pdpHoverLens.my * PDP_MAIN_LENS_ZOOM,
-                        }}
-                      />
-                    </div>
-                  )}
+                    />
+                  </div>
+                )}
 
                 {product.images[selectedImage]?.url && (
                   <button
@@ -1069,7 +1073,9 @@ export default function ProductDetailClient({ slug }: Props) {
                           fill
                           sizes='112px'
                           quality={88}
-                          className={isGiftingVisual ? "object-cover" : "object-contain"}
+                          className={
+                            isGiftingVisual ? "object-cover" : "object-contain"
+                          }
                         />
                       </div>
                     </button>
@@ -1086,22 +1092,24 @@ export default function ProductDetailClient({ slug }: Props) {
               <span className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
                 {product.category}
               </span>
-              {isGiftingVisual && product.giftOccasions?.[0] && (
+              {isGiftingVisual &&
+                product.giftOccasions?.[0] &&
                 //loop for all gift occasions
                 product.giftOccasions.map((occasion) => (
-                  <span key={occasion} className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
+                  <span
+                    key={occasion}
+                    className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'
+                  >
                     {occasion}
                   </span>
-                ))
-              )}
-              
+                ))}
+
               {isGiftingVisual && product.isCustomizable && (
                 <span className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
                   Customizable
                 </span>
               )}
 
-              
               {product.fabric && (
                 <span className='text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full'>
                   {product.fabric}
@@ -1242,17 +1250,23 @@ export default function ProductDetailClient({ slug }: Props) {
                         onClick={() => v && setSelectedVariant(v)}
                         disabled={!ok}
                         className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all",
+                          "flex items-center gap-2 px-3 py-1 rounded-xl border-2 text-sm font-medium transition-all",
                           selectedVariant?.color === color ?
-                            "border-brand-600 bg-brand-600 text-white shadow-md"
+                            "border-transparent  shadow-md ring-2 ring-brand-100"
                           : ok ?
                             "border-gray-200 text-gray-700 hover:border-brand-400 hover:bg-brand-50"
                           : "border-gray-100 text-gray-300 cursor-not-allowed",
                         )}
+                        style={{ backgroundColor: "white", color: "black" }}
                       >
                         {swatch && (
                           <span
-                            className='h-3.5 w-3.5 rounded-full border border-white/50 shadow-inner'
+                            className={cn(
+                              "h-6 w-6 rounded-full shadow-inner",
+                              selectedVariant?.color === color ?
+                                "border border-white/80"
+                              : "border border-white/50",
+                            )}
                             style={{
                               background: swatch,
                             }}
@@ -1527,8 +1541,8 @@ export default function ProductDetailClient({ slug }: Props) {
                 <span className='font-semibold'>
                   Estimated delivery in 3-7 business days.
                 </span>{" "}
-                Free shipping on orders above Rs. 999. Express delivery available
-                at checkout.
+                Free shipping on orders above Rs. 999. Express delivery
+                available at checkout.
               </p>
             </div>
 
@@ -1582,7 +1596,10 @@ export default function ProductDetailClient({ slug }: Props) {
                   : "max-h-none",
                 )}
               >
-                <RichTextContent text={product.description} className='space-y-4' />
+                <RichTextContent
+                  text={product.description}
+                  className='space-y-4'
+                />
               </div>
               {product.description.length > 400 && (
                 <button
@@ -1922,7 +1939,9 @@ export default function ProductDetailClient({ slug }: Props) {
                       <div className='flex items-center gap-4'>
                         <div className='h-12 w-12 rounded-2xl bg-gradient-to-br from-brand-600 to-navy-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-100/50 rotate-3'>
                           <span className='text-white font-black text-lg'>
-                            {String(review.user?.name || "Customer").charAt(0).toUpperCase()}
+                            {String(review.user?.name || "Customer")
+                              .charAt(0)
+                              .toUpperCase()}
                           </span>
                         </div>
                         <div>

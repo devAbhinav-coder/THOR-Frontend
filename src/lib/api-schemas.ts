@@ -272,6 +272,28 @@ export const adminToggleUser = z.object({
   data: z.object({ isActive: z.boolean() }),
 });
 
+export const adminUpdateUserRole = z.object({
+  status: z.string(),
+  data: z.object({
+    user: z.object({
+      _id: z.string(),
+      role: z.enum(['user', 'admin']),
+    }),
+  }),
+});
+
+export const adminAuditLogsList = z.object({
+  status: z.string(),
+  pagination: z
+    .object({
+      currentPage: z.number(),
+      totalPages: z.number(),
+      total: z.number(),
+    })
+    .passthrough(),
+  data: z.object({ logs: z.array(doc) }),
+});
+
 export const adminReviewsList = z.object({
   status: z.string(),
   pagination: z
@@ -350,6 +372,11 @@ export const notificationsList = z.object({
 export const notificationSingle = z.object({
   status: z.string(),
   data: z.object({ notification: doc }).passthrough().optional(),
+}).passthrough();
+
+export const pushPublicKey = z.object({
+  status: z.string(),
+  data: z.object({ publicKey: z.string(), enabled: z.boolean().optional() }).passthrough().optional(),
 }).passthrough();
 
 export const giftingProductsList = z.object({

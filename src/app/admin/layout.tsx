@@ -34,6 +34,7 @@ const navItems = [
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },
   { label: 'Users', href: '/admin/users', icon: Users },
+  { label: 'Security Audit', href: '/admin/security/audit', icon: FileText },
   { label: 'Reviews', href: '/admin/reviews', icon: Star },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
 ];

@@ -11,9 +11,57 @@ import { cn } from "@/lib/utils";
 
 export default function NotificationBell({ align = "right" }: { align?: "left" | "right" }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">("default");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pushSubscribedRef = useRef(false);
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+
+  const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = window.atob(base64);
+    const output = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
+    return output;
+  };
+
+  const ensurePushSubscription = async () => {
+    if (typeof window === "undefined" || !user) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    if (pushSubscribedRef.current) return;
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      const keyRes = await notificationApi.getPushPublicKey();
+      const vapidPublicKey = keyRes.data?.publicKey;
+      if (keyRes.data?.enabled === false) return;
+      if (!vapidPublicKey) return;
+      const existing = await registration.pushManager.getSubscription();
+      const subscription =
+        existing ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as BufferSource,
+        }));
+      await notificationApi.subscribePush(subscription.toJSON());
+      pushSubscribedRef.current = true;
+    } catch {
+      // silent fail: keep in-app notifications working even if push setup fails.
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      return;
+    }
+    setNotificationPermission(Notification.permission);
+  }, []);
+
+  useEffect(() => {
+    pushSubscribedRef.current = false;
+  }, [user?._id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -36,6 +84,39 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
   const notifications = data?.data?.notifications || [];
   const unreadCount = data?.data?.unreadCount || 0;
 
+  useEffect(() => {
+    if (!user) return;
+    void ensurePushSubscription();
+  }, [user, notifications.length]);
+
+  const requestBrowserPermission = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error("Browser notifications are not supported on this device/browser.");
+      return;
+    }
+    try {
+      const result = await Notification.requestPermission();
+      setNotificationPermission(result);
+      if (result === "granted") {
+        await ensurePushSubscription();
+        toast.success("Browser notifications enabled.");
+      } else if (result === "denied") {
+        try {
+          if ("serviceWorker" in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) await notificationApi.unsubscribePush(sub.endpoint);
+          }
+        } catch {
+          // ignore cleanup failures
+        }
+        toast.error("Browser notifications blocked. Enable from browser site settings.");
+      }
+    } catch {
+      toast.error("Could not request notification permission.");
+    }
+  };
+
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => notificationApi.markAsRead(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
@@ -52,6 +133,16 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       toast.success("All notifications cleared");
       setIsOpen(false);
+    },
+  });
+
+  const sendTestPushMutation = useMutation({
+    mutationFn: () => notificationApi.sendTestPushToSelf(),
+    onSuccess: () => {
+      toast.success("Test push sent. Check your browser/device notifications.");
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(err?.message || "Could not send test push.");
     },
   });
 
@@ -93,6 +184,23 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 bg-white dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-800">
             <h3 className="font-bold text-gray-900 dark:text-white text-base">Notifications</h3>
               <div className="flex items-center gap-2">
+                {notificationPermission === "default" && (
+                  <button
+                    onClick={requestBrowserPermission}
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors"
+                  >
+                    Enable Browser Alerts
+                  </button>
+                )}
+                {user?.role === "admin" && (
+                  <button
+                    onClick={() => sendTestPushMutation.mutate()}
+                    disabled={sendTestPushMutation.isPending}
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 disabled:opacity-60 disabled:cursor-not-allowed rounded-full transition-colors"
+                  >
+                    {sendTestPushMutation.isPending ? "Sending..." : "Send Test Push"}
+                  </button>
+                )}
                 {unreadCount > 0 && (
                   <button
                     onClick={() => markAllAsReadMutation.mutate()}
@@ -111,6 +219,11 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
                 )}
               </div>
             </div>
+            {notificationPermission === "denied" && (
+              <div className="px-5 py-2 text-[11px] text-amber-700 bg-amber-50 border-b border-amber-100">
+                Browser alerts are blocked for this site. Enable notifications from browser settings.
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto overscroll-contain overflow-x-hidden no-scrollbar bg-gray-50/30 dark:bg-neutral-900/50" data-lenis-prevent>
               {notifications.length === 0 ? (

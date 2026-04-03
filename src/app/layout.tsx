@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import { DM_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
@@ -24,11 +24,9 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const SITE_URL =
-  (process.env.NEXT_PUBLIC_APP_URL || "https://www.thehouseofrani.com").replace(
-    /\/+$/,
-    "",
-  );
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_APP_URL || "https://www.thehouseofrani.com"
+).replace(/\/+$/, "");
 
 export const metadata: Metadata = {
   title: {
@@ -84,8 +82,8 @@ export const metadata: Metadata = {
     google: "c-mAKK6c-M5IbneZfLyOePUcU6LaG0a8H2QVX3vQz2M",
   },
   icons: {
-    icon: [{ url: "/favicon.ico", type: "image/x-icon" }],
-    shortcut: ["/favicon.ico"],
+    icon: [{ url: "/favicon.png", type: "image/png" }],
+    shortcut: ["/favicon.png"],
     apple: [{ url: "/logo.png", type: "image/png" }],
   },
   robots: { index: true, follow: true },
@@ -97,7 +95,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const nonce = (await headers()).get("x-nonce") ?? "";
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const appUrl = SITE_URL;
   const organizationLd = {
     "@context": "https://schema.org",
@@ -141,21 +139,25 @@ gtag('consent', 'default', {
       lang='en'
       className={`${dmSans.variable} ${playfair.variable}`}
       suppressHydrationWarning
-      data-csp-nonce={nonce}
     >
       <head>
-        {/* Inline in head (not next/script) avoids client/server nonce hydration mismatch */}
+        {/* Per-request CSP nonces can differ between SSR snapshot and client hydration in dev; suppressHydrationWarning is the supported escape hatch. */}
         <script
           id='consent-mode-default'
-          nonce={nonce || undefined}
+          nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: consentModeDefaultScript }}
         />
         <script
           type='application/ld+json'
+          nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
         />
         <script
           type='application/ld+json'
+          nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }}
         />
       </head>

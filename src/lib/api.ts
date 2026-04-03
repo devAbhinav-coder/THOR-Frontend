@@ -220,6 +220,8 @@ export const storefrontApi = {
 
 export const adminApi = {
   getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
+  getAuditLogs: (params?: Record<string, string | number>) =>
+    unwrapAxios("admin.auditLogs", api.get("/admin/security/audit", { params }), schemas.adminAuditLogsList),
   getOrders: (params?: object) =>
     unwrapAxios("admin.orders", api.get("/admin/orders", { params }), schemas.adminOrdersList),
   getOrderDetails: (id: string) =>
@@ -238,6 +240,12 @@ export const adminApi = {
     unwrapAxios("admin.users", api.get("/admin/users", { params }), schemas.adminUsersList),
   toggleUserStatus: (id: string) =>
     unwrapAxios("admin.toggleUser", api.patch(`/admin/users/${id}/toggle-status`), schemas.adminToggleUser),
+  updateUserRole: (id: string, role: "user" | "admin") =>
+    unwrapAxios(
+      "admin.updateUserRole",
+      api.patch(`/admin/users/${id}/role`, { role }),
+      schemas.adminUpdateUserRole
+    ),
   getReviews: (params?: object) =>
     unwrapAxios("admin.reviews", api.get("/admin/reviews", { params }), schemas.adminReviewsList),
   deleteReview: (id: string) => del204("admin.deleteReview", api.delete(`/admin/reviews/${id}`)),
@@ -310,6 +318,14 @@ export const notificationApi = {
     unwrapAxios("notifications.markAllAsRead", api.patch("/notifications/mark-all-read"), schemas.successData),
   clearAll: () => 
     unwrapAxios("notifications.clearAll", api.delete("/notifications/clear-all"), schemas.successData),
+  getPushPublicKey: () =>
+    unwrapAxios("notifications.pushPublicKey", api.get("/notifications/push/public-key"), schemas.pushPublicKey),
+  subscribePush: (subscription: PushSubscriptionJSON) =>
+    unwrapAxios("notifications.subscribePush", api.post("/notifications/push/subscribe", { subscription }), schemas.successData),
+  unsubscribePush: (endpoint: string) =>
+    unwrapAxios("notifications.unsubscribePush", api.post("/notifications/push/unsubscribe", { endpoint }), schemas.successData),
+  sendTestPushToSelf: () =>
+    unwrapAxios("notifications.sendTestPushToSelf", api.post("/notifications/push/test-self"), schemas.successData),
 };
 
 export const giftingApi = {
