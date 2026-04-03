@@ -1040,18 +1040,28 @@ export default function AdminGiftingPage() {
             if (saved?._id) {
               queryClient.setQueryData(
                 ["gifting-products-admin"],
-                (prev: { data?: { products?: GiftProduct[] } } | undefined) => {
+                (prev: { data?: { products?: GiftProduct[] }; status?: string; pagination?: unknown } | undefined) => {
                   const list = prev?.data?.products || [];
                   const idx = list.findIndex((p) => p._id === saved._id);
                   const nextList =
                     idx >= 0
-                      ? list.map((p, i) => (i === idx ? saved : p))
+                      ? list.map((p, i) => (i === idx ? { ...p, ...saved } : p))
                       : [saved, ...list];
-                  return { ...(prev || {}), data: { ...(prev?.data || {}), products: nextList } };
-                }
+                  return {
+                    ...(prev || { status: "success" }),
+                    data: { ...(prev?.data || {}), products: nextList },
+                  };
+                },
               );
+              // Do not refetch immediately: the list endpoint can lag behind create/update and
+              // overwrite this cache with stale data, so the new product “blinks” away.
+              void queryClient.invalidateQueries({
+                queryKey: ["gifting-products-admin"],
+                refetchType: "none",
+              });
+            } else {
+              void refetchProducts();
             }
-            refetchProducts();
           }}
         />
       )}

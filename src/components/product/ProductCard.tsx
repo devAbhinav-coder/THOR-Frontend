@@ -34,12 +34,6 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   const inWishlist = isInWishlist(product._id);
   const sellableTotal = sumVariantStock(product);
   const isOutOfStock = !hasInStockVariant(product);
-  const discountPercent =
-    product.comparePrice ?
-      Math.round(
-        ((product.comparePrice - product.price) / product.comparePrice) * 100,
-      )
-    : 0;
 
   const displayImage =
     (hoveredImage && product.images[1]?.url) || product.images[0]?.url || "";
@@ -140,16 +134,8 @@ export default function ProductCard({ product, className }: ProductCardProps) {
             </div>
           }
 
-          {/* Gradient overlay — helps text/buttons over image */}
-          <div className='absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300' />
-
           {/* Badges — top left */}
           <div className='absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10'>
-            {discountPercent > 0 && (
-              <span className='text-xs bg-brand-600 text-white font-bold px-2.5 py-0.5 rounded-full shadow-md'>
-                -{discountPercent}%
-              </span>
-            )}
             {product.isFeatured && (
               <span className='text-xs bg-gold-500 text-white font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1'>
                 <Star className='h-3 w-3 fill-white' /> Featured
@@ -323,11 +309,6 @@ export default function ProductCard({ product, className }: ProductCardProps) {
             {product.comparePrice && product.comparePrice > product.price && (
               <span className='text-sm text-gray-400 line-through'>
                 {formatPrice(product.comparePrice)}
-              </span>
-            )}
-            {discountPercent > 0 && (
-              <span className='text-xs font-semibold text-green-600'>
-                {discountPercent}% off
               </span>
             )}
           </div>

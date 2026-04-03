@@ -968,11 +968,6 @@ export default function ProductDetailClient({ slug }: Props) {
 
                 {/* Badges */}
                 <div className='pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5'>
-                  {discountPct > 0 && (
-                    <span className='text-xs font-bold bg-brand-600 text-white px-2.5 py-1 rounded-full shadow'>
-                      -{discountPct}% OFF
-                    </span>
-                  )}
                   {product.isFeatured && (
                     <span className='text-xs font-bold bg-gold-500 text-white px-2.5 py-1 rounded-full shadow flex items-center gap-1'>
                       <Star className='w-3 h-3 fill-white' /> Editor&apos;s Pick

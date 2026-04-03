@@ -308,20 +308,20 @@ export default function Navbar() {
                     maxLength={30}
                     autoComplete='off'
                     aria-label='Search store'
-                    className='w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 pr-[7.25rem] text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden'
+                    className='w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 pr-[8.5rem] text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden'
                   />
                   <button
                     type='submit'
                     disabled={isSearchSubmitting || !searchQuery.trim()}
-                    className='absolute right-9 top-1/2 -translate-y-1/2 rounded-md bg-brand-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-55'
+                    className='absolute right-9 top-1/2 -translate-y-1/2 rounded-md bg-brand-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-55'
                   >
-                    {isSearchSubmitting ? "..." : "Go"}
+                    {isSearchSubmitting ? "…" : "Search"}
                   </button>
                   {searchQuery ?
                     <button
                       type='button'
                       onClick={() => setSearchQuery("")}
-                      className='absolute right-[4.25rem] top-1/2 -translate-y-1/2 rounded-md p-1 text-white/45 hover:bg-navy-700 hover:text-white'
+                      className='absolute right-[5.35rem] top-1/2 -translate-y-1/2 rounded-md p-1 text-white/45 hover:bg-navy-700 hover:text-white'
                       aria-label='Clear search'
                     >
                       <X className='h-3.5 w-3.5' />
