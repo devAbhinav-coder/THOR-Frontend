@@ -252,12 +252,15 @@ export default function GiftingPage() {
       </section>
       {/* Admin categories image strip */}
       <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
-        <div className='flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <div className='flex items-start gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
           {categoriesLoading ?
             Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className='flex-shrink-0 w-[84px] sm:w-[92px] text-center'>
-                <Skeleton className='h-14 w-14 sm:h-16 sm:w-16 rounded-full mx-auto bg-gray-100' />
-                <Skeleton className='mt-2 h-3 w-16 rounded mx-auto bg-gray-100' />
+              <div
+                key={i}
+                className='flex flex-shrink-0 flex-col items-center w-[84px] sm:w-[92px]'
+              >
+                <Skeleton className='h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-full bg-gray-100' />
+                <Skeleton className='mt-2 h-3 w-16 shrink-0 rounded bg-gray-100' />
               </div>
             ))
           : giftCategories.length > 0 ?
@@ -266,14 +269,14 @@ export default function GiftingPage() {
                 type='button'
                 onClick={() => setActiveOccasion("all")}
                 className={cn(
-                  "flex-shrink-0 w-[84px] sm:w-[92px] text-center",
+                  "flex flex-shrink-0 flex-col items-center w-[84px] sm:w-[92px]",
                   activeOccasion === "all" && "opacity-100",
                 )}
               >
-                <div className='h-14 w-14 sm:h-16 sm:w-16 rounded-full border border-gray-200 mx-auto bg-gray-100 grid place-items-center text-gray-500'>
+                <div className='h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-full border border-gray-200 bg-gray-100 grid place-items-center text-gray-500'>
                   <Gift className='h-5 w-5' />
                 </div>
-                <p className='mt-1 text-[11px] font-medium text-gray-700 line-clamp-2'>
+                <p className='mt-1.5 block min-h-[2.5rem] w-full px-0.5 text-center text-[11px] font-medium leading-tight text-gray-700 line-clamp-2'>
                   All
                 </p>
               </button>
@@ -282,11 +285,11 @@ export default function GiftingPage() {
                   key={cat._id}
                   type='button'
                   onClick={() => setActiveOccasion(cat.name)}
-                  className={cn("flex-shrink-0 w-[84px] sm:w-[92px] text-center")}
+                  className='flex flex-shrink-0 flex-col items-center w-[84px] sm:w-[92px]'
                 >
                   <div
                     className={cn(
-                      "relative h-14 w-14 sm:h-16 sm:w-16 rounded-full overflow-hidden border mx-auto bg-gray-100",
+                      "relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-full border bg-gray-100",
                       activeOccasion === cat.name ?
                         "border-brand-500 ring-2 ring-brand-100"
                       : "border-gray-200",
@@ -305,7 +308,7 @@ export default function GiftingPage() {
                       </div>
                     }
                   </div>
-                  <p className='mt-1 text-[11px] font-medium text-gray-700 line-clamp-2 leading-tight'>
+                  <p className='mt-1.5 block min-h-[2.5rem] w-full px-0.5 text-center text-[11px] font-medium leading-tight text-gray-700 line-clamp-2'>
                     {cat.name}
                   </p>
                 </button>
