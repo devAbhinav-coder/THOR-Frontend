@@ -4,13 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import { orderApi, storefrontApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Order, StorefrontSettings } from "@/types";
-import { INITIAL_ACTIONS, MAX_MESSAGES, OPEN_KEY, RECENT_ORDER_LIMIT, STORAGE_KEY } from "./constants";
+import {
+  INITIAL_ACTIONS,
+  MAX_MESSAGES,
+  OPEN_KEY,
+  RECENT_ORDER_LIMIT,
+  STORAGE_KEY,
+} from "./constants";
 import { detectIntent, findOrderIdByNumber } from "./intent";
-import { botMessage, formatOrderDetailText, summarizeOrder, userMessage } from "./orderFormat";
+import {
+  botMessage,
+  formatOrderDetailText,
+  summarizeOrder,
+  userMessage,
+} from "./orderFormat";
 import type { ChatMessage, OrderSummary, QuickAction } from "./types";
 
 const SUPPORT_PHONE = "8340311033";
-const SUPPORT_EMAIL = "hello@thehouseofrani@gmail.com";
+const SUPPORT_EMAIL = "support@thehouseofrani.com";
 const greeting = "Hi, I am your support assistant.";
 const GREETING_RE = /^(hi|hey|hello|hola|namaste|hii+|heyy+)\b[!. ]*$/i;
 const THANKS_RE = /\b(thanks|thank you|thx|shukriya|dhanyavaad)\b/i;
@@ -47,7 +58,10 @@ export function useRaniCareChat() {
 
   useEffect(() => {
     if (!messages.length) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_MESSAGES)));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(messages.slice(-MAX_MESSAGES)),
+    );
   }, [messages]);
 
   useEffect(() => {
@@ -58,11 +72,18 @@ export function useRaniCareChat() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing, loadingOrders]);
 
-  const pushBot = (text: string, actions?: QuickAction[], orders?: OrderSummary[], delay = 420) => {
+  const pushBot = (
+    text: string,
+    actions?: QuickAction[],
+    orders?: OrderSummary[],
+    delay = 420,
+  ) => {
     setTyping(true);
     window.setTimeout(() => {
       setTyping(false);
-      setMessages((prev) => [...prev, botMessage(text, actions, orders)].slice(-MAX_MESSAGES));
+      setMessages((prev) =>
+        [...prev, botMessage(text, actions, orders)].slice(-MAX_MESSAGES),
+      );
     }, delay);
   };
 
@@ -71,18 +92,27 @@ export function useRaniCareChat() {
   };
 
   const fetchRecentOrders = async (): Promise<Order[]> => {
-    const body = await orderApi.getMyOrders({ page: 1, limit: RECENT_ORDER_LIMIT });
+    const body = await orderApi.getMyOrders({
+      page: 1,
+      limit: RECENT_ORDER_LIMIT,
+    });
     const list = (body.data?.orders || []) as Order[];
     recentOrdersRef.current = list;
     return list;
   };
 
-  const presentOrderList = async (opts: { intro: string; cancelHint?: boolean }) => {
+  const presentOrderList = async (opts: {
+    intro: string;
+    cancelHint?: boolean;
+  }) => {
     if (!isAuthenticated) {
-      pushBot("Please sign in to view your orders and request a cancellation.", [
-        { label: "Sign in", value: "sign in" },
-        { label: "Shipping information", value: "shipping policy" },
-      ]);
+      pushBot(
+        "Please sign in to view your orders and request a cancellation.",
+        [
+          { label: "Sign in", value: "sign in" },
+          { label: "Shipping information", value: "shipping policy" },
+        ],
+      );
       return;
     }
 
@@ -90,16 +120,20 @@ export function useRaniCareChat() {
     try {
       const list = await fetchRecentOrders();
       if (!list.length) {
-        pushBot("You have no orders yet. After you place an order, it will appear here for tracking.", [
-          { label: "Continue shopping", value: "open shop" },
-          { label: "Delivery information", value: "shipping time" },
-        ]);
+        pushBot(
+          "You have no orders yet. After you place an order, it will appear here for tracking.",
+          [
+            { label: "Continue shopping", value: "open shop" },
+            { label: "Delivery information", value: "shipping time" },
+          ],
+        );
         return;
       }
 
       const summaries = list.map(summarizeOrder);
-      const cancelNote = opts.cancelHint
-        ? "\n\nCancellations are available only while your order is pending or confirmed (before dispatch). For shipped orders, please contact us about returns."
+      const cancelNote =
+        opts.cancelHint ?
+          "\n\nCancellations are available only while your order is pending or confirmed (before dispatch). For shipped orders, please contact us about returns."
         : "";
 
       pushBot(
@@ -121,7 +155,9 @@ export function useRaniCareChat() {
 
   const presentOrderDetail = async (orderId: string) => {
     if (!isAuthenticated) {
-      pushBot("Please sign in to view order details.", [{ label: "Sign in", value: "sign in" }]);
+      pushBot("Please sign in to view order details.", [
+        { label: "Sign in", value: "sign in" },
+      ]);
       return;
     }
 
@@ -134,11 +170,16 @@ export function useRaniCareChat() {
         if (order) {
           const oid = order._id;
           const rest = recentOrdersRef.current.filter((x) => x._id !== oid);
-          recentOrdersRef.current = [order, ...rest].slice(0, RECENT_ORDER_LIMIT);
+          recentOrdersRef.current = [order, ...rest].slice(
+            0,
+            RECENT_ORDER_LIMIT,
+          );
         }
       }
       if (!order) {
-        pushBot("That order was not found on your account. Refresh your order list and try again.");
+        pushBot(
+          "That order was not found on your account. Refresh your order list and try again.",
+        );
         return;
       }
 
@@ -148,9 +189,15 @@ export function useRaniCareChat() {
         { label: "All orders", value: "action:recent_orders" },
       ];
       if (order.status === "pending" || order.status === "confirmed") {
-        actions.unshift({ label: "Cancel this order", value: `cancel_ask:${order._id}` });
+        actions.unshift({
+          label: "Cancel this order",
+          value: `cancel_ask:${order._id}`,
+        });
       } else {
-        actions.unshift({ label: "Need return/help", value: "contact support" });
+        actions.unshift({
+          label: "Need return/help",
+          value: "contact support",
+        });
       }
 
       pushBot(detail, actions, undefined, 280);
@@ -166,7 +213,9 @@ export function useRaniCareChat() {
   const presentCancelConfirm = (orderId: string) => {
     const o = recentOrdersRef.current.find((x) => x._id === orderId);
     if (!o) {
-      pushBot("Open your order list again, then try to cancel.", [{ label: "Recent orders", value: "action:recent_orders" }]);
+      pushBot("Open your order list again, then try to cancel.", [
+        { label: "Recent orders", value: "action:recent_orders" },
+      ]);
       return;
     }
     if (o.status !== "pending" && o.status !== "confirmed") {
@@ -202,13 +251,16 @@ export function useRaniCareChat() {
       );
     } catch (err: unknown) {
       const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Cancellation failed.";
-      pushBot(`${msg} If your order has shipped, contact us for the next steps.`, [
-        { label: "Recent orders", value: "action:recent_orders" },
-        { label: "Contact support", value: "contact support" },
-      ]);
+        err && typeof err === "object" && "message" in err ?
+          String((err as { message: string }).message)
+        : "Cancellation failed.";
+      pushBot(
+        `${msg} If your order has shipped, contact us for the next steps.`,
+        [
+          { label: "Recent orders", value: "action:recent_orders" },
+          { label: "Contact support", value: "contact support" },
+        ],
+      );
     } finally {
       setLoadingOrders(false);
     }
@@ -217,11 +269,21 @@ export function useRaniCareChat() {
   const respondWithIntent = async (rawInput: string) => {
     const trimmed = rawInput.trim();
     if (THANKS_RE.test(trimmed)) {
-      pushBot("Thank you. Glad I could help. If you need anything else, just message me anytime.", INITIAL_ACTIONS, undefined, 180);
+      pushBot(
+        "Thank you. Glad I could help. If you need anything else, just message me anytime.",
+        INITIAL_ACTIONS,
+        undefined,
+        180,
+      );
       return;
     }
     if (GREETING_RE.test(trimmed)) {
-      pushBot(`${greeting} How can I help you today?`, INITIAL_ACTIONS, undefined, 180);
+      pushBot(
+        `${greeting} How can I help you today?`,
+        INITIAL_ACTIONS,
+        undefined,
+        180,
+      );
       return;
     }
 
@@ -230,9 +292,9 @@ export function useRaniCareChat() {
     if (intent === "show_orders" || intent === "cancel_help") {
       await presentOrderList({
         intro:
-          intent === "cancel_help"
-            ? "Select an order below. You can cancel from the details if the status is still pending or confirmed."
-            : "Here are your recent orders.",
+          intent === "cancel_help" ?
+            "Select an order below. You can cancel from the details if the status is still pending or confirmed."
+          : "Here are your recent orders.",
         cancelHint: intent === "cancel_help",
       });
       return;
@@ -285,14 +347,17 @@ export function useRaniCareChat() {
     }
 
     if (intent === "privacy") {
-      pushBot("How we use your information is described in our privacy policy.", [
-        { label: "Privacy policy", value: "privacy policy" },
-      ]);
+      pushBot(
+        "How we use your information is described in our privacy policy.",
+        [{ label: "Privacy policy", value: "privacy policy" }],
+      );
       return;
     }
 
     if (intent === "terms") {
-      pushBot("Our terms of service cover purchases and use of this website.", [{ label: "Terms", value: "terms policy" }]);
+      pushBot("Our terms of service cover purchases and use of this website.", [
+        { label: "Terms", value: "terms policy" },
+      ]);
       return;
     }
 
@@ -307,7 +372,10 @@ export function useRaniCareChat() {
       return;
     }
 
-    if (isAuthenticated && /\b[A-Z]{2,}[\w#-]*\d{2,}\b/i.test(rawInput.trim())) {
+    if (
+      isAuthenticated &&
+      /\b[A-Z]{2,}[\w#-]*\d{2,}\b/i.test(rawInput.trim())
+    ) {
       setLoadingOrders(true);
       try {
         if (!recentOrdersRef.current.length) await fetchRecentOrders();
@@ -354,7 +422,8 @@ export function useRaniCareChat() {
     if (value === "action:cancel_help") {
       pushUser("I want to cancel an order");
       await presentOrderList({
-        intro: "Select an order to review. You may cancel from the details if the status is pending or confirmed.",
+        intro:
+          "Select an order to review. You may cancel from the details if the status is pending or confirmed.",
         cancelHint: true,
       });
       return;
@@ -379,7 +448,12 @@ export function useRaniCareChat() {
     }
     if (value === "cancel_abort") {
       pushUser("Do not cancel");
-      pushBot("Understood. Your order is unchanged. How else can we help?", INITIAL_ACTIONS, undefined, 250);
+      pushBot(
+        "Understood. Your order is unchanged. How else can we help?",
+        INITIAL_ACTIONS,
+        undefined,
+        250,
+      );
       return;
     }
     if (value.startsWith("open_order:")) {
@@ -394,7 +468,8 @@ export function useRaniCareChat() {
     else if (value === "privacy policy") window.location.href = "/privacy";
     else if (value === "terms policy") window.location.href = "/terms";
     else if (value === "sign in") window.location.href = "/auth/login";
-    else if (value === "call support") window.location.href = `tel:${contactPhone.replace(/\s+/g, "")}`;
+    else if (value === "call support")
+      window.location.href = `tel:${contactPhone.replace(/\s+/g, "")}`;
     else if (value === "email support")
       window.location.href = `mailto:${contactEmail}?subject=Customer%20Support%20Request`;
     else await submitUserText(value);
