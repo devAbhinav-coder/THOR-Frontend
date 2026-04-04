@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
 import { isLowInventoryTotal } from "@/lib/inventoryConstants";
+import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 
 interface ProductCardProps {
   product: Product;
@@ -25,6 +26,8 @@ interface ProductCardProps {
 export default function ProductCard({ product, className }: ProductCardProps) {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [hoveredImage, setHoveredImage] = useState(false);
+  /** Second gallery URL failed to load (404, blocked host, etc.) — stay on primary until next hover. */
+  const [secondaryImageError, setSecondaryImageError] = useState(false);
   const { addToCart } = useCartStore();
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
@@ -35,8 +38,18 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   const sellableTotal = sumVariantStock(product);
   const isOutOfStock = !hasInStockVariant(product);
 
-  const displayImage =
-    (hoveredImage && product.images[1]?.url) || product.images[0]?.url || "";
+  const primaryUrl =
+    normalizeCloudinaryDeliveryUrl(product.images[0]?.url) ||
+    String(product.images[0]?.url || "").trim();
+  const secondaryUrl =
+    normalizeCloudinaryDeliveryUrl(product.images[1]?.url) ||
+    String(product.images[1]?.url || "").trim();
+  const showSecondaryOnHover =
+    hoveredImage &&
+    Boolean(secondaryUrl) &&
+    secondaryUrl !== primaryUrl &&
+    !secondaryImageError;
+  const displayImage = showSecondaryOnHover ? secondaryUrl : primaryUrl;
   const canUseHoverEffects =
     typeof window !== "undefined" &&
     window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -117,11 +130,20 @@ export default function ProductCard({ product, className }: ProductCardProps) {
         {/* ── Image – 3:4 portrait (same on every card / breakpoint) ── */}
         <div
           className='relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-2xl bg-gray-100'
-          onMouseEnter={() => canUseHoverEffects && setHoveredImage(true)}
-          onMouseLeave={() => canUseHoverEffects && setHoveredImage(false)}
+          onMouseEnter={() => {
+            if (!canUseHoverEffects) return;
+            setSecondaryImageError(false);
+            setHoveredImage(true);
+          }}
+          onMouseLeave={() => {
+            if (!canUseHoverEffects) return;
+            setHoveredImage(false);
+            setSecondaryImageError(false);
+          }}
         >
           {displayImage ?
             <Image
+              key={displayImage}
               src={displayImage}
               alt={product.name}
               fill
@@ -130,6 +152,11 @@ export default function ProductCard({ product, className }: ProductCardProps) {
                 "object-cover transition-all duration-700",
                 hoveredImage ? "scale-105" : "scale-100",
               )}
+              onError={() => {
+                if (hoveredImage && secondaryUrl && displayImage === secondaryUrl) {
+                  setSecondaryImageError(true);
+                }
+              }}
             />
           : <div className='absolute inset-0 flex items-center justify-center bg-gray-100'>
               <ShoppingBag className='w-12 h-12 text-gray-300' />
@@ -165,14 +192,15 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           </button>
 
           {/* Image swap dots */}
-          {product.images.length > 1 && (
+          {product.images.length > 1 && secondaryUrl && secondaryUrl !== primaryUrl && (
             <div className='hidden sm:flex absolute bottom-14 left-1/2 -translate-x-1/2 gap-1.5 z-10 opacity-0 sm:group-hover:opacity-100 transition-opacity'>
               {product.images.slice(0, 4).map((_, i) => (
                 <span
                   key={i}
                   className={cn(
                     "block rounded-full transition-all duration-300",
-                    (i === 0 && !hoveredImage) || (i === 1 && hoveredImage) ?
+                    (i === 0 && (!hoveredImage || secondaryImageError)) ||
+                    (i === 1 && hoveredImage && !secondaryImageError) ?
                       "w-5 h-1.5 bg-white"
                     : "w-1.5 h-1.5 bg-white/50",
                   )}

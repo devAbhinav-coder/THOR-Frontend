@@ -43,6 +43,11 @@ import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal"
 import ProductImageLightbox from "@/components/product/ProductImageLightbox";
 import RichTextContent from "@/components/ui/RichTextContent";
 import { isLowInStockVariant } from "@/lib/inventoryConstants";
+import { normalizeProductImages } from "@/lib/cloudinaryUrl";
+
+/** Desktop PDP hover magnifier — module scope so rAF flush can stay stable. */
+const PDP_MAIN_LENS_PX = 120;
+const PDP_MAIN_LENS_ZOOM = 2.45;
 
 interface Props {
   slug: string;
@@ -151,13 +156,17 @@ export default function ProductDetailClient({ slug }: Props) {
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
   const thumbsRef = useRef<HTMLDivElement>(null);
   const pdpMainImageRef = useRef<HTMLDivElement>(null);
-  /** Desktop hover magnifier on main PDP image (coordinates relative to main frame). */
-  const [pdpHoverLens, setPdpHoverLens] = useState<{
+  const pdpLensBoxRef = useRef<HTMLDivElement>(null);
+  const pdpLensImgRef = useRef<HTMLImageElement>(null);
+  const pdpLensMetricsRef = useRef<{
     mx: number;
     my: number;
     cw: number;
     ch: number;
   } | null>(null);
+  const pdpLensRafRef = useRef<number | null>(null);
+  /** Lens visibility only — position updates run via rAF + transform (no per-pixel re-renders). */
+  const [pdpLensVisible, setPdpLensVisible] = useState(false);
 
   /* Variant / Qty */
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
@@ -233,8 +242,21 @@ export default function ProductDetailClient({ slug }: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    setPdpHoverLens(null);
+    setPdpLensVisible(false);
+    pdpLensMetricsRef.current = null;
+    if (pdpLensRafRef.current != null) {
+      cancelAnimationFrame(pdpLensRafRef.current);
+      pdpLensRafRef.current = null;
+    }
   }, [selectedImage]);
+
+  useEffect(() => {
+    return () => {
+      if (pdpLensRafRef.current != null) {
+        cancelAnimationFrame(pdpLensRafRef.current);
+      }
+    };
+  }, []);
 
   /* Initial fetch */
   useEffect(() => {
@@ -251,7 +273,10 @@ export default function ProductDetailClient({ slug }: Props) {
       try {
         const main = await productApi.getBySlug(slug);
         const p = main.data.product as Product;
-        setProduct(p);
+        setProduct({
+          ...p,
+          images: normalizeProductImages(p.images),
+        });
         const variants = p.variants || [];
         setSelectedVariant(variants.find((v) => v.stock > 0) || variants[0]);
 
@@ -384,8 +409,11 @@ export default function ProductDetailClient({ slug }: Props) {
             .map(({ r }) => r)
             .slice(0, 8);
 
-          bestRelated = scored;
-          setRelatedProducts(scored);
+          bestRelated = scored.map((r) => ({
+            ...r,
+            images: normalizeProductImages(r.images),
+          }));
+          setRelatedProducts(bestRelated);
         }
         if (moreRes.status === "fulfilled") {
           const all: Product[] = moreRes.value.data?.products || [];
@@ -405,7 +433,13 @@ export default function ProductDetailClient({ slug }: Props) {
             ...bestRelated.map((x) => x._id),
           ]);
           setMoreProducts(
-            scoped.filter((r) => !exclude.has(r._id)).slice(0, 8),
+            scoped
+              .filter((r) => !exclude.has(r._id))
+              .slice(0, 8)
+              .map((r) => ({
+                ...r,
+                images: normalizeProductImages(r.images),
+              })),
           );
         }
       } catch {
@@ -517,10 +551,24 @@ export default function ProductDetailClient({ slug }: Props) {
     !!product.isGiftable ||
     !!product.isCustomizable;
 
-  /** Desktop-only hover magnifier on PDP main image (click still opens lightbox). */
-  const PDP_MAIN_LENS_PX = 120;
-  const PDP_MAIN_LENS_ZOOM = 2.45;
+  const flushPdpLensDom = () => {
+    pdpLensRafRef.current = null;
+    const m = pdpLensMetricsRef.current;
+    const box = pdpLensBoxRef.current;
+    const img = pdpLensImgRef.current;
+    if (!m || !box || !img) return;
+    const { mx, my, cw, ch } = m;
+    const L = PDP_MAIN_LENS_PX;
+    const z = PDP_MAIN_LENS_ZOOM;
+    const left = Math.max(0, Math.min(cw - L, mx - L / 2));
+    const top = Math.max(0, Math.min(ch - L, my - L / 2));
+    box.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    img.style.width = `${cw * z}px`;
+    img.style.height = `${ch * z}px`;
+    img.style.transform = `translate3d(${L / 2 - mx * z}px, ${L / 2 - my * z}px, 0)`;
+  };
 
+  /** Desktop-only hover magnifier — rAF + transform to avoid React re-renders every mousemove. */
   const onPdpMainImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) return;
     const el = pdpMainImageRef.current;
@@ -529,13 +577,29 @@ export default function ProductDetailClient({ slug }: Props) {
     const mx = e.clientX - r.left;
     const my = e.clientY - r.top;
     if (mx < 0 || my < 0 || mx > r.width || my > r.height) {
-      setPdpHoverLens(null);
+      if (pdpLensRafRef.current != null) {
+        cancelAnimationFrame(pdpLensRafRef.current);
+        pdpLensRafRef.current = null;
+      }
+      setPdpLensVisible(false);
+      pdpLensMetricsRef.current = null;
       return;
     }
-    setPdpHoverLens({ mx, my, cw: r.width, ch: r.height });
+    setPdpLensVisible(true);
+    pdpLensMetricsRef.current = { mx, my, cw: r.width, ch: r.height };
+    if (pdpLensRafRef.current == null) {
+      pdpLensRafRef.current = requestAnimationFrame(flushPdpLensDom);
+    }
   };
 
-  const onPdpMainImageMouseLeave = () => setPdpHoverLens(null);
+  const onPdpMainImageMouseLeave = () => {
+    if (pdpLensRafRef.current != null) {
+      cancelAnimationFrame(pdpLensRafRef.current);
+      pdpLensRafRef.current = null;
+    }
+    setPdpLensVisible(false);
+    pdpLensMetricsRef.current = null;
+  };
 
   /* Actions */
   const requireAuth = (msg: string) => {
@@ -916,44 +980,32 @@ export default function ProductDetailClient({ slug }: Props) {
                   </div>
                 }
 
-                {pdpHoverLens && product.images[selectedImage]?.url && (
+                {product.images[selectedImage]?.url && (
                   <div
-                    className='pointer-events-none absolute z-[7] hidden overflow-hidden rounded-xl border-2 border-white shadow-2xl ring-2 ring-black/15 lg:block'
+                    ref={pdpLensBoxRef}
+                    className={cn(
+                      "pointer-events-none absolute left-0 top-0 z-[7] hidden overflow-hidden rounded-xl border-2 border-white shadow-2xl ring-2 ring-black/15 lg:block",
+                      "will-change-transform [backface-visibility:hidden]",
+                      "transition-opacity duration-200 ease-out",
+                      pdpLensVisible ? "opacity-100" : "opacity-0",
+                    )}
                     style={{
                       width: PDP_MAIN_LENS_PX,
                       height: PDP_MAIN_LENS_PX,
-                      left: Math.max(
-                        0,
-                        Math.min(
-                          pdpHoverLens.cw - PDP_MAIN_LENS_PX,
-                          pdpHoverLens.mx - PDP_MAIN_LENS_PX / 2,
-                        ),
-                      ),
-                      top: Math.max(
-                        0,
-                        Math.min(
-                          pdpHoverLens.ch - PDP_MAIN_LENS_PX,
-                          pdpHoverLens.my - PDP_MAIN_LENS_PX / 2,
-                        ),
-                      ),
+                      transform: "translate3d(0,0,0)",
                     }}
                     aria-hidden
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
+                      ref={pdpLensImgRef}
                       src={product.images[selectedImage].url}
                       alt=''
                       draggable={false}
-                      className='absolute max-w-none object-cover'
+                      className='absolute max-w-none object-cover [backface-visibility:hidden]'
                       style={{
-                        width: pdpHoverLens.cw * PDP_MAIN_LENS_ZOOM,
-                        height: pdpHoverLens.ch * PDP_MAIN_LENS_ZOOM,
-                        left:
-                          PDP_MAIN_LENS_PX / 2 -
-                          pdpHoverLens.mx * PDP_MAIN_LENS_ZOOM,
-                        top:
-                          PDP_MAIN_LENS_PX / 2 -
-                          pdpHoverLens.my * PDP_MAIN_LENS_ZOOM,
+                        willChange: "transform",
+                        transform: "translate3d(0,0,0)",
                       }}
                     />
                   </div>
