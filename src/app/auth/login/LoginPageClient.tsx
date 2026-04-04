@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -22,8 +22,19 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
+function googleIframeWidth(): number {
+  if (typeof window === "undefined") return 320;
+  const viewport = window.innerWidth;
+  if (viewport < 380) return 230;
+  if (viewport < 430) return 250;
+  if (viewport < 500) return 280;
+  return 320;
+}
+
 export default function LoginPageClient() {
   const [showPassword, setShowPassword] = useState(false);
+  /** GSI re-inits on every `width` change — render only after mount so width is stable (fixes first-click failures). */
+  const [googleUiReady, setGoogleUiReady] = useState(false);
   const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
   const { login, loginWithGoogle, isLoading } = useAuthStore();
   const router = useRouter();
@@ -50,6 +61,7 @@ export default function LoginPageClient() {
   };
 
   const handleGoogle = async (credential?: string) => {
+    if (isLoading) return;
     if (!credential) {
       toast.error("Google sign-in did not return a credential.");
       return;
@@ -64,18 +76,28 @@ export default function LoginPageClient() {
     }
   };
 
-  useEffect(() => {
-    const updateGoogleButtonWidth = () => {
-      const viewport = window.innerWidth;
-      if (viewport < 380) setGoogleButtonWidth(230);
-      else if (viewport < 430) setGoogleButtonWidth(250);
-      else if (viewport < 500) setGoogleButtonWidth(280);
-      else setGoogleButtonWidth(320);
-    };
-    updateGoogleButtonWidth();
-    window.addEventListener("resize", updateGoogleButtonWidth);
-    return () => window.removeEventListener("resize", updateGoogleButtonWidth);
+  const updateGoogleButtonWidth = useCallback(() => {
+    setGoogleButtonWidth(googleIframeWidth());
   }, []);
+
+  useEffect(() => {
+    setGoogleButtonWidth(googleIframeWidth());
+    setGoogleUiReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!googleUiReady) return;
+    let t: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(t);
+      t = setTimeout(updateGoogleButtonWidth, 200);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [googleUiReady, updateGoogleButtonWidth]);
 
   return (
     <div className="w-full max-w-md">
@@ -86,17 +108,20 @@ export default function LoginPageClient() {
         </div>
 
         {googleClientId ? (
-          <div className="mb-6 w-full flex flex-col items-center overflow-hidden">
-            <GoogleLogin
-              theme="outline"
-              size="large"
-              width={googleButtonWidth}
-              text="continue_with"
-              shape="rectangular"
-              logo_alignment="center"
-              onSuccess={(cred) => void handleGoogle(cred.credential)}
-              onError={() => toast.error("Google sign-in was cancelled or failed.")}
-            />
+          <div className="mb-6 w-full flex flex-col items-center overflow-hidden min-h-[40px]">
+            {googleUiReady ?
+              <GoogleLogin
+                theme="outline"
+                size="large"
+                width={googleButtonWidth}
+                text="continue_with"
+                shape="rectangular"
+                logo_alignment="center"
+                use_fedcm_for_button={false}
+                onSuccess={(cred) => void handleGoogle(cred.credential)}
+                onError={() => toast.error("Google sign-in was cancelled or failed.")}
+              />
+            : null}
           </div>
         ) : (
           <p className="mb-6 text-center text-[11px] text-white/35">

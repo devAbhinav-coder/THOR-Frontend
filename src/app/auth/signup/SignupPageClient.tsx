@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -54,8 +54,18 @@ type OtpForm = z.infer<typeof otpSchema>;
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
+function googleIframeWidth(): number {
+  if (typeof window === 'undefined') return 320;
+  const viewport = window.innerWidth;
+  if (viewport < 380) return 230;
+  if (viewport < 430) return 250;
+  if (viewport < 500) return 280;
+  return 320;
+}
+
 export default function SignupPageClient() {
   const [showPassword, setShowPassword] = useState(false);
+  const [googleUiReady, setGoogleUiReady] = useState(false);
   const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [pendingEmail, setPendingEmail] = useState('');
@@ -101,6 +111,7 @@ export default function SignupPageClient() {
   };
 
   const handleGoogle = async (credential?: string) => {
+    if (isLoading) return;
     if (!credential) {
       toast.error('Google sign-up did not return a credential.');
       return;
@@ -115,18 +126,28 @@ export default function SignupPageClient() {
     }
   };
 
-  useEffect(() => {
-    const updateGoogleButtonWidth = () => {
-      const viewport = window.innerWidth;
-      if (viewport < 380) setGoogleButtonWidth(230);
-      else if (viewport < 430) setGoogleButtonWidth(250);
-      else if (viewport < 500) setGoogleButtonWidth(280);
-      else setGoogleButtonWidth(320);
-    };
-    updateGoogleButtonWidth();
-    window.addEventListener('resize', updateGoogleButtonWidth);
-    return () => window.removeEventListener('resize', updateGoogleButtonWidth);
+  const updateGoogleButtonWidth = useCallback(() => {
+    setGoogleButtonWidth(googleIframeWidth());
   }, []);
+
+  useEffect(() => {
+    setGoogleButtonWidth(googleIframeWidth());
+    setGoogleUiReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!googleUiReady) return;
+    let t: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(t);
+      t = setTimeout(updateGoogleButtonWidth, 200);
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [googleUiReady, updateGoogleButtonWidth]);
 
   if (step === 'otp') {
     return (
@@ -181,17 +202,20 @@ export default function SignupPageClient() {
         </div>
 
         {googleClientId ? (
-          <div className="mb-6 w-full flex flex-col items-center overflow-hidden">
-            <GoogleLogin
-              theme="outline"
-              size="large"
-              width={googleButtonWidth}
-              text="signup_with"
-              shape="rectangular"
-              logo_alignment="center"
-              onSuccess={(cred) => void handleGoogle(cred.credential)}
-              onError={() => toast.error('Google sign-up was cancelled or failed.')}
-            />
+          <div className="mb-6 w-full flex flex-col items-center overflow-hidden min-h-[40px]">
+            {googleUiReady ?
+              <GoogleLogin
+                theme="outline"
+                size="large"
+                width={googleButtonWidth}
+                text="signup_with"
+                shape="rectangular"
+                logo_alignment="center"
+                use_fedcm_for_button={false}
+                onSuccess={(cred) => void handleGoogle(cred.credential)}
+                onError={() => toast.error('Google sign-up was cancelled or failed.')}
+              />
+            : null}
           </div>
         ) : (
           <p className="mb-6 text-center text-[11px] text-white/35">
