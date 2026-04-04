@@ -37,19 +37,17 @@ export function ProductDetailSkeleton() {
           <div className="relative flex gap-3.5 lg:gap-5 min-w-0 overflow-x-hidden lg:overflow-visible">
             <div className="hidden lg:flex flex-col gap-2 w-[88px] flex-shrink-0 overflow-y-auto scrollbar-hide">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton
+                <div
                   key={i}
-                  className="w-full rounded-xl border-0"
-                  style={{ aspectRatio: "3/4" }}
-                />
+                  className="aspect-[3/4] w-full overflow-hidden rounded-xl"
+                >
+                  <Skeleton className="h-full w-full rounded-xl border-0" />
+                </div>
               ))}
             </div>
 
             <div className="min-w-0 flex-1 space-y-3">
-              <div
-                className="relative w-full overflow-hidden rounded-2xl bg-gray-50"
-                style={{ aspectRatio: "3/4" }}
-              >
+              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-gray-50">
                 <Skeleton className="absolute inset-0 rounded-2xl border-0" />
                 <div className="pointer-events-none absolute top-3 right-3 z-10 flex flex-col gap-2">
                   <Skeleton className="h-9 w-9 shrink-0 rounded-full shadow-sm" />
@@ -59,11 +57,12 @@ export function ProductDetailSkeleton() {
 
               <div className="flex w-full min-w-0 gap-2 overflow-x-auto overflow-y-hidden pb-1 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton
+                  <div
                     key={i}
-                    className="w-14 shrink-0 rounded-lg border-0"
-                    style={{ aspectRatio: "3/4" }}
-                  />
+                    className="aspect-[3/4] w-14 shrink-0 overflow-hidden rounded-lg"
+                  >
+                    <Skeleton className="h-full w-full rounded-lg border-0" />
+                  </div>
                 ))}
               </div>
             </div>
