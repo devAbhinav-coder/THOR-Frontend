@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { storefrontApi } from "@/lib/api";
 import { HeroSlide } from "@/types";
 import { cn } from "@/lib/utils";
+import HeroSectionSkeleton from "@/components/home/HeroSectionSkeleton";
 
 const fallbackSlides: HeroSlide[] = [
   {
@@ -100,7 +101,7 @@ export default function HeroSection() {
 
   const slide = slides[currentSlide] || fallbackSlides[0];
 
-  if (!isLoaded && slides.length === 0) return null;
+  if (!isLoaded) return <HeroSectionSkeleton />;
   if (!slide || slides.length === 0) return null;
 
   return (

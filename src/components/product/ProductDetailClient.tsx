@@ -32,7 +32,7 @@ import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, formatDate, cn } from "@/lib/utils";
 import { variantSwatchBackground } from "@/lib/variantSwatch";
 import { sumVariantStock } from "@/lib/productStock";
-import { ProductDetailSkeleton } from "@/components/ui/SkeletonLoader";
+import { ProductDetailSkeleton } from "@/components/product/ProductDetailSkeleton";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";

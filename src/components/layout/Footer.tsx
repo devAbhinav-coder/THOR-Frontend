@@ -25,13 +25,19 @@ function normalizeHref(href: string): string {
     return raw;
   }
 }
-
+/**
+ * Footer component
+ we need to filter the categirues that that is not a gift categorry true 
+ * 
+ */
 export default function Footer() {
   const { data: categories = [] } = useQuery({
     queryKey: queryKeys.categories,
     queryFn: async () => {
       const body = await categoryApi.getAll();
-      return (body.data.categories || []) as Category[];
+      return (body.data.categories || []).filter(
+        (category) => category.isGiftCategory !== true,
+      ) as Category[];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -52,7 +58,8 @@ export default function Footer() {
       footer.quickLinks
     : [
         { label: "Home", href: "/" },
-        { label: "Shop All", href: "/shop" },
+        { label: "Shop Sarees", href: "/shop" },
+        { label: "Gifting", href: "/gifting" },
         { label: "New Arrivals", href: "/shop?sort=-createdAt" },
         { label: "Featured", href: "/shop?isFeatured=true" },
         { label: "Cart", href: "/cart" },
@@ -60,7 +67,7 @@ export default function Footer() {
   const categoryLimit = footer?.categoryLimit || 7;
   const contactAddress = footer?.contactAddress || "Noida Sector 76, India";
   const contactPhone = footer?.contactPhone || "8340311033";
-  const contactEmail = footer?.contactEmail || "hello@thehouseofrani@gmail.com";
+  const contactEmail = footer?.contactEmail || "support@thehouseofrani.com";
   const socialLinks = [
     { Icon: Facebook, href: footer?.facebookUrl || "", label: "Facebook" },
     { Icon: Instagram, href: footer?.instagramUrl || "", label: "Instagram" },
@@ -113,10 +120,16 @@ export default function Footer() {
               {quickLinks.map(({ label, href }) => (
                 <li key={label}>
                   {/^(https?:|mailto:|tel:)/i.test(href) ?
-                    <a href={normalizeHref(href)} className='hover:text-brand-400 transition-colors'>
+                    <a
+                      href={normalizeHref(href)}
+                      className='hover:text-brand-400 transition-colors'
+                    >
                       {label}
                     </a>
-                  : <Link href={normalizeHref(href)} className='hover:text-brand-400 transition-colors'>
+                  : <Link
+                      href={normalizeHref(href)}
+                      className='hover:text-brand-400 transition-colors'
+                    >
                       {label}
                     </Link>
                   }
