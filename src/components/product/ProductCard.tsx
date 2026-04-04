@@ -104,13 +104,15 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   return (
     <div
       className={cn(
-        "group relative flex h-full min-h-[420px] sm:min-h-[460px] flex-col",
+        "group relative flex h-full flex-col justify-start",
+        /* Mobile: natural height so “View Details” sits under price; sm+: min height for grid parity */
+        "min-h-0 sm:min-h-[460px]",
         className,
       )}
     >
       <Link
         href={`/shop/${encodeURIComponent(product.slug)}`}
-        className='flex min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2 rounded-2xl'
+        className='flex min-h-0 flex-none flex-col outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2 rounded-2xl sm:flex-1'
       >
         {/* ── Image – 3:4 portrait (same on every card / breakpoint) ── */}
         <div
@@ -213,8 +215,8 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           )}
         </div>
 
-        {/* ── Info: fixed vertical rhythm so every card matches on phone + desktop ── */}
-        <div className='flex min-h-0 flex-1 flex-col gap-0.5 sm:gap-1'>
+        {/* ── Info: sm+ flex-1 stretches so card rows align; mobile stays content-height ── */}
+        <div className='flex min-h-0 flex-none flex-col gap-0.5 sm:gap-1 sm:flex-1'>
           {/* Meta — single line */}
           <div className='flex h-4 min-h-4 shrink-0 items-center gap-0.5 overflow-hidden'>
             <span className='truncate text-[10px] font-bold uppercase tracking-wider text-brand-600'>
@@ -327,8 +329,8 @@ export default function ProductCard({ product, className }: ProductCardProps) {
         </div>
       </Link>
 
-      {/* Mobile CTA — pinned to bottom of stretched grid cell */}
-      <div className='mt-auto shrink-0 pt-2 sm:hidden'>
+      {/* Mobile CTA — under price; extra row height (if grid stretches) stays below the button */}
+      <div className='mt-2 shrink-0 sm:hidden'>
         <button
           onClick={handleAddToCart}
           disabled={isOutOfStock || isAddingToCart}

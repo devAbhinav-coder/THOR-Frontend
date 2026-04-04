@@ -56,10 +56,17 @@ export default function Navbar() {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const navCategories = useMemo(
-    () => categoriesData.slice(0, 7),
-    [categoriesData],
-  );
+  const navCategories = useMemo(() => {
+    const isShopNavCategory = (cat: Category) => {
+      if (cat.isGiftCategory) return false;
+      const n = String(cat.name ?? "")
+        .trim()
+        .toLowerCase();
+      if (n === "gifting") return false;
+      return true;
+    };
+    return categoriesData.filter(isShopNavCategory).slice(0, 7);
+  }, [categoriesData]);
 
   const { data: storefrontSettings } = useQuery({
     queryKey: queryKeys.storefrontSettings,

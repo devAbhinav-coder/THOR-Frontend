@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   SlidersHorizontal,
   X,
@@ -28,6 +29,8 @@ const SORT_OPTIONS = [
   { label: "Most Popular", value: "-ratings.count" },
 ];
 const SEARCH_MAX_LEN = 30;
+/** Keep in sync with getNextPageParam full-page fallback. */
+const SHOP_PAGE_LIMIT = 12;
 
 const defaultShopBanner = {
   title: "Shop Our Collection",
@@ -42,23 +45,12 @@ export default function ShopClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(
     null,
   );
   const [storefrontSettings, setStorefrontSettings] =
     useState<StorefrontSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalProducts: 0,
-    hasNextPage: false,
-    hasPrevPage: false,
-  });
-  const [page, setPage] = useState(1);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   /** FIFO: each debounced value we pushed with router.replace; skip draft reset when URL catches up (handles out-of-order navigations while typing). */
   const searchCommitQueue = useRef<string[]>([]);
@@ -158,75 +150,101 @@ export default function ShopClient() {
       .catch(() => {});
   }, []);
 
-  const fetchProducts = useCallback(
-    async (nextPage: number, mode: "replace" | "append") => {
-      if (mode === "replace") setIsLoading(true);
-      else setIsLoadingMore(true);
-      try {
-        const params: Record<string, string | number> = {
-          sort: filters.sort,
-          page: nextPage,
-          limit: 8,
-        };
-
-        if (filters.category) params.category = filters.category;
-        if (filters.fabric) params.fabric = filters.fabric;
-        if (filters.minPrice) params["price[gte]"] = filters.minPrice;
-        if (filters.maxPrice) params["price[lte]"] = filters.maxPrice;
-        if (filters.rating) params["ratings.average[gte]"] = filters.rating;
-        if (filters.search)
-          params.search = filters.search.slice(0, SEARCH_MAX_LEN);
-        if (filters.isFeatured) params.isFeatured = filters.isFeatured;
-
-        const res = await productApi.getAll(params);
-        const next = (res.data.products || []) as Product[];
-        setProducts((prev) => (mode === "append" ? [...prev, ...next] : next));
-        const p = res.pagination;
-        setPagination({
-          currentPage: p?.currentPage ?? nextPage,
-          totalPages: p?.totalPages ?? 1,
-          totalProducts: p?.totalProducts ?? p?.total ?? 0,
-          hasNextPage: p?.hasNextPage ?? false,
-          hasPrevPage: p?.hasPrevPage ?? false,
-        });
-      } catch {
-        if (mode === "replace") setProducts([]);
-      } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
-      }
+  const {
+    data,
+    isLoading,
+    isPending,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    isError,
+  } = useInfiniteQuery({
+    queryKey: ["shop-products", queryKey],
+    queryFn: async ({ pageParam }) => {
+      const params: Record<string, string | number> = {
+        sort: filters.sort,
+        page: pageParam,
+        limit: SHOP_PAGE_LIMIT,
+      };
+      if (filters.category) params.category = filters.category;
+      if (filters.fabric) params.fabric = filters.fabric;
+      if (filters.minPrice) params["price[gte]"] = filters.minPrice;
+      if (filters.maxPrice) params["price[lte]"] = filters.maxPrice;
+      if (filters.rating) params["ratings.average[gte]"] = filters.rating;
+      if (filters.search)
+        params.search = filters.search.slice(0, SEARCH_MAX_LEN);
+      if (filters.isFeatured) params.isFeatured = filters.isFeatured;
+      return productApi.getAll(params);
     },
-    [filters],
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const p = lastPage.pagination;
+      const cur = p?.currentPage ?? 1;
+      const tp = Math.max(1, p?.totalPages ?? 1);
+      const total = p?.total ?? p?.totalProducts ?? 0;
+      const batch = (lastPage.data?.products || []) as Product[];
+      if (typeof p?.hasNextPage === "boolean") {
+        return p.hasNextPage ? cur + 1 : undefined;
+      }
+      if (cur < tp) return cur + 1;
+      if (
+        batch.length === SHOP_PAGE_LIMIT &&
+        total > cur * SHOP_PAGE_LIMIT
+      ) {
+        return cur + 1;
+      }
+      return undefined;
+    },
+    staleTime: 45_000,
+  });
+
+  const products = useMemo(
+    () =>
+      (data?.pages ?? []).flatMap(
+        (pg) => (pg.data?.products || []) as Product[],
+      ),
+    [data?.pages],
   );
 
-  useEffect(() => {
-    setPage(1);
-    fetchProducts(1, "replace");
-  }, [queryKey, fetchProducts]);
+  const pagination = useMemo(() => {
+    const first = data?.pages?.[0];
+    const p = first?.pagination;
+    const totalProducts = p?.total ?? p?.totalProducts ?? 0;
+    const totalPages = Math.max(1, p?.totalPages ?? 1);
+    return {
+      totalProducts,
+      totalPages,
+      hasNextPage: Boolean(hasNextPage),
+      hasPrevPage: false,
+    };
+  }, [data?.pages, hasNextPage]);
 
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
-    if (isLoading || isLoadingMore) return;
-    if (!pagination?.hasNextPage) return;
-
-    const observer = new IntersectionObserver(
+    const io = new IntersectionObserver(
       (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
-        if (isLoading || isLoadingMore) return;
-        if (!pagination?.hasNextPage) return;
-
-        const nextPage = page + 1;
-        setPage(nextPage);
-        fetchProducts(nextPage, "append");
+        const hit = entries[0]?.isIntersecting;
+        if (
+          hit &&
+          hasNextPage &&
+          !isFetchingNextPage &&
+          !isPending
+        ) {
+          void fetchNextPage();
+        }
       },
-      { root: null, rootMargin: "600px 0px", threshold: 0.01 },
+      { root: null, rootMargin: "640px 0px", threshold: 0.01 },
     );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [page, fetchProducts, pagination?.hasNextPage, isLoading, isLoadingMore]);
+    io.observe(el);
+    return () => io.disconnect();
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    products.length,
+  ]);
 
   const updateFilter = (key: string, value: string | number) => {
     const newFilters = { ...filters, [key]: value };
@@ -580,11 +598,13 @@ export default function ShopClient() {
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
-          : products.length === 0 ?
+          : !isLoading && (isError || products.length === 0) ?
             <div className='w-full'>
               <div className='w-full rounded-2xl border border-gray-100 bg-white min-h-[420px] sm:min-h-[460px] flex flex-col items-start justify-start text-left px-6 pt-10'>
                 <p className='text-gray-500 text-lg mb-4'>
-                  No products found matching your filters.
+                  {isError ?
+                    "Something went wrong loading products. Try again or adjust filters."
+                  : "No products found matching your filters."}
                 </p>
                 <Button variant='brand' onClick={clearFilters}>
                   Clear Filters
@@ -599,9 +619,9 @@ export default function ShopClient() {
               </div>
 
               {/* Infinite scroll sentinel */}
-              <div ref={loadMoreRef} className='h-10' />
+              <div ref={loadMoreRef} className='h-12 w-full shrink-0' aria-hidden />
 
-              {isLoadingMore && (
+              {isFetchingNextPage && (
                 <div className={`mt-6 ${productGridClass}`}>
                   {[...Array(6)].map((_, i) => (
                     <ProductCardSkeleton key={`more-${i}`} />

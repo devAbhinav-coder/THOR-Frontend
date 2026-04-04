@@ -28,7 +28,14 @@ export default function BlogListingPage() {
         } else {
           setBlogs((prev) => [...prev, ...res.data!.blogs]);
         }
-        setHasMore(res.pagination?.hasNextPage || false);
+        const p = res.pagination;
+        const cur = p?.currentPage ?? pageParam;
+        const tp = Math.max(1, p?.totalPages ?? 1);
+        const more =
+          typeof p?.hasNextPage === "boolean" ? p.hasNextPage : cur < tp;
+        setHasMore(more);
+      } else {
+        setHasMore(false);
       }
     } catch {
     } finally {

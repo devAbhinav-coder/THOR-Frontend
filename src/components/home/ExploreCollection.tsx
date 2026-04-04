@@ -1,31 +1,94 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
 import ProductCard from "@/components/product/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
 
+const EXPLORE_PAGE_LIMIT = 8;
+
+function exploreNextPageParam(
+  lastPage: Awaited<ReturnType<typeof productApi.getAll>>,
+) {
+  const p = lastPage.pagination;
+  const cur = p?.currentPage ?? 1;
+  const tp = Math.max(1, p?.totalPages ?? 1);
+  const total = p?.total ?? p?.totalProducts ?? 0;
+  const batch = (lastPage.data?.products || []) as Product[];
+  if (typeof p?.hasNextPage === "boolean") {
+    return p.hasNextPage ? cur + 1 : undefined;
+  }
+  if (cur < tp) return cur + 1;
+  if (
+    batch.length === EXPLORE_PAGE_LIMIT &&
+    total > cur * EXPLORE_PAGE_LIMIT
+  ) {
+    return cur + 1;
+  }
+  return undefined;
+}
+
 export default function ExploreCollection() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data,
+    isLoading,
+    isPending,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["home-explore-collection"],
+    queryFn: ({ pageParam }) =>
+      productApi.getAll({
+        page: pageParam,
+        limit: EXPLORE_PAGE_LIMIT,
+        sort: "-createdAt",
+      }),
+    initialPageParam: 1,
+    getNextPageParam: exploreNextPageParam,
+    staleTime: 60_000,
+  });
+
+  const products = useMemo(
+    () =>
+      (data?.pages ?? []).flatMap(
+        (pg) => (pg.data?.products || []) as Product[],
+      ),
+    [data?.pages],
+  );
 
   useEffect(() => {
-    const run = async () => {
-      setIsLoading(true);
-      try {
-        const res = await productApi.getAll({ limit: 16, sort: "-createdAt" });
-        setProducts(res.data.products || []);
-      } catch {
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    run();
-  }, []);
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const hit = entries[0]?.isIntersecting;
+        if (
+          hit &&
+          hasNextPage &&
+          !isFetchingNextPage &&
+          !isPending
+        ) {
+          void fetchNextPage();
+        }
+      },
+      { root: null, rootMargin: "480px 0px", threshold: 0.01 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    products.length,
+  ]);
 
   if (!isLoading && products.length === 0) return null;
 
@@ -53,12 +116,24 @@ export default function ExploreCollection() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch [&>*]:h-full [&>*]:min-h-0">
-          {isLoading
-            ? [...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)
-            : products.slice(0, 16).map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
+          {isLoading && products.length === 0 ?
+            [...Array(EXPLORE_PAGE_LIMIT)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))
+          : products.map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          {isFetchingNextPage &&
+            [...Array(4)].map((_, i) => (
+              <ProductCardSkeleton key={`more-${i}`} />
+            ))}
         </div>
+
+        <div
+          ref={sentinelRef}
+          className="h-10 w-full shrink-0 mt-2"
+          aria-hidden
+        />
 
         <div className="mt-10 text-center sm:hidden">
           <Link
@@ -72,4 +147,3 @@ export default function ExploreCollection() {
     </section>
   );
 }
-

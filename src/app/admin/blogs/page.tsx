@@ -156,14 +156,14 @@ export default function AdminBlogsPage() {
             </span>
             <div className="flex gap-2">
               <button
-                disabled={!data.pagination.hasPrevPage}
+                disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="px-3 py-1 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 Previous
               </button>
               <button
-                disabled={!data.pagination.hasNextPage}
+                disabled={page >= (data.pagination.totalPages ?? 1)}
                 onClick={() => setPage((p) => p + 1)}
                 className="px-3 py-1 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >

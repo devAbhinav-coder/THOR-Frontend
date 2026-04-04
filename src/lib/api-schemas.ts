@@ -352,6 +352,7 @@ export const blogsPaginated = z
         totalPages: z.number(),
         total: z.number().optional(),
         hasNextPage: z.boolean().optional(),
+        hasPrevPage: z.boolean().optional(),
       })
       .passthrough()
       .optional(),
