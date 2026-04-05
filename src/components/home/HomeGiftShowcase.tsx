@@ -171,7 +171,7 @@ export default function HomeGiftShowcase() {
                     }
                   </div>
                   {card.title && (
-                    <h3 className='font-serif text-base font-bold leading-snug text-white drop-shadow-sm sm:text-lg'>
+                    <h3 className='font-serif text-base font-bold leading-snug text-gray-800 drop-shadow-sm sm:text-lg'>
                       {card.title}
                     </h3>
                   )}
