@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { authApi } from "@/lib/api";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
+import { ApiValidationError } from "@/lib/parseApi";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -97,6 +98,12 @@ export default function LoginPageClient() {
       toast.success("Welcome back!");
       router.push(redirect);
     } catch (err: unknown) {
+      if (err instanceof ApiValidationError) {
+        toast.error(
+          "The server response could not be read. Try again or use password sign-in.",
+        );
+        return;
+      }
       const error = err as { message?: string };
       toast.error(error.message || "Invalid or expired code.");
     }

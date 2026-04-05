@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
 import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
+import { ApiValidationError } from '@/lib/parseApi';
 
 const strongPassword = z
   .string()
@@ -106,6 +107,12 @@ export default function SignupPageClient() {
       toast.success('Account verified. Welcome to The House of Rani!');
       router.push('/');
     } catch (err: unknown) {
+      if (err instanceof ApiValidationError) {
+        toast.error(
+          'The server response could not be read. If your account was created, try signing in with your email and password.',
+        );
+        return;
+      }
       const error = err as { message?: string };
       toast.error(error.message || 'Invalid or expired code.');
     }

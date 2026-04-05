@@ -39,7 +39,13 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const status = error.response?.status;
-    const message = error.response?.data?.message || "Something went wrong";
+    const isTimeout =
+      error.code === "ECONNABORTED" ||
+      (typeof error.message === "string" &&
+        error.message.toLowerCase().includes("timeout"));
+    const message = isTimeout
+      ? "Request timed out. Please try again."
+      : error.response?.data?.message || "Something went wrong";
 
     if (
       status === 401 &&
