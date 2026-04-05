@@ -181,8 +181,8 @@ export default function HomeGiftShowcase() {
                     <span className='h-1 w-1 rounded-full bg-white/90' />
                   </div>
                   {card.description && (
-                    <p className='line-clamp-3 flex-1 text-[11px] leading-relaxed text-white/95 sm:text-xs'>
-                      {card.description}
+                    <p className='line-clamp-3 flex-1 text-[11px] leading-relaxed text-gray-600 sm:text-xs'>
+                      <span className='text-gray-800'>{card.description}</span>
                     </p>
                   )}
                   <div className='mt-3 flex flex-col gap-1.5 sm:mt-4 sm:gap-2'>
@@ -191,7 +191,7 @@ export default function HomeGiftShowcase() {
                       if (!shop) return null;
                       if (shop.kind === "coming_soon") {
                         return (
-                          <span className='rounded-xl border-2 border-white/70 bg-white/20 px-2.5 py-2 text-center text-[11px] font-bold text-white sm:px-3 sm:text-xs'>
+                          <span className='rounded-xl border-2 border-white/70 bg-white/20 px-2.5 py-2 text-center text-[11px] font-bold text-gray-800 sm:px-3 sm:text-xs'>
                             {shop.label}
                           </span>
                         );
