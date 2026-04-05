@@ -46,6 +46,8 @@ export const storefrontSettings = z.object({
   data: z.object({ settings: doc }),
 });
 
+export type StorefrontSettingsApiEnvelope = z.infer<typeof storefrontSettings>;
+
 export const productsPaginated = z
   .object({
     status: z.string(),

@@ -1,7 +1,17 @@
-import Navbar from '@/components/layout/Navbar';
+import dynamic from 'next/dynamic';
 import Footer from '@/components/layout/Footer';
 import { StoreErrorBoundary } from '@/components/StoreErrorBoundary';
 import { StoreRaniCare } from '@/components/support/StoreRaniCare';
+
+const Navbar = dynamic(() => import('@/components/layout/Navbar'), {
+  loading: () => (
+    <div
+      className='sticky top-0 z-50 h-16 border-b border-navy-800 bg-navy-950'
+      role='status'
+      aria-label='Loading navigation'
+    />
+  ),
+});
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (

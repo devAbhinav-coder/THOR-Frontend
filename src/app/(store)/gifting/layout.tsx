@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { getSiteUrl } from "@/lib/siteUrl";
+
+const appUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   title: "Gifting Collection",
@@ -7,11 +10,15 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/gifting",
   },
+  robots: { index: true, follow: true },
   openGraph: {
     title: "Gifting Collection | The House of Rani",
     description:
       "Premium gifting made effortless with curated and customizable options for weddings, celebrations, and corporate occasions.",
-    url: "/gifting",
+    url: `${appUrl}/gifting`,
+    type: "website",
+    siteName: "The House of Rani",
+    locale: "en_IN",
   },
   twitter: {
     card: "summary_large_image",

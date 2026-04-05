@@ -252,8 +252,13 @@ export default function Navbar() {
               </Link>
 
               <div className='relative group'>
-                <button className='flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/75 hover:text-white rounded-md hover:bg-navy-800 transition-colors'>
-                  Shop <ChevronDown className='h-4 w-4' />
+                <button
+                  type='button'
+                  className='flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/75 hover:text-white rounded-md hover:bg-navy-800 transition-colors'
+                  aria-label='Shop categories'
+                  aria-haspopup='menu'
+                >
+                  Shop <ChevronDown className='h-4 w-4' aria-hidden />
                 </button>
                 <div className='absolute top-full left-0 bg-navy-900 border border-navy-700 shadow-2xl rounded-xl p-2 min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200'>
                   <Link
@@ -383,8 +388,12 @@ export default function Navbar() {
               {isAuthenticated ?
                 <div className='hidden lg:block relative'>
                   <button
+                    type='button'
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className='flex items-center gap-2 p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                    aria-label='Account menu'
+                    aria-expanded={isUserMenuOpen}
+                    aria-haspopup='menu'
                   >
                     <div className='h-8 w-8 rounded-full bg-navy-700 border-2 border-brand-600 flex items-center justify-center overflow-hidden'>
                       {user?.avatar ?
@@ -434,6 +443,7 @@ export default function Navbar() {
                         </Link>
                       )}
                       <button
+                        type='button'
                         onClick={handleLogout}
                         className='flex items-center gap-2 w-full px-3 py-2 text-sm text-brand-400 hover:text-brand-300 hover:bg-navy-800 rounded-lg'
                       >
@@ -522,8 +532,10 @@ export default function Navbar() {
                 className='h-11 w-auto max-w-[200px] object-contain'
               />
               <button
+                type='button'
                 onClick={() => setIsMenuOpen(false)}
                 className='p-2 text-white/50 hover:text-white bg-navy-800/50 hover:bg-navy-800 rounded-xl transition-all'
+                aria-label='Close menu'
               >
                 <X className='h-5 w-5' />
               </button>
@@ -668,6 +680,7 @@ export default function Navbar() {
                       )}
                     </Link>
                     <button
+                      type='button'
                       onClick={handleLogout}
                       className='w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/20 border border-transparent rounded-2xl transition-all'
                     >

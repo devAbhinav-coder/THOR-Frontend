@@ -14,9 +14,6 @@ export class ApiValidationError extends Error {
 export function parseApiResponse<T>(label: string, data: unknown, schema: z.ZodType<T>): T {
   const r = schema.safeParse(data);
   if (!r.success) {
-    if (process.env.NODE_ENV === "development" && typeof console !== "undefined") {
-      console.error(`[parseApi] ${label}`, r.error.flatten());
-    }
     throw new ApiValidationError(label, r.error);
   }
   return r.data;

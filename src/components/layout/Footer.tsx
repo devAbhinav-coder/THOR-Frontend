@@ -77,7 +77,7 @@ export default function Footer() {
   });
 
   return (
-    <footer className='bg-navy-900 text-white/70'>
+    <footer className='bg-navy-900 text-white/80'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14'>
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10'>
           {/* Brand column */}
@@ -91,7 +91,7 @@ export default function Footer() {
                 className='h-14 w-auto object-contain mb-5'
               />
             </Link>
-            <p className='text-sm leading-relaxed mb-5 text-white/50'>
+            <p className='text-sm leading-relaxed mb-5 text-white/85'>
               {footer?.description ||
                 "Your destination for exquisite Indian ethnic wear. Curated collections of sarees, lehengas, and more — crafted with love and tradition."}
             </p>
@@ -105,7 +105,7 @@ export default function Footer() {
                   aria-label={label}
                   className='h-9 w-9 rounded-full bg-navy-800 border border-navy-700 flex items-center justify-center hover:bg-brand-700 hover:border-brand-600 transition-colors'
                 >
-                  <Icon className='h-4 w-4 text-white/70' />
+                  <Icon className='h-4 w-4 text-white/85' />
                 </a>
               ))}
             </div>
@@ -122,13 +122,13 @@ export default function Footer() {
                   {/^(https?:|mailto:|tel:)/i.test(href) ?
                     <a
                       href={normalizeHref(href)}
-                      className='hover:text-brand-400 transition-colors'
+                      className='text-white/90 hover:text-brand-300 transition-colors'
                     >
                       {label}
                     </a>
                   : <Link
                       href={normalizeHref(href)}
-                      className='hover:text-brand-400 transition-colors'
+                      className='text-white/90 hover:text-brand-300 transition-colors'
                     >
                       {label}
                     </Link>
@@ -148,7 +148,7 @@ export default function Footer() {
                 <li key={cat._id}>
                   <Link
                     href={`/shop?category=${encodeURIComponent(cat.name)}`}
-                    className='hover:text-brand-400 transition-colors'
+                    className='text-white/90 hover:text-brand-300 transition-colors'
                   >
                     {cat.name}
                   </Link>
@@ -171,7 +171,7 @@ export default function Footer() {
                 <Phone className='h-4 w-4 text-brand-500 flex-shrink-0' />
                 <a
                   href={`tel:${contactPhone.replace(/\s+/g, "")}`}
-                  className='hover:text-brand-400 transition-colors'
+                  className='text-white/90 hover:text-brand-300 transition-colors'
                 >
                   {contactPhone}
                 </a>
@@ -180,7 +180,7 @@ export default function Footer() {
                 <Mail className='h-4 w-4 text-brand-500 flex-shrink-0' />
                 <a
                   href={`mailto:${contactEmail}`}
-                  className='hover:text-brand-400 transition-colors'
+                  className='text-white/90 hover:text-brand-300 transition-colors'
                 >
                   {contactEmail}
                 </a>
@@ -207,32 +207,32 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className='mt-12 pt-6 border-t border-navy-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/30'>
+        <div className='mt-12 pt-6 border-t border-navy-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/70'>
           <p>
             © {new Date().getFullYear()} The House of Rani. All rights reserved.
           </p>
-          <div className='flex gap-4'>
+          <div className='flex flex-wrap justify-center gap-4'>
             <Link
               href='/faq'
-              className='hover:text-brand-400 transition-colors'
+              className='text-white/85 hover:text-brand-300 transition-colors'
             >
               FAQ
             </Link>
             <Link
               href='/privacy'
-              className='hover:text-brand-400 transition-colors'
+              className='text-white/85 hover:text-brand-300 transition-colors'
             >
               Privacy Policy
             </Link>
             <Link
               href='/terms'
-              className='hover:text-brand-400 transition-colors'
+              className='text-white/85 hover:text-brand-300 transition-colors'
             >
               Terms of Service
             </Link>
             <Link
               href='/shipping'
-              className='hover:text-brand-400 transition-colors'
+              className='text-white/85 hover:text-brand-300 transition-colors'
             >
               Shipping Policy
             </Link>

@@ -35,12 +35,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       alternates: {
         canonical: `/shop/${safeSlug}`,
       },
+      robots: { index: true, follow: true },
       openGraph: {
         title: product.name,
         description: descRaw,
         images: ogImage ? [{ url: ogImage, alt: product.name }] : undefined,
         type: 'website',
         url: `${appUrl}/shop/${safeSlug}`,
+        siteName: 'The House of Rani',
       },
       twitter: {
         card: 'summary_large_image',

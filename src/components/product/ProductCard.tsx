@@ -166,8 +166,8 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           {/* Badges — top left */}
           <div className='absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10'>
             {product.isFeatured && (
-              <span className='text-xs bg-gold-500 text-white font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1'>
-                <Star className='h-3 w-3 fill-white' /> Featured
+              <span className='text-xs bg-amber-800 text-white font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1'>
+                <Star className='h-3 w-3 fill-white' aria-hidden /> Featured
               </span>
             )}
             {isOutOfStock && (
@@ -213,12 +213,13 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           {!isOutOfStock && (
             <div className='hidden sm:block absolute bottom-0 left-0 right-0 p-2.5 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 ease-out z-10'>
               <button
+                type='button'
                 onClick={handleAddToCart}
                 disabled={isAddingToCart}
                 className={cn(
                   "w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors disabled:opacity-70",
                   product.isCustomizable ?
-                    "bg-gold-500 text-white hover:bg-gold-600"
+                    "bg-amber-800 text-white hover:bg-amber-900"
                   : "bg-white hover:bg-gray-50 text-navy-900",
                 )}
               >
@@ -252,8 +253,10 @@ export default function ProductCard({ product, className }: ProductCardProps) {
             </span>
             {product.fabric ?
               <>
-                <span className='shrink-0 text-[8px] sm:text-[10px] text-gray-300'>·</span>
-                <span className='truncate text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-gray-500'>
+                <span className='shrink-0 text-[8px] sm:text-[10px] text-gray-500' aria-hidden>
+                  ·
+                </span>
+                <span className='truncate text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-gray-600'>
                   {product.fabric}
                 </span>
               </>
@@ -295,13 +298,13 @@ export default function ProductCard({ product, className }: ProductCardProps) {
                         />
                       : <span
                           key={color}
-                          className='shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-500'
+                          className='shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-700'
                         >
                           {color}
                         </span>;
                   })}
                   {extra > 0 && (
-                    <span className='shrink-0 text-[10px] font-semibold text-gray-400'>
+                    <span className='shrink-0 text-[10px] font-semibold text-gray-600'>
                       +{extra}
                     </span>
                   )}
@@ -324,9 +327,10 @@ export default function ProductCard({ product, className }: ProductCardProps) {
                     "fill-gold-400 text-gold-400"
                   : "fill-gray-200 text-gray-200",
                 )}
+                aria-hidden
               />
             ))}
-            <span className='ml-0.5 text-[10px] text-gray-400'>
+            <span className='ml-0.5 text-[10px] text-gray-600'>
               ({product.ratings.count})
             </span>
           </div>
@@ -337,7 +341,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
               {formatPrice(product.price)}
             </span>
             {product.comparePrice && product.comparePrice > product.price && (
-              <span className='text-sm text-gray-400 line-through'>
+              <span className='text-sm text-gray-600 line-through'>
                 {formatPrice(product.comparePrice)}
               </span>
             )}
@@ -360,12 +364,13 @@ export default function ProductCard({ product, className }: ProductCardProps) {
       {/* Mobile CTA — under price; extra row height (if grid stretches) stays below the button */}
       <div className='mt-2 shrink-0 sm:hidden'>
         <button
+          type='button'
           onClick={handleAddToCart}
           disabled={isOutOfStock || isAddingToCart}
           className={cn(
             "w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors",
             isOutOfStock ?
-              "bg-gray-100 text-gray-400 cursor-not-allowed"
+              "bg-gray-100 text-gray-600 cursor-not-allowed"
             : "bg-white border border-navy-200 text-navy-900 hover:bg-navy-50",
           )}
         >

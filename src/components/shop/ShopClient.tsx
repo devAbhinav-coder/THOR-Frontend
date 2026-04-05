@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useId } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -321,9 +321,12 @@ export default function ShopClient() {
   const productGridClass =
     "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0";
 
+  const showShopBanner = shopBanner.isActive;
+  const ListHeadingTag = showShopBanner ? "h2" : "h1";
+
   return (
     <div>
-      {shopBanner.isActive && (
+      {showShopBanner && (
         <section className='relative border-y border-gray-200/70 overflow-x-clip'>
           {shopBanner.centerImage ? (
             <div className='relative h-[130px] sm:h-[180px] lg:h-[210px]'>
@@ -354,11 +357,11 @@ export default function ShopClient() {
                     {shopBanner.leftImage && (
                       <Image
                         src={shopBanner.leftImage}
-                        alt='Shop banner left'
+                        alt=''
                         fill
                         className='object-cover object-center'
                         sizes='220px'
-                        priority
+                        loading='lazy'
                       />
                     )}
                   </div>
@@ -375,11 +378,11 @@ export default function ShopClient() {
                     {shopBanner.rightImage && (
                       <Image
                         src={shopBanner.rightImage}
-                        alt='Shop banner right'
+                        alt=''
                         fill
                         className='object-cover object-center'
                         sizes='220px'
-                        priority
+                        loading='lazy'
                       />
                     )}
                   </div>
@@ -391,38 +394,45 @@ export default function ShopClient() {
       )}
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5'>
-        <div className='flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-500'>
+        <nav
+          aria-label='Breadcrumb'
+          className='flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-600'
+        >
           <Link href='/' className='hover:text-brand-700 transition-colors'>
             Home
           </Link>
-          <ChevronRight className='h-3.5 w-3.5' />
-          <span>Buy</span>
-          <ChevronRight className='h-3.5 w-3.5' />
-          <span className='truncate max-w-[56vw] sm:max-w-none normal-case tracking-normal text-gray-700'>
+          <ChevronRight className='h-3.5 w-3.5 shrink-0 opacity-70' aria-hidden />
+          <span className='text-gray-600'>Shop</span>
+          <ChevronRight className='h-3.5 w-3.5 shrink-0 opacity-70' aria-hidden />
+          <span className='truncate max-w-[56vw] sm:max-w-none normal-case tracking-normal text-gray-800 font-medium'>
             {breadcrumbContext}
           </span>
-        </div>
+        </nav>
 
         <div className='mt-4 mb-2 sm:mb-3 flex flex-wrap items-end justify-between gap-3'>
           <div>
-            <h2 className='text-xl sm:text-2xl font-serif font-semibold text-gray-900'>
+            <ListHeadingTag className='text-xl sm:text-2xl font-serif font-semibold text-gray-900'>
               {headingText}
-            </h2>
-            <p className='text-sm text-gray-500 mt-1'>
-              {isLoading ? "Loading..." : `${pagination.totalProducts} products`}
+            </ListHeadingTag>
+            <p className='text-sm text-gray-600 mt-1'>
+              {isLoading ? "Loading…" : `${pagination.totalProducts} products`}
             </p>
           </div>
           <div className='flex items-center gap-2'>
             <Button
+              type='button'
               variant='outline'
               size='sm'
               className='lg:hidden flex items-center gap-2 rounded-xl'
               onClick={() => setIsSidebarOpen(true)}
+              aria-expanded={isSidebarOpen}
+              aria-controls='shop-filters-drawer'
             >
-              <SlidersHorizontal className='h-4 w-4' />
+              <SlidersHorizontal className='h-4 w-4' aria-hidden />
               Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
             </Button>
             <select
+              aria-label='Sort products'
               value={filters.sort}
               onChange={(e) => updateFilter("sort", e.target.value)}
               className='h-10 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/25'
@@ -440,6 +450,10 @@ export default function ShopClient() {
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-7'>
       <div className='lg:flex lg:items-start lg:gap-6'>
         <aside
+          id='shop-filters-drawer'
+          role={isSidebarOpen ? "dialog" : undefined}
+          aria-modal={isSidebarOpen ? true : undefined}
+          aria-labelledby='shop-filters-drawer-title'
           className={cn(
             "flex-shrink-0",
             // Mobile drawer vs desktop sidebar
@@ -449,11 +463,21 @@ export default function ShopClient() {
             "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:pl-1 lg:sticky lg:top-20 lg:self-start lg:h-fit lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto",
           )}
         >
+          <h2 id='shop-filters-drawer-title' className='sr-only'>
+            Product filters
+          </h2>
           {isSidebarOpen && (
             <div className='flex items-center justify-between p-4 border-b lg:hidden'>
-              <h2 className='font-semibold'>Filters</h2>
-              <button onClick={() => setIsSidebarOpen(false)}>
-                <X className='h-5 w-5' />
+              <p className='font-semibold text-base' aria-hidden>
+                Filters
+              </p>
+              <button
+                type='button'
+                onClick={() => setIsSidebarOpen(false)}
+                className='rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                aria-label='Close filters'
+              >
+                <X className='h-5 w-5' aria-hidden />
               </button>
             </div>
           )}
@@ -461,11 +485,12 @@ export default function ShopClient() {
           <div className='space-y-5 p-4 sm:p-5 lg:p-0 lg:pr-2'>
             {activeFilterCount > 0 && (
               <button
+                type='button'
                 onClick={clearFilters}
                 className='flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-medium'
               >
-                <X className='h-4 w-4' /> Clear all filters ({activeFilterCount}
-                )
+                <X className='h-4 w-4' aria-hidden /> Clear all filters (
+                {activeFilterCount})
               </button>
             )}
 
@@ -533,19 +558,23 @@ export default function ShopClient() {
                     placeholder='Min'
                     value={filters.minPrice}
                     onChange={(e) => updateFilter("minPrice", e.target.value)}
+                    aria-label='Minimum price'
                     className='w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-500'
                   />
-                  <span className='text-gray-400'>—</span>
+                  <span className='text-gray-600' aria-hidden>
+                    —
+                  </span>
                   <input
                     type='number'
                     placeholder='Max'
                     value={filters.maxPrice}
                     onChange={(e) => updateFilter("maxPrice", e.target.value)}
+                    aria-label='Maximum price'
                     className='w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-500'
                   />
                 </div>
                 {filterOptions?.priceRange && (
-                  <p className='text-xs text-gray-400'>
+                  <p className='text-xs text-gray-600'>
                     {formatPrice(filterOptions.priceRange.minPrice)} —{" "}
                     {formatPrice(filterOptions.priceRange.maxPrice)}
                   </p>
@@ -584,8 +613,10 @@ export default function ShopClient() {
         </aside>
 
         {isSidebarOpen && (
-          <div
-            className='fixed inset-0 bg-black/50 z-40 lg:hidden'
+          <button
+            type='button'
+            className='fixed inset-0 z-40 cursor-default bg-black/50 lg:hidden'
+            aria-label='Close filters'
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -601,12 +632,12 @@ export default function ShopClient() {
           : !isLoading && (isError || products.length === 0) ?
             <div className='w-full'>
               <div className='w-full rounded-2xl border border-gray-100 bg-white min-h-[420px] sm:min-h-[460px] flex flex-col items-start justify-start text-left px-6 pt-10'>
-                <p className='text-gray-500 text-lg mb-4'>
+                <p className='text-gray-700 text-lg mb-4'>
                   {isError ?
                     "Something went wrong loading products. Try again or adjust filters."
                   : "No products found matching your filters."}
                 </p>
-                <Button variant='brand' onClick={clearFilters}>
+                <Button type='button' variant='brand' onClick={clearFilters}>
                   Clear Filters
                 </Button>
               </div>
@@ -630,7 +661,7 @@ export default function ShopClient() {
               )}
 
               {!pagination?.hasNextPage && products.length > 0 && (
-                <p className='mt-8 text-center text-sm text-gray-400'>
+                <p className='mt-8 text-center text-sm text-gray-600'>
                   You’ve reached the end.
                 </p>
               )}
@@ -651,19 +682,33 @@ function FilterSection({
   children: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(true);
+  const uid = useId();
+  const headingId = `${uid}-heading`;
+  const panelId = `${uid}-panel`;
 
   return (
     <div className='border-b border-gray-200 pb-5'>
       <button
-        className='flex items-center justify-between w-full mb-3 text-left'
+        id={headingId}
+        type='button'
+        className='flex items-center justify-between w-full mb-3 text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40'
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
       >
         <span className='font-semibold text-sm text-gray-900'>{title}</span>
         {isOpen ?
-          <ChevronUp className='h-4 w-4 text-gray-500' />
-        : <ChevronDown className='h-4 w-4 text-gray-500' />}
+          <ChevronUp className='h-4 w-4 text-gray-600' aria-hidden />
+        : <ChevronDown className='h-4 w-4 text-gray-600' aria-hidden />}
       </button>
-      {isOpen && children}
+      <div
+        id={panelId}
+        role='region'
+        aria-labelledby={headingId}
+        hidden={!isOpen}
+      >
+        {children}
+      </div>
     </div>
   );
 }

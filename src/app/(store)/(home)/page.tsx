@@ -1,13 +1,16 @@
 import { Metadata } from "next";
+import dynamic from "next/dynamic";
 import HeroSection from "@/components/home/HeroSection";
-import FeaturedProducts from "@/components/home/FeaturedProducts";
-import ExploreCollection from "@/components/home/ExploreCollection";
-import HomeBanner from "@/components/home/HomeBanner";
-import CategorySection from "@/components/home/CategorySection";
-import HomeGiftShowcase from "@/components/home/HomeGiftShowcase";
-import WhyChooseUs from "@/components/home/WhyChooseUs";
-import Testimonials from "@/components/home/Testimonials";
-import BlogBanner from "@/components/home/BlogBanner";
+import { fetchStorefrontHeroSlides } from "@/lib/storefrontServer";
+
+const CategorySection = dynamic(() => import("@/components/home/CategorySection"));
+const FeaturedProducts = dynamic(() => import("@/components/home/FeaturedProducts"));
+const HomeBanner = dynamic(() => import("@/components/home/HomeBanner"));
+const ExploreCollection = dynamic(() => import("@/components/home/ExploreCollection"));
+const HomeGiftShowcase = dynamic(() => import("@/components/home/HomeGiftShowcase"));
+const WhyChooseUs = dynamic(() => import("@/components/home/WhyChooseUs"));
+const BlogBanner = dynamic(() => import("@/components/home/BlogBanner"));
+const Testimonials = dynamic(() => import("@/components/home/Testimonials"));
 
 export const metadata: Metadata = {
   title: "The House of Rani | Premium Indian Ethnic Wear",
@@ -31,10 +34,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const heroSlides = await fetchStorefrontHeroSlides();
+
   return (
     <>
-      <HeroSection />
+      <HeroSection initialSlides={heroSlides} />
       <CategorySection />
       <FeaturedProducts />
       <HomeBanner />

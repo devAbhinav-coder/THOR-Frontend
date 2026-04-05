@@ -5,6 +5,9 @@ const { withSentryConfig } = require('@sentry/nextjs');
 const nextConfig = {
   // Parent-root tracing fixes local monorepo + dual lockfile warning; on Vercel it breaks paths (e.g. routes-manifest ENOENT).
   ...(process.env.VERCEL ? {} : { outputFileTracingRoot: path.join(__dirname, '../') }),
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com' },

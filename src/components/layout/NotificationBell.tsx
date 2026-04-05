@@ -137,6 +137,7 @@ export default function NotificationBell({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-primary/80 hover:text-primary transition-colors focus:outline-none rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95"
+        aria-label="Notifications"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >

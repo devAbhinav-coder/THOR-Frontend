@@ -27,6 +27,21 @@ const playfair = Playfair_Display({
 
 const SITE_URL = getSiteUrl();
 
+function preconnectHints(): { href: string; crossOrigin?: "" }[] {
+  const hints: { href: string; crossOrigin?: "" }[] = [
+    { href: "https://res.cloudinary.com", crossOrigin: "" },
+  ];
+  const api = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (api) {
+    try {
+      hints.unshift({ href: new URL(api).origin, crossOrigin: "" });
+    } catch {
+      /* invalid URL in env */
+    }
+  }
+  return hints;
+}
+
 export const metadata: Metadata = {
   title: {
     default: "The House of Rani | Premium Indian Ethnic Wear & Gifting",
@@ -137,6 +152,9 @@ gtag('consent', 'default', {
       suppressHydrationWarning
     >
       <head>
+        {preconnectHints().map((p) => (
+          <link key={p.href} rel='preconnect' href={p.href} crossOrigin={p.crossOrigin} />
+        ))}
         {/* Per-request CSP nonces can differ between SSR snapshot and client hydration in dev; suppressHydrationWarning is the supported escape hatch. */}
         <script
           id='consent-mode-default'

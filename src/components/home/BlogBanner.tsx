@@ -49,7 +49,7 @@ export default function BlogBanner() {
                 )}
               </h2>
               
-              <p className="text-lg sm:text-xl text-white/70 mb-10 leading-relaxed font-light">
+              <p className="text-lg sm:text-xl text-white/85 mb-10 leading-relaxed font-light">
                 {blog?.description || "Dive deep into the rich history of Indian textures, get styling tips from experts, and stay updated with our latest collections and pop-up stalls."}
               </p>
               
