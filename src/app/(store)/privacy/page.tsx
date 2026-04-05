@@ -5,6 +5,15 @@ export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
     'How The House of Rani collects, uses, and protects your personal information when you shop with us.',
+  alternates: {
+    canonical: '/privacy',
+  },
+  openGraph: {
+    title: 'Privacy Policy | The House of Rani',
+    description:
+      'How we collect, use, store, and protect your personal data when you shop with us.',
+    url: '/privacy',
+  },
 };
 
 export default function PrivacyPage() {

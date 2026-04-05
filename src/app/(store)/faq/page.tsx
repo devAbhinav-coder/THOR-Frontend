@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 export const metadata: Metadata = {
   title: "FAQ",
@@ -8,6 +9,12 @@ export const metadata: Metadata = {
     "Frequently asked questions about orders, shipping, returns, customization, and gifting at The House of Rani.",
   alternates: {
     canonical: "/faq",
+  },
+  openGraph: {
+    title: "FAQ | The House of Rani",
+    description:
+      "Answers about orders, shipping, returns, customization, and gifting.",
+    url: "/faq",
   },
 };
 
@@ -47,7 +54,7 @@ const faqItems = [
 ];
 
 export default function FaqPage() {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const appUrl = getSiteUrl();
   const faqLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",

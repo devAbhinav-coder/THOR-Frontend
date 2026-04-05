@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 export default function robots(): MetadataRoute.Robots {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.thehouseofrani.com").replace(/\/+$/, "");
+  const appUrl = getSiteUrl();
 
   return {
     rules: [
@@ -16,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
           "/checkout",
           "/checkout/*",
           "/cart",
+          "/cart/*",
           "/dashboard",
           "/dashboard/*",
           "/api/*",

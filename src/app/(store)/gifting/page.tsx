@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Gift, Search, Star, X, SlidersHorizontal } from "lucide-react";
-import { giftingApi, storefrontApi } from "@/lib/api";
+import { categoryApi, giftingApi, storefrontApi } from "@/lib/api";
 import { cn, formatPrice } from "@/lib/utils";
 import type { Category, Product, StorefrontSettings } from "@/types";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -28,6 +35,25 @@ type PriceFilterKey =
   | "above_7000";
 const SEARCH_MAX_LEN = 80;
 
+function parseGiftingQuery(search: string) {
+  const q = new URLSearchParams(search);
+  return {
+    occasion: q.get("occasion")?.trim() || "",
+    productCategory: q.get("productCategory")?.trim() || "",
+    search: q.get("search")?.trim() || "",
+  };
+}
+
+function giftingQueriesMatch(a: string, b: string) {
+  const pa = parseGiftingQuery(a.startsWith("?") ? a.slice(1) : a);
+  const pb = parseGiftingQuery(b.startsWith("?") ? b.slice(1) : b);
+  return (
+    pa.occasion === pb.occasion &&
+    pa.productCategory === pb.productCategory &&
+    pa.search === pb.search
+  );
+}
+
 type GiftingProductsResponse = {
   data?: {
     products?: Product[];
@@ -38,10 +64,22 @@ type GiftingProductsResponse = {
 };
 
 export default function GiftingPage() {
-  const [activeOccasion, setActiveOccasion] = useState("all");
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [activeOccasion, setActiveOccasion] = useState(
+    () => searchParams.get("occasion")?.trim() || "all",
+  );
+  const [activeCategory, setActiveCategory] = useState(
+    () => searchParams.get("productCategory")?.trim() || "all",
+  );
+  const [search, setSearch] = useState(
+    () =>
+      (searchParams.get("search")?.trim() || "").slice(0, SEARCH_MAX_LEN),
+  );
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
+  const skipNextUrlPush = useRef(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("relevance");
   const [priceFilter, setPriceFilter] = useState<PriceFilterKey>("all");
@@ -58,6 +96,12 @@ export default function GiftingPage() {
     staleTime: 120_000,
   });
 
+  const { data: catalogCategoriesBody } = useQuery({
+    queryKey: ["gifting-catalog-categories"],
+    queryFn: () => categoryApi.getAll({ active: true }),
+    staleTime: 120_000,
+  });
+
   const { data: settingsBody, isLoading: settingsLoading } = useQuery({
     queryKey: ["storefront-settings-gifting"],
     queryFn: () => storefrontApi.getSettings(),
@@ -66,12 +110,18 @@ export default function GiftingPage() {
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery<GiftingProductsResponse>({
-      queryKey: ["gifting-products", activeOccasion, debouncedSearch],
+      queryKey: [
+        "gifting-products",
+        activeOccasion,
+        activeCategory,
+        debouncedSearch,
+      ],
       queryFn: ({ pageParam }) =>
         giftingApi.getProducts({
           page: Number(pageParam || 1),
           limit: 20,
           ...(activeOccasion !== "all" && { giftOccasion: activeOccasion }),
+          ...(activeCategory !== "all" && { category: activeCategory }),
           ...(debouncedSearch && { search: debouncedSearch }),
         }),
       getNextPageParam: (lastPage) => {
@@ -86,6 +136,49 @@ export default function GiftingPage() {
     });
 
   const giftCategories: Category[] = categoriesBody?.data?.categories || [];
+  const catalogCategories: Category[] =
+    catalogCategoriesBody?.data?.categories || [];
+  const productCategoriesForFilter = useMemo(() => {
+    const list = catalogCategories.filter((c) => !c.isGiftCategory);
+    return list.length ? list : catalogCategories;
+  }, [catalogCategories]);
+
+  const serializeGiftingQuery = useCallback(() => {
+    const q = new URLSearchParams();
+    if (activeOccasion !== "all") q.set("occasion", activeOccasion);
+    if (activeCategory !== "all") q.set("productCategory", activeCategory);
+    if (debouncedSearch) q.set("search", debouncedSearch);
+    return q.toString();
+  }, [activeOccasion, activeCategory, debouncedSearch]);
+
+  const giftingUrlKey = searchParams.toString();
+
+  useLayoutEffect(() => {
+    const occ = searchParams.get("occasion")?.trim() || "all";
+    const pc = searchParams.get("productCategory")?.trim() || "all";
+    const s = (searchParams.get("search")?.trim() || "").slice(
+      0,
+      SEARCH_MAX_LEN,
+    );
+    skipNextUrlPush.current = true;
+    setActiveOccasion(occ);
+    setActiveCategory(pc);
+    setSearch(s);
+    // giftingUrlKey is searchParams.toString(); only re-sync when the URL query changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [giftingUrlKey]);
+
+  useEffect(() => {
+    if (skipNextUrlPush.current) {
+      skipNextUrlPush.current = false;
+      return;
+    }
+    const next = serializeGiftingQuery();
+    const cur = searchParams.toString();
+    if (giftingQueriesMatch(next, cur)) return;
+    const href = next ? `${pathname}?${next}` : pathname;
+    router.replace(href, { scroll: false });
+  }, [serializeGiftingQuery, searchParams, pathname, router]);
   const settings: StorefrontSettings | undefined = settingsBody?.data?.settings;
   const promo = settings?.promoBanner;
   const blog = settings?.blogBanner;
@@ -465,6 +558,19 @@ export default function GiftingPage() {
                 <option value='3000_7000'>3000 - 7000</option>
                 <option value='above_7000'>Above 7000</option>
               </select>
+              <select
+                value={activeCategory}
+                onChange={(e) => setActiveCategory(e.target.value)}
+                className='hidden sm:block h-10 rounded-xl border border-gray-200 bg-white px-3 text-xs sm:text-sm font-medium text-gray-700 min-w-[160px]'
+                aria-label='Filter by product category'
+              >
+                <option value='all'>All product categories</option>
+                {productCategoriesForFilter.map((cat) => (
+                  <option key={cat._id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -531,15 +637,15 @@ export default function GiftingPage() {
 
               <div>
                 <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
-                  Category
+                  Product category
                 </label>
                 <select
                   value={activeCategory}
                   onChange={(e) => setActiveCategory(e.target.value)}
                   className='mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
                 >
-                  <option value='all'>All categories</option>
-                  {giftCategories.map((cat) => (
+                  <option value='all'>All product categories</option>
+                  {productCategoriesForFilter.map((cat) => (
                     <option key={cat._id} value={cat.name}>
                       {cat.name}
                     </option>

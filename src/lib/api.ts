@@ -21,6 +21,9 @@ function isAuthPublicRequest(config: InternalAxiosRequestConfig): boolean {
     path.includes("/auth/google") ||
     path.includes("/auth/forgot-password") ||
     path.includes("/auth/reset-password") ||
+    path.includes("/auth/send-otp") ||
+    path.includes("/auth/verify-otp") ||
+    path.includes("/auth/resend-otp") ||
     path.includes("/auth/refresh")
   );
 }
@@ -89,6 +92,32 @@ export const authApi = {
     unwrapAxios("auth.forgotPassword", api.post("/auth/forgot-password", data), schemas.authMessage),
   resetPassword: (data: { email: string; otp: string; newPassword: string }) =>
     unwrapAxios("auth.resetPassword", api.post("/auth/reset-password", data), schemas.authResetPassword),
+  sendOtp: (
+    data:
+      | { type: "signup"; email: string; name: string; password: string; phone: string }
+      | { type: "login"; email: string }
+      | { type: "forgot_password"; email: string },
+  ) => unwrapAxios("auth.sendOtp", api.post("/auth/send-otp", data), schemas.authMessage),
+  resendOtp: (data: { email: string; type: "signup" | "login" | "forgot_password" }) =>
+    unwrapAxios("auth.resendOtp", api.post("/auth/resend-otp", data), schemas.authMessage),
+  verifyOtpSignup: (data: { email: string; otp: string }) =>
+    unwrapAxios(
+      "auth.verifyOtpSignup",
+      api.post("/auth/verify-otp", { ...data, type: "signup" }),
+      schemas.authWithUser,
+    ),
+  verifyOtpLogin: (data: { email: string; otp: string }) =>
+    unwrapAxios(
+      "auth.verifyOtpLogin",
+      api.post("/auth/verify-otp", { ...data, type: "login" }),
+      schemas.authWithUser,
+    ),
+  verifyOtpForgot: (data: { email: string; otp: string }) =>
+    unwrapAxios(
+      "auth.verifyOtpForgot",
+      api.post("/auth/verify-otp", { ...data, type: "forgot_password" }),
+      schemas.successMessageData,
+    ),
   logout: () => unwrapAxios("auth.logout", api.post("/auth/logout"), schemas.authLogout),
   getMe: () => unwrapAxios("auth.getMe", api.get("/auth/me"), schemas.authMe),
   updateMe: (data: FormData) =>

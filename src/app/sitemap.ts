@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 type ProductLite = {
   slug?: string;
@@ -11,7 +12,7 @@ type BlogLite = {
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.thehouseofrani.com").replace(/\/+$/, "");
+  const appUrl = getSiteUrl();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const now = new Date();
 

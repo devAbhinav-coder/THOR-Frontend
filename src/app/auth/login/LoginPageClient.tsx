@@ -6,12 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
+import { authApi } from "@/lib/api";
+import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -19,6 +21,17 @@ const loginSchema = z.object({
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
+
+const otpEmailSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+const otpCodeSchema = z.object({
+  otp: z.string().regex(/^\d{6}$/, "Enter the 6-digit code from your email"),
+});
+
+type OtpEmailForm = z.infer<typeof otpEmailSchema>;
+type OtpCodeForm = z.infer<typeof otpCodeSchema>;
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -36,10 +49,15 @@ export default function LoginPageClient() {
   /** GSI re-inits on every `width` change — render only after mount so width is stable (fixes first-click failures). */
   const [googleUiReady, setGoogleUiReady] = useState(false);
   const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
-  const { login, loginWithGoogle, isLoading } = useAuthStore();
+  const { login, loginWithGoogle, loginWithOtp, isLoading } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
+
+  const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
+  const [otpStep, setOtpStep] = useState<"email" | "code">("email");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
 
   const {
     register,
@@ -48,6 +66,41 @@ export default function LoginPageClient() {
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
+
+  const otpEmailForm = useForm<OtpEmailForm>({
+    resolver: zodResolver(otpEmailSchema),
+  });
+
+  const otpCodeForm = useForm<OtpCodeForm>({
+    resolver: zodResolver(otpCodeSchema),
+    defaultValues: { otp: "" },
+  });
+
+  const onSendLoginOtp = async (data: OtpEmailForm) => {
+    setOtpSending(true);
+    try {
+      await authApi.sendOtp({ type: "login", email: data.email });
+      setOtpEmail(data.email);
+      setOtpStep("code");
+      toast.success("We sent a sign-in code to your email.");
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      toast.error(error.message || "Could not send sign-in code.");
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const onVerifyLoginOtp = async (data: OtpCodeForm) => {
+    try {
+      await loginWithOtp(otpEmail, data.otp);
+      toast.success("Welcome back!");
+      router.push(redirect);
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      toast.error(error.message || "Invalid or expired code.");
+    }
+  };
 
   const onSubmit = async (data: LoginForm) => {
     try {
@@ -99,6 +152,92 @@ export default function LoginPageClient() {
     };
   }, [googleUiReady, updateGoogleButtonWidth]);
 
+  if (loginMode === "otp") {
+    if (otpStep === "code") {
+      return (
+        <div className="w-full max-w-md">
+          <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
+            <div className="text-center mb-6">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
+                <Mail className="h-6 w-6" />
+              </div>
+              <h2 className="text-2xl font-serif font-bold text-white">Enter sign-in code</h2>
+              <p className="text-white/50 mt-2 text-sm">
+                Code sent to <span className="text-white/80 font-medium">{otpEmail}</span>
+              </p>
+            </div>
+            <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-4">
+              <Input
+                {...otpCodeForm.register("otp")}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                label="6-digit code"
+                placeholder="000000"
+                error={otpCodeForm.formState.errors.otp?.message}
+              />
+              <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
+                Sign in
+              </Button>
+              <OtpResendCooldown email={otpEmail} type="login" />
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpStep("email");
+                  otpCodeForm.reset();
+                }}
+                className="w-full text-sm text-white/40 hover:text-white/70"
+              >
+                ← Use a different email
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMode("password");
+                  setOtpStep("email");
+                }}
+                className="w-full text-sm text-white/30 hover:text-white/50"
+              >
+                Sign in with password instead
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full max-w-md">
+        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-serif font-bold text-white">Email sign-in code</h2>
+            <p className="text-white/50 mt-1 text-sm">We&apos;ll email you a one-time 6-digit code</p>
+          </div>
+          <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-4">
+            <Input
+              {...otpEmailForm.register("email")}
+              type="email"
+              label="Email address"
+              placeholder="you@example.com"
+              error={otpEmailForm.formState.errors.email?.message}
+              autoComplete="email"
+            />
+            <Button type="submit" variant="brand" size="lg" className="w-full" loading={otpSending}>
+              Send code
+            </Button>
+            <button
+              type="button"
+              onClick={() => setLoginMode("password")}
+              className="w-full text-sm text-white/40 hover:text-white/70"
+            >
+              ← Back to password sign-in
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md">
       <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
@@ -106,6 +245,14 @@ export default function LoginPageClient() {
           <h2 className="text-2xl font-serif font-bold text-white">Welcome back</h2>
           <p className="text-white/50 mt-1 text-sm">Sign in to your account to continue</p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setLoginMode("otp")}
+          className="mb-4 w-full rounded-lg border border-white/15 bg-white/5 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10 transition-colors"
+        >
+          Sign in with email code
+        </button>
 
         {googleClientId ? (
           <div className="mb-6 w-full flex flex-col items-center overflow-hidden min-h-[40px]">

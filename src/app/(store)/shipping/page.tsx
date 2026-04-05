@@ -6,6 +6,15 @@ export const metadata: Metadata = {
   title: 'Shipping Policy',
   description:
     'Shipping zones, processing times, delivery estimates, tracking, and what to do if your order is delayed or damaged — The House of Rani.',
+  alternates: {
+    canonical: '/shipping',
+  },
+  openGraph: {
+    title: 'Shipping Policy | The House of Rani',
+    description:
+      'How we ship across India, processing times, tracking, and delivery estimates.',
+    url: '/shipping',
+  },
 };
 
 export default function ShippingPage() {

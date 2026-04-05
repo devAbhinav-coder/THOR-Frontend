@@ -9,6 +9,7 @@ import { Heart, MessageCircle, ChevronLeft, Send, Trash2, Calendar, User as User
 import toast from "react-hot-toast";
 
 import { blogApi } from "@/lib/api";
+import { getSiteUrl } from "@/lib/siteUrl";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Blog, BlogComment } from "@/types";
@@ -82,7 +83,7 @@ export default function BlogDetailPage() {
   const safeContentHtml = escapeHtml(blog?.content || "").replace(/\n/g, "<br />");
   const isLikedByMe = isAuthenticated && user ? blog?.likes?.includes(user._id) : false;
   const blogPostingLd = useMemo(() => {
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+    const appUrl = getSiteUrl();
     return {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
@@ -106,11 +107,11 @@ export default function BlogDetailPage() {
           url: `${appUrl}/logo.png`,
         },
       },
-      mainEntityOfPage: `${appUrl}/blog/${slug}`,
+      mainEntityOfPage: `${appUrl}/blog/${encodeURIComponent(slug)}`,
     };
   }, [blog, slug]);
   const breadcrumbLd = useMemo(() => {
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+    const appUrl = getSiteUrl();
     return {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
@@ -131,7 +132,7 @@ export default function BlogDetailPage() {
           "@type": "ListItem",
           position: 3,
           name: blog?.title || "Journal Story",
-          item: `${appUrl}/blog/${slug}`,
+          item: `${appUrl}/blog/${encodeURIComponent(slug)}`,
         },
       ],
     };

@@ -10,6 +10,7 @@ import SmoothScroll from "@/components/providers/SmoothScroll";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import CookieConsentBanner from "@/components/layout/CookieConsentBanner";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -24,9 +25,7 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const SITE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || "https://www.thehouseofrani.com"
-).replace(/\/+$/, "");
+const SITE_URL = getSiteUrl();
 
 export const metadata: Metadata = {
   title: {
@@ -60,9 +59,6 @@ export const metadata: Metadata = {
   creator: "The House of Rani",
   applicationName: "The House of Rani",
   category: "fashion",
-  alternates: {
-    canonical: SITE_URL,
-  },
   openGraph: {
     type: "website",
     locale: "en_IN",

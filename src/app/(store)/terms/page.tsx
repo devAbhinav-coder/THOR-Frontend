@@ -6,6 +6,15 @@ export const metadata: Metadata = {
   title: 'Terms of Service',
   description:
     'Terms and conditions for using The House of Rani website, placing orders, and purchasing products.',
+  alternates: {
+    canonical: '/terms',
+  },
+  openGraph: {
+    title: 'Terms of Service | The House of Rani',
+    description:
+      'Terms governing use of our website, accounts, orders, and purchases.',
+    url: '/terms',
+  },
 };
 
 export default function TermsPage() {

@@ -1,8 +1,13 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import AuthGoogleShell from "./AuthGoogleShell";
 import AuthGuestOnly from "@/components/auth/AuthGuestOnly";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 function AuthBodyFallback() {
   return (

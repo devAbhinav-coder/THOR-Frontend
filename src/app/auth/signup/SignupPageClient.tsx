@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
+import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
 
 const strongPassword = z
   .string()
@@ -177,6 +178,7 @@ export default function SignupPageClient() {
             <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
               Verify & create account
             </Button>
+            <OtpResendCooldown email={pendingEmail} type="signup" />
             <button
               type="button"
               onClick={() => {

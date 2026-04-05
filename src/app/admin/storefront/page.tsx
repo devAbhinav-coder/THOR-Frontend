@@ -2,8 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { adminApi, categoryApi } from '@/lib/api';
-import { Category, HeroSlide, StorefrontSettings } from '@/types';
+import { adminApi, categoryApi, giftingApi } from '@/lib/api';
+import {
+  Category,
+  HeroSlide,
+  HomeGiftShowcaseCard,
+  HomeGiftShopLinkMode,
+  StorefrontSettings,
+} from '@/types';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -26,6 +32,7 @@ const emptySlide: HeroSlide = {
 export default function AdminStorefrontPage() {
   const [settings, setSettings] = useState<StorefrontSettings | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [giftOccasionCategories, setGiftOccasionCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [announcementDraft, setAnnouncementDraft] = useState('');
@@ -38,6 +45,7 @@ export default function AdminStorefrontPage() {
   const [shopBannerRightFile, setShopBannerRightFile] = useState<File | null>(null);
   const [giftingHeroFiles, setGiftingHeroFiles] = useState<Record<number, File | null>>({});
   const [giftingSecondaryFiles, setGiftingSecondaryFiles] = useState<Record<number, File | null>>({});
+  const [homeGiftCardFiles, setHomeGiftCardFiles] = useState<Record<number, File | null>>({});
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>("announcement");
@@ -55,10 +63,12 @@ export default function AdminStorefrontPage() {
     Promise.all([
       adminApi.getStorefrontSettings(),
       categoryApi.getAll({ active: false }),
+      giftingApi.getCategories().catch(() => ({ data: { categories: [] as Category[] } })),
     ])
-      .then(([settingsRes, categoriesRes]) => {
+      .then(([settingsRes, categoriesRes, giftCatsRes]) => {
         setSettings(settingsRes.data?.settings || null);
         setCategories(categoriesRes.data?.categories || []);
+        setGiftOccasionCategories(giftCatsRes.data?.categories || []);
       })
       .catch(() => toast.error('Failed to load storefront settings'))
       .finally(() => setIsLoading(false));
@@ -94,6 +104,9 @@ export default function AdminStorefrontPage() {
       Object.entries(giftingSecondaryFiles).forEach(([index, file]) => {
         if (file) fd.append(`giftingSecondaryImage_${index}`, file);
       });
+      Object.entries(homeGiftCardFiles).forEach(([index, file]) => {
+        if (file) fd.append(`homeGiftCardImage_${index}`, file);
+      });
       await adminApi.updateStorefrontSettings(fd);
       setHeroImageFiles({});
       setPromoBgFile(null);
@@ -104,6 +117,7 @@ export default function AdminStorefrontPage() {
       setShopBannerRightFile(null);
       setGiftingHeroFiles({});
       setGiftingSecondaryFiles({});
+      setHomeGiftCardFiles({});
       toast.success('Storefront settings updated');
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Failed to save settings');
@@ -129,6 +143,33 @@ export default function AdminStorefrontPage() {
       return prev;
     });
   };
+  const padHomeGiftCards = (cards: HomeGiftShowcaseCard[] | undefined): HomeGiftShowcaseCard[] => {
+    const accents: ('rose' | 'amber' | 'sage')[] = ['rose', 'amber', 'sage'];
+    const base = [...(cards || [])];
+    while (base.length < 3) {
+      base.push({
+        title: '',
+        description: '',
+        image: '',
+        shopButtonText: 'Browse gifts',
+        shopLinkMode: 'gifting',
+        shopButtonLink: '/gifting',
+        giftingOccasion: '',
+        giftingProductCategory: '',
+        giftingSearch: '',
+        directProductPath: '',
+        giftButtonText: 'Gifting',
+        giftButtonLink: '/gifting',
+        accent: accents[base.length],
+      });
+    }
+    return base.slice(0, 3);
+  };
+
+  const productCategoriesForGiftCard = categories.filter((c) => !c.isGiftCategory);
+  const productCategoryOptions =
+    productCategoriesForGiftCard.length > 0 ? productCategoriesForGiftCard : categories;
+
   const ensureShopBanner = (p: StorefrontSettings) => ({
     title: p.shopBanner?.title || "",
     subtitle: p.shopBanner?.subtitle || "",
@@ -900,6 +941,453 @@ export default function AdminStorefrontPage() {
         />
         Show this banner on shop page
       </label>
+    </div>
+  )}
+</section>
+
+<section className="bg-white rounded-2xl border border-gray-100">
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "homeGift" ? null : "homeGift")
+    }
+    className="cursor-pointer p-5 flex justify-between items-center"
+  >
+    <div>
+      <h2 className="font-semibold text-gray-900">Home — Gifting showcase</h2>
+      <p className="text-xs text-gray-500 mt-0.5">
+        Three cards above &quot;Why Choose Us&quot; (white background). Each card: shop link + gifting link.
+      </p>
+    </div>
+    <span>
+      {activeSection === "homeGift" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+    </span>
+  </div>
+
+  {activeSection === "homeGift" && settings && (
+    <div className="px-5 pb-5 space-y-4">
+      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={settings.homeGiftShowcase?.isActive !== false}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeGiftShowcase: {
+                      ...p.homeGiftShowcase,
+                      isActive: e.target.checked,
+                      cards: padHomeGiftCards(p.homeGiftShowcase?.cards),
+                    },
+                  }
+                : p
+            )
+          }
+        />
+        Show section on homepage
+      </label>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input
+          className={inputCls}
+          value={settings.homeGiftShowcase?.headlineLine1 || ''}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeGiftShowcase: {
+                      ...p.homeGiftShowcase,
+                      headlineLine1: e.target.value,
+                      cards: padHomeGiftCards(p.homeGiftShowcase?.cards),
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Headline line 1 (e.g. Our Gifting)"
+        />
+        <input
+          className={inputCls}
+          value={settings.homeGiftShowcase?.headlineLine2 || ''}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeGiftShowcase: {
+                      ...p.homeGiftShowcase,
+                      headlineLine2: e.target.value,
+                      cards: padHomeGiftCards(p.homeGiftShowcase?.cards),
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Headline line 2 (e.g. Collections)"
+        />
+      </div>
+      <textarea
+        className={inputCls}
+        rows={3}
+        value={settings.homeGiftShowcase?.description || ''}
+        onChange={(e) =>
+          setSettings((p) =>
+            p
+              ? {
+                  ...p,
+                  homeGiftShowcase: {
+                    ...p.homeGiftShowcase,
+                    description: e.target.value,
+                    cards: padHomeGiftCards(p.homeGiftShowcase?.cards),
+                  },
+                }
+              : p
+          )
+        }
+        placeholder="Short description for the left column"
+      />
+      <input
+        className={inputCls}
+        value={settings.homeGiftShowcase?.socialHandle || ''}
+        onChange={(e) =>
+          setSettings((p) =>
+            p
+              ? {
+                  ...p,
+                  homeGiftShowcase: {
+                    ...p.homeGiftShowcase,
+                    socialHandle: e.target.value,
+                    cards: padHomeGiftCards(p.homeGiftShowcase?.cards),
+                  },
+                }
+              : p
+          )
+        }
+        placeholder="Social handle (e.g. @thehouseofrani) — icons use Footer social URLs"
+      />
+
+      {padHomeGiftCards(settings.homeGiftShowcase?.cards).map((card, index) => (
+        <div key={index} className="rounded-xl border border-gray-200 p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-800">Card {index + 1}</p>
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="1:1"
+            maxSizeMB={5}
+            existingImages={
+              homeGiftCardFiles[index] ? [] : card.image ? [card.image] : []
+            }
+            onRemoveExisting={() => {
+              setSettings((p) => {
+                if (!p) return p;
+                const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                cards[index] = {
+                  ...cards[index],
+                  image: '',
+                  imagePublicId: undefined,
+                };
+                return {
+                  ...p,
+                  homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                };
+              });
+              setHomeGiftCardFiles((prev) => ({ ...prev, [index]: null }));
+            }}
+            onChange={(files) =>
+              setHomeGiftCardFiles((prev) => ({
+                ...prev,
+                [index]: files[0] || null,
+              }))
+            }
+            label="Card image (1:1 — shown as circle on homepage)"
+            hint="Hover the thumbnail → remove to upload a new image. Saving removes the old file from Cloudinary when replaced or cleared."
+          />
+          {card.image && !homeGiftCardFiles[index] && (
+            <button
+              type="button"
+              className="text-xs font-medium text-red-600 hover:text-red-700"
+              onClick={() => {
+                setSettings((p) => {
+                  if (!p) return p;
+                  const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                  cards[index] = {
+                    ...cards[index],
+                    image: '',
+                    imagePublicId: undefined,
+                  };
+                  return {
+                    ...p,
+                    homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                  };
+                });
+                setHomeGiftCardFiles((prev) => ({ ...prev, [index]: null }));
+              }}
+            >
+              Remove current image (Cloudinary cleanup on Save)
+            </button>
+          )}
+          {homeGiftCardFiles[index] && (
+            <button
+              type="button"
+              className="text-xs text-gray-600 hover:text-gray-800"
+              onClick={() =>
+                setHomeGiftCardFiles((prev) => ({ ...prev, [index]: null }))
+              }
+            >
+              Discard newly selected file
+            </button>
+          )}
+          <input
+            className={inputCls}
+            value={card.title || ''}
+            onChange={(e) =>
+              setSettings((p) => {
+                if (!p) return p;
+                const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                cards[index] = { ...cards[index], title: e.target.value };
+                return {
+                  ...p,
+                  homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                };
+              })
+            }
+            placeholder="Title (e.g. Handmade Gifts)"
+          />
+          <textarea
+            className={inputCls}
+            rows={2}
+            value={card.description || ''}
+            onChange={(e) =>
+              setSettings((p) => {
+                if (!p) return p;
+                const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                cards[index] = { ...cards[index], description: e.target.value };
+                return {
+                  ...p,
+                  homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                };
+              })
+            }
+            placeholder="Card description"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              className={inputCls}
+              value={card.shopButtonText || ''}
+              onChange={(e) =>
+                setSettings((p) => {
+                  if (!p) return p;
+                  const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                  cards[index] = { ...cards[index], shopButtonText: e.target.value };
+                  return {
+                    ...p,
+                    homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                  };
+                })
+              }
+              placeholder="Primary button label (e.g. Browse gifts, Coming soon)"
+            />
+            <div>
+              <label className="text-xs font-medium text-gray-600">Primary button target</label>
+              <select
+                className={`${inputCls} mt-1`}
+                value={(card.shopLinkMode || 'custom') as HomeGiftShopLinkMode}
+                onChange={(e) =>
+                  setSettings((p) => {
+                    if (!p) return p;
+                    const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                    const mode = e.target.value as HomeGiftShopLinkMode;
+                    cards[index] = {
+                      ...cards[index],
+                      shopLinkMode: mode,
+                      ...(mode === 'coming_soon' && {
+                        shopButtonText: cards[index].shopButtonText || 'Coming soon',
+                      }),
+                    };
+                    return {
+                      ...p,
+                      homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                    };
+                  })
+                }
+              >
+                <option value="gifting">Gifting page (occasion / product category / search)</option>
+                <option value="product">Product page (path)</option>
+                <option value="coming_soon">Coming soon (no link)</option>
+                <option value="custom">Custom URL</option>
+              </select>
+            </div>
+            {(card.shopLinkMode || 'custom') === 'gifting' && (
+              <>
+                <select
+                  className={inputCls}
+                  value={card.giftingOccasion || ''}
+                  onChange={(e) =>
+                    setSettings((p) => {
+                      if (!p) return p;
+                      const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                      cards[index] = {
+                        ...cards[index],
+                        giftingOccasion: e.target.value,
+                      };
+                      return {
+                        ...p,
+                        homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                      };
+                    })
+                  }
+                >
+                  <option value="">Gift occasion (optional — same as gifting page chips)</option>
+                  {giftOccasionCategories.map((c) => (
+                    <option key={String(c._id)} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className={inputCls}
+                  value={card.giftingProductCategory || ''}
+                  onChange={(e) =>
+                    setSettings((p) => {
+                      if (!p) return p;
+                      const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                      cards[index] = {
+                        ...cards[index],
+                        giftingProductCategory: e.target.value,
+                      };
+                      return {
+                        ...p,
+                        homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                      };
+                    })
+                  }
+                >
+                  <option value="">Product category filter (optional)</option>
+                  {productCategoryOptions.map((c) => (
+                    <option key={String(c._id)} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className={`${inputCls} sm:col-span-2`}
+                  value={card.giftingSearch || ''}
+                  onChange={(e) =>
+                    setSettings((p) => {
+                      if (!p) return p;
+                      const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                      cards[index] = { ...cards[index], giftingSearch: e.target.value };
+                      return {
+                        ...p,
+                        homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                      };
+                    })
+                  }
+                  placeholder="Search on gifting page (optional)"
+                />
+              </>
+            )}
+            {(card.shopLinkMode || 'custom') === 'product' && (
+              <input
+                className={`${inputCls} sm:col-span-2`}
+                value={card.directProductPath || ''}
+                onChange={(e) =>
+                  setSettings((p) => {
+                    if (!p) return p;
+                    const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                    cards[index] = { ...cards[index], directProductPath: e.target.value };
+                    return {
+                      ...p,
+                      homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                    };
+                  })
+                }
+                placeholder="Product path, e.g. /shop/your-product-slug"
+              />
+            )}
+            {(card.shopLinkMode || 'custom') === 'custom' && (
+              <input
+                className={`${inputCls} sm:col-span-2`}
+                value={card.shopButtonLink || ''}
+                onChange={(e) =>
+                  setSettings((p) => {
+                    if (!p) return p;
+                    const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                    cards[index] = { ...cards[index], shopButtonLink: e.target.value };
+                    return {
+                      ...p,
+                      homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                    };
+                  })
+                }
+                placeholder="Any path, e.g. /shop or https://…"
+              />
+            )}
+            {(card.shopLinkMode || 'custom') === 'coming_soon' && (
+              <p className="sm:col-span-2 text-xs text-gray-500">
+                The primary button shows your label only (no navigation). Use the second button for Gifting or another link.
+              </p>
+            )}
+            <input
+              className={inputCls}
+              value={card.giftButtonText || ''}
+              onChange={(e) =>
+                setSettings((p) => {
+                  if (!p) return p;
+                  const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                  cards[index] = { ...cards[index], giftButtonText: e.target.value };
+                  return {
+                    ...p,
+                    homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                  };
+                })
+              }
+              placeholder="Gifting button label"
+            />
+            <input
+              className={inputCls}
+              value={card.giftButtonLink || ''}
+              onChange={(e) =>
+                setSettings((p) => {
+                  if (!p) return p;
+                  const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                  cards[index] = { ...cards[index], giftButtonLink: e.target.value };
+                  return {
+                    ...p,
+                    homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                  };
+                })
+              }
+              placeholder="Gifting URL (e.g. /gifting)"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600">Pastel background</label>
+            <select
+              className={`${inputCls} mt-1`}
+              value={card.accent || 'rose'}
+              onChange={(e) =>
+                setSettings((p) => {
+                  if (!p) return p;
+                  const cards = padHomeGiftCards(p.homeGiftShowcase?.cards);
+                  cards[index] = {
+                    ...cards[index],
+                    accent: e.target.value as HomeGiftShowcaseCard['accent'],
+                  };
+                  return {
+                    ...p,
+                    homeGiftShowcase: { ...p.homeGiftShowcase, cards },
+                  };
+                })
+              }
+            >
+              <option value="rose">Pink / rose</option>
+              <option value="amber">Peach / amber</option>
+              <option value="sage">Mint / sage</option>
+            </select>
+          </div>
+        </div>
+      ))}
     </div>
   )}
 </section>

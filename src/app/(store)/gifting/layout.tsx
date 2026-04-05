@@ -13,6 +13,12 @@ export const metadata: Metadata = {
       "Premium gifting made effortless with curated and customizable options for weddings, celebrations, and corporate occasions.",
     url: "/gifting",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Gifting Collection | The House of Rani",
+    description:
+      "Curated and customizable gifting for weddings, celebrations, and corporate occasions.",
+  },
 };
 
 export default function GiftingLayout({

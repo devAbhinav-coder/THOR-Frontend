@@ -296,6 +296,35 @@ export interface HeroSlide {
   isActive?: boolean;
 }
 
+export type HomeGiftShopLinkMode = 'gifting' | 'product' | 'coming_soon' | 'custom';
+
+export interface HomeGiftShowcaseCard {
+  title?: string;
+  description?: string;
+  image?: string;
+  imagePublicId?: string;
+  shopButtonText?: string;
+  shopButtonLink?: string;
+  /** How the primary (shop) button resolves: gifting query, product path, plain link, or non-link. */
+  shopLinkMode?: HomeGiftShopLinkMode;
+  giftingOccasion?: string;
+  giftingProductCategory?: string;
+  giftingSearch?: string;
+  directProductPath?: string;
+  giftButtonText?: string;
+  giftButtonLink?: string;
+  accent?: 'rose' | 'amber' | 'sage';
+}
+
+export interface HomeGiftShowcase {
+  isActive?: boolean;
+  headlineLine1?: string;
+  headlineLine2?: string;
+  description?: string;
+  socialHandle?: string;
+  cards?: HomeGiftShowcaseCard[];
+}
+
 export interface StorefrontSettings {
   announcementMessages: string[];
   heroSlides: HeroSlide[];
@@ -352,6 +381,8 @@ export interface StorefrontSettings {
     ctaLink?: string;
     isActive?: boolean;
   }>;
+  /** Home — above Why Choose Us */
+  homeGiftShowcase?: HomeGiftShowcase;
   footer: {
     description?: string;
     contactAddress?: string;

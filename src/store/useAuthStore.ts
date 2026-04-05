@@ -18,6 +18,8 @@ interface AuthState {
   signupStart: (data: { name: string; email: string; password: string; phone: string }) => Promise<void>;
   signupVerify: (email: string, otp: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
+  /** Passwordless login after `/auth/verify-otp` with type `login`. */
+  loginWithOtp: (email: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setUser: (user: User) => void;
@@ -56,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
         signupVerify: async (email, otp) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.signupVerify({ email, otp });
+            const body = await authApi.verifyOtpSignup({ email, otp });
             set({ user: body.data.user, token: null, isAuthenticated: true });
           } finally {
             set({ isLoading: false });
@@ -67,6 +69,16 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           try {
             const body = await authApi.google({ credential });
+            set({ user: body.data.user, token: null, isAuthenticated: true });
+          } finally {
+            set({ isLoading: false });
+          }
+        },
+
+        loginWithOtp: async (email, otp) => {
+          set({ isLoading: true });
+          try {
+            const body = await authApi.verifyOtpLogin({ email, otp });
             set({ user: body.data.user, token: null, isAuthenticated: true });
           } finally {
             set({ isLoading: false });

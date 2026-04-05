@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 type Props = {
   children: React.ReactNode;
@@ -8,24 +9,26 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getSiteUrl();
+  const safeSlug = encodeURIComponent(slug);
 
   if (!apiUrl) {
     return {
       title: "Journal Story",
-      alternates: { canonical: `/blog/${slug}` },
+      alternates: { canonical: `/blog/${safeSlug}` },
     };
   }
 
   try {
-    const res = await fetch(`${apiUrl}/blogs/${slug}`, {
+    const res = await fetch(`${apiUrl}/blogs/${safeSlug}`, {
       next: { revalidate: 1800 },
     });
 
     if (!res.ok) {
       return {
         title: "Journal Story",
-        alternates: { canonical: `/blog/${slug}` },
+        alternates: { canonical: `/blog/${safeSlug}` },
+        robots: { index: false, follow: true },
       };
     }
 
@@ -42,12 +45,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description: description || "Read this story from The House of Rani Journal.",
       alternates: {
-        canonical: `/blog/${slug}`,
+        canonical: `/blog/${safeSlug}`,
       },
       openGraph: {
         title,
         description: description || "Read this story from The House of Rani Journal.",
-        url: `${appUrl}/blog/${slug}`,
+        url: `${appUrl}/blog/${safeSlug}`,
         images: image ? [{ url: image, alt: title }] : undefined,
         type: "article",
       },
@@ -61,7 +64,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   } catch {
     return {
       title: "Journal Story",
-      alternates: { canonical: `/blog/${slug}` },
+      alternates: { canonical: `/blog/${safeSlug}` },
     };
   }
 }

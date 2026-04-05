@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
+import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -104,6 +105,7 @@ export default function ForgotPasswordClient() {
               error={resetForm.formState.errors.otp?.message}
               autoComplete="one-time-code"
             />
+            <OtpResendCooldown email={email} type="forgot_password" />
             <div className="relative">
               <Input
                 {...resetForm.register('newPassword')}

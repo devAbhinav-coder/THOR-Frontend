@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import ProductDetailClient from '@/components/product/ProductDetailClient';
+import { getSiteUrl } from '@/lib/siteUrl';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -8,28 +9,44 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const safeSlug = encodeURIComponent(slug);
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const appUrl = getSiteUrl();
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/products/${safeSlug}`,
       { next: { revalidate: 3600 } }
     );
-    if (!res.ok) return { title: 'Product Not Found' };
+    if (!res.ok) {
+      return {
+        title: 'Product Not Found',
+        robots: { index: false, follow: true },
+      };
+    }
     const data = await res.json();
     const product = data.data.product;
+    const descRaw =
+      product.seoDescription ||
+      product.shortDescription ||
+      String(product.description || '').slice(0, 160);
+    const ogImage = product.images?.[0]?.url;
 
     return {
       title: product.seoTitle || product.name,
-      description: product.seoDescription || product.shortDescription || product.description.slice(0, 160),
+      description: descRaw,
       alternates: {
         canonical: `/shop/${safeSlug}`,
       },
       openGraph: {
         title: product.name,
-        description: product.shortDescription || product.description.slice(0, 160),
-        images: [{ url: product.images[0]?.url, alt: product.name }],
-        type: 'article',
+        description: descRaw,
+        images: ogImage ? [{ url: ogImage, alt: product.name }] : undefined,
+        type: 'website',
         url: `${appUrl}/shop/${safeSlug}`,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: product.name,
+        description: descRaw,
+        images: ogImage ? [ogImage] : undefined,
       },
     };
   } catch {
@@ -41,7 +58,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
   const safeSlug = encodeURIComponent(slug);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const appUrl = getSiteUrl();
   let productLd: Record<string, unknown> | null = null;
   let breadcrumbLd: Record<string, unknown> | null = null;
 
