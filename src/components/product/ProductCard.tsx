@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Heart, ShoppingBag, Star, Gift } from "lucide-react";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
-import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
@@ -18,6 +17,8 @@ import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal"
 import { isLowInventoryTotal } from "@/lib/inventoryConstants";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 
+const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
+
 interface ProductCardProps {
   product: Product;
   className?: string;
@@ -28,7 +29,6 @@ export default function ProductCard({ product, className }: ProductCardProps) {
   const [hoveredImage, setHoveredImage] = useState(false);
   /** Second gallery URL failed to load (404, blocked host, etc.) — stay on primary until next hover. */
   const [secondaryImageError, setSecondaryImageError] = useState(false);
-  const { addToCart } = useCartStore();
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
@@ -89,21 +89,27 @@ export default function ProductCard({ product, className }: ProductCardProps) {
     const defaultVariant = product.variants.find((v) => v.stock > 0);
     if (!defaultVariant) return;
     try {
-      await addToCart(
-        product._id,
-        {
-          sku: defaultVariant.sku,
-          size: defaultVariant.size,
-          color: defaultVariant.color,
-          colorCode: defaultVariant.colorCode,
-        },
-        1,
-        undefined,
-        product,
-      );
-      router.push("/checkout");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          BUY_NOW_SESSION_KEY,
+          JSON.stringify({
+            productId: product._id,
+            name: product.name,
+            image: product.images?.[0]?.url || "",
+            quantity: 1,
+            price: defaultVariant.price ?? product.price,
+            variant: {
+              sku: defaultVariant.sku,
+              size: defaultVariant.size,
+              color: defaultVariant.color,
+              colorCode: defaultVariant.colorCode,
+            },
+          }),
+        );
+      }
+      router.push("/checkout?buyNow=1");
     } catch {
-      /* handled in store */
+      toast.error("Unable to start Buy Now flow");
     }
   };
 

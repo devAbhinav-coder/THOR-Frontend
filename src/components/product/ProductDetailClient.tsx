@@ -48,6 +48,7 @@ import { normalizeProductImages } from "@/lib/cloudinaryUrl";
 /** Desktop PDP hover magnifier — module scope so rAF flush can stay stable. */
 const PDP_MAIN_LENS_PX = 120;
 const PDP_MAIN_LENS_ZOOM = 2.45;
+const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
 
 interface Props {
   slug: string;
@@ -669,21 +670,26 @@ export default function ProductDetailClient({ slug }: Props) {
       const answersArray = Object.entries(customFieldAnswers).map(
         ([label, value]) => ({ label, value }),
       );
-      await addToCart(
-        product._id,
-        {
-          sku: selectedVariant.sku,
-          size: selectedVariant.size,
-          color: selectedVariant.color,
-          colorCode: selectedVariant.colorCode,
-        },
-        quantity,
-        answersArray.length > 0 ? answersArray : undefined,
-        product,
-      );
-      router.push("/checkout");
-    } catch {
-      /* handled */
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          BUY_NOW_SESSION_KEY,
+          JSON.stringify({
+            productId: product._id,
+            name: product.name,
+            image: product.images?.[0]?.url || "",
+            quantity,
+            price: selectedPrice,
+            variant: {
+              sku: selectedVariant.sku,
+              size: selectedVariant.size,
+              color: selectedVariant.color,
+              colorCode: selectedVariant.colorCode,
+            },
+            customFieldAnswers: answersArray.length > 0 ? answersArray : undefined,
+          }),
+        );
+      }
+      router.push("/checkout?buyNow=1");
     } finally {
       setIsBuyingNow(false);
     }

@@ -52,6 +52,17 @@ type AddressForm = z.infer<typeof addressSchema>;
 const SHIPPING_THRESHOLD = 1000;
 const SHIPPING_CHARGE = 100;
 const TAX_RATE = 0;
+const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
+
+type BuyNowCheckoutItem = {
+  productId: string;
+  name: string;
+  image: string;
+  quantity: number;
+  price: number;
+  variant: { size?: string; color?: string; colorCode?: string; sku: string };
+  customFieldAnswers?: { label: string; value: string }[];
+};
 
 const INDIAN_STATES = [
   "Andhra Pradesh",
@@ -96,6 +107,9 @@ export default function CheckoutClient() {
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [isAllCouponsOpen, setIsAllCouponsOpen] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
+  const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(null);
+  const [buyNowCouponCode, setBuyNowCouponCode] = useState<string | null>(null);
+  const [buyNowCouponDiscount, setBuyNowCouponDiscount] = useState(0);
   
   // Custom Order support
   const searchParams = useSearchParams();
@@ -117,6 +131,22 @@ export default function CheckoutClient() {
     resolver: zodResolver(addressSchema),
     defaultValues: { country: "India" },
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(BUY_NOW_SESSION_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as BuyNowCheckoutItem;
+      if (!parsed?.productId || !parsed?.variant?.sku || !parsed?.quantity) {
+        sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+        return;
+      }
+      setBuyNowItem(parsed);
+    } catch {
+      sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -149,18 +179,21 @@ export default function CheckoutClient() {
         }
       };
       fetchOrder();
-    } else {
+    } else if (!buyNowItem) {
       fetchCart().catch(() => {});
     }
-  }, [isAuthenticated, fetchCart, orderId, router, setValue]);
+  }, [isAuthenticated, fetchCart, orderId, router, setValue, buyNowItem]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (!cart || cart.items.length === 0) return;
+    const amountForEligibility = buyNowItem
+      ? buyNowItem.price * buyNowItem.quantity
+      : (cart?.subtotal || 0);
+    if (amountForEligibility <= 0) return;
     const fetchEligibleCoupons = async () => {
       setIsLoadingCoupons(true);
       try {
-        const res = await couponApi.getEligible(cart.subtotal);
+        const res = await couponApi.getEligible(amountForEligibility);
         setEligibleCoupons(res.data.coupons || []);
       } catch {
         setEligibleCoupons([]);
@@ -169,24 +202,61 @@ export default function CheckoutClient() {
       }
     };
     fetchEligibleCoupons();
-  }, [cart?.subtotal, cart?.items?.length, isAuthenticated]);
+  }, [cart?.subtotal, cart?.items?.length, isAuthenticated, buyNowItem]);
 
   const paymentMethod = existingOrder ? "razorpay" : ("cod" as const);
 
-  const subtotal = existingOrder ? existingOrder.subtotal : (cart?.subtotal || 0);
-  const discount = existingOrder ? existingOrder.discount : (cart?.discount || 0);
+  const subtotal = existingOrder
+    ? existingOrder.subtotal
+    : buyNowItem
+      ? buyNowItem.price * buyNowItem.quantity
+      : (cart?.subtotal || 0);
+  const discount = existingOrder
+    ? existingOrder.discount
+    : buyNowItem
+      ? buyNowCouponDiscount
+      : (cart?.discount || 0);
   const subtotalAfterDiscount = subtotal - discount;
   const shippingCharge = existingOrder ? existingOrder.shippingCharge : (subtotalAfterDiscount >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE);
   const tax = existingOrder ? existingOrder.tax : Math.round(subtotalAfterDiscount * TAX_RATE * 100) / 100;
   const total = existingOrder ? existingOrder.total : (subtotalAfterDiscount + shippingCharge + tax);
-  const hasAppliedCoupon = existingOrder ? !!existingOrder.coupon : !!cart?.discount;
+  const hasAppliedCoupon = existingOrder
+    ? !!existingOrder.coupon
+    : buyNowItem
+      ? !!buyNowCouponCode
+      : !!cart?.discount;
+  const activeCouponCode = buyNowItem ? buyNowCouponCode : appliedCouponCode;
+  const activeCouponDiscount = buyNowItem ? buyNowCouponDiscount : (cart?.discount || 0);
+
+  const applySelectedCoupon = async (code: string) => {
+    if (buyNowItem) {
+      const orderAmount = buyNowItem.price * buyNowItem.quantity;
+      const res = await couponApi.validate(code, orderAmount);
+      setBuyNowCouponCode(res.data.coupon.code);
+      setBuyNowCouponDiscount(res.data.discount || 0);
+      toast.success(`Coupon applied. You saved ${formatPrice(res.data.discount || 0)}.`);
+      return;
+    }
+    await applyCoupon(code);
+  };
+
+  const removeSelectedCoupon = async () => {
+    if (buyNowItem) {
+      setBuyNowCouponCode(null);
+      setBuyNowCouponDiscount(0);
+      toast.success("Coupon removed.");
+      return;
+    }
+    await removeCoupon();
+  };
 
   const offerText = useMemo(() => {
-    if (!cart) return "";
+    if (existingOrder) return "";
+    if (!buyNowItem && !cart) return "";
     if (subtotalAfterDiscount >= SHIPPING_THRESHOLD)
       return "You unlocked FREE shipping!";
     return `Add ${formatPrice(SHIPPING_THRESHOLD - subtotalAfterDiscount)} more for FREE shipping`;
-  }, [cart, subtotalAfterDiscount]);
+  }, [cart, subtotalAfterDiscount, buyNowItem, existingOrder]);
 
   if (!isAuthenticated || isOrderLoading) return (
     <div className="max-w-7xl mx-auto px-4 py-24 text-center">
@@ -195,7 +265,7 @@ export default function CheckoutClient() {
     </div>
   );
 
-  if (!existingOrder && (!cart || cart.items.length === 0)) {
+  if (!existingOrder && !buyNowItem && (!cart || cart.items.length === 0)) {
     return (
       <div className='max-w-7xl mx-auto px-4 py-16 text-center'>
         <h2 className='text-2xl font-bold mb-4'>Your cart is empty</h2>
@@ -278,11 +348,29 @@ export default function CheckoutClient() {
           {
             shippingAddress: { ...addressData, phone: normalizedPhone },
             paymentMethod,
+            ...(buyNowCouponCode ? { couponCode: buyNowCouponCode } : {}),
+            ...(buyNowItem
+              ? {
+                  buyNowItem: {
+                    productId: buyNowItem.productId,
+                    variant: buyNowItem.variant,
+                    quantity: buyNowItem.quantity,
+                    customFieldAnswers: buyNowItem.customFieldAnswers,
+                  },
+                }
+              : {}),
           },
           { idempotencyKey }
         );
         const { order } = res.data;
-        resetCart();
+        if (buyNowItem) {
+          if (typeof window !== "undefined") {
+            sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+          }
+          setBuyNowItem(null);
+        } else {
+          resetCart();
+        }
         toast.success("Order placed successfully!");
         router.push(`/dashboard/orders/${encodeURIComponent(order._id)}`);
       }
@@ -293,6 +381,21 @@ export default function CheckoutClient() {
       setIsPlacingOrder(false);
     }
   };
+
+  const checkoutItems: any[] = existingOrder
+    ? existingOrder.items
+    : buyNowItem
+      ? [
+          {
+            product: { _id: buyNowItem.productId, images: [{ url: buyNowItem.image }] },
+            name: buyNowItem.name,
+            variant: buyNowItem.variant,
+            quantity: buyNowItem.quantity,
+            price: buyNowItem.price,
+            customFieldAnswers: buyNowItem.customFieldAnswers,
+          },
+        ]
+      : (cart?.items || []);
 
   return (
     <div className='w-full min-w-0 overflow-x-hidden'>
@@ -491,8 +594,8 @@ export default function CheckoutClient() {
                         <Tag className='h-4 w-4 text-green-600 shrink-0 mt-0.5' aria-hidden />
                         <div className='min-w-0 flex-1'>
                           <p className='text-sm font-medium text-green-900 break-words'>
-                            <span className='font-semibold tracking-wide'>{appliedCouponCode || "Coupon"}</span>
-                            <span className='text-green-800'> · You save {formatPrice(cart?.discount || 0)}</span>
+                            <span className='font-semibold tracking-wide'>{activeCouponCode || "Coupon"}</span>
+                            <span className='text-green-800'> · You save {formatPrice(activeCouponDiscount)}</span>
                           </p>
                           <p className='text-xs text-green-800/75 mt-1'>
                             The discount is reflected in your order total below.
@@ -508,7 +611,7 @@ export default function CheckoutClient() {
                         onClick={async () => {
                           setCouponBusy(true);
                           try {
-                            await removeCoupon();
+                            await removeSelectedCoupon();
                           } finally {
                             setCouponBusy(false);
                           }
@@ -534,7 +637,7 @@ export default function CheckoutClient() {
                           if (!couponCode.trim()) return;
                           setCouponBusy(true);
                           try {
-                            await applyCoupon(couponCode.trim());
+                            await applySelectedCoupon(couponCode.trim());
                             setCouponCode("");
                           } catch {
                             // toast from store
@@ -551,7 +654,7 @@ export default function CheckoutClient() {
                   {isLoadingCoupons ? (
                     <div className='text-sm text-gray-500 mt-3'>Loading available offers…</div>
                   ) : eligibleCoupons.length === 0 ? (
-                    <div className='text-sm text-gray-500 mt-3'>No coupons are available for this cart.</div>
+                    <div className='text-sm text-gray-500 mt-3'>No coupons are available for this order.</div>
                   ) : (
                     <div className='grid grid-cols-1 gap-2 mt-3 min-w-0'>
                       {eligibleCoupons.slice(0, 2).map((c) => (
@@ -562,7 +665,7 @@ export default function CheckoutClient() {
                           title={hasAppliedCoupon ? "Remove your current coupon to use another" : undefined}
                           onClick={async () => {
                             try {
-                              await applyCoupon(c.code);
+                              await applySelectedCoupon(c.code);
                             } catch {
                               // store handles toast
                             }
@@ -604,7 +707,7 @@ export default function CheckoutClient() {
                   <div className='flex items-center gap-2 min-w-0'>
                     <Package className='h-5 w-5 text-brand-600 shrink-0' />
                     <h2 className='text-lg font-semibold text-gray-900 truncate text-left'>
-                      Order Items ({existingOrder ? existingOrder.items.length : (cart?.items?.length || 0)})
+                      Order Items ({checkoutItems.length})
                     </h2>
                   </div>
                   <span className='lg:hidden'>
@@ -617,12 +720,15 @@ export default function CheckoutClient() {
                 <div
                   className={`space-y-3 mb-5 ${showItems ? "block" : "hidden lg:block"}`}
                 >
-                  {(existingOrder ? existingOrder.items : (cart?.items || [])).map((item: any) => {
-                    const rowKey = cartLineReactKey({
-                      product: item.product,
-                      variant: item.variant,
-                      customFieldAnswers: item.customFieldAnswers,
-                    });
+                  {checkoutItems.map((item: any) => {
+                    const rowKey =
+                      item?.variant?.sku ?
+                        `${item.variant.sku}:${item.quantity}:${item.name || "item"}`
+                      : cartLineReactKey({
+                          product: item.product,
+                          variant: item.variant,
+                          customFieldAnswers: item.customFieldAnswers,
+                        });
                     const thumb =
                       (existingOrder ? item.image : item.product?.images?.[0]?.url) ||
                       "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
@@ -756,7 +862,7 @@ export default function CheckoutClient() {
                     disabled={hasAppliedCoupon || couponBusy}
                     onClick={async () => {
                       try {
-                        await applyCoupon(coupon.code);
+                        await applySelectedCoupon(coupon.code);
                         setIsAllCouponsOpen(false);
                       } catch {
                         // store handles toast
