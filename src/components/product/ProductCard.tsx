@@ -173,7 +173,7 @@ export default function ProductCard({ product, className }: ProductCardProps) {
           <div className='absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10'>
             {product.isFeatured && (
               <span className='text-xs bg-amber-800 text-white font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1'>
-                <Star className='h-3 w-3 fill-white' aria-hidden /> Featured
+                <Star className='h-3 w-3 fill-white' aria-hidden /> 
               </span>
             )}
             {isOutOfStock && (
