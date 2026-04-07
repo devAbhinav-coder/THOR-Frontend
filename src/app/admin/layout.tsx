@@ -40,6 +40,13 @@ const navItems = [
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
 ];
 
+const mobileQuickLinks = [
+  { label: 'Orders', href: '/admin/orders' },
+  { label: 'Products', href: '/admin/products' },
+  { label: 'Coupons', href: '/admin/coupons' },
+  { label: 'Users', href: '/admin/users' },
+];
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, logout, _hasHydrated } = useAuthStore();
   const router = useRouter();
@@ -75,8 +82,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex flex-col h-dvh max-h-dvh bg-gray-50 overflow-hidden overscroll-none">
       <BrowserNotificationPrompt />
       {/* Mobile top bar */}
-      <div className="lg:hidden shrink-0 z-40 bg-gray-900 text-white border-b border-gray-800">
-        <div className="h-14 px-4 flex items-center justify-between">
+      <div className="lg:hidden shrink-0 z-40 bg-gray-900 text-white border-b border-gray-800 sticky top-0">
+        <div className="h-14 px-3.5 flex items-center justify-between">
           <h1 className="font-serif text-sm font-bold">
             <span className="text-gold-400">✦</span> Rani Admin
           </h1>
@@ -91,6 +98,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {isMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
+          </div>
+        </div>
+        <div className="px-3 pb-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-1.5 min-w-max">
+            {mobileQuickLinks.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                    active ? "bg-rose-700 text-white" : "bg-gray-800 text-gray-200"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
         {isMenuOpen && (

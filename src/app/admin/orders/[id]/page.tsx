@@ -131,6 +131,7 @@ export default function AdminOrderDetailsPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
 
   const [tracking, setTracking] = useState({
     shippingCarrier: '',
@@ -243,6 +244,7 @@ export default function AdminOrderDetailsPage() {
   const user =
     typeof order.user === 'object' ? (order.user as { name?: string; email?: string; phone?: string }) : null;
   const orderItems = order.items ?? [];
+  const invoiceEligible = order.paymentStatus === 'paid' || order.status === 'delivered';
 
   return (
     <div className="p-4 sm:p-6 xl:p-8 space-y-6">
@@ -286,6 +288,38 @@ export default function AdminOrderDetailsPage() {
             <p className="text-sm text-gray-500 mt-1">{formatDateTime(order.createdAt)}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              disabled={!invoiceEligible || generatingInvoice}
+              onClick={async () => {
+                if (!invoiceEligible) return;
+                setGeneratingInvoice(true);
+                try {
+                  await adminApi.generateOrderInvoice(order._id);
+                  toast.success('Invoice generated');
+                  const refreshed = await adminApi.getOrderDetails(order._id);
+                  setOrder(refreshed.data.order as Order);
+                } catch (err: unknown) {
+                  toast.error((err as { message?: string })?.message || 'Failed to generate invoice');
+                } finally {
+                  setGeneratingInvoice(false);
+                }
+              }}
+              className={cn(
+                "px-3 py-2 rounded-xl border text-xs font-semibold",
+                invoiceEligible ? "border-brand-200 text-brand-700 hover:bg-brand-50" : "border-gray-200 text-gray-400 cursor-not-allowed"
+              )}
+            >
+              {generatingInvoice ? 'Generating…' : order.invoice?.isGenerated ? 'Regenerate Invoice' : 'Generate Invoice'}
+            </button>
+            {order.invoice?.isGenerated && (
+              <Link
+                href={`/admin/orders/${encodeURIComponent(order._id)}/invoice`}
+                className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                View Invoice
+              </Link>
+            )}
             {ORDER_STATUSES.filter((s) => s !== order.status).map((s) => (
               <button
                 key={s}

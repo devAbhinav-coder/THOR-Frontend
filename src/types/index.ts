@@ -6,6 +6,7 @@ export interface User {
   emailVerified?: boolean;
   phone?: string;
   avatar?: string;
+  adminNote?: string;
   addresses: Address[];
   isActive: boolean;
   createdAt: string;
@@ -142,6 +143,10 @@ export interface Order {
   coupon?: string | { _id: string; code: string };
   productType?: 'standard' | 'custom';
   customRequestId?: string;
+  invoice?: {
+    isGenerated: boolean;
+    generatedAt?: string;
+  };
   statusHistory: { status: string; timestamp: string; note?: string }[];
   shippingCarrier?: string;
   trackingNumber?: string;

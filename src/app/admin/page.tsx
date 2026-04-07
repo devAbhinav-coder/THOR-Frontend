@@ -30,10 +30,10 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="animate-pulse space-y-6">
           <div className="h-8 w-48 bg-gray-200 rounded" />
-          <div className="grid grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
             {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-gray-200 rounded-xl" />)}
           </div>
         </div>
@@ -46,6 +46,12 @@ export default function AdminDashboardPage() {
   const { overview } = analytics;
   const revenueGrowthPositive = overview.revenueGrowth >= 0;
   const topViewed = analytics.topViewedProducts ?? [];
+  const quickActions = [
+    { label: 'Manage Orders', href: '/admin/orders', icon: ShoppingBag },
+    { label: 'Manage Products', href: '/admin/products', icon: Package },
+    { label: 'Manage Coupons', href: '/admin/coupons', icon: AlertCircle },
+    { label: 'Open Analytics', href: '/admin/analytics', icon: BarChart3 },
+  ];
 
   const statCards = [
     {
@@ -80,10 +86,35 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="p-6 xl:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-serif font-bold text-gray-900">Dashboard Overview</h1>
-        <p className="text-gray-500 text-sm mt-1">Welcome back, here&apos;s what&apos;s happening today</p>
+    <div className="p-4 sm:p-6 xl:p-8 space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-serif font-bold text-gray-900">Dashboard Overview</h1>
+          <p className="text-gray-500 text-sm mt-1">Welcome back, here&apos;s what&apos;s happening today</p>
+        </div>
+        <Link
+          href="/admin/orders"
+          className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+        >
+          View all orders
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {quickActions.map(({ label, href, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group rounded-xl border border-gray-200 bg-white px-3 py-3.5 sm:px-4 sm:py-4 hover:border-brand-300 hover:shadow-sm transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center group-hover:bg-brand-100">
+                <Icon className="h-4 w-4" />
+              </div>
+              <span className="text-xs sm:text-sm font-semibold text-gray-800">{label}</span>
+            </div>
+          </Link>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -274,8 +305,29 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <h3 className="font-semibold text-gray-900 px-5 py-4 border-b border-gray-100">Recent Orders</h3>
-        <div className="overflow-x-auto">
+        <h3 className="font-semibold text-gray-900 px-4 sm:px-5 py-4 border-b border-gray-100">Recent Orders</h3>
+        <div className="sm:hidden divide-y divide-gray-100">
+          {analytics.recentOrders.map((order) => (
+            <div key={order._id} className="px-4 py-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-brand-600">{order.orderNumber}</p>
+                  <p className="text-xs text-gray-500 mt-1">{formatDate(order.createdAt)}</p>
+                </div>
+                <span className={`text-[11px] font-medium px-2 py-1 rounded-full capitalize ${getOrderStatusColor(order.status)}`}>
+                  {order.status}
+                </span>
+              </div>
+              <div className="mt-2.5 flex items-center justify-between">
+                <p className="text-xs text-gray-600 truncate pr-2">
+                  {typeof order.user === 'object' ? order.user.name : '—'}
+                </p>
+                <p className="text-sm font-bold text-gray-900">{formatPrice(order.total)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">

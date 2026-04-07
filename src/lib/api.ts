@@ -271,10 +271,16 @@ export const adminApi = {
       trackingUrl?: string;
     },
   ) => unwrapAxios("admin.orderStatus", api.patch(`/admin/orders/${id}/status`, payload), schemas.adminOrderDetail),
+  generateOrderInvoice: (id: string) =>
+    unwrapAxios("admin.generateInvoice", api.post(`/admin/orders/${id}/generate-invoice`), schemas.successMessageData),
   getUsers: (params?: object) =>
     unwrapAxios("admin.users", api.get("/admin/users", { params }), schemas.adminUsersList),
+  getUserInsights: (id: string) =>
+    unwrapAxios("admin.userInsights", api.get(`/admin/users/${id}/insights`), schemas.adminUserInsights),
   toggleUserStatus: (id: string) =>
     unwrapAxios("admin.toggleUser", api.patch(`/admin/users/${id}/toggle-status`), schemas.adminToggleUser),
+  updateUserNote: (id: string, note: string) =>
+    unwrapAxios("admin.updateUserNote", api.patch(`/admin/users/${id}/note`, { note }), schemas.adminUpdateUserNote),
   updateUserRole: (id: string, role: "user" | "admin") =>
     unwrapAxios(
       "admin.updateUserRole",

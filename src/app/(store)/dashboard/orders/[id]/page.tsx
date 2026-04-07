@@ -696,6 +696,14 @@ export default function OrderDetailPage() {
           <div className="mt-2">
             <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full capitalize', getPaymentStatusColor(order.paymentStatus))}>{order.paymentStatus}</span>
           </div>
+          {order.invoice?.isGenerated && (order.paymentStatus === 'paid' || order.status === 'delivered') && (
+            <Link
+              href={`/dashboard/orders/${encodeURIComponent(order._id)}/invoice`}
+              className="inline-flex mt-3 text-xs font-semibold text-brand-700 hover:text-brand-800"
+            >
+              View Invoice
+            </Link>
+          )}
         </div>
       </div>
 

@@ -284,6 +284,25 @@ export const adminUpdateUserRole = z.object({
   }),
 });
 
+export const adminUserInsights = z.object({
+  status: z.string(),
+  data: z.object({
+    user: doc,
+    metrics: doc,
+    orders: z.array(doc),
+  }),
+});
+
+export const adminUpdateUserNote = z.object({
+  status: z.string(),
+  data: z.object({
+    user: z.object({
+      _id: z.string(),
+      adminNote: z.string().optional(),
+    }),
+  }),
+});
+
 export const adminAuditLogsList = z.object({
   status: z.string(),
   pagination: z
