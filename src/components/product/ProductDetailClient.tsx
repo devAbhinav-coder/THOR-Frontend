@@ -952,7 +952,7 @@ export default function ProductDetailClient({ slug }: Props) {
             )}
 
             {/* Main image */}
-            <div className='flex-1 space-y-3'>
+            <div className='flex-1 min-w-0 space-y-3'>
               <div
                 ref={pdpMainImageRef}
                 className='relative w-full overflow-hidden rounded-2xl bg-gray-50'
@@ -1105,7 +1105,10 @@ export default function ProductDetailClient({ slug }: Props) {
 
               {/* Mobile horizontal thumbnails */}
               {product.images.length > 1 && (
-                <div className='lg:hidden w-full min-w-0 flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide touch-pan-x pb-1'>
+                <div
+                  className='lg:hidden w-full min-w-0 max-w-full flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide pb-1'
+                  style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}
+                >
                   {product.images.map((img, i) => (
                     <button
                       key={i}
