@@ -1,10 +1,14 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from "axios";
-import toast from "react-hot-toast";
 import { refreshAccessToken } from "@/lib/authRefresh";
 import { env } from "@/lib/env";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { unwrapAxios, parseApiResponse } from "@/lib/parseApi";
 import * as schemas from "@/lib/api-schemas";
+import {
+  isAuthPublicRequest,
+  isAuthMeRequest,
+} from "@/lib/authRequestPaths";
+import { toastForNonAuthHttpError } from "@/lib/httpClientToast";
 
 const api: AxiosInstance = axios.create({
   baseURL: env.NEXT_PUBLIC_API_URL,
@@ -12,27 +16,6 @@ const api: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
   timeout: 15000,
 });
-
-function isAuthPublicRequest(config: InternalAxiosRequestConfig): boolean {
-  const path = config.url || "";
-  return (
-    path.includes("/auth/login") ||
-    path.includes("/auth/signup") ||
-    path.includes("/auth/google") ||
-    path.includes("/auth/forgot-password") ||
-    path.includes("/auth/reset-password") ||
-    path.includes("/auth/send-otp") ||
-    path.includes("/auth/verify-otp") ||
-    path.includes("/auth/resend-otp") ||
-    path.includes("/auth/refresh")
-  );
-}
-
-/** Session probe: guests get 401; never send them to the login page for this. */
-function isAuthMeRequest(config: InternalAxiosRequestConfig): boolean {
-  const path = (config.url || "").split("?")[0];
-  return path === "/auth/me" || path === "auth/me" || path.endsWith("/auth/me");
-}
 
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
@@ -67,13 +50,7 @@ api.interceptors.response.use(
       return Promise.reject({ message: "Session expired", status: 401 });
     }
 
-    if (status === 403) {
-      toast.error("You do not have permission to perform this action.");
-    } else if (status === 429) {
-      toast.error("Too many requests. Please slow down.");
-    } else if (status && status >= 500) {
-      toast.error("Server error. Please try again later.");
-    }
+    toastForNonAuthHttpError(status);
 
     return Promise.reject({ message, status: error.response?.status });
   },

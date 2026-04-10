@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ShoppingBag,
   Heart,
@@ -30,19 +30,16 @@ import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
+import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchSubmitting, setIsSearchSubmitting] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const pathname = usePathname();
-  const router = useRouter();
-  const searchDesktopRef = useRef<HTMLInputElement>(null);
-  const searchMobileRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
 
   const { user, isAuthenticated, logout } = useAuthStore();
   const { itemCount } = useCartStore();
@@ -111,8 +108,14 @@ export default function Navbar() {
   useEffect(() => {
     setIsMenuOpen(false);
     setIsUserMenuOpen(false);
-    setIsSearchSubmitting(false);
   }, [pathname]);
+
+  const urlSearchForNav = useMemo(() => {
+    if (pathname.startsWith("/shop") || pathname.startsWith("/gifting")) {
+      return (searchParams.get("search") || "").slice(0, 30);
+    }
+    return "";
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     setAnnouncementIndex(0);
@@ -126,37 +129,21 @@ export default function Navbar() {
     return () => window.clearInterval(timer);
   }, [announcementMessages.length]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
     setIsUserMenuOpen(false);
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim().slice(0, 30);
-    if (q) {
-      setIsSearchSubmitting(true);
-      router.push(`/shop?search=${encodeURIComponent(q)}`);
-      setIsSearchOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!isSearchSubmitting) return;
-    const timer = window.setTimeout(() => {
-      setIsSearchSubmitting(false);
-      setSearchQuery("");
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [isSearchSubmitting]);
+  }, [logout]);
 
   const focusStoreSearch = useCallback(() => {
-    if (typeof window === "undefined") return;
+    if (typeof document === "undefined") return;
+    const el = document.querySelector<HTMLInputElement>(
+      "[data-navbar-search-input]",
+    );
     if (window.matchMedia("(min-width: 1024px)").matches) {
-      searchDesktopRef.current?.focus();
+      el?.focus();
     } else {
       setIsSearchOpen(true);
-      queueMicrotask(() => searchMobileRef.current?.focus());
+      queueMicrotask(() => el?.focus());
     }
   }, []);
 
@@ -188,7 +175,6 @@ export default function Navbar() {
   const isCartActive = pathname === "/cart" || pathname.startsWith("/cart");
   const isGiftingActive =
     pathname === "/gifting" || pathname.startsWith("/gifting");
-  const showGlobalStoreSearch = !isGiftingActive;
 
   return (
     <>
@@ -300,46 +286,13 @@ export default function Navbar() {
               </Link>
             </nav>
 
-            {showGlobalStoreSearch && (
-              <form
-                data-navbar-search
-                onSubmit={handleSearch}
-                className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'
-              >
-                <div className='relative'>
-                  <Search
-                    className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35'
-                    aria-hidden
-                  />
-                  <input
-                    ref={searchDesktopRef}
-                    type='search'
-                    value={searchQuery}
-                    onChange={(e) =>
-                      setSearchQuery(e.target.value.slice(0, 30))
-                    }
-                    placeholder='Search sarees, lehengas, kurtis…'
-                    maxLength={30}
-                    autoComplete='off'
-                    aria-label='Search store'
-                    className={cn(
-                      "w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden",
-                      searchQuery ? "pr-9" : "pr-3",
-                    )}
-                  />
-                  {searchQuery ?
-                    <button
-                      type='button'
-                      onClick={() => setSearchQuery("")}
-                      className='absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-white/45 hover:bg-navy-700 hover:text-white'
-                      aria-label='Clear search'
-                    >
-                      <X className='h-3.5 w-3.5' />
-                    </button>
-                  : null}
-                </div>
-              </form>
-            )}
+            <div className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'>
+              <StoreSearchAutocomplete
+                scope={isGiftingActive ? "gifting" : "shop"}
+                variant='nav-dark'
+                urlSearch={urlSearchForNav}
+              />
+            </div>
 
             {/* Right actions — mobile: search on right; cart in header only on desktop (mobile: bottom nav) */}
             <div className='flex items-center justify-end gap-0.5 sm:gap-1 shrink-0'>
@@ -371,17 +324,15 @@ export default function Navbar() {
                 )}
               </Link>
 
-              {showGlobalStoreSearch && (
-                <button
-                  type='button'
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className='lg:hidden p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
-                  aria-label='Search'
-                  aria-expanded={isSearchOpen}
-                >
-                  <Search className='h-5 w-5' />
-                </button>
-              )}
+              <button
+                type='button'
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className='lg:hidden p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                aria-label='Search'
+                aria-expanded={isSearchOpen}
+              >
+                <Search className='h-5 w-5' />
+              </button>
 
               {isAuthenticated && <NotificationBell />}
 
@@ -466,49 +417,13 @@ export default function Navbar() {
           {/* Announcement Bar Removed from Header */}
 
           {/* Mobile / tablet search */}
-          {showGlobalStoreSearch && isSearchOpen && (
-            <div
-              data-navbar-search
-              className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'
-            >
-              <form
-                onSubmit={handleSearch}
-                className='flex flex-col gap-2 sm:flex-row sm:items-center'
-              >
-                <div className='relative flex-1'>
-                  <Search className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35' />
-                  <input
-                    ref={searchMobileRef}
-                    type='search'
-                    value={searchQuery}
-                    onChange={(e) =>
-                      setSearchQuery(e.target.value.slice(0, 30))
-                    }
-                    placeholder='Search kalamkari sarees , chiffon sarees, etc.'
-                    maxLength={30}
-                    autoComplete='off'
-                    aria-label='Search store'
-                    className='w-full rounded-xl border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden'
-                  />
-                  {searchQuery ?
-                    <button
-                      type='button'
-                      onClick={() => setSearchQuery("")}
-                      className='absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-white/45 hover:bg-navy-700 hover:text-white'
-                      aria-label='Clear search'
-                    >
-                      <X className='h-4 w-4' />
-                    </button>
-                  : null}
-                </div>
-                <button
-                  type='submit'
-                  disabled={isSearchSubmitting}
-                  className='shrink-0 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700'
-                >
-                  {isSearchSubmitting ? "Searching..." : "Search"}
-                </button>
-              </form>
+          {isSearchOpen && (
+            <div className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'>
+              <StoreSearchAutocomplete
+                scope={isGiftingActive ? "gifting" : "shop"}
+                variant='nav-mobile'
+                urlSearch={urlSearchForNav}
+              />
             </div>
           )}
         </div>

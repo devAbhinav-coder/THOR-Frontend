@@ -54,16 +54,13 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   const [lenisOn, setLenisOn] = useState(false);
 
   useEffect(() => {
-    /** Lenis forces layout reads (TBT + reflow). Skip on touch / coarse pointer (Lighthouse mobile, phones). */
+    /** Smooth scroll for all devices unless user prefers reduced motion. */
     const mqReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const mqFine = window.matchMedia("(pointer: fine)");
-    const sync = () => setLenisOn(!mqReduce.matches && mqFine.matches);
+    const sync = () => setLenisOn(!mqReduce.matches);
     sync();
     mqReduce.addEventListener("change", sync);
-    mqFine.addEventListener("change", sync);
     return () => {
       mqReduce.removeEventListener("change", sync);
-      mqFine.removeEventListener("change", sync);
     };
   }, []);
 

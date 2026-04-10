@@ -196,6 +196,8 @@ export default function ShopClient() {
       return undefined;
     },
     staleTime: 45_000,
+    /** Avoid empty grid flash when search/filters update (e.g. landing from home navbar). */
+    placeholderData: (previousData) => previousData,
   });
 
   const products = useMemo(

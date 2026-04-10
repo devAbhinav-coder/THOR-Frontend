@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -44,6 +44,7 @@ import ProductImageLightbox from "@/components/product/ProductImageLightbox";
 import RichTextContent from "@/components/ui/RichTextContent";
 import { isLowInStockVariant } from "@/lib/inventoryConstants";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
+import { productNeedsCustomization } from "@/lib/productCustomization";
 
 /** Desktop PDP hover magnifier — module scope so rAF flush can stay stable. */
 const PDP_MAIN_LENS_PX = 120;
@@ -67,7 +68,7 @@ interface ReviewFormState {
   comment: string;
 }
 
-function StarSelector({
+const StarSelector = memo(function StarSelector({
   value,
   onChange,
 }: {
@@ -99,9 +100,9 @@ function StarSelector({
       ))}
     </div>
   );
-}
+});
 
-function RatingBar({
+const RatingBar = memo(function RatingBar({
   label,
   count,
   total,
@@ -145,7 +146,7 @@ function RatingBar({
       </span>
     </div>
   );
-}
+});
 
 export default function ProductDetailClient({ slug }: Props) {
   /* Core */
@@ -242,6 +243,19 @@ export default function ProductDetailClient({ slug }: Props) {
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
+  const needsCustomization = useMemo(
+    () => (product ? productNeedsCustomization(product) : false),
+    [product],
+  );
+
+  const isGiftMarketingContext = useMemo(
+    () =>
+      !!product?.isGiftable ||
+      product?.category?.toLowerCase() === "gifting" ||
+      needsCustomization,
+    [product, needsCustomization],
+  );
+
   useEffect(() => {
     setPdpLensVisible(false);
     pdpLensMetricsRef.current = null;
@@ -297,7 +311,7 @@ export default function ProductDetailClient({ slug }: Props) {
         const isGiftBaseProduct =
           p.isGiftable ||
           p.category?.toLowerCase() === "gifting" ||
-          p.isCustomizable;
+          productNeedsCustomization(p);
 
         if (relatedRes.status === "fulfilled") {
           const all: Product[] = relatedRes.value.data?.products || [];
@@ -307,7 +321,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 (r) =>
                   r.isGiftable ||
                   r.category?.toLowerCase() === "gifting" ||
-                  r.isCustomizable,
+                  productNeedsCustomization(r),
               )
             : all.filter(
                 (r) => !r.isGiftable && r.category?.toLowerCase() !== "gifting",
@@ -329,7 +343,8 @@ export default function ProductDetailClient({ slug }: Props) {
             .map((r) => {
               let score = 0;
               const isGiftingCategory =
-                p.category?.toLowerCase() === "gifting" || p.isCustomizable;
+                p.category?.toLowerCase() === "gifting" ||
+                productNeedsCustomization(p);
 
               if (isGiftingCategory) {
                 // Gifting Specific Logic
@@ -349,7 +364,10 @@ export default function ProductDetailClient({ slug }: Props) {
                 });
                 score += Math.min(occasionOverlap, 3) * 50;
 
-                if (p.isCustomizable === r.isCustomizable) score += 40;
+                if (
+                  productNeedsCustomization(p) === productNeedsCustomization(r)
+                )
+                  score += 40;
 
                 const rTags = new Set(
                   (r.tags || []).map((t) => String(t).toLowerCase().trim()),
@@ -424,7 +442,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 (r) =>
                   r.isGiftable ||
                   r.category?.toLowerCase() === "gifting" ||
-                  r.isCustomizable,
+                  productNeedsCustomization(r),
               )
             : all.filter(
                 (r) => !r.isGiftable && r.category?.toLowerCase() !== "gifting",
@@ -547,11 +565,6 @@ export default function ProductDetailClient({ slug }: Props) {
       </div>
     );
   }
-  const isGiftingVisual =
-    product.category?.toLowerCase() === "gifting" ||
-    !!product.isGiftable ||
-    !!product.isCustomizable;
-
   const flushPdpLensDom = () => {
     pdpLensRafRef.current = null;
     const m = pdpLensMetricsRef.current;
@@ -689,9 +702,11 @@ export default function ProductDetailClient({ slug }: Props) {
           }),
         );
       }
+      toast.success("Taking you to secure checkout…", { duration: 2200 });
       router.push("/checkout?buyNow=1");
-    } finally {
+    } catch {
       setIsBuyingNow(false);
+      toast.error("Could not start checkout. Try again.");
     }
   };
 
@@ -894,7 +909,7 @@ export default function ProductDetailClient({ slug }: Props) {
           >
             {product.category}
           </Link>
-          {isGiftingVisual && product.giftOccasions?.[0] && (
+          {isGiftMarketingContext && product.giftOccasions?.[0] && (
             <>
               <ChevronRight className='h-3 w-3' />
               <Link
@@ -938,7 +953,7 @@ export default function ProductDetailClient({ slug }: Props) {
                         "border-brand-600 ring-2 ring-brand-100"
                       : "border-gray-200 hover:border-brand-400",
                     )}
-                    style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
+                    style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
                   >
                     <div className='relative w-full h-full'>
                       <Image
@@ -948,7 +963,7 @@ export default function ProductDetailClient({ slug }: Props) {
                         sizes='176px'
                         quality={90}
                         className={
-                          isGiftingVisual ? "object-cover" : "object-contain"
+                          isGiftMarketingContext ? "object-cover" : "object-contain"
                         }
                       />
                     </div>
@@ -962,7 +977,7 @@ export default function ProductDetailClient({ slug }: Props) {
               <div
                 ref={pdpMainImageRef}
                 className='relative w-full overflow-hidden rounded-2xl bg-gray-50'
-                style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
+                style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
                 onMouseMove={onPdpMainImageMouseMove}
                 onMouseLeave={onPdpMainImageMouseLeave}
               >
@@ -976,7 +991,7 @@ export default function ProductDetailClient({ slug }: Props) {
                       quality={92}
                       className={cn(
                         "transition-opacity duration-200",
-                        isGiftingVisual ? "object-cover" : "object-contain",
+                        isGiftMarketingContext ? "object-cover" : "object-contain",
                       )}
                       priority
                     />
@@ -1125,7 +1140,7 @@ export default function ProductDetailClient({ slug }: Props) {
                           "border-brand-600 ring-2 ring-brand-200"
                         : "border-transparent hover:border-brand-400",
                       )}
-                      style={{ aspectRatio: isGiftingVisual ? "1/1" : "3/4" }}
+                      style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
                     >
                       <div className='relative w-full h-full'>
                         <Image
@@ -1135,7 +1150,7 @@ export default function ProductDetailClient({ slug }: Props) {
                           sizes='112px'
                           quality={88}
                           className={
-                            isGiftingVisual ? "object-cover" : "object-contain"
+                            isGiftMarketingContext ? "object-cover" : "object-contain"
                           }
                         />
                       </div>
@@ -1153,7 +1168,7 @@ export default function ProductDetailClient({ slug }: Props) {
               <span className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
                 {product.category}
               </span>
-              {isGiftingVisual &&
+              {isGiftMarketingContext &&
                 product.giftOccasions?.[0] &&
                 //loop for all gift occasions
                 product.giftOccasions.map((occasion) => (
@@ -1165,7 +1180,7 @@ export default function ProductDetailClient({ slug }: Props) {
                   </span>
                 ))}
 
-              {isGiftingVisual && product.isCustomizable && (
+              {isGiftMarketingContext && product.isCustomizable && (
                 <span className='text-xs font-semibold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full'>
                   Customizable
                 </span>
@@ -1195,34 +1210,56 @@ export default function ProductDetailClient({ slug }: Props) {
               )}
             </div>
 
-            {/* Rating */}
-            {product.ratings.count > 0 && (
-              <div className='flex items-center gap-2.5'>
-                <div className='flex items-center gap-0.5'>
+            {/* Rating + link to reviews (always visible so users find quality feedback) */}
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:gap-x-3 sm:gap-y-2'>
+              <div className='flex items-center gap-2.5 flex-wrap'>
+                <div className='flex items-center gap-0.5' aria-hidden>
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
                       className={cn(
                         "h-4 w-4",
-                        i < Math.round(product.ratings.average) ?
+                        product.ratings.count > 0 &&
+                          i < Math.round(product.ratings.average) ?
                           "fill-gold-400 text-gold-400"
                         : "fill-gray-200 text-gray-200",
                       )}
                     />
                   ))}
                 </div>
-                <span className='text-sm font-semibold text-gray-800'>
-                  {product.ratings.average}
-                </span>
-                <a
-                  href='#reviews-section'
-                  className='text-sm text-gray-400 hover:text-brand-600 transition-colors'
-                >
-                  ({product.ratings.count}{" "}
-                  {product.ratings.count === 1 ? "review" : "reviews"})
-                </a>
+                {product.ratings.count > 0 ?
+                  <>
+                    <span className='text-sm font-semibold text-gray-800'>
+                      {product.ratings.average}
+                    </span>
+                    <a
+                      href='#reviews-section'
+                      className='text-sm text-gray-500 hover:text-brand-600 transition-colors underline-offset-2 hover:underline'
+                    >
+                      {product.ratings.count}{" "}
+                      {product.ratings.count === 1 ? "review" : "reviews"}
+                    </a>
+                  </>
+                : <span className='text-sm text-gray-500'>No reviews yet — be the first</span>}
               </div>
-            )}
+              {isAuthenticated && reviewEligibility?.canReview && (
+                <button
+                  type='button'
+                  onClick={() => {
+                    document
+                      .getElementById("reviews-section")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    setTimeout(() => setShowReviewForm(true), 400);
+                  }}
+                  className='inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-left text-sm font-bold text-brand-800 shadow-sm transition hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40'
+                >
+                  <MessageSquare className='h-4 w-4 shrink-0' />
+                  <span>
+                    Rate quality and share your experience — you bought this
+                  </span>
+                </button>
+              )}
+            </div>
 
             {/* Price */}
             <div className='bg-gray-50 rounded-2xl p-3 sm:p-4 space-y-1'>
@@ -1532,7 +1569,7 @@ export default function ProductDetailClient({ slug }: Props) {
                   {isBuyingNow ?
                     <>
                       <span className='h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin' />{" "}
-                      Processing...
+                      Going to checkout…
                     </>
                   : <>
                       <Zap className='h-4 w-4' /> Buy Now
@@ -1541,7 +1578,7 @@ export default function ProductDetailClient({ slug }: Props) {
                 </button>
               </div>
 
-              {/* Request Customization Button (Only for isCustomizable) */}
+              {/* Quote CTA — only when catalog marks the product customizable (not merely customFields) */}
               {product.isCustomizable && (
                 <button
                   onClick={() => setIsGiftModalOpen(true)}
@@ -2353,22 +2390,14 @@ export default function ProductDetailClient({ slug }: Props) {
                   You might also like
                 </p>
                 <h2 className='text-xl sm:text-3xl font-serif font-bold text-navy-900'>
-                  {(
-                    product.isGiftable ||
-                    product.category?.toLowerCase() === "gifting" ||
-                    product.isCustomizable
-                  ) ?
+                  {isGiftMarketingContext ?
                     "Similar Gift Products"
                   : "Similar Styles"}
                 </h2>
               </div>
               <Link
                 href={
-                  (
-                    product.isGiftable ||
-                    product.category?.toLowerCase() === "gifting" ||
-                    product.isCustomizable
-                  ) ?
+                  isGiftMarketingContext ?
                     "/gifting"
                   : `/shop?category=${encodeURIComponent(product.category)}${product.fabric ? `&fabric=${encodeURIComponent(product.fabric)}` : ""}`
                 }
@@ -2406,25 +2435,13 @@ export default function ProductDetailClient({ slug }: Props) {
                   Curated for you
                 </p>
                 <h2 className='text-xl sm:text-3xl font-serif font-bold text-navy-900'>
-                  {(
-                    product.isGiftable ||
-                    product.category?.toLowerCase() === "gifting" ||
-                    product.isCustomizable
-                  ) ?
+                  {isGiftMarketingContext ?
                     "More Gift Products"
                   : "More from The House of Rani"}
                 </h2>
               </div>
               <Link
-                href={
-                  (
-                    product.isGiftable ||
-                    product.category?.toLowerCase() === "gifting" ||
-                    product.isCustomizable
-                  ) ?
-                    "/gifting"
-                  : "/shop"
-                }
+                href={isGiftMarketingContext ? "/gifting" : "/shop"}
                 className='text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors'
               >
                 Explore all <ChevronRight className='h-4 w-4' />
@@ -2475,7 +2492,7 @@ export default function ProductDetailClient({ slug }: Props) {
         <ProductImageLightbox
           images={product.images.map((img) => ({ url: img.url, alt: img.alt }))}
           productName={product.name}
-          isSquareAspect={isGiftingVisual}
+          isSquareAspect={isGiftMarketingContext}
           open={imageLightboxOpen}
           initialIndex={selectedImage}
           onClose={() => setImageLightboxOpen(false)}

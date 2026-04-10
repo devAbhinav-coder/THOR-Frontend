@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ShoppingBag } from "lucide-react";
@@ -13,7 +13,7 @@ type Props = {
   initialSlides: HeroSlide[];
 };
 
-export default function HeroSection({ initialSlides }: Props) {
+function HeroSection({ initialSlides }: Props) {
   const [slides] = useState<HeroSlide[]>(initialSlides);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -33,11 +33,11 @@ export default function HeroSection({ initialSlides }: Props) {
     }
   }, [currentSlide, slides.length]);
 
-  const goToSlide = (index: number) => {
+  const goToSlide = useCallback((index: number) => {
     setCurrentSlide(index);
     setIsAutoPlaying(false);
     setTimeout(() => setIsAutoPlaying(true), 10000);
-  };
+  }, []);
 
   const slide = slides[currentSlide] ?? slides[0];
   if (!slide || slides.length === 0) return null;
@@ -151,3 +151,5 @@ export default function HeroSection({ initialSlides }: Props) {
     </section>
   );
 }
+
+export default memo(HeroSection);

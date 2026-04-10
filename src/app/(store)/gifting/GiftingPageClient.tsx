@@ -12,13 +12,15 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Gift, Search, Star, X, SlidersHorizontal } from "lucide-react";
+import { Gift, Star, SlidersHorizontal, X } from "lucide-react";
 import { categoryApi, giftingApi, storefrontApi } from "@/lib/api";
 import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 import { cn, formatPrice } from "@/lib/utils";
 import type { Category, Product, StorefrontSettings } from "@/types";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/SkeletonLoader";
+import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
+import { productNeedsCustomization } from "@/lib/productCustomization";
 
 type SortKey =
   | "relevance"
@@ -92,7 +94,6 @@ export default function GiftingPageClient({
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const handleSearchChange = (value: string) =>
     setSearch(value.slice(0, SEARCH_MAX_LEN));
-  const clearSearch = () => setSearch("");
 
   const { data: categoriesBody, isLoading: categoriesLoading } = useQuery({
     queryKey: ["gifting-categories"],
@@ -139,6 +140,7 @@ export default function GiftingPageClient({
       },
       initialPageParam: 1,
       staleTime: 45_000,
+      placeholderData: (previousData) => previousData,
     });
 
   const giftCategories: Category[] = categoriesBody?.data?.categories || [];
@@ -515,31 +517,14 @@ export default function GiftingPageClient({
           <div className='rounded-2xl border border-gray-200/80 bg-white p-2.5 sm:p-3 shadow-sm'>
             <div className='flex flex-col sm:flex-row gap-2 sm:items-center sticky top-14 bg-white z-10'>
               <div className='relative w-full sm:max-w-xl'>
-                <Search
-                  className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500'
-                  aria-hidden
-                />
-                <input
-                  type='search'
+                <StoreSearchAutocomplete
+                  scope='gifting'
+                  variant='gifting-inline'
                   value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onValueChange={handleSearchChange}
+                  maxLen={SEARCH_MAX_LEN}
                   placeholder='Search by product name, category, or occasion'
-                  aria-label='Search gifting products'
-                  className='w-full h-10 rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20'
-                  autoComplete='off'
-                  spellCheck={false}
-                  inputMode='search'
                 />
-                {search && (
-                  <button
-                    type='button'
-                    onClick={clearSearch}
-                    className='absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 text-gray-500 grid place-items-center'
-                    aria-label='Clear search'
-                  >
-                    <X className='h-3.5 w-3.5' />
-                  </button>
-                )}
               </div>
               {/* <button
                 type='button'
@@ -790,6 +775,7 @@ function GiftProductCardSkeleton() {
 }
 
 function GiftProductCard({ product }: { product: Product }) {
+  const needsCustomization = productNeedsCustomization(product);
   const isCorporateGift = (product.giftOccasions || []).some(
     (o) => String(o).trim().toLowerCase() === "corporate",
   );
@@ -827,7 +813,7 @@ function GiftProductCard({ product }: { product: Product }) {
             sizes='(max-width:640px) 50vw, 25vw'
           />
         )}
-        {product.isCustomizable == true && (
+        {needsCustomization && (
           <span className='absolute top-2 left-2 bg-navy-900 text-white text-[10px] font-semibold px-2 py-1 rounded-md'>
             Customizable
           </span>
@@ -865,7 +851,7 @@ function GiftProductCard({ product }: { product: Product }) {
           <span className='text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100'>
             Gift
           </span>
-          {product.isCustomizable && (
+          {needsCustomization && (
             <span className='text-[10px] font-semibold px-2 py-0.5 rounded-full bg-navy-50 text-navy-700 border border-navy-100'>
               Customizable
             </span>

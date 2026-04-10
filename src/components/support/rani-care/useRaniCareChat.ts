@@ -5,6 +5,11 @@ import { orderApi, storefrontApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Order, StorefrontSettings } from "@/types";
 import {
+  getReturnReasonByIndex,
+  isOrderReturnEligible,
+  RETURN_REASON_OPTIONS,
+} from "@/lib/orderReturnHelpers";
+import {
   INITIAL_ACTIONS,
   MAX_MESSAGES,
   OPEN_KEY,
@@ -104,6 +109,7 @@ export function useRaniCareChat() {
   const presentOrderList = async (opts: {
     intro: string;
     cancelHint?: boolean;
+    returnHint?: boolean;
   }) => {
     if (!isAuthenticated) {
       pushBot(
@@ -135,9 +141,13 @@ export function useRaniCareChat() {
         opts.cancelHint ?
           "\n\nCancellations are available only while your order is pending or confirmed (before dispatch). For shipped orders, please contact us about returns."
         : "";
+      const returnNote =
+        opts.returnHint ?
+          "\n\n**Returns:** delivered orders only, within **7 days** of delivery, and no return already in progress. Tap an order to open details, or use **Start a return** when you see it."
+        : "";
 
       pushBot(
-        `${opts.intro}\nUp to ${RECENT_ORDER_LIMIT} recent orders are shown below.${cancelNote}`,
+        `${opts.intro}\nUp to ${RECENT_ORDER_LIMIT} recent orders are shown below.${cancelNote}${returnNote}`,
         [
           { label: "Refresh", value: "action:recent_orders" },
           { label: "Contact support", value: "contact support" },
@@ -193,10 +203,15 @@ export function useRaniCareChat() {
           label: "Cancel this order",
           value: `cancel_ask:${order._id}`,
         });
+      } else if (isOrderReturnEligible(order)) {
+        actions.unshift({
+          label: "Start a return",
+          value: `return_start:${order._id}`,
+        });
       } else {
         actions.unshift({
-          label: "Need return/help",
-          value: "contact support",
+          label: "Return & refund help",
+          value: "action:return_help",
         });
       }
 
@@ -235,6 +250,93 @@ export function useRaniCareChat() {
       undefined,
       200,
     );
+  };
+
+  const presentReturnReasonPick = async (orderId: string) => {
+    setLoadingOrders(true);
+    try {
+      const ob = await orderApi.getById(orderId);
+      const full = ob.data?.order as Order | undefined;
+      if (!full || !isOrderReturnEligible(full)) {
+        pushBot(
+          "This order can’t be returned from chat right now. It must be **delivered**, within **7 days** of delivery, with no return already in progress.",
+          [
+            { label: "My orders", value: "action:recent_orders" },
+            { label: "Contact support", value: "contact support" },
+          ],
+        );
+        return;
+      }
+      const actions: QuickAction[] = RETURN_REASON_OPTIONS.map((label, idx) => ({
+        label:
+          label.length > 28 ? `${label.slice(0, 26)}…` : label,
+        value: `return_reason:${orderId}:${idx}`,
+      }));
+      actions.push({ label: "Never mind", value: "return_abort" });
+      pushBot(
+        `**Step 1 of 2** — Order **${full.orderNumber}**\nWhy are you returning?`,
+        actions,
+        undefined,
+        240,
+      );
+    } catch {
+      pushBot("We couldn’t open that return. Try again from your order list.", [
+        { label: "My orders", value: "action:recent_orders" },
+      ]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const submitReturnReasonFromChat = async (orderId: string, reasonIdx: number) => {
+    const reason = getReturnReasonByIndex(reasonIdx);
+    if (!reason) return;
+    setLoadingOrders(true);
+    try {
+      const ob = await orderApi.getById(orderId);
+      const full = ob.data?.order as Order | undefined;
+      if (!full || !isOrderReturnEligible(full)) {
+        pushBot(
+          "This order is no longer eligible for a return.",
+          [{ label: "My orders", value: "action:recent_orders" }],
+        );
+        return;
+      }
+      if (full.paymentMethod === "razorpay") {
+        await orderApi.requestReturn(full._id, reason, "", undefined, undefined);
+        await fetchRecentOrders();
+        pushBot(
+          `Return submitted for **${full.orderNumber}**. Refund will go to your **original payment method** (usually 5–7 business days).`,
+          INITIAL_ACTIONS,
+          undefined,
+          320,
+        );
+        return;
+      }
+      pushBot(
+        `**Step 2 of 2** — Reason: **${reason}**\nFor **COD** refunds, add your **UPI or bank details** securely on the order page (same two-step flow as the website).`,
+        [
+          {
+            label: "Enter refund details",
+            value: `open_order_return:${orderId}:${reasonIdx}`,
+          },
+          { label: "My orders", value: "action:recent_orders" },
+        ],
+        undefined,
+        280,
+      );
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "message" in err ?
+          String((err as { message: string }).message)
+        : "Could not submit return.";
+      pushBot(msg, [
+        { label: "Try again", value: `return_start:${orderId}` },
+        { label: "My orders", value: "action:recent_orders" },
+      ]);
+    } finally {
+      setLoadingOrders(false);
+    }
   };
 
   const executeCancel = async (orderId: string) => {
@@ -301,13 +403,11 @@ export function useRaniCareChat() {
     }
 
     if (intent === "returns") {
-      pushBot(
-        "For returns or refunds, contact us with your order number. For damaged or incorrect items, photos help us assist you faster. Open a recent order below for details.",
-        [
-          { label: "My orders", value: "action:recent_orders" },
-          { label: "Contact support", value: "contact support" },
-        ],
-      );
+      await presentOrderList({
+        intro:
+          "Choose an order below. If it is **delivered** and within **7 days** of delivery, you can **Start a return** from order details.",
+        returnHint: true,
+      });
       return;
     }
 
@@ -426,6 +526,56 @@ export function useRaniCareChat() {
           "Select an order to review. You may cancel from the details if the status is pending or confirmed.",
         cancelHint: true,
       });
+      return;
+    }
+    if (value === "return refund") {
+      await handleAction("action:return_help");
+      return;
+    }
+    if (value === "action:return_help") {
+      pushUser("I need returns or refund help");
+      await presentOrderList({
+        intro:
+          "Pick an order below. Delivered orders within 7 days can use **Start a return** from the order details.",
+        returnHint: true,
+      });
+      return;
+    }
+    if (value.startsWith("return_start:")) {
+      const orderId = value.slice("return_start:".length);
+      pushUser("Start a return");
+      await presentReturnReasonPick(orderId);
+      return;
+    }
+    if (value.startsWith("return_reason:")) {
+      const rest = value.slice("return_reason:".length);
+      const lastColon = rest.lastIndexOf(":");
+      if (lastColon <= 0) return;
+      const orderId = rest.slice(0, lastColon);
+      const idx = parseInt(rest.slice(lastColon + 1), 10);
+      if (Number.isNaN(idx)) return;
+      const label = getReturnReasonByIndex(idx) ?? "Reason";
+      pushUser(label);
+      await submitReturnReasonFromChat(orderId, idx);
+      return;
+    }
+    if (value === "return_abort") {
+      pushUser("Cancel");
+      pushBot(
+        "No problem. If you need a return later, open **My orders** and pick your order.",
+        INITIAL_ACTIONS,
+        undefined,
+        220,
+      );
+      return;
+    }
+    if (value.startsWith("open_order_return:")) {
+      const rest = value.slice("open_order_return:".length);
+      const lastColon = rest.lastIndexOf(":");
+      if (lastColon <= 0) return;
+      const oid = rest.slice(0, lastColon);
+      const idx = rest.slice(lastColon + 1);
+      window.location.href = `/dashboard/orders/${encodeURIComponent(oid)}?return=${encodeURIComponent(idx)}`;
       return;
     }
     if (value.startsWith("order_pick:")) {

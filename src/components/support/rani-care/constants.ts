@@ -8,7 +8,7 @@ export const RECENT_ORDER_LIMIT = 5;
 export const INITIAL_ACTIONS: QuickAction[] = [
   { label: "My orders", value: "action:recent_orders" },
   { label: "Cancel an order", value: "action:cancel_help" },
-  { label: "Returns & refunds", value: "return refund" },
+  { label: "Returns & refunds", value: "action:return_help" },
   { label: "Delivery & shipping", value: "shipping time" },
   { label: "Contact support", value: "contact support" },
 ];

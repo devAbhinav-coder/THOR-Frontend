@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Coupon, Order } from "@/types";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
+import OrderPlacementSuccessOverlay from "@/components/checkout/OrderPlacementSuccessOverlay";
 
 const addressSchema = z.object({
   name: z.string().min(2, "Full name is required").max(80, "Name is too long"),
@@ -110,7 +111,10 @@ export default function CheckoutClient() {
   const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(null);
   const [buyNowCouponCode, setBuyNowCouponCode] = useState<string | null>(null);
   const [buyNowCouponDiscount, setBuyNowCouponDiscount] = useState(0);
-  
+  const [pendingOrderSuccessId, setPendingOrderSuccessId] = useState<string | null>(
+    null,
+  );
+
   // Custom Order support
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
@@ -206,41 +210,85 @@ export default function CheckoutClient() {
 
   const paymentMethod = existingOrder ? "razorpay" : ("cod" as const);
 
-  const subtotal = existingOrder
-    ? existingOrder.subtotal
-    : buyNowItem
-      ? buyNowItem.price * buyNowItem.quantity
-      : (cart?.subtotal || 0);
-  const discount = existingOrder
-    ? existingOrder.discount
-    : buyNowItem
-      ? buyNowCouponDiscount
-      : (cart?.discount || 0);
-  const subtotalAfterDiscount = subtotal - discount;
-  const shippingCharge = existingOrder ? existingOrder.shippingCharge : (subtotalAfterDiscount >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE);
-  const tax = existingOrder ? existingOrder.tax : Math.round(subtotalAfterDiscount * TAX_RATE * 100) / 100;
-  const total = existingOrder ? existingOrder.total : (subtotalAfterDiscount + shippingCharge + tax);
-  const hasAppliedCoupon = existingOrder
-    ? !!existingOrder.coupon
-    : buyNowItem
-      ? !!buyNowCouponCode
-      : !!cart?.discount;
-  const activeCouponCode = buyNowItem ? buyNowCouponCode : appliedCouponCode;
-  const activeCouponDiscount = buyNowItem ? buyNowCouponDiscount : (cart?.discount || 0);
+  const {
+    subtotal,
+    discount,
+    subtotalAfterDiscount,
+    shippingCharge,
+    tax,
+    total,
+    hasAppliedCoupon,
+    activeCouponCode,
+    activeCouponDiscount,
+  } = useMemo(() => {
+    const subtotal = existingOrder
+      ? existingOrder.subtotal
+      : buyNowItem
+        ? buyNowItem.price * buyNowItem.quantity
+        : (cart?.subtotal || 0);
+    const discount = existingOrder
+      ? existingOrder.discount
+      : buyNowItem
+        ? buyNowCouponDiscount
+        : (cart?.discount || 0);
+    const subtotalAfterDiscount = subtotal - discount;
+    const shippingCharge =
+      existingOrder ?
+        existingOrder.shippingCharge
+      : (subtotalAfterDiscount >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE);
+    const tax =
+      existingOrder ?
+        existingOrder.tax
+      : Math.round(subtotalAfterDiscount * TAX_RATE * 100) / 100;
+    const total =
+      existingOrder ?
+        existingOrder.total
+      : (subtotalAfterDiscount + shippingCharge + tax);
+    const hasAppliedCoupon = existingOrder
+      ? !!existingOrder.coupon
+      : buyNowItem
+        ? !!buyNowCouponCode
+        : !!cart?.discount;
+    const activeCouponCode = buyNowItem ? buyNowCouponCode : appliedCouponCode;
+    const activeCouponDiscount =
+      buyNowItem ? buyNowCouponDiscount : (cart?.discount || 0);
+    return {
+      subtotal,
+      discount,
+      subtotalAfterDiscount,
+      shippingCharge,
+      tax,
+      total,
+      hasAppliedCoupon,
+      activeCouponCode,
+      activeCouponDiscount,
+    };
+  }, [
+    existingOrder,
+    buyNowItem,
+    cart?.subtotal,
+    cart?.discount,
+    buyNowCouponCode,
+    buyNowCouponDiscount,
+    appliedCouponCode,
+  ]);
 
-  const applySelectedCoupon = async (code: string) => {
-    if (buyNowItem) {
-      const orderAmount = buyNowItem.price * buyNowItem.quantity;
-      const res = await couponApi.validate(code, orderAmount);
-      setBuyNowCouponCode(res.data.coupon.code);
-      setBuyNowCouponDiscount(res.data.discount || 0);
-      toast.success(`Coupon applied. You saved ${formatPrice(res.data.discount || 0)}.`);
-      return;
-    }
-    await applyCoupon(code);
-  };
+  const applySelectedCoupon = useCallback(
+    async (code: string) => {
+      if (buyNowItem) {
+        const orderAmount = buyNowItem.price * buyNowItem.quantity;
+        const res = await couponApi.validate(code, orderAmount);
+        setBuyNowCouponCode(res.data.coupon.code);
+        setBuyNowCouponDiscount(res.data.discount || 0);
+        toast.success(`Coupon applied. You saved ${formatPrice(res.data.discount || 0)}.`);
+        return;
+      }
+      await applyCoupon(code);
+    },
+    [buyNowItem, applyCoupon],
+  );
 
-  const removeSelectedCoupon = async () => {
+  const removeSelectedCoupon = useCallback(async () => {
     if (buyNowItem) {
       setBuyNowCouponCode(null);
       setBuyNowCouponDiscount(0);
@@ -248,7 +296,23 @@ export default function CheckoutClient() {
       return;
     }
     await removeCoupon();
-  };
+  }, [buyNowItem, removeCoupon]);
+
+  const loadAddress = useCallback(
+    (addressId: string) => {
+      const addr = user?.addresses.find((a) => a._id === addressId);
+      if (addr) {
+        setValue("name", addr.name || user?.name || "");
+        setValue("phone", addr.phone || user?.phone || "");
+        setValue("street", addr.street);
+        setValue("city", addr.city);
+        setValue("state", addr.state);
+        setValue("pincode", addr.pincode);
+        setSelectedAddressId(addressId);
+      }
+    },
+    [user, setValue],
+  );
 
   const offerText = useMemo(() => {
     if (existingOrder) return "";
@@ -257,6 +321,105 @@ export default function CheckoutClient() {
       return "You unlocked FREE shipping!";
     return `Add ${formatPrice(SHIPPING_THRESHOLD - subtotalAfterDiscount)} more for FREE shipping`;
   }, [cart, subtotalAfterDiscount, buyNowItem, existingOrder]);
+
+  const onSubmit = useCallback(
+    async (addressData: AddressForm) => {
+      setIsPlacingOrder(true);
+      let holdPlacingUntilOverlay = false;
+      try {
+        const normalizedPhone =
+          parsePhoneNumberFromString(addressData.phone.replace(/\s+/g, ""), "IN")?.number ||
+          addressData.phone;
+
+        if (existingOrder) {
+          const prepRes = await orderApi.preparePayment(existingOrder._id);
+          const { razorpayOrder } = prepRes.data;
+
+          const scriptLoaded = await loadRazorpayScript();
+          if (!scriptLoaded) throw new Error("Razorpay SDK failed to load");
+
+          const options = {
+            key: razorpayOrder.keyId,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+            name: "The House of Rani",
+            description: `Order ${existingOrder.orderNumber}`,
+            order_id: razorpayOrder.id,
+            handler: async (response: any) => {
+              try {
+                const verifyRes = await orderApi.verifyPayment({
+                  orderId: existingOrder._id,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                });
+                setPendingOrderSuccessId(verifyRes.data.order._id);
+              } catch (err: any) {
+                toast.error(err?.message || "Payment verification failed");
+              }
+            },
+            prefill: {
+              name: addressData.name,
+              email: user?.email,
+              contact: normalizedPhone,
+            },
+            theme: { color: "#e8604c" },
+          };
+
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
+        } else {
+          const idempotencyKey =
+            typeof crypto !== "undefined" && crypto.randomUUID ?
+              crypto.randomUUID()
+            : `k${Date.now()}_${Math.floor(Math.random() * 1e12)}`;
+
+          const res = await orderApi.create(
+            {
+              shippingAddress: { ...addressData, phone: normalizedPhone },
+              paymentMethod,
+              ...(buyNowCouponCode ? { couponCode: buyNowCouponCode } : {}),
+              ...(buyNowItem
+                ? {
+                    buyNowItem: {
+                      productId: buyNowItem.productId,
+                      variant: buyNowItem.variant,
+                      quantity: buyNowItem.quantity,
+                      customFieldAnswers: buyNowItem.customFieldAnswers,
+                    },
+                  }
+                : {}),
+            },
+            { idempotencyKey },
+          );
+          const { order } = res.data;
+          if (buyNowItem) {
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+            }
+            setBuyNowItem(null);
+          } else {
+            resetCart();
+          }
+          holdPlacingUntilOverlay = true;
+          setPendingOrderSuccessId(order._id);
+        }
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        toast.error(error.message || "Failed to process order");
+      } finally {
+        if (!holdPlacingUntilOverlay) setIsPlacingOrder(false);
+      }
+    },
+    [
+      existingOrder,
+      buyNowItem,
+      paymentMethod,
+      user?.email,
+      resetCart,
+      buyNowCouponCode,
+    ],
+  );
 
   if (!isAuthenticated || isOrderLoading) return (
     <div className="max-w-7xl mx-auto px-4 py-24 text-center">
@@ -276,112 +439,6 @@ export default function CheckoutClient() {
     );
   }
 
-  const loadAddress = (addressId: string) => {
-    const addr = user?.addresses.find((a) => a._id === addressId);
-    if (addr) {
-      setValue("name", addr.name || user?.name || "");
-      setValue("phone", addr.phone || user?.phone || "");
-      setValue("street", addr.street);
-      setValue("city", addr.city);
-      setValue("state", addr.state);
-      setValue("pincode", addr.pincode);
-      setSelectedAddressId(addressId);
-    }
-  };
-
-  const onSubmit = async (addressData: AddressForm) => {
-    setIsPlacingOrder(true);
-    try {
-      const normalizedPhone =
-        parsePhoneNumberFromString(addressData.phone.replace(/\s+/g, ""), "IN")?.number ||
-        addressData.phone;
-
-      if (existingOrder) {
-        // 1. Prepare payment
-        const prepRes = await orderApi.preparePayment(existingOrder._id);
-        const { razorpayOrder } = prepRes.data;
-
-        // 2. Load script
-        const scriptLoaded = await loadRazorpayScript();
-        if (!scriptLoaded) throw new Error("Razorpay SDK failed to load");
-
-        // 3. Open Razorpay
-        const options = {
-          key: razorpayOrder.keyId,
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency,
-          name: "The House of Rani",
-          description: `Order ${existingOrder.orderNumber}`,
-          order_id: razorpayOrder.id,
-          handler: async (response: any) => {
-            try {
-              const verifyRes = await orderApi.verifyPayment({
-                orderId: existingOrder._id,
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              });
-              toast.success("Payment successful!");
-              router.push(`/dashboard/orders/${encodeURIComponent(verifyRes.data.order._id)}`);
-            } catch (err: any) {
-              toast.error(err?.message || "Payment verification failed");
-            }
-          },
-          prefill: {
-            name: addressData.name,
-            email: user?.email,
-            contact: normalizedPhone,
-          },
-          theme: { color: "#e8604c" },
-        };
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
-      } else {
-        // COD logic (existing)
-        const idempotencyKey =
-          typeof crypto !== "undefined" && crypto.randomUUID ?
-            crypto.randomUUID()
-          : `k${Date.now()}_${Math.floor(Math.random() * 1e12)}`;
-        
-        const res = await orderApi.create(
-          {
-            shippingAddress: { ...addressData, phone: normalizedPhone },
-            paymentMethod,
-            ...(buyNowCouponCode ? { couponCode: buyNowCouponCode } : {}),
-            ...(buyNowItem
-              ? {
-                  buyNowItem: {
-                    productId: buyNowItem.productId,
-                    variant: buyNowItem.variant,
-                    quantity: buyNowItem.quantity,
-                    customFieldAnswers: buyNowItem.customFieldAnswers,
-                  },
-                }
-              : {}),
-          },
-          { idempotencyKey }
-        );
-        const { order } = res.data;
-        if (buyNowItem) {
-          if (typeof window !== "undefined") {
-            sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
-          }
-          setBuyNowItem(null);
-        } else {
-          resetCart();
-        }
-        toast.success("Order placed successfully!");
-        router.push(`/dashboard/orders/${encodeURIComponent(order._id)}`);
-      }
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to process order");
-    } finally {
-      setIsPlacingOrder(false);
-    }
-  };
-
   const checkoutItems: any[] = existingOrder
     ? existingOrder.items
     : buyNowItem
@@ -399,6 +456,7 @@ export default function CheckoutClient() {
 
   return (
     <div className='w-full min-w-0 overflow-x-hidden'>
+      <OrderPlacementSuccessOverlay orderId={pendingOrderSuccessId} />
       <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 box-border min-w-0'>
         <h1 className='text-2xl sm:text-3xl font-serif font-bold text-gray-900 mb-2'>
           Checkout
@@ -701,14 +759,19 @@ export default function CheckoutClient() {
 
                 <button
                   type='button'
-                  className='flex items-center justify-between w-full mb-4 lg:cursor-default min-w-0 gap-2'
+                  className='flex items-center justify-between w-full mb-2 lg:cursor-default min-w-0 gap-2'
                   onClick={() => setShowItems(!showItems)}
                 >
-                  <div className='flex items-center gap-2 min-w-0'>
+                  <div className='flex items-center gap-2 min-w-0 flex-wrap'>
                     <Package className='h-5 w-5 text-brand-600 shrink-0' />
                     <h2 className='text-lg font-semibold text-gray-900 truncate text-left'>
-                      Order Items ({checkoutItems.length})
+                      Order items ({checkoutItems.length})
                     </h2>
+                    {buyNowItem && !existingOrder && (
+                      <span className='inline-flex items-center rounded-full bg-brand-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-800'>
+                        Quick buy
+                      </span>
+                    )}
                   </div>
                   <span className='lg:hidden'>
                     {showItems ?
@@ -716,6 +779,11 @@ export default function CheckoutClient() {
                     : <ChevronDown className='h-4 w-4' />}
                   </span>
                 </button>
+                {buyNowItem && !existingOrder && (
+                  <p className='text-[11px] text-gray-500 mb-4 leading-snug'>
+                    Cart left as-is — only this line is being ordered.
+                  </p>
+                )}
 
                 <div
                   className={`space-y-3 mb-5 ${showItems ? "block" : "hidden lg:block"}`}
