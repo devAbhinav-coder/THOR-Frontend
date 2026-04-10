@@ -269,6 +269,27 @@ export const adminUsersList = z.object({
   data: z.object({ users: z.array(doc) }),
 });
 
+export const adminUserDirectoryStats = z.object({
+  status: z.string(),
+  data: z.object({
+    users: z.object({
+      total: z.number(),
+      active: z.number(),
+      inactive: z.number(),
+    }),
+    admins: z.object({
+      total: z.number(),
+      active: z.number(),
+      inactive: z.number(),
+    }),
+  }),
+});
+
+export const adminReturnsInsights = z.object({
+  status: z.string(),
+  data: z.any(),
+});
+
 export const adminToggleUser = z.object({
   status: z.string(),
   data: z.object({ isActive: z.boolean() }),

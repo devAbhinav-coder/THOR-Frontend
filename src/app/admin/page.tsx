@@ -1,32 +1,66 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { TrendingUp, ShoppingBag, Users, Package, AlertCircle, ArrowUp, ArrowDown, Eye, BarChart3 } from 'lucide-react';
+import {
+  TrendingUp,
+  ShoppingBag,
+  Users,
+  Package,
+  AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  BarChart3,
+  RefreshCw,
+  Tag,
+  Megaphone,
+  Store,
+  RotateCcw,
+  IndianRupee,
+} from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
-import { formatPrice, formatDate, getOrderStatusColor } from '@/lib/utils';
+import { formatPrice, formatDate, getOrderStatusColor, cn } from '@/lib/utils';
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminErrorState from '@/components/admin/AdminErrorState';
+import { Button } from '@/components/ui/button';
+import toast from 'react-hot-toast';
+import { RevenueTrendAreaChart, OrdersMixPieChart } from '@/components/admin/charts';
 
 export default function AdminDashboardPage() {
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadAnalytics = useCallback(async (silent = false) => {
+    if (silent) setIsRefreshing(true);
+    else {
+      setIsLoading(true);
+      setLoadError(false);
+    }
+    try {
+      const res = await adminApi.getAnalytics();
+      setAnalytics(res.data);
+      setLoadError(false);
+    } catch {
+      if (!silent) {
+        setAnalytics(null);
+        setLoadError(true);
+      } else {
+        toast.error('Could not refresh dashboard data.');
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const res = await adminApi.getAnalytics();
-        setAnalytics(res.data);
-      } catch {
-        // silent fail
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAnalytics();
-  }, []);
+    loadAnalytics(false);
+  }, [loadAnalytics]);
 
   if (isLoading) {
     return (
@@ -41,23 +75,42 @@ export default function AdminDashboardPage() {
     );
   }
 
+  if (!isLoading && loadError) {
+    return (
+      <div className="p-4 sm:p-6 xl:p-8 max-w-3xl mx-auto">
+        <AdminPageHeader
+          title="Dashboard"
+          description="Business snapshot — sales, stock, and recent activity."
+        />
+        <div className="mt-8">
+          <AdminErrorState onRetry={loadAnalytics} />
+        </div>
+      </div>
+    );
+  }
+
   if (!analytics) return null;
 
   const { overview } = analytics;
-  const revenueGrowthPositive = overview.revenueGrowth >= 0;
+  const returnReasonTotal =
+    (analytics.refundsByReason || []).reduce((s, r) => s + (r.count || 0), 0) || 1;
   const topViewed = analytics.topViewedProducts ?? [];
   const quickActions = [
-    { label: 'Manage Orders', href: '/admin/orders', icon: ShoppingBag },
-    { label: 'Manage Products', href: '/admin/products', icon: Package },
-    { label: 'Manage Coupons', href: '/admin/coupons', icon: AlertCircle },
-    { label: 'Open Analytics', href: '/admin/analytics', icon: BarChart3 },
+    { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
+    { label: 'Returns', href: '/admin/returns', icon: RotateCcw },
+    { label: 'Products', href: '/admin/products', icon: Package },
+    { label: 'Coupons', href: '/admin/coupons', icon: Tag },
+    { label: 'Revenue', href: '/admin/revenue', icon: IndianRupee },
+    { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+    { label: 'Email campaigns', href: '/admin/emails', icon: Megaphone },
+    { label: 'Storefront', href: '/admin/storefront', icon: Store },
   ];
 
   const statCards = [
     {
-      label: 'Total Revenue',
+      label: 'Total revenue',
       value: formatPrice(overview.totalRevenue),
-      sub: `${formatPrice(overview.monthRevenue)} this month`,
+      sub: `${formatPrice(overview.monthRevenue)} this month · paid orders only (refunds excluded)`,
       icon: TrendingUp,
       growth: overview.revenueGrowth,
       color: 'bg-brand-50 text-brand-600',
@@ -86,140 +139,185 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 xl:p-8 space-y-6 sm:space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-serif font-bold text-gray-900">Dashboard Overview</h1>
-          <p className="text-gray-500 text-sm mt-1">Welcome back, here&apos;s what&apos;s happening today</p>
-        </div>
-        <Link
-          href="/admin/orders"
-          className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
-        >
-          View all orders
-        </Link>
-      </div>
+    <div className="min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white">
+      <div className="p-4 sm:p-6 xl:p-8 space-y-8 max-w-[1600px] mx-auto">
+        <AdminPageHeader
+          title="Dashboard"
+          badge="Live"
+          description="Paid-order revenue, fulfilment mix, and storefront signals — same analytics API as Revenue &amp; Analytics."
+          actions={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl border-gray-200 bg-white shadow-sm"
+                onClick={() => loadAnalytics(true)}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Link
+                href="/admin/revenue"
+                className="inline-flex items-center justify-center rounded-xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-950 px-4 py-2.5 text-sm font-semibold text-white hover:from-navy-800 hover:to-navy-900 transition-colors shadow-md"
+              >
+                Revenue
+              </Link>
+              <Link
+                href="/admin/orders"
+                className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 transition-colors shadow-md"
+              >
+                All orders
+              </Link>
+            </>
+          }
+        />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {quickActions.map(({ label, href, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="group rounded-xl border border-gray-200 bg-white px-3 py-3.5 sm:px-4 sm:py-4 hover:border-brand-300 hover:shadow-sm transition-all"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center group-hover:bg-brand-100">
-                <Icon className="h-4 w-4" />
-              </div>
-              <span className="text-xs sm:text-sm font-semibold text-gray-800">{label}</span>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        {statCards.map((card) => (
-          <div key={card.label} className="bg-white rounded-xl p-5 border border-gray-100">
-            <div className="flex items-start justify-between mb-3">
-              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${card.color}`}>
-                <card.icon className="h-5 w-5" />
-              </div>
-              {card.growth !== undefined && (
-                <span className={`flex items-center gap-1 text-xs font-medium ${card.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {card.growth >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                  {Math.abs(card.growth)}%
-                </span>
-              )}
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{card.value}</p>
-            <p className="text-xs text-gray-500 mt-1">{card.sub}</p>
-            <p className="text-sm font-medium text-gray-600 mt-1">{card.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-xl p-5 border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Revenue by Month</h3>
-            <p className="text-xs text-gray-400">Last 12 months</p>
-          </div>
-          {analytics.revenueByMonth.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-gray-400 text-sm">No data available</div>
-          ) : (
-            <div className="rounded-xl bg-gradient-to-b from-brand-50/40 to-transparent p-3">
-              {(() => {
-                const maxRevenue = Math.max(...analytics.revenueByMonth.map((d) => d.revenue), 1);
-                const chartPx = 180;
-                return (
-                  <div className="flex items-end gap-2 justify-around pt-1" style={{ minHeight: chartPx + 24 }}>
-                    {analytics.revenueByMonth.map((data) => {
-                      const barPx = Math.max(Math.round((data.revenue / maxRevenue) * chartPx), 6);
-                      return (
-                        <div key={`${data._id.year}-${data._id.month}`} className="flex flex-col items-center gap-1 flex-1 min-w-0 max-w-[48px]">
-                          <div
-                            className="w-full bg-gradient-to-t from-brand-700 via-brand-500 to-brand-300 hover:from-brand-800 hover:to-brand-400 rounded-t transition-colors cursor-default relative group shadow-[0_8px_20px_rgba(232,96,76,0.25)] flex-shrink-0"
-                            style={{ height: barPx }}
-                            title={formatPrice(data.revenue)}
-                          >
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 shadow-lg">
-                              {formatPrice(data.revenue)}
-                            </div>
-                          </div>
-                          <span className="text-xs text-gray-500">{MONTHS[data._id.month - 1]}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-xl p-5 border border-gray-100">
-          <h3 className="font-semibold text-gray-900 mb-4">Orders by Status</h3>
-          <div className="space-y-3">
-            {analytics.ordersByStatus.map((item) => (
-              <div key={item._id} className="flex items-center justify-between">
-                <span className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${getOrderStatusColor(item._id)}`}>
-                  {item._id}
-                </span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-brand-500 rounded-full"
-                      style={{ width: `${(item.count / overview.totalOrders) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium text-gray-700">{item.count}</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+          {quickActions.map(({ label, href, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group rounded-2xl border border-gray-200/90 bg-white/90 px-3 py-3.5 sm:px-4 sm:py-4 shadow-sm hover:border-brand-300/80 hover:shadow-md hover:bg-white transition-all duration-200"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-50 to-white border border-brand-100/80 text-brand-600 flex items-center justify-center group-hover:border-brand-200 group-hover:from-brand-100/80">
+                  <Icon className="h-4 w-4" />
                 </div>
+                <span className="text-xs sm:text-sm font-semibold text-gray-800">{label}</span>
               </div>
-            ))}
+            </Link>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {statCards.map((card) => (
+            <div
+              key={card.label}
+              className={cn(
+                'relative overflow-hidden rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md',
+                'bg-gradient-to-br from-white to-gray-50/50 border-gray-100/90',
+              )}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className={cn('h-11 w-11 rounded-xl flex items-center justify-center shadow-inner', card.color)}>
+                  <card.icon className="h-5 w-5" />
+                </div>
+                {card.growth !== undefined && (
+                  <span
+                    className={cn(
+                      'flex items-center gap-1 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full',
+                      card.growth >= 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50',
+                    )}
+                  >
+                    {card.growth >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                    {Math.abs(card.growth)}%
+                  </span>
+                )}
+              </div>
+              <p className="text-2xl font-bold font-serif text-gray-900 tracking-tight tabular-nums">{card.value}</p>
+              <p className="text-[11px] text-gray-500 mt-1 leading-snug">{card.sub}</p>
+              <p className="text-sm font-semibold text-gray-700 mt-2">{card.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div className="xl:col-span-3 rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]">
+            <RevenueTrendAreaChart
+              data={analytics.revenueByMonth}
+              height={320}
+              title="Revenue & order volume"
+              subtitle="Trailing 12 months · area = paid revenue · line = order count"
+            />
+          </div>
+          <div className="xl:col-span-2 rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]">
+            <OrdersMixPieChart
+              data={analytics.ordersByStatus}
+              totalOrders={overview.totalOrders}
+              height={320}
+              title="Orders by status"
+              subtitle="Share of all orders in your store"
+            />
           </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Avg. order</p>
           <p className="text-lg font-bold text-gray-900 mt-1">{formatPrice(overview.avgOrderValue ?? 0)}</p>
           <p className="text-xs text-gray-400 mt-0.5">Paid orders</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Orders today</p>
           <p className="text-lg font-bold text-gray-900 mt-1">{overview.ordersToday ?? 0}</p>
           <p className="text-xs text-gray-400 mt-0.5">Since midnight</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Fulfilment queue</p>
           <p className="text-lg font-bold text-amber-800 mt-1">{overview.pendingFulfillmentCount ?? 0}</p>
           <p className="text-xs text-gray-400 mt-0.5">Pending · Confirmed · Processing</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Reviews</p>
           <p className="text-lg font-bold text-gray-900 mt-1">{overview.totalReviews ?? 0}</p>
           <p className="text-xs text-gray-400 mt-0.5">{overview.reviewsThisMonth ?? 0} this month</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl p-5 border border-gray-100">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+                <AlertCircle className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Refunds overview</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">Lifetime refunded orders · not deducted from revenue totals above</p>
+              </div>
+            </div>
+            <Link
+              href="/admin/returns"
+              className="text-xs font-semibold text-brand-600 hover:text-brand-700 whitespace-nowrap"
+            >
+              Returns hub →
+            </Link>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Total Amount Refunded</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">{formatPrice(overview.refundedAmount ?? 0)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500 font-medium">Refunded Orders</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">{overview.refundedOrdersCount ?? 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-5 border border-gray-100">
+          <h3 className="font-semibold text-gray-900 mb-4">Return Reasons</h3>
+          <div className="space-y-3">
+            {(!analytics.refundsByReason || analytics.refundsByReason.length === 0) ? (
+              <p className="text-sm text-gray-500 text-center py-4">No return requests yet.</p>
+            ) : (
+              analytics.refundsByReason.map((reason, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 truncate w-1/2">{reason._id}</span>
+                  <div className="flex flex-1 justify-end items-center gap-3">
+                    <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden hidden sm:block">
+                      <div
+                        className="h-full bg-red-400 rounded-full"
+                        style={{ width: `${(reason.count / returnReasonTotal) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 w-4 text-right">{reason.count}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
@@ -311,7 +409,12 @@ export default function AdminDashboardPage() {
             <div key={order._id} className="px-4 py-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-brand-600">{order.orderNumber}</p>
+                  <Link
+                    href={`/admin/orders/${order._id}`}
+                    className="text-sm font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                  >
+                    {order.orderNumber}
+                  </Link>
                   <p className="text-xs text-gray-500 mt-1">{formatDate(order.createdAt)}</p>
                 </div>
                 <span className={`text-[11px] font-medium px-2 py-1 rounded-full capitalize ${getOrderStatusColor(order.status)}`}>
@@ -341,7 +444,11 @@ export default function AdminDashboardPage() {
             <tbody className="divide-y divide-gray-50">
               {analytics.recentOrders.map((order) => (
                 <tr key={order._id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3 text-sm font-medium text-brand-600">{order.orderNumber}</td>
+                  <td className="px-5 py-3 text-sm font-medium">
+                    <Link className="text-brand-600 hover:text-brand-700 hover:underline" href={`/admin/orders/${order._id}`}>
+                      {order.orderNumber}
+                    </Link>
+                  </td>
                   <td className="px-5 py-3 text-sm text-gray-700">
                     {typeof order.user === 'object' ? order.user.name : '—'}
                   </td>
@@ -359,6 +466,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      </div>
     </div>
   );
 }

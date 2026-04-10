@@ -233,6 +233,17 @@ export default function OrderDetailPage() {
   const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
   const [reviewedRatings, setReviewedRatings] = useState<Record<string, number>>({});
 
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState('Size/Fit Issue');
+  const [returnNote, setReturnNote] = useState('');
+  const [returnRefundMethod, setReturnRefundMethod] = useState<'upi'|'bank_transfer'>('upi');
+  const [returnUpiId, setReturnUpiId] = useState('');
+  const [returnAccName, setReturnAccName] = useState('');
+  const [returnAccNumber, setReturnAccNumber] = useState('');
+  const [returnIfsc, setReturnIfsc] = useState('');
+  const [returnBankName, setReturnBankName] = useState('');
+  const [isReturning, setIsReturning] = useState(false);
+
   useEffect(() => {
     const fetchOrder = async () => {
       try {
@@ -273,6 +284,25 @@ export default function OrderDetailPage() {
     } catch (err: unknown) {
       toast.error((err as { message?: string })?.message || 'Failed to cancel order');
     } finally { setIsCancelling(false); }
+  };
+
+  const handleRequestReturn = async () => {
+    setIsReturning(true);
+    try {
+      const isCod = order!.paymentMethod === 'cod';
+      const refundMethod = isCod ? returnRefundMethod : undefined;
+      const userBankDetails: Record<string, string> | undefined = isCod ? (
+        returnRefundMethod === 'upi'
+          ? { upiId: returnUpiId }
+          : { accountName: returnAccName, accountNumber: returnAccNumber, ifscCode: returnIfsc, bankName: returnBankName }
+      ) : undefined;
+      const body = await orderApi.requestReturn(order!._id, returnReason, returnNote, refundMethod, userBankDetails);
+      setOrder(body.data.order);
+      setReturnModalOpen(false);
+      toast.success('Return request submitted successfully');
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message || 'Failed to submit return request');
+    } finally { setIsReturning(false); }
   };
 
   const openReviewForm = (productId: string, initialRating: number) => {
@@ -373,6 +403,15 @@ export default function OrderDetailPage() {
   const trackingHref =
     order.trackingUrl || getAutoTrackingUrl(order.shippingCarrier, order.trackingNumber);
 
+  const isReturnEligible = (() => {
+    if (order.status !== 'delivered' || !order.deliveredAt) return false;
+    if ((order as any).returnStatus && (order as any).returnStatus !== 'none') return false;
+    const deliveredTime = new Date(order.deliveredAt).getTime();
+    const now = Date.now();
+    const daysSinceDelivery = (now - deliveredTime) / (1000 * 60 * 60 * 24);
+    return daysSinceDelivery <= 7;
+  })();
+
   return (
     <div className="space-y-4">
       {/* Back + Cancel */}
@@ -380,12 +419,45 @@ export default function OrderDetailPage() {
         <Link href="/dashboard/orders" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 font-medium transition-colors">
           <ArrowLeft className="h-4 w-4" /> Back to Orders
         </Link>
-        {canCancel && (
-          <Button variant="outline" size="sm" onClick={handleCancel} loading={isCancelling} className="text-red-600 border-red-200 hover:bg-red-50 text-xs">
-            Cancel Order
-          </Button>
-        )}
+        <div className="flex gap-3">
+          {canCancel && (
+            <Button variant="outline" size="sm" onClick={handleCancel} loading={isCancelling} className="text-red-600 border-red-200 hover:bg-red-50 text-xs">
+              Cancel Order
+            </Button>
+          )}
+          {isReturnEligible && (
+            <Button variant="outline" size="sm" onClick={() => setReturnModalOpen(true)} className="text-amber-600 border-amber-200 hover:bg-amber-50 text-xs">
+              Request Return
+            </Button>
+          )}
+        </div>
       </div>
+
+      {((order as any).returnStatus && (order as any).returnStatus !== 'none') && (() => {
+        const rs = (order as any).returnStatus as string;
+        const refundMethodLabel = (m: string) => m.replace(/_/g, ' ');
+        const returnCopy: Record<string, string> = {
+          requested: 'Our team is reviewing your return request. We will update you shortly.',
+          approved: 'Your return was approved. Refund will be processed shortly.',
+          rejected: 'This return request was not approved. Contact support if you need help.',
+          returned: 'Return completed. Refund details are below if applicable.',
+        };
+        return (
+          <div className="bg-amber-50 rounded-2xl border border-amber-200 shadow-sm p-4 sm:p-5 flex gap-3 items-start">
+            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-bold text-amber-800 capitalize">Return Status: {rs}</h3>
+              <p className="text-sm text-amber-700 mt-1">{returnCopy[rs] ?? 'We will update you on your return.'}</p>
+              {((order as any).refundData) && (
+                <div className="mt-3 bg-white/60 p-3 rounded-xl border border-amber-100">
+                  <p className="text-sm font-semibold text-amber-900">Refund Processed: {formatPrice(((order as any).refundData.amount))}</p>
+                  <p className="text-xs text-amber-700">Method: <span className="capitalize">{refundMethodLabel(String((order as any).refundData.method))}</span></p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Order header + progress */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
@@ -726,6 +798,115 @@ export default function OrderDetailPage() {
           ))}
         </div>
       </div>
+
+      {returnModalOpen && order && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4" onClick={e => { if (e.target === e.currentTarget) setReturnModalOpen(false); }}>
+          <div className="bg-white w-full sm:w-[520px] rounded-t-2xl sm:rounded-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Request Return</h2>
+            <p className="text-sm text-gray-500 mb-6">Please provide details to help us process your return efficiently.</p>
+            <div className="space-y-4">
+
+              {/* Reason */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-700">Reason for Return *</label>
+                <select
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  className="w-full h-11 px-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                >
+                  <option value="Size/Fit Issue">Size / Fit Issue</option>
+                  <option value="Defective/Damaged">Defective / Damaged</option>
+                  <option value="Wrong Item Received">Wrong Item Received</option>
+                  <option value="Changed My Mind">Changed My Mind</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Additional notes */}
+              <textarea
+                value={returnNote}
+                onChange={(e) => setReturnNote(e.target.value)}
+                placeholder="Additional notes (optional)"
+                className="w-full px-3.5 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 resize-none h-20"
+              />
+
+              {/* Refund section */}
+              <div className="bg-gray-50 rounded-2xl p-4 space-y-3 border border-gray-100">
+                <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Refund Method</p>
+
+                {order.paymentMethod === 'razorpay' ? (
+                  <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl p-3">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-green-800">Refund to Original Payment</p>
+                      <p className="text-xs text-green-700 mt-0.5">Your refund will be automatically returned to the same UPI / card / wallet used at checkout. Typically 5–7 days.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-500">Since this was a Cash on Delivery order, please provide your preferred refund details.</p>
+                    <div className="flex gap-2">
+                      {(['upi', 'bank_transfer'] as const).map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setReturnRefundMethod(m)}
+                          className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${returnRefundMethod === m ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200 hover:border-brand-300'}`}
+                        >
+                          {m === 'upi' ? '📱 UPI' : '🏦 Bank Transfer'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {returnRefundMethod === 'upi' ? (
+                      <div>
+                        <label className="text-xs font-semibold text-gray-700">UPI ID *</label>
+                        <input
+                          type="text"
+                          value={returnUpiId}
+                          onChange={e => setReturnUpiId(e.target.value)}
+                          placeholder="yourname@upi"
+                          className="w-full mt-1 h-10 px-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {[
+                          { label: 'Account Holder Name *', value: returnAccName, setter: setReturnAccName, placeholder: 'Full name on account' },
+                          { label: 'Account Number *', value: returnAccNumber, setter: setReturnAccNumber, placeholder: '0000 0000 0000' },
+                          { label: 'IFSC Code *', value: returnIfsc, setter: setReturnIfsc, placeholder: 'SBIN0001234' },
+                          { label: 'Bank Name', value: returnBankName, setter: setReturnBankName, placeholder: 'e.g. State Bank of India' },
+                        ].map(({ label, value, setter, placeholder }) => (
+                          <div key={label}>
+                            <label className="text-xs font-semibold text-gray-700">{label}</label>
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={e => setter(e.target.value)}
+                              placeholder={placeholder}
+                              className="w-full mt-1 h-10 px-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <Button variant="outline" className="flex-1 rounded-xl" disabled={isReturning} onClick={() => setReturnModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="brand" className="flex-1 rounded-xl" loading={isReturning} onClick={handleRequestReturn}>
+                  Submit Request
+                </Button>
+              </div>
+              <p className="text-xs text-gray-400 text-center">Eligible within 7 days of delivery per our return policy.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

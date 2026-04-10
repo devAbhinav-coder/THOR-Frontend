@@ -3,9 +3,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
 import {
-  LayoutDashboard, Package, ShoppingCart, Tag, Users, Star,
-  LogOut, ChevronRight, BarChart3, FolderOpen, Menu, X, Mail, FileText, Gift
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Tag,
+  Users,
+  Star,
+  LogOut,
+  ChevronRight,
+  BarChart3,
+  LayoutGrid,
+  Store,
+  Menu,
+  X,
+  Megaphone,
+  FileText,
+  Gift,
+  RotateCcw,
+  Shield,
+  IndianRupee,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
@@ -24,27 +42,70 @@ function useAuthHydrationFallback() {
   }, []);
 }
 
-const navItems = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { label: 'Categories', href: '/admin/categories', icon: FolderOpen },
-  { label: 'Storefront', href: '/admin/storefront', icon: FolderOpen },
-  { label: 'Email Campaigns', href: '/admin/emails', icon: Mail },
-  { label: 'Blogs', href: '/admin/blogs', icon: FileText },
-  { label: 'Products', href: '/admin/products', icon: Package },
-  { label: 'Gifting', href: '/admin/gifting', icon: Gift },
-  { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-  { label: 'Coupons', href: '/admin/coupons', icon: Tag },
-  { label: 'Users', href: '/admin/users', icon: Users },
-  { label: 'Security Audit', href: '/admin/security/audit', icon: FileText },
-  { label: 'Reviews', href: '/admin/reviews', icon: Star },
-  { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+type NavItem = { label: string; href: string; icon: LucideIcon };
+type NavSection = { title: string; items: NavItem[] };
+
+/** Grouped nav — easier scanning for owners (sell / grow / manage). */
+const navSections: NavSection[] = [
+  {
+    title: 'Overview',
+    items: [
+      { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+      { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+      { label: 'Revenue', href: '/admin/revenue', icon: IndianRupee },
+    ],
+  },
+  {
+    title: 'Catalog',
+    items: [
+      { label: 'Categories', href: '/admin/categories', icon: LayoutGrid },
+      { label: 'Products', href: '/admin/products', icon: Package },
+      { label: 'Gifting', href: '/admin/gifting', icon: Gift },
+      { label: 'Storefront', href: '/admin/storefront', icon: Store },
+    ],
+  },
+  {
+    title: 'Sales',
+    items: [
+      { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+      { label: 'Returns', href: '/admin/returns', icon: RotateCcw },
+      { label: 'Coupons', href: '/admin/coupons', icon: Tag },
+    ],
+  },
+  {
+    title: 'Marketing & content',
+    items: [
+      { label: 'Email campaigns', href: '/admin/emails', icon: Megaphone },
+      { label: 'Blogs', href: '/admin/blogs', icon: FileText },
+    ],
+  },
+  {
+    title: 'Customers & trust',
+    items: [
+      { label: 'Users', href: '/admin/users', icon: Users },
+      { label: 'Reviews', href: '/admin/reviews', icon: Star },
+    ],
+  },
+  {
+    title: 'System',
+    items: [{ label: 'Security audit', href: '/admin/security/audit', icon: Shield }],
+  },
 ];
 
+function navLinkActive(pathname: string, href: string) {
+  const p = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+  if (href === '/admin') return p === '/admin';
+  return p === href || p.startsWith(`${href}/`);
+}
+
 const mobileQuickLinks = [
+  { label: 'Dash', href: '/admin' },
   { label: 'Orders', href: '/admin/orders' },
-  { label: 'Products', href: '/admin/products' },
-  { label: 'Coupons', href: '/admin/coupons' },
-  { label: 'Users', href: '/admin/users' },
+  { label: 'Returns', href: '/admin/returns' },
+  { label: 'Revenue', href: '/admin/revenue' },
+  { label: 'Analytics', href: '/admin/analytics' },
+  { label: 'Emails', href: '/admin/emails' },
+  { label: 'Store', href: '/admin/storefront' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -103,7 +164,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="px-3 pb-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center gap-1.5 min-w-max">
             {mobileQuickLinks.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              const active = navLinkActive(pathname, item.href);
               return (
                 <Link
                   key={item.href}
@@ -120,23 +181,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
         {isMenuOpen && (
-          <nav className="px-3 pb-3 space-y-1 border-t border-gray-800">
-            {navItems.map(({ label, href, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                prefetch
-                onClick={() => setIsMenuOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                  (href === '/admin' ? pathname === href : pathname.startsWith(href))
-                    ? 'bg-rose-700 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                )}
-              >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                {label}
-              </Link>
+          <nav
+            data-lenis-prevent
+            className="px-3 pb-3 border-t border-gray-800 max-h-[min(70vh,520px)] overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {navSections.map((section, sIdx) => (
+              <div key={section.title} className={cn(sIdx > 0 && 'mt-3 pt-3 border-t border-gray-800/80')}>
+                <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  {section.title}
+                </p>
+                <div className="space-y-0.5">
+                  {section.items.map(({ label, href, icon: Icon }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      prefetch
+                      onClick={() => setIsMenuOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                        navLinkActive(pathname, href)
+                          ? 'bg-rose-700 text-white'
+                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      )}
+                    >
+                      <Icon className="h-4 w-4 flex-shrink-0 opacity-90" />
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
             <button
               onClick={logout}
@@ -149,7 +222,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
 
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
-      <aside className="hidden lg:flex w-[260px] min-w-[260px] max-w-[260px] bg-gray-900 flex-col flex-shrink-0 min-h-0 h-full">
+      <aside
+        data-lenis-prevent
+        className="hidden lg:flex w-[260px] min-w-[260px] max-w-[260px] bg-gray-900 flex-col flex-shrink-0 min-h-0 h-full"
+      >
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <div>
             <h1 className="font-serif text-base font-bold text-white">
@@ -162,24 +238,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <nav
-          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-4 px-3 space-y-1 [scrollbar-width:thin]"
-        >
-          {navItems.map(({ label, href, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              prefetch
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                (href === '/admin' ? pathname === href : pathname.startsWith(href))
-                  ? 'bg-rose-700 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              )}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              {label}
-            </Link>
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-4 px-3 space-y-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-y">
+          {navSections.map((section) => (
+            <div key={section.title}>
+              <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                {section.title}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map(({ label, href, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    prefetch
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                      navLinkActive(pathname, href)
+                        ? 'bg-rose-700 text-white shadow-sm'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    )}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0 opacity-90" />
+                    <span className="leading-snug">{label}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 

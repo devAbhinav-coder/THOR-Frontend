@@ -261,7 +261,10 @@ export interface DashboardAnalytics {
     paidOrdersCount: number;
     totalReviews: number;
     reviewsThisMonth: number;
+    refundedAmount: number;
+    refundedOrdersCount: number;
   };
+  refundsByReason: { _id: string; count: number }[];
   lowStockProducts: { _id: string; name: string; totalStock: number; category: string }[];
   recentOrders: Order[];
   ordersByStatus: { _id: string; count: number }[];

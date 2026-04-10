@@ -1,6 +1,6 @@
 export default function AdminLoading() {
   return (
-    <div className="p-6 lg:p-8 max-w-7xl" aria-busy aria-label="Loading admin page">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto" aria-busy aria-label="Loading admin page">
       <div className="h-9 w-64 max-w-full rounded-lg skeleton" />
       <p className="mt-2 h-4 w-48 rounded skeleton" />
       <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Package, Truck, CheckCircle2, Clock, AlertCircle, TrendingUp, RefreshCw, LayoutGrid, List } from 'lucide-react';
 import { adminApi } from '@/lib/api';
@@ -11,6 +12,8 @@ import { SearchField } from '@/components/ui/SearchField';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminErrorState from '@/components/admin/AdminErrorState';
 
 const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
@@ -47,10 +50,15 @@ export default function AdminOrdersPage() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [ordersLoadError, setOrdersLoadError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchOrders = async (page = 1, append = false) => {
+  const fetchOrders = useCallback(async (page = 1, append = false) => {
     if (append) setIsLoadingMore(true);
-    else setIsLoading(true);
+    else {
+      setIsLoading(true);
+      setOrdersLoadError(false);
+    }
     try {
       const params: Record<string, string | number> = { page, limit: 20 };
       if (statusFilter) params.status = statusFilter;
@@ -65,13 +73,25 @@ export default function AdminOrdersPage() {
         for (const o of incoming) map.set(o._id, o);
         return Array.from(map.values());
       });
+      setOrdersLoadError(false);
     } catch {
-      // silent fail
+      if (!append) {
+        setOrders([]);
+        setOrdersLoadError(true);
+        setHasMore(false);
+      } else {
+        toast.error('Could not load more orders.');
+      }
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  };
+  }, [statusFilter]);
+
+  const handleRefreshList = useCallback(() => {
+    setIsRefreshing(true);
+    void fetchOrders(1, false).finally(() => setIsRefreshing(false));
+  }, [fetchOrders]);
 
   useEffect(() => {
     adminApi.getAnalytics().then((res) => setAnalytics(res.data)).catch(() => {});
@@ -81,7 +101,7 @@ export default function AdminOrdersPage() {
     setOrders([]);
     setHasMore(true);
     fetchOrders(1, false);
-  }, [statusFilter]);
+  }, [statusFilter, fetchOrders]);
 
   useEffect(() => {
     if (!hasMore || isLoading || isLoadingMore || !loadMoreRef.current) return;
@@ -96,7 +116,7 @@ export default function AdminOrdersPage() {
     );
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, isLoadingMore, pagination.currentPage, statusFilter]);
+  }, [hasMore, isLoading, isLoadingMore, pagination.currentPage, fetchOrders]);
 
   const updateStatus = async (orderId: string, status: OrderStatus) => {
     if (status === 'shipped') {
@@ -170,12 +190,33 @@ export default function AdminOrdersPage() {
   analytics?.ordersByStatus?.forEach(({ _id, count }) => { statusCounts[_id] = count; });
 
   return (
-    <div className="p-4 sm:p-6 xl:p-8 space-y-6">
-      {/* Page title */}
-      <div>
-        <h1 className="text-2xl font-serif font-bold text-gray-900">Orders</h1>
-        <p className="text-gray-500 text-sm mt-0.5">{pagination.total} orders total</p>
-      </div>
+    <div className="p-4 sm:p-6 xl:p-8 space-y-6 max-w-[1600px] mx-auto">
+      <AdminPageHeader
+        title="Orders"
+        description="Fulfil, track, and update status — row click opens the full order. Revenue tiles use analytics (paid orders)."
+        badge={pagination.total ? `${pagination.total.toLocaleString()} total` : undefined}
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-gray-200"
+              onClick={handleRefreshList}
+              disabled={isRefreshing || isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Link
+              href="/admin/returns"
+              className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors"
+            >
+              Returns
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
@@ -253,7 +294,16 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* Filters */}
+      {ordersLoadError && !isLoading && (
+        <AdminErrorState
+          title="Couldn’t load orders"
+          message="Check your API connection and permissions, then try again."
+          onRetry={() => fetchOrders(1, false)}
+        />
+      )}
+
+      {/* Filters + list */}
+      {!ordersLoadError && (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3">
           <SearchField
@@ -292,9 +342,10 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Desktop table */}
-        {viewMode === 'table' && <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
+        {/* Tablet / desktop table — horizontal scroll on narrow widths */}
+        {viewMode === 'table' && (
+        <div className="hidden md:block overflow-x-auto [scrollbar-gutter:stable]">
+          <table className="w-full min-w-[920px]">
             <thead>
               <tr className="bg-gray-50 text-[11px] text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-5 py-3.5">Order</th>
@@ -373,7 +424,8 @@ export default function AdminOrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>}
+        </div>
+        )}
 
         {viewMode === 'grid' && (
           <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 gap-4 p-4">
@@ -382,8 +434,8 @@ export default function AdminOrdersPage() {
             ) : filteredOrders.map((order) => (
               <div key={order._id} className="rounded-2xl border border-gray-100 bg-white p-4 hover:shadow-sm transition-shadow">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-brand-600">{order.orderNumber}</p>
+                  <div onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)} className="cursor-pointer group">
+                    <p className="text-sm font-semibold text-brand-600 group-hover:text-brand-700 underline-offset-4 group-hover:underline">{order.orderNumber}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{typeof order.user === 'object' ? order.user.name : '—'}</p>
                   </div>
                   <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full capitalize', getOrderStatusColor(order.status))}>
@@ -395,21 +447,25 @@ export default function AdminOrdersPage() {
                   <p>Items: <span className="text-gray-700">{(order.items ?? []).length}</span></p>
                   <p>Total: <span className="text-gray-900 font-bold">{formatPrice(order.total)}</span></p>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <button
-                    onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)}
-                    className="text-xs font-semibold text-brand-600 hover:text-brand-700"
-                  >
-                    View details
-                  </button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-8 px-3 rounded-lg"
-                    onClick={() => updateStatus(order._id, 'processing')}
-                  >
-                    Mark Processing
-                  </Button>
+                <div className="mt-4 pt-3 border-t border-gray-50">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Change Status</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ORDER_STATUSES.filter((s) => s !== order.status).map((status) => (
+                      <button
+                        key={status}
+                        onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
+                        disabled={updatingOrder === order._id}
+                        className={cn(
+                          'px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm disabled:opacity-50 uppercase tracking-tighter',
+                          STATUS_META[status]?.bg || 'bg-gray-50', 
+                          STATUS_META[status]?.text || 'text-gray-600',
+                          'border-transparent hover:border-gray-200'
+                        )}
+                      >
+                        {status.replace(/_/g, ' ')}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
@@ -460,38 +516,49 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              {expandedOrder === order._id && (
-                <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 animate-fadeIn">
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                <div className="flex items-center justify-between">
                   <p className="text-xs text-gray-500">
                     {lineItems.length} item{lineItems.length !== 1 ? 's' : ''} · Payment:{' '}
                     <span className="font-semibold">{order.paymentStatus}</span>
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <button
+                    onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)}
+                    className="text-xs font-bold text-brand-600"
+                  >
+                    View Details
+                  </button>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Change Status</p>
+                  <div className="flex flex-wrap gap-1.5">
                     {ORDER_STATUSES.filter((s) => s !== order.status).map((status) => (
                       <button
                         key={status}
                         onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
                         disabled={updatingOrder === order._id}
                         className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50',
-                          STATUS_META[status]?.bg, STATUS_META[status]?.text
+                          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all disabled:opacity-50 uppercase tracking-tighter',
+                          STATUS_META[status]?.bg, STATUS_META[status]?.text,
+                          'border-transparent'
                         )}
                       >
-                        {STATUS_META[status]?.icon} {status}
+                        {status.replace(/_/g, ' ')}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           );
           })}
         </div>
 
         {!isLoading && filteredOrders.length === 0 && (
-          <div className="py-12 text-center text-gray-400 text-sm">No orders found.</div>
+          <div className="py-12 text-center text-gray-400 text-sm">No orders match your filters.</div>
         )}
       </div>
+      )}
 
       <div ref={loadMoreRef} className="h-8" />
       {isLoadingMore && (

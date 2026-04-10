@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye } from 'lucide-react';
 import { productApi } from '@/lib/api';
 import { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
@@ -14,6 +15,8 @@ import ProductFormModal from '@/components/admin/ProductFormModal';
 import toast from 'react-hot-toast';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminErrorState from '@/components/admin/AdminErrorState';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,9 +30,12 @@ export default function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalProducts: 0 });
+  const [loadError, setLoadError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt') => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const params: Record<string, string | number> = { page, limit: 20, sort };
       if (query) params.search = query;
@@ -41,10 +47,13 @@ export default function AdminProductsPage() {
         totalPages: p?.totalPages ?? 1,
         totalProducts: p?.totalProducts ?? p?.total ?? 0,
       });
+      setLoadError(false);
     } catch {
-      // silent fail
+      setProducts([]);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -108,19 +117,56 @@ export default function AdminProductsPage() {
     return 'text-green-600';
   };
 
-  return (
-    <div className="p-6 xl:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-serif font-bold text-gray-900">Products</h1>
-          <p className="text-gray-500 text-sm">{pagination.totalProducts} products total</p>
-        </div>
-        <Button variant="brand" onClick={() => { setEditProduct(null); setIsModalOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Product
-        </Button>
-      </div>
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    void fetchProducts(1, debouncedSearch, sortBy);
+  };
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+  return (
+    <div className="p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto space-y-6">
+      <AdminPageHeader
+        title="Products"
+        description="Search, filter by status, sort by views or sales — edits sync with the storefront when active."
+        badge={pagination.totalProducts ? `${pagination.totalProducts.toLocaleString()} in catalogue` : undefined}
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-gray-200"
+              onClick={handleRefresh}
+              disabled={isRefreshing || isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Link
+              href="/shop"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors"
+            >
+              <Eye className="h-4 w-4 text-brand-600" />
+              View store
+            </Link>
+            <Button variant="brand" className="rounded-xl" onClick={() => { setEditProduct(null); setIsModalOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" /> Add product
+            </Button>
+          </>
+        }
+      />
+
+      {loadError && !isLoading && (
+        <AdminErrorState
+          title="Couldn’t load products"
+          message="Verify the API is reachable and you are signed in as admin."
+          onRetry={() => fetchProducts(1, debouncedSearch, sortBy)}
+        />
+      )}
+
+      {!loadError && (
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
         <div className="p-4 border-b border-gray-100">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <SearchField
@@ -192,10 +238,11 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        {/* Desktop table */}
-        {viewMode === 'table' && <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="sticky top-0 z-10">
+        {/* Tablet / desktop — min width for comfortable columns */}
+        {viewMode === 'table' && (
+        <div className="hidden md:block overflow-x-auto [scrollbar-gutter:stable]">
+          <table className="w-full min-w-[880px] text-sm">
+            <thead>
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-4 py-3">Product</th>
                 <th className="text-left px-4 py-3">Category</th>
@@ -301,10 +348,11 @@ export default function AdminProductsPage() {
               })}
             </tbody>
           </table>
-        </div>}
+        </div>
+        )}
 
         {viewMode === 'grid' && (
-          <div className="hidden lg:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 p-4">
+          <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 p-4">
             {isLoading ? (
               [...Array(8)].map((_, i) => (
                 <div key={i} className="h-72 rounded-2xl bg-gray-100 animate-pulse" />
@@ -353,8 +401,8 @@ export default function AdminProductsPage() {
           </div>
         )}
 
-        {/* Mobile cards */}
-        <div className="lg:hidden divide-y divide-gray-100">
+        {/* Mobile + small tablet cards */}
+        <div className="md:hidden divide-y divide-gray-100">
           {isLoading ? (
             [...Array(6)].map((_, i) => (
               <div key={i} className="p-4">
@@ -418,12 +466,16 @@ export default function AdminProductsPage() {
           )}
         </div>
 
-        {!isLoading && filtered.length === 0 && (
-          <div className="py-12 text-center text-gray-500 text-sm">
-            No products found. <button onClick={() => setIsModalOpen(true)} className="text-brand-600">Add one?</button>
+        {!isLoading && filtered.length === 0 && !loadError && (
+          <div className="py-12 text-center text-gray-500 text-sm px-4">
+            No products match your filters.{' '}
+            <button type="button" onClick={() => setIsModalOpen(true)} className="font-semibold text-brand-600 hover:underline">
+              Add a product
+            </button>
           </div>
         )}
       </div>
+      )}
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

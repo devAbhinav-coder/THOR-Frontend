@@ -200,6 +200,8 @@ export const orderApi = {
   preparePayment: (orderId: string) => api.post(`/orders/${orderId}/prepare-payment`).then(res => res.data),
   cancel: (id: string, reason?: string) =>
     unwrapAxios("orders.cancel", api.patch(`/orders/${id}/cancel`, { reason }), schemas.orderSingle),
+  requestReturn: (id: string, reason: string, note?: string, refundMethod?: string, userBankDetails?: Record<string, string>) =>
+    unwrapAxios("orders.requestReturn", api.post(`/orders/${id}/return`, { reason, note, refundMethod, userBankDetails }), schemas.orderSingle),
 };
 
 export const reviewApi = {
@@ -273,8 +275,14 @@ export const adminApi = {
   ) => unwrapAxios("admin.orderStatus", api.patch(`/admin/orders/${id}/status`, payload), schemas.adminOrderDetail),
   generateOrderInvoice: (id: string) =>
     unwrapAxios("admin.generateInvoice", api.post(`/admin/orders/${id}/generate-invoice`), schemas.successMessageData),
+  processRefund: (
+    id: string,
+    payload: { refundMethod?: string; amount: number; notes?: string }
+  ) => unwrapAxios("admin.processRefund", api.post(`/admin/orders/${id}/refund`, payload), schemas.adminOrderDetail),
   getUsers: (params?: object) =>
     unwrapAxios("admin.users", api.get("/admin/users", { params }), schemas.adminUsersList),
+  getUserDirectoryStats: () =>
+    unwrapAxios("admin.userDirectoryStats", api.get("/admin/users/stats"), schemas.adminUserDirectoryStats),
   getUserInsights: (id: string) =>
     unwrapAxios("admin.userInsights", api.get(`/admin/users/${id}/insights`), schemas.adminUserInsights),
   toggleUserStatus: (id: string) =>
@@ -325,6 +333,12 @@ export const adminApi = {
       schemas.categorySingle,
     ),
   deleteCategory: (id: string) => del204("admin.categories.delete", api.delete(`/admin/categories/${id}`)),
+  getReturns: (params?: object) =>
+    unwrapAxios("admin.returns", api.get("/admin/returns", { params }), schemas.adminOrdersList),
+  getReturnsInsights: () =>
+    unwrapAxios("admin.returnsInsights", api.get("/admin/returns/insights"), schemas.adminReturnsInsights),
+  resolveReturn: (id: string, payload: { action: 'approve' | 'reject'; adminNote?: string }) =>
+    unwrapAxios("admin.resolveReturn", api.patch(`/admin/orders/${id}/return/resolve`, payload), schemas.adminOrderDetail),
 };
 
 export const blogApi = {

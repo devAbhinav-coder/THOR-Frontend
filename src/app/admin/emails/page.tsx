@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Send, Sparkles, Users, ShieldCheck, Globe2 } from "lucide-react";
+import Link from "next/link";
+import { Mail, Send, Sparkles, Users, ShieldCheck, Globe2, ArrowUpRight } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import toast from "react-hot-toast";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 
 type Audience = "users" | "admins" | "all";
 
@@ -73,17 +75,22 @@ export default function AdminEmailsPage() {
   };
 
   return (
-    <div className='p-6 xl:p-8 space-y-6 max-w-6xl'>
-      <div>
-        <h1 className='text-2xl font-serif font-bold text-gray-900'>
-          Email Campaigns
-        </h1>
-        <p className='text-sm text-gray-500 mt-1'>
-          Create and queue one-time branded campaigns.
-        </p>
-      </div>
+    <div className="p-4 sm:p-6 xl:p-8 space-y-6 max-w-6xl mx-auto">
+      <AdminPageHeader
+        title="Email campaigns"
+        description="One-off broadcasts to your audience — queued safely and sent with your branded template. Pair with coupons and storefront updates for launches."
+        actions={
+          <Link
+            href="/admin/storefront"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors"
+          >
+            Storefront
+            <ArrowUpRight className="h-4 w-4 text-brand-600" />
+          </Link>
+        }
+      />
 
-      <div className='grid grid-cols-1 xl:grid-cols-5 gap-5'>
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 lg:gap-6">
         <div className='xl:col-span-3 bg-white rounded-2xl border border-gray-100 p-5 space-y-4'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
             <div>
@@ -223,9 +230,9 @@ export default function AdminEmailsPage() {
                 </div>
               </div>
             </div>
-            <p className='text-xs text-gray-500 mt-3 inline-flex items-center gap-1.5'>
-              <Mail className='h-3.5 w-3.5' />
-              Final output brand template ke andar queue hoga.
+            <p className="text-xs text-gray-500 mt-3 inline-flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5" />
+              Final emails use your brand wrapper from the server queue.
             </p>
           </div>
 
@@ -253,10 +260,9 @@ export default function AdminEmailsPage() {
                 </button>
               ))}
             </div>
-            <div className='mt-4 rounded-xl bg-gray-50 border border-gray-200 p-3'>
-              <p className='text-xs text-gray-600 inline-flex items-center gap-1.5'>
-                <Mail className='h-3.5 w-3.5' />
-                Emails are queued via Redis + BullMQ.
+            <div className="mt-4 rounded-xl bg-gray-50 border border-gray-200 p-3">
+              <p className="text-xs text-gray-600 leading-relaxed">
+                <span className="font-semibold text-gray-700">Delivery:</span> campaigns are queued (Redis / BullMQ) and processed in the background — large sends won&apos;t block this page.
               </p>
             </div>
           </div>

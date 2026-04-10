@@ -1,43 +1,67 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { adminApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, cn } from '@/lib/utils';
 import {
   TrendingUp,
   ShoppingBag,
   Users,
-  BarChart3,
   Eye,
   Layers,
   Package,
   Star,
   Percent,
   ArrowUpRight,
-  Sparkles,
   AlertCircle,
+  RefreshCw,
+  IndianRupee,
 } from 'lucide-react';
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminErrorState from '@/components/admin/AdminErrorState';
+import { Button } from '@/components/ui/button';
+import { RevenueTrendAreaChart, CategoryRevenueBarChart, OrdersMixPieChart } from '@/components/admin/charts';
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    adminApi
-      .getAnalytics()
-      .then((res) => setAnalytics(res.data))
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+  const load = useCallback(async (silent = false) => {
+    if (silent) setIsRefreshing(true);
+    else {
+      setIsLoading(true);
+      setLoadError(false);
+    }
+    try {
+      const res = await adminApi.getAnalytics();
+      setAnalytics(res.data);
+      setLoadError(false);
+    } catch {
+      if (!silent) {
+        setAnalytics(null);
+        setLoadError(true);
+      } else {
+        toast.error('Could not refresh analytics.');
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   }, []);
 
-  if (isLoading) {
+  useEffect(() => {
+    load(false);
+  }, [load]);
+
+  if (isLoading && !analytics) {
     return (
-      <div className="p-8 space-y-4 animate-pulse">
+      <div className="p-6 xl:p-8 space-y-4 animate-pulse max-w-[1600px] mx-auto">
         <div className="h-8 w-56 bg-gray-200 rounded" />
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
@@ -47,16 +71,24 @@ export default function AnalyticsPage() {
       </div>
     );
   }
-  if (!analytics) return <div className="p-8 text-gray-500">Could not load analytics.</div>;
+  if (!isLoading && loadError && !analytics) {
+    return (
+      <div className="p-6 xl:p-8 max-w-3xl mx-auto">
+        <AdminPageHeader
+          title="Analytics"
+          description="Sales velocity, views, and category mix — same data as the dashboard, with more merchandising detail."
+        />
+        <div className="mt-8">
+          <AdminErrorState onRetry={() => load(false)} />
+        </div>
+      </div>
+    );
+  }
+  if (!analytics) return null;
 
   const { overview, revenueByMonth } = analytics;
-  const maxRevenue = Math.max(...revenueByMonth.map((d) => d.revenue), 1);
-  /** Fixed chart height (px) — % heights inside nested flex were collapsing to 0 */
-  const CHART_INNER_PX = 200;
   const topViewed = analytics.topViewedProducts ?? [];
   const revenueByCat = analytics.revenueByCategory ?? [];
-  const maxCatRev = Math.max(...revenueByCat.map((c) => c.revenue), 1);
-
   const primaryKpis = [
     { label: 'Total revenue', value: formatPrice(overview.totalRevenue), sub: `${formatPrice(overview.monthRevenue)} this month`, icon: TrendingUp },
     { label: 'Total orders', value: overview.totalOrders.toLocaleString(), sub: `${overview.monthOrders} this month`, icon: ShoppingBag },
@@ -65,7 +97,7 @@ export default function AnalyticsPage() {
       label: 'Catalogue',
       value: overview.totalProducts.toLocaleString(),
       sub: `${analytics.lowStockProducts?.length ?? 0} low stock (<${LOW_STOCK_ALERT_EXCLUSIVE_MAX} units)`,
-      icon: BarChart3,
+      icon: Package,
     },
   ];
 
@@ -77,85 +109,88 @@ export default function AnalyticsPage() {
   ];
 
   return (
-    <div className="p-6 xl:p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-serif font-bold text-gray-900">Analytics &amp; insights</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Sales, traffic-style product views, and category performance — use this to spot what to promote or restock.
-          </p>
-        </div>
-        <Link
-          href="/admin/products"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700"
-        >
-          Manage products <ArrowUpRight className="h-4 w-4" />
-        </Link>
-      </div>
+    <div className="min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white">
+      <div className="p-4 sm:p-6 xl:p-8 space-y-8 max-w-[1600px] mx-auto">
+        <AdminPageHeader
+        title="Analytics & insights"
+        badge="Merchandising"
+        description="Traffic, conversion, and category revenue — same API as Dashboard. For gross vs refunds, use Revenue."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-gray-200 bg-white shadow-sm"
+              onClick={() => load(true)}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Link
+              href="/admin/revenue"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-950 px-3 py-2 text-sm font-semibold text-white hover:from-navy-800 hover:to-navy-900 transition-colors shadow-md"
+            >
+              <IndianRupee className="h-4 w-4 text-gold-300" />
+              Revenue
+            </Link>
+            <Link
+              href="/admin/products"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors shadow-sm"
+            >
+              Products <ArrowUpRight className="h-4 w-4 text-brand-600" />
+            </Link>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {primaryKpis.map((item) => (
-          <div key={item.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-            <div className="h-9 w-9 rounded-lg bg-brand-50 flex items-center justify-center mb-2">
+          <div
+            key={item.label}
+            className={cn(
+              'group rounded-2xl border border-gray-100/90 bg-gradient-to-br from-white to-brand-50/20 p-4 shadow-sm',
+              'hover:shadow-lg hover:border-brand-200/60 transition-all duration-200',
+            )}
+          >
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-50 to-white border border-brand-100/60 flex items-center justify-center mb-2 group-hover:border-brand-200">
               <item.icon className="h-5 w-5 text-brand-600" />
             </div>
-            <p className="text-xl font-bold text-gray-900 tabular-nums">{item.value}</p>
+            <p className="text-xl font-bold font-serif text-gray-900 tabular-nums tracking-tight">{item.value}</p>
             <p className="text-[11px] text-gray-500 mt-0.5">{item.sub}</p>
-            <p className="text-xs font-medium text-gray-600 mt-1">{item.label}</p>
+            <p className="text-xs font-semibold text-gray-800 mt-1.5">{item.label}</p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {secondaryKpis.map((item) => (
-          <div key={item.label} className="bg-gradient-to-br from-navy-900 to-navy-950 rounded-xl p-4 text-white border border-navy-800">
-            <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center mb-2">
+          <div
+            key={item.label}
+            className="rounded-2xl border border-navy-800 bg-gradient-to-br from-navy-900 via-navy-950 to-navy-900 p-4 text-white shadow-xl shadow-navy-950/25"
+          >
+            <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center mb-2 border border-white/10">
               <item.icon className="h-4 w-4 text-gold-300" />
             </div>
-            <p className="text-lg font-bold tabular-nums">{item.value}</p>
-            <p className="text-[11px] text-white/50 mt-0.5">{item.sub}</p>
-            <p className="text-xs font-medium text-white/80 mt-1">{item.label}</p>
+            <p className="text-lg font-bold tabular-nums tracking-tight">{item.value}</p>
+            <p className="text-[11px] text-white/45 mt-0.5">{item.sub}</p>
+            <p className="text-xs font-medium text-white/90 mt-1">{item.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-        <h2 className="font-semibold text-gray-900 mb-1">Monthly revenue</h2>
-        <p className="text-xs text-gray-500 mb-6">Last 12 months · paid orders</p>
-        {revenueByMonth.length === 0 ? (
-          <div className="h-48 flex items-center justify-center text-gray-400 text-sm">No revenue data yet</div>
-        ) : (
-          <div className="flex items-end gap-2 sm:gap-3 justify-between sm:justify-around pt-2" style={{ minHeight: CHART_INNER_PX + 28 }}>
-            {revenueByMonth.map((data) => {
-              const barPx = Math.max(Math.round((data.revenue / maxRevenue) * CHART_INNER_PX), 6);
-              return (
-                <div
-                  key={`${data._id.year}-${data._id.month}`}
-                  className="flex flex-col items-center gap-2 flex-1 min-w-0 max-w-[56px]"
-                >
-                  <div
-                    className="w-full max-w-[44px] bg-gradient-to-t from-brand-700 to-brand-400 hover:opacity-90 rounded-t-md transition-opacity cursor-default relative group shadow-md flex-shrink-0"
-                    style={{ height: barPx }}
-                    title={`${formatPrice(data.revenue)} · ${data.orders} orders`}
-                  >
-                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none shadow-lg">
-                      {formatPrice(data.revenue)}
-                      <br />
-                      <span className="text-gray-400">{data.orders} orders</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-gray-500 truncate w-full text-center leading-tight">
-                    {MONTHS[data._id.month - 1]}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      <div className="rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]">
+        <RevenueTrendAreaChart
+          data={revenueByMonth}
+          height={340}
+          title="Revenue & orders over time"
+          subtitle="Paid revenue (area) and number of orders (line) — last 12 months"
+        />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+        <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3 mb-4">
             <div>
               <h2 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -222,37 +257,17 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-          <h2 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-gold-500" />
-            Revenue by category
-          </h2>
-          <p className="text-xs text-gray-500 mb-5">From paid orders · units × line prices</p>
-          {revenueByCat.length === 0 ? (
-            <p className="text-gray-400 text-sm py-8 text-center">No category revenue yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {revenueByCat.map((row) => (
-                <div key={row._id}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-700 font-medium truncate pr-2">{row._id}</span>
-                    <span className="text-gray-900 font-semibold tabular-nums">{formatPrice(row.revenue)}</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-navy-700 to-brand-500 rounded-full"
-                      style={{ width: `${(row.revenue / maxCatRev) * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{row.units} units</p>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-sm">
+          <CategoryRevenueBarChart
+            data={revenueByCat}
+            height={Math.min(420, 120 + revenueByCat.length * 36)}
+            title="Revenue by category"
+            subtitle="Paid orders · bar length = relative revenue"
+          />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+      <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
@@ -288,8 +303,8 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-          <h2 className="font-semibold text-gray-900 mb-5">Top selling (units)</h2>
+        <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm">
+          <h2 className="font-serif font-bold text-gray-900 mb-5">Top selling (units)</h2>
           {analytics.topProducts.length === 0 ? (
             <p className="text-gray-400 text-sm">No sales data yet.</p>
           ) : (
@@ -311,40 +326,16 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-          <h2 className="font-semibold text-gray-900 mb-5">Order status mix</h2>
-          {analytics.ordersByStatus.length === 0 ? (
-            <p className="text-gray-400 text-sm">No orders yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {analytics.ordersByStatus.map((item) => (
-                <div key={item._id} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="capitalize text-gray-700">{item._id}</span>
-                    <span className="font-medium text-gray-900 tabular-nums">
-                      {item.count}{' '}
-                      <span className="text-gray-400 text-xs">
-                        (
-                        {overview.totalOrders > 0
-                          ? Math.round((item.count / overview.totalOrders) * 100)
-                          : 0}
-                        %)
-                      </span>
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-brand-500 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${overview.totalOrders > 0 ? (item.count / overview.totalOrders) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="rounded-2xl border border-gray-200/80 bg-white p-4 sm:p-6 shadow-sm">
+          <OrdersMixPieChart
+            data={analytics.ordersByStatus}
+            totalOrders={overview.totalOrders}
+            height={320}
+            title="Order pipeline"
+            subtitle="Share of all orders in your store"
+          />
         </div>
+      </div>
       </div>
     </div>
   );
