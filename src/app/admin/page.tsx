@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
               data={analytics.revenueByMonth}
               height={320}
               title="Revenue & order volume"
-              subtitle="Trailing 12 months · area = paid revenue · line = order count"
+              subtitle="Trailing 12 months — paid revenue (gradient) and order count (line)"
             />
           </div>
           <div className="xl:col-span-2 rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]">

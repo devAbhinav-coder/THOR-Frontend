@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Package, Truck, CheckCircle2, Clock, AlertCircle, TrendingUp, RefreshCw, LayoutGrid, List } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package, Truck, CheckCircle2, Clock, AlertCircle, TrendingUp, RefreshCw, LayoutGrid, List } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Order, OrderStatus, DashboardAnalytics } from '@/types';
 import { formatPrice, formatDate, getOrderStatusColor, cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminErrorState from '@/components/admin/AdminErrorState';
+import { OrdersInsightsPanel } from '@/components/admin/OrdersInsightsPanel';
 
 const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
@@ -263,36 +264,11 @@ export default function AdminOrdersPage() {
         })}
       </div>
 
-      {/* Revenue bar chart */}
-      {analytics?.revenueByMonth && analytics.revenueByMonth.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">Revenue — Last 6 months</h3>
-            <div className="text-xs text-gray-400">Hover bars for details</div>
-          </div>
-          <div className="flex items-end gap-2 h-28">
-            {analytics.revenueByMonth.slice(-6).map((d, i) => {
-              const maxR = Math.max(...analytics.revenueByMonth.slice(-6).map((x) => x.revenue), 1);
-              const pct = (d.revenue / maxR) * 100;
-              const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                    {formatPrice(d.revenue)} · {d.orders} orders
-                  </div>
-                  <div
-                    className="w-full rounded-t-lg bg-gradient-to-t from-brand-700 via-brand-500 to-brand-300 transition-all duration-500 min-h-[4px] shadow-[0_6px_20px_rgba(232,96,76,0.35)]"
-                    style={{ height: `${Math.max(pct, 4)}%` }}
-                  />
-                  <span className="text-[10px] text-gray-400 font-medium">
-                    {MONTHS[d._id.month - 1]}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Order analytics: volume trend + status mix (no revenue chart here) */}
+      {analytics &&
+        (analytics.revenueByMonth.length > 0 || analytics.ordersByStatus.length > 0) && (
+          <OrdersInsightsPanel analytics={analytics} />
+        )}
 
       {ordersLoadError && !isLoading && (
         <AdminErrorState
@@ -432,13 +408,16 @@ export default function AdminOrdersPage() {
             {isLoading ? (
               [...Array(6)].map((_, i) => <div key={i} className="h-48 rounded-2xl bg-gray-100 animate-pulse" />)
             ) : filteredOrders.map((order) => (
-              <div key={order._id} className="rounded-2xl border border-gray-100 bg-white p-4 hover:shadow-sm transition-shadow">
+              <div
+                key={order._id}
+                className="rounded-2xl border border-gray-200/90 bg-white p-4 shadow-sm transition-shadow hover:border-gray-300 hover:shadow-md"
+              >
                 <div className="flex items-start justify-between gap-2">
-                  <div onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)} className="cursor-pointer group">
-                    <p className="text-sm font-semibold text-brand-600 group-hover:text-brand-700 underline-offset-4 group-hover:underline">{order.orderNumber}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{typeof order.user === 'object' ? order.user.name : '—'}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{order.orderNumber}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{typeof order.user === 'object' ? order.user.name : '—'}</p>
                   </div>
-                  <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full capitalize', getOrderStatusColor(order.status))}>
+                  <span className={cn('shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full capitalize', getOrderStatusColor(order.status))}>
                     {order.status}
                   </span>
                 </div>
@@ -446,9 +425,31 @@ export default function AdminOrdersPage() {
                   <p>Date: <span className="text-gray-700">{formatDate(order.createdAt)}</span></p>
                   <p>Items: <span className="text-gray-700">{(order.items ?? []).length}</span></p>
                   <p>Total: <span className="text-gray-900 font-bold">{formatPrice(order.total)}</span></p>
+                  <p>
+                    Payment:{' '}
+                    <span
+                      className={cn(
+                        'font-semibold capitalize',
+                        order.paymentStatus === 'paid'
+                          ? 'text-green-700'
+                          : order.paymentStatus === 'failed'
+                            ? 'text-red-700'
+                            : 'text-amber-700',
+                      )}
+                    >
+                      {order.paymentStatus}
+                    </span>
+                  </p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-gray-50">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Change Status</p>
+                <Link
+                  href={`/admin/orders/${encodeURIComponent(order._id)}`}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-800"
+                >
+                  View details
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                </Link>
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Change status</p>
                   <div className="flex flex-wrap gap-1.5">
                     {ORDER_STATUSES.filter((s) => s !== order.status).map((status) => (
                       <button

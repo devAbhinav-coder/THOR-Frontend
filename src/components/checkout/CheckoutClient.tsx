@@ -17,7 +17,6 @@ import {
   Home,
   ArrowRight,
   Loader2,
-  Lock,
   MapPin,
   Minus,
   Package,
@@ -74,6 +73,8 @@ type AddressForm = z.infer<typeof addressSchema>;
 
 const SHIPPING_THRESHOLD = 1000;
 const SHIPPING_CHARGE = 100;
+/** Must match backend `COD_HANDLING_FEE` — added when paying cash on delivery */
+const COD_HANDLING_FEE = 100;
 const TAX_RATE = 0;
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
 
@@ -143,6 +144,21 @@ export default function CheckoutClient() {
   const [showShippingForm, setShowShippingForm] = useState(false);
   const shippingFieldsRef = useRef<HTMLDivElement>(null);
   const didInitDefaultSavedAddress = useRef(false);
+  /** Mobile & tablet: step 1 address → 2 payment → 3 review & pay */
+  const [mobileCheckoutStep, setMobileCheckoutStep] = useState(1);
+  const [isCheckoutNarrow, setIsCheckoutNarrow] = useState(false);
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<
+    "cod" | "razorpay"
+  >("cod");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsCheckoutNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   // Custom Order support
   const searchParams = useSearchParams();
@@ -257,13 +273,15 @@ export default function CheckoutClient() {
     fetchEligibleCoupons();
   }, [cart?.subtotal, cart?.items?.length, isAuthenticated, buyNowItem]);
 
-  const paymentMethod = existingOrder ? "razorpay" : ("cod" as const);
+  const paymentMethodForApi =
+    existingOrder ? "razorpay" : checkoutPaymentMethod;
 
   const {
     subtotal,
     discount,
     subtotalAfterDiscount,
     shippingCharge,
+    codFee,
     tax,
     total,
     hasAppliedCoupon,
@@ -287,10 +305,14 @@ export default function CheckoutClient() {
       existingOrder ?
         existingOrder.tax
       : Math.round(subtotalAfterDiscount * TAX_RATE * 100) / 100;
+    const codFee =
+      existingOrder ? (existingOrder.codFee ?? 0)
+      : checkoutPaymentMethod === "cod" ? COD_HANDLING_FEE
+      : 0;
     const total =
       existingOrder ?
         existingOrder.total
-      : subtotalAfterDiscount + shippingCharge + tax;
+      : subtotalAfterDiscount + shippingCharge + tax + codFee;
     const hasAppliedCoupon =
       existingOrder ? !!existingOrder.coupon
       : buyNowItem ? !!buyNowCouponCode
@@ -303,6 +325,7 @@ export default function CheckoutClient() {
       discount,
       subtotalAfterDiscount,
       shippingCharge,
+      codFee,
       tax,
       total,
       hasAppliedCoupon,
@@ -317,7 +340,10 @@ export default function CheckoutClient() {
     buyNowCouponCode,
     buyNowCouponDiscount,
     appliedCouponCode,
+    checkoutPaymentMethod,
   ]);
+
+  const showMobileCheckoutWizard = isCheckoutNarrow && !existingOrder;
 
   const applySelectedCoupon = useCallback(
     async (code: string) => {
@@ -389,6 +415,19 @@ export default function CheckoutClient() {
     if (!ok) return;
     setShowShippingForm(false);
   }, [trigger]);
+
+  const goToMobilePaymentStep = useCallback(async () => {
+    const ok = await trigger();
+    if (!ok) {
+      toast.error("Please complete your delivery address.");
+      return;
+    }
+    setMobileCheckoutStep(2);
+  }, [trigger]);
+
+  const goToMobileReviewStep = useCallback(() => {
+    setMobileCheckoutStep(3);
+  }, []);
 
   const openNewAddressForm = useCallback(() => {
     setSelectedAddressId("");
@@ -481,7 +520,7 @@ export default function CheckoutClient() {
           const res = await orderApi.create(
             {
               shippingAddress: { ...addressData, phone: normalizedPhone },
-              paymentMethod,
+              paymentMethod: paymentMethodForApi,
               ...(buyNowCouponCode ? { couponCode: buyNowCouponCode } : {}),
               ...(buyNowItem ?
                 {
@@ -496,17 +535,102 @@ export default function CheckoutClient() {
             },
             { idempotencyKey },
           );
-          const { order } = res.data;
-          if (buyNowItem) {
-            if (typeof window !== "undefined") {
-              sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+
+          if ("razorpayOrder" in res.data) {
+            const { order, razorpayOrder } = res.data;
+            const keyId = razorpayOrder.keyId;
+            if (!keyId) {
+              toast.error(
+                "Payment gateway is not configured. Try COD or contact support.",
+              );
+              await fetchCart().catch(() => {});
+              return;
             }
-            setBuyNowItem(null);
+
+            const scriptLoaded = await loadRazorpayScript();
+            if (!scriptLoaded) {
+              toast.error("Payment SDK failed to load. Refresh and try again.");
+              await fetchCart().catch(() => {});
+              return;
+            }
+
+            const openRazorpay = () => {
+              const options = {
+                key: keyId,
+                amount: razorpayOrder.amount,
+                currency: razorpayOrder.currency || "INR",
+                order_id: razorpayOrder.id,
+                name: "The House of Rani",
+                description: `Order ${order.orderNumber}`,
+                handler: async (response: RazorpaySuccessPayload) => {
+                  setIsPlacingOrder(true);
+                  try {
+                    const verifyRes = await orderApi.verifyPayment({
+                      orderId: order._id,
+                      razorpayOrderId: response.razorpay_order_id,
+                      razorpayPaymentId: response.razorpay_payment_id,
+                      razorpaySignature: response.razorpay_signature,
+                    });
+                    if (buyNowItem) {
+                      if (typeof window !== "undefined") {
+                        sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+                      }
+                      setBuyNowItem(null);
+                    } else {
+                      resetCart();
+                    }
+                    holdPlacingUntilOverlay = true;
+                    setPendingOrderSuccessId(verifyRes.data.order._id);
+                  } catch (err: unknown) {
+                    const msg =
+                      err instanceof Error ?
+                        err.message
+                      : "Payment verification failed";
+                    toast.error(msg);
+                    await fetchCart().catch(() => {});
+                  } finally {
+                    setIsPlacingOrder(false);
+                  }
+                },
+                modal: {
+                  ondismiss: () => {
+                    toast(
+                      "Payment window closed. You can complete payment from your order details.",
+                      { duration: 5000 },
+                    );
+                  },
+                },
+                prefill: {
+                  name: addressData.name,
+                  email: user?.email,
+                  contact: normalizedPhone,
+                },
+                theme: { color: "#e8604c" },
+              };
+
+              const RazorpayCtor = getRazorpayConstructor();
+              if (!RazorpayCtor) {
+                toast.error("Razorpay is not available in this browser.");
+                return;
+              }
+              const rzp = new RazorpayCtor(options);
+              rzp.open();
+            };
+
+            openRazorpay();
           } else {
-            resetCart();
+            const { order } = res.data;
+            if (buyNowItem) {
+              if (typeof window !== "undefined") {
+                sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+              }
+              setBuyNowItem(null);
+            } else {
+              resetCart();
+            }
+            holdPlacingUntilOverlay = true;
+            setPendingOrderSuccessId(order._id);
           }
-          holdPlacingUntilOverlay = true;
-          setPendingOrderSuccessId(order._id);
         }
       } catch (err: unknown) {
         const error = err as { message?: string };
@@ -518,10 +642,11 @@ export default function CheckoutClient() {
     [
       existingOrder,
       buyNowItem,
-      paymentMethod,
       user?.email,
       resetCart,
+      fetchCart,
       buyNowCouponCode,
+      paymentMethodForApi,
     ],
   );
 
@@ -759,813 +884,981 @@ export default function CheckoutClient() {
           </p>
         </header>
 
-        <form onSubmit={handleSubmit(onSubmit)} className='min-w-0'>
+        {showMobileCheckoutWizard && (
+          <div
+            className='mb-6 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5 lg:hidden'
+            aria-label='Checkout steps'
+          >
+            <div className='grid grid-cols-3 gap-2 text-center'>
+              {(
+                [
+                  { step: 1, label: "Shipping" },
+                  { step: 2, label: "Payment" },
+                  { step: 3, label: "Review" },
+                ] as const
+              ).map(({ step, label }) => (
+                <div key={step} className='min-w-0'>
+                  <div
+                    className={cn(
+                      "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-black transition-colors",
+                      mobileCheckoutStep >= step ?
+                        "bg-[#b02a37] text-white shadow-md"
+                      : "bg-gray-200 text-gray-500",
+                    )}
+                  >
+                    {step}
+                  </div>
+                  <p
+                    className={cn(
+                      "mt-2 text-[10px] font-bold uppercase leading-tight tracking-wide text-gray-600",
+                      mobileCheckoutStep === step && "text-[#b02a37]",
+                    )}
+                  >
+                    {label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <form
+          className='min-w-0'
+          onSubmit={(e) => {
+            if (showMobileCheckoutWizard && mobileCheckoutStep < 3) {
+              e.preventDefault();
+              return;
+            }
+            void handleSubmit(onSubmit)(e);
+          }}
+        >
           <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 xl:gap-10 min-w-0 items-start'>
             <div className='lg:col-span-7 space-y-6 min-w-0'>
-              <section className='rounded-2xl bg-white p-5 sm:p-7 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
-                <div className='flex items-center gap-2.5 mb-6'>
-                  <div
-                    className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-xl bg-red-50",
-                      checkoutAccent,
-                    )}
-                  >
-                    <MapPin className='h-5 w-5' strokeWidth={2} />
-                  </div>
-                  <h2 className='text-lg sm:text-xl font-bold text-navy-900'>
-                    Shipping address
-                  </h2>
-                </div>
-
-                <div className='mb-6 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3.5'>
-                  <p className='text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold'>
-                    Email
-                  </p>
-                  <p className='mt-1 text-sm font-semibold text-gray-900 break-all'>
-                    {user?.email || "—"}
-                  </p>
-                </div>
-
-                {showManualAddressPreview && (
-                  <div className='mb-6 rounded-2xl border-2 border-[#b02a37]/40 bg-red-50/40 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300'>
-                    <div className='flex items-start justify-between gap-3'>
-                      <div className='min-w-0'>
-                        <p className='flex items-center gap-2 text-sm font-black text-navy-900'>
-                          <Home className='h-4 w-4 shrink-0 text-[#b02a37]' />
-                          New address
-                        </p>
-                        <p className='mt-1 text-sm text-gray-700'>
-                          {getValues("name")} · {getValues("phone")}
-                        </p>
-                        <p className='mt-1 text-sm text-gray-600 leading-relaxed'>
-                          {getValues("street")}, {getValues("city")},{" "}
-                          {getValues("state")} {getValues("pincode")}
-                        </p>
-                      </div>
-                      <button
-                        type='button'
-                        onClick={() => {
-                          setShowShippingForm(true);
-                          requestAnimationFrame(() =>
-                            shippingFieldsRef.current?.scrollIntoView({
-                              behavior: "smooth",
-                              block: "start",
-                            }),
-                          );
-                        }}
-                        className='inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#b02a37]/35 bg-white px-3 py-1.5 text-xs font-bold text-[#b02a37] shadow-sm transition hover:bg-red-50'
-                      >
-                        <Pencil className='h-3.5 w-3.5' />
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {user?.addresses && user.addresses.length > 0 && (
-                  <div className='mb-6'>
-                    <p className='text-sm font-bold text-navy-900 mb-3'>
-                      Saved addresses
-                    </p>
-                    <div className='space-y-3'>
-                      {(user.addresses || []).map((addr) => (
-                        <div key={addr._id} className='relative'>
-                          <label
-                            className={cn(
-                              "flex items-start gap-3 rounded-2xl border-2 p-4 pr-24 cursor-pointer transition-all duration-300",
-                              selectedAddressId === addr._id ?
-                                cn(
-                                  "border-[#b02a37] bg-red-50/50 shadow-sm",
-                                  checkoutRing,
-                                  "ring-1",
-                                )
-                              : "border-gray-200 hover:border-gray-300 bg-white",
-                            )}
-                          >
-                            <input
-                              type='radio'
-                              name='savedAddress'
-                              value={addr._id}
-                              checked={selectedAddressId === addr._id}
-                              onChange={() => {
-                                loadAddress(addr._id!);
-                                setShowShippingForm(false);
-                              }}
-                              className='mt-1 h-4 w-4 accent-[#b02a37]'
-                            />
-                            <div className='min-w-0 flex-1 text-sm'>
-                              <p className='flex items-center gap-2 font-bold text-navy-900'>
-                                <Home className='h-4 w-4 shrink-0 opacity-70' />
-                                {addr.label || "Address"}
-                              </p>
-                              <p className='mt-1 text-gray-600'>
-                                {addr.name} · {addr.phone}
-                              </p>
-                              <p className='mt-1 text-gray-600 leading-relaxed'>
-                                {addr.street}, {addr.city}, {addr.state}{" "}
-                                {addr.pincode}
-                              </p>
-                            </div>
-                          </label>
-                          <button
-                            type='button'
-                            onClick={() => {
-                              loadAddress(addr._id!);
-                              setShowShippingForm(true);
-                              requestAnimationFrame(() =>
-                                scrollToShippingFields(),
-                              );
-                            }}
-                            className='absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[#b02a37]/30 bg-white px-3 py-1.5 text-xs font-bold text-[#b02a37] shadow-sm transition hover:bg-red-50'
-                          >
-                            <Pencil className='h-3.5 w-3.5' />
-                            Edit
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type='button'
-                        onClick={() => openNewAddressForm()}
-                        className='text-sm font-bold text-[#b02a37] hover:text-[#8f222c] transition-colors'
-                      >
-                        + Add new address
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div
-                  ref={shippingFieldsRef}
-                  id='checkout-shipping-fields'
-                  className={cn(
-                    "scroll-mt-28 space-y-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50/30 p-4 sm:p-5 transition-all duration-300",
-                    !showShippingForm && "hidden",
-                  )}
-                  aria-hidden={!showShippingForm}
-                >
-                  <p className='text-xs font-bold uppercase tracking-widest text-gray-400'>
-                    {selectedAddressId ? "Edit address" : "Delivery details"}
-                  </p>
-                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                    <Input
-                      {...register("name")}
-                      label='Full name'
-                      placeholder='e.g. Rani Sharma'
-                      error={errors.name?.message}
-                    />
-                    <Input
-                      {...register("phone")}
-                      label='Mobile number'
-                      placeholder='e.g. 9876543210'
-                      error={errors.phone?.message}
-                      inputMode='tel'
-                    />
-                  </div>
-
-                  <Input
-                    {...register("street")}
-                    label='Street address'
-                    placeholder='House no., Street, Area'
-                    error={errors.street?.message}
-                  />
-                  <div className='grid grid-cols-2 gap-4'>
-                    <Input
-                      {...register("city")}
-                      label='City'
-                      placeholder='City'
-                      error={errors.city?.message}
-                    />
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 mb-1'>
-                        State
-                      </label>
-                      <select
-                        {...register("state")}
-                        className='w-full h-10 px-3 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#b02a37]/30'
-                      >
-                        <option value=''>Select state</option>
-                        {INDIAN_STATES.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.state && (
-                        <p className='text-xs text-red-600 mt-1'>
-                          {errors.state.message}
-                        </p>
+              {(!showMobileCheckoutWizard || mobileCheckoutStep === 1) && (
+                <section className='rounded-2xl bg-white p-5 sm:p-7 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
+                  <div className='flex items-center gap-2.5 mb-6'>
+                    <div
+                      className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-xl bg-red-50",
+                        checkoutAccent,
                       )}
+                    >
+                      <MapPin className='h-5 w-5' strokeWidth={2} />
                     </div>
+                    <h2 className='text-lg sm:text-xl font-bold text-navy-900'>
+                      Shipping address
+                    </h2>
                   </div>
-                  <Input
-                    {...register("pincode")}
-                    label='Pincode'
-                    placeholder='6-digit PIN'
-                    maxLength={6}
-                    error={errors.pincode?.message}
-                  />
-                  <Button
-                    type='button'
-                    variant='outline'
-                    className='w-full rounded-xl border-[#b02a37]/40 font-bold text-[#b02a37] hover:bg-red-50'
-                    onClick={() => void confirmShippingForm()}
-                  >
-                    Save &amp; use this address
-                  </Button>
-                </div>
-              </section>
 
-              <section className='rounded-2xl bg-white p-5 sm:p-7 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
-                <div className='flex items-center gap-2.5 mb-5'>
+                  <div className='mb-6 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3.5'>
+                    <p className='text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold'>
+                      Email
+                    </p>
+                    <p className='mt-1 text-sm font-semibold text-gray-900 break-all'>
+                      {user?.email || "—"}
+                    </p>
+                  </div>
+
+                  {showManualAddressPreview && (
+                    <div className='mb-6 rounded-2xl border-2 border-[#b02a37]/40 bg-red-50/40 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300'>
+                      <div className='flex items-start justify-between gap-3'>
+                        <div className='min-w-0'>
+                          <p className='flex items-center gap-2 text-sm font-black text-navy-900'>
+                            <Home className='h-4 w-4 shrink-0 text-[#b02a37]' />
+                            New address
+                          </p>
+                          <p className='mt-1 text-sm text-gray-700'>
+                            {getValues("name")} · {getValues("phone")}
+                          </p>
+                          <p className='mt-1 text-sm text-gray-600 leading-relaxed'>
+                            {getValues("street")}, {getValues("city")},{" "}
+                            {getValues("state")} {getValues("pincode")}
+                          </p>
+                        </div>
+                        <button
+                          type='button'
+                          onClick={() => {
+                            setShowShippingForm(true);
+                            requestAnimationFrame(() =>
+                              shippingFieldsRef.current?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "start",
+                              }),
+                            );
+                          }}
+                          className='inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#b02a37]/35 bg-white px-3 py-1.5 text-xs font-bold text-[#b02a37] shadow-sm transition hover:bg-red-50'
+                        >
+                          <Pencil className='h-3.5 w-3.5' />
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {user?.addresses && user.addresses.length > 0 && (
+                    <div className='mb-6'>
+                      <p className='text-sm font-bold text-navy-900 mb-3'>
+                        Saved addresses
+                      </p>
+                      <div className='space-y-3'>
+                        {(user.addresses || []).map((addr) => (
+                          <div key={addr._id} className='relative'>
+                            <label
+                              className={cn(
+                                "flex items-start gap-3 rounded-2xl border-2 p-4 pr-24 cursor-pointer transition-all duration-300",
+                                selectedAddressId === addr._id ?
+                                  cn(
+                                    "border-[#b02a37] bg-red-50/50 shadow-sm",
+                                    checkoutRing,
+                                    "ring-1",
+                                  )
+                                : "border-gray-200 hover:border-gray-300 bg-white",
+                              )}
+                            >
+                              <input
+                                type='radio'
+                                name='savedAddress'
+                                value={addr._id}
+                                checked={selectedAddressId === addr._id}
+                                onChange={() => {
+                                  loadAddress(addr._id!);
+                                  setShowShippingForm(false);
+                                }}
+                                className='mt-1 h-4 w-4 accent-[#b02a37]'
+                              />
+                              <div className='min-w-0 flex-1 text-sm'>
+                                <p className='flex items-center gap-2 font-bold text-navy-900'>
+                                  <Home className='h-4 w-4 shrink-0 opacity-70' />
+                                  {addr.label || "Address"}
+                                </p>
+                                <p className='mt-1 text-gray-600'>
+                                  {addr.name} · {addr.phone}
+                                </p>
+                                <p className='mt-1 text-gray-600 leading-relaxed'>
+                                  {addr.street}, {addr.city}, {addr.state}{" "}
+                                  {addr.pincode}
+                                </p>
+                              </div>
+                            </label>
+                            <button
+                              type='button'
+                              onClick={() => {
+                                loadAddress(addr._id!);
+                                setShowShippingForm(true);
+                                requestAnimationFrame(() =>
+                                  scrollToShippingFields(),
+                                );
+                              }}
+                              className='absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[#b02a37]/30 bg-white px-3 py-1.5 text-xs font-bold text-[#b02a37] shadow-sm transition hover:bg-red-50'
+                            >
+                              <Pencil className='h-3.5 w-3.5' />
+                              Edit
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type='button'
+                          onClick={() => openNewAddressForm()}
+                          className='text-sm font-bold text-[#b02a37] hover:text-[#8f222c] transition-colors'
+                        >
+                          + Add new address
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div
+                    ref={shippingFieldsRef}
+                    id='checkout-shipping-fields'
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-xl bg-red-50",
-                      checkoutAccent,
+                      "scroll-mt-28 space-y-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50/30 p-4 sm:p-5 transition-all duration-300",
+                      !showShippingForm && "hidden",
                     )}
+                    aria-hidden={!showShippingForm}
                   >
-                    <Truck className='h-5 w-5' strokeWidth={2} />
-                  </div>
-                  <h2 className='text-lg sm:text-xl font-bold text-navy-900'>
-                    Payment method
-                  </h2>
-                </div>
-
-                {existingOrder ?
-                  <div className='rounded-2xl border-2 border-[#b02a37]/25 bg-gradient-to-br from-red-50/80 to-white p-5 transition-transform duration-300'>
-                    <div className='flex items-start gap-3'>
-                      <CheckCircle2 className='h-6 w-6 text-[#b02a37] shrink-0 mt-0.5' />
-                      <div>
-                        <p className='font-bold text-navy-900'>
-                          Complete payment
-                        </p>
-                        <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
-                          You&apos;ll finish payment on the next step after
-                          placing your order. Secure processing only.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                : <>
-                    <div className='mb-3 flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50/50 px-4 py-3.5 opacity-80 animate-in fade-in slide-in-from-bottom-1 duration-300'>
-                      <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-gray-400 shadow-sm'>
-                        <Wallet className='h-5 w-5' />
-                      </div>
-                      <div className='min-w-0 flex-1'>
-                        <p className='text-sm font-bold text-gray-600'>
-                          Razorpay
-                        </p>
-                        <p className='text-xs text-gray-500 leading-snug'>
-                          UPI, credit / debit cards &amp; net banking — online
-                          checkout via Razorpay (coming soon on this store).
-                        </p>
-                      </div>
-                      <div className='flex flex-col items-end gap-0.5 shrink-0'>
-                        <span className='flex items-center gap-1 rounded-full bg-gray-200/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-gray-500'>
-                          <Lock className='h-3 w-3' />
-                          Soon
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className='rounded-2xl border-2 border-[#b02a37] bg-gradient-to-br from-red-50 via-white to-red-50/30 p-5 shadow-sm transition-all duration-300 hover:shadow-md animate-in fade-in zoom-in-95'>
-                      <div className='flex items-start gap-3'>
-                        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#b02a37] text-white shadow-md'>
-                          <Banknote className='h-5 w-5' />
-                        </div>
-                        <div className='min-w-0 flex-1'>
-                          <p className='font-bold text-navy-900'>
-                            Cash on delivery
-                          </p>
-                          <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
-                            Pay when your order arrives at your doorstep.
-                          </p>
-                        </div>
-                        <CheckCircle2 className='h-6 w-6 text-[#b02a37] shrink-0' />
-                      </div>
-                    </div>
-                  </>
-                }
-              </section>
-            </div>
-
-            <div className='lg:col-span-5 min-w-0'>
-              <div className='rounded-2xl bg-white p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 lg:sticky lg:top-24 min-w-0 max-w-full transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
-                {/* Coupons (shown above order items) */}
-                <div className='mb-5 pb-5 border-b border-gray-100 min-w-0'>
-                  <div className='flex items-center justify-between gap-2 mb-3 min-w-0'>
-                    <div className='flex items-center gap-2 min-w-0'>
-                      <BadgePercent className='h-5 w-5 text-brand-600 shrink-0' />
-                      <h2 className='text-lg font-semibold text-gray-900 truncate'>
-                        Coupons
-                      </h2>
-                    </div>
-                    {eligibleCoupons.length > 2 && (
-                      <button
-                        type='button'
-                        onClick={() => setIsAllCouponsOpen(true)}
-                        className='text-sm font-semibold text-brand-600 hover:text-brand-700 shrink-0'
-                      >
-                        View all
-                      </button>
-                    )}
-                  </div>
-
-                  {hasAppliedCoupon ?
-                    <div className='rounded-xl border border-green-200 bg-green-50 p-3 min-w-0 space-y-3'>
-                      <div className='flex items-start gap-2 min-w-0'>
-                        <Tag
-                          className='h-4 w-4 text-green-600 shrink-0 mt-0.5'
-                          aria-hidden
-                        />
-                        <div className='min-w-0 flex-1'>
-                          <p className='text-sm font-medium text-green-900 break-words'>
-                            <span className='font-semibold tracking-wide'>
-                              {activeCouponCode || "Coupon"}
-                            </span>
-                            <span className='text-green-800'>
-                              {" "}
-                              · You save {formatPrice(activeCouponDiscount)}
-                            </span>
-                          </p>
-                          <p className='text-xs text-green-800/75 mt-1'>
-                            The discount is reflected in your order total below.
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        className='w-full border-red-200/80 text-red-700 hover:bg-red-50 hover:text-red-800'
-                        disabled={couponBusy}
-                        onClick={async () => {
-                          setCouponBusy(true);
-                          try {
-                            await removeSelectedCoupon();
-                          } finally {
-                            setCouponBusy(false);
-                          }
-                        }}
-                      >
-                        {couponBusy ? "Removing…" : "Remove coupon"}
-                      </Button>
-                    </div>
-                  : <div className='flex flex-col gap-2 sm:flex-row sm:items-stretch min-w-0'>
-                      <input
-                        value={couponCode}
-                        onChange={(e) =>
-                          setCouponCode(e.target.value.toUpperCase())
-                        }
-                        placeholder='Enter coupon code'
-                        autoComplete='off'
-                        className='min-w-0 w-full h-11 px-4 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#b02a37]/35'
+                    <p className='text-xs font-bold uppercase tracking-widest text-gray-400'>
+                      {selectedAddressId ? "Edit address" : "Delivery details"}
+                    </p>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                      <Input
+                        {...register("name")}
+                        label='Full name'
+                        placeholder='e.g. Rani Sharma'
+                        error={errors.name?.message}
                       />
+                      <Input
+                        {...register("phone")}
+                        label='Mobile number'
+                        placeholder='e.g. 9876543210'
+                        error={errors.phone?.message}
+                        inputMode='tel'
+                      />
+                    </div>
+
+                    <Input
+                      {...register("street")}
+                      label='Street address'
+                      placeholder='House no., Street, Area'
+                      error={errors.street?.message}
+                    />
+                    <div className='grid grid-cols-2 gap-4'>
+                      <Input
+                        {...register("city")}
+                        label='City'
+                        placeholder='City'
+                        error={errors.city?.message}
+                      />
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-1'>
+                          State
+                        </label>
+                        <select
+                          {...register("state")}
+                          className='w-full h-10 px-3 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#b02a37]/30'
+                        >
+                          <option value=''>Select state</option>
+                          {INDIAN_STATES.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.state && (
+                          <p className='text-xs text-red-600 mt-1'>
+                            {errors.state.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Input
+                      {...register("pincode")}
+                      label='Pincode'
+                      placeholder='6-digit PIN'
+                      maxLength={6}
+                      error={errors.pincode?.message}
+                    />
+                    <Button
+                      type='button'
+                      variant='outline'
+                      className='w-full rounded-xl border-[#b02a37]/40 font-bold text-[#b02a37] hover:bg-red-50'
+                      onClick={() => void confirmShippingForm()}
+                    >
+                      Save &amp; use this address
+                    </Button>
+                  </div>
+                  {showMobileCheckoutWizard && mobileCheckoutStep === 1 && (
+                    <div className='mt-6 lg:hidden'>
                       <Button
                         type='button'
                         variant='brand'
-                        className='w-full sm:w-auto shrink-0 sm:min-w-[5.5rem] h-11 rounded-xl bg-[#b02a37] hover:bg-[#8f222c] border-0 shadow-md transition-transform active:scale-[0.98]'
-                        disabled={couponBusy || !couponCode.trim()}
-                        onClick={async () => {
-                          if (!couponCode.trim()) return;
-                          setCouponBusy(true);
-                          try {
-                            await applySelectedCoupon(couponCode.trim());
-                            setCouponCode("");
-                          } catch {
-                            /* toast from store */
-                          } finally {
-                            setCouponBusy(false);
-                          }
-                        }}
+                        size='xl'
+                        className='h-12 w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] text-base font-black shadow-lg'
+                        onClick={() => void goToMobilePaymentStep()}
                       >
-                        Apply
+                        Continue to payment
+                        <ArrowRight className='ml-2 h-4 w-4' aria-hidden />
                       </Button>
                     </div>
-                  }
-
-                  {isLoadingCoupons ?
-                    <div className='text-sm text-gray-500 mt-3'>
-                      Loading available offers…
-                    </div>
-                  : eligibleCoupons.length === 0 ?
-                    <div className='text-sm text-gray-500 mt-3'>
-                      No coupons are available for this order.
-                    </div>
-                  : <div className='grid grid-cols-1 gap-2 mt-3 min-w-0'>
-                      {eligibleCoupons.slice(0, 2).map((c) => (
-                        <button
-                          key={c._id}
-                          type='button'
-                          disabled={hasAppliedCoupon || couponBusy}
-                          title={
-                            hasAppliedCoupon ?
-                              "Remove your current coupon to use another"
-                            : undefined
-                          }
-                          onClick={async () => {
-                            try {
-                              await applySelectedCoupon(c.code);
-                            } catch {
-                              // store handles toast
-                            }
-                          }}
-                          className={cn(
-                            "text-left p-3 rounded-xl border border-gray-200 transition-all min-w-0",
-                            hasAppliedCoupon || couponBusy ?
-                              "opacity-50 cursor-not-allowed"
-                            : "hover:border-brand-300 hover:bg-brand-50",
-                          )}
-                        >
-                          <div className='flex items-center justify-between gap-2 min-w-0'>
-                            <span className='font-mono font-bold text-sm text-brand-700 truncate min-w-0'>
-                              {c.code}
-                            </span>
-                            <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
-                              {c.eligibilityType === "first_order" ?
-                                "First Order"
-                              : c.eligibilityType === "returning" ?
-                                "Returning"
-                              : "All Users"}
-                            </span>
-                          </div>
-                          <p className='text-xs text-gray-500 mt-1'>
-                            {c.discountType === "percentage" ?
-                              `${c.discountValue}% off`
-                            : `${formatPrice(c.discountValue)} off`}
-                            {c.minOrderAmount ?
-                              ` · Min ${formatPrice(c.minOrderAmount)}`
-                            : ""}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  }
-                </div>
-
-                <button
-                  type='button'
-                  className='flex items-center justify-between w-full mb-3 lg:cursor-default min-w-0 gap-2 group'
-                  onClick={() => setShowItems(!showItems)}
-                >
-                  <div className='flex items-center gap-2 min-w-0 flex-wrap'>
-                    <Package className='h-5 w-5 text-[#b02a37] shrink-0 transition-transform group-hover:scale-105' />
-                    <h2 className='text-lg font-bold text-navy-900 truncate text-left'>
-                      Order summary · {checkoutItems.length}{" "}
-                      {checkoutItems.length === 1 ? "item" : "items"}
-                    </h2>
-                    {buyNowItem && !existingOrder && (
-                      <span className='inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#b02a37] border border-[#b02a37]/20'>
-                        Quick buy
-                      </span>
-                    )}
-                  </div>
-                  <span className='lg:hidden text-gray-400'>
-                    {showItems ?
-                      <ChevronUp className='h-4 w-4' />
-                    : <ChevronDown className='h-4 w-4' />}
-                  </span>
-                </button>
-
-                <div
-                  className={cn(
-                    "space-y-4 mb-6",
-                    showItems ? "block" : "hidden lg:block",
                   )}
-                >
-                  {checkoutItems.map((item, lineIndex) => {
-                    const row = toCheckoutRowDisplay(item, !!existingOrder);
-                    const rowKey =
-                      existingOrder ?
-                        `ord-${existingOrder._id}-${lineIndex}-${row.variant?.sku || "i"}`
-                      : buyNowItem ?
-                        `bn-${buyNowItem.productId}-${row.variant?.sku || "sku"}`
-                      : "product" in item ? cartLineReactKey(item as CartItem)
-                      : `line-${lineIndex}-${row.name || "x"}`;
-                    const thumb =
-                      row.thumbUrl ||
-                      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
-                    const cartLine =
-                      (
-                        !existingOrder &&
-                        !buyNowItem &&
-                        cart &&
-                        "product" in item
-                      ) ?
-                        (item as CartItem)
-                      : null;
-                    const sku = cartLine?.variant?.sku;
-                    const buyNowSku =
-                      buyNowItem && !existingOrder ?
-                        buyNowItem.variant.sku
-                      : undefined;
-                    const lineBusy = Boolean(
-                      (sku && lineBusySku === sku) ||
-                      (buyNowSku && lineBusySku === buyNowSku),
-                    );
-                    const maxLineQty =
-                      cartLine && sku ?
-                        Math.min(
-                          10,
-                          Math.max(
-                            1,
-                            cartLine.product?.variants?.find(
-                              (v) => v.sku === sku,
-                            )?.stock ?? 10,
-                          ),
-                        )
-                      : buyNowItem && !existingOrder ?
-                        Math.min(10, Math.max(1, buyNowItem.maxStock ?? 10))
-                      : 10;
-                    const showCartLineControls = Boolean(cartLine && sku);
-                    const showBuyNowLineControls = Boolean(
-                      buyNowItem && !existingOrder && buyNowSku,
-                    );
-                    const showRemovableLine =
-                      showCartLineControls || showBuyNowLineControls;
-                    return (
-                      <div
-                        key={rowKey}
-                        className='flex items-stretch gap-3 min-w-0 rounded-2xl border border-gray-100 bg-gray-50/40 p-3 transition-all duration-300 hover:bg-gray-50 animate-in fade-in slide-in-from-bottom-1'
-                      >
-                        <div className='relative h-[4.5rem] w-[3.75rem] shrink-0 self-start overflow-hidden rounded-xl bg-white shadow-inner ring-1 ring-black/5'>
-                          <Image
-                            src={thumb}
-                            alt={row.name || "Product"}
-                            fill
-                            sizes='72px'
-                            className='object-cover'
-                          />
-                          {!cartLine && !buyNowItem && (
-                            <span className='absolute bottom-1 right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#b02a37] px-1 text-[10px] font-bold text-white shadow'>
-                              {row.quantity}
-                            </span>
-                          )}
-                        </div>
-                        <div className='min-w-0 flex-1'>
-                          <p className='text-sm font-bold text-navy-900 line-clamp-2 leading-snug'>
-                            {row.name || "Product"}
-                          </p>
-                          <p className='text-xs text-gray-500 mt-0.5'>
-                            {[row.variant?.size, row.variant?.color]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </p>
-                          {(row.customFieldAnswers?.length ?? 0) > 0 && (
-                            <div className='mt-1.5 grid grid-cols-1 gap-1'>
-                              {(row.customFieldAnswers || []).map(
-                                (
-                                  ans: { label: string; value: string },
-                                  i: number,
-                                ) => {
-                                  const isImage =
-                                    typeof ans.value === "string" &&
-                                    /^https?:\/\//.test(ans.value);
-                                  return (
-                                    <div
-                                      key={i}
-                                      className='inline-flex items-center gap-2 text-[10px] bg-gold-50 border border-gold-100 rounded-md px-2 py-1'
-                                    >
-                                      <span className='font-semibold text-gold-700'>
-                                        {ans.label}:
-                                      </span>
-                                      {isImage ?
-                                        <a
-                                          href={ans.value}
-                                          target='_blank'
-                                          rel='noreferrer'
-                                          className='inline-flex items-center gap-1'
-                                        >
-                                          <span className='relative h-7 w-7 rounded overflow-hidden border border-gold-200 bg-white'>
-                                            <Image
-                                              src={ans.value}
-                                              alt={ans.label}
-                                              fill
-                                              sizes='28px'
-                                              className='object-cover'
-                                            />
-                                          </span>
-                                          <span className='font-semibold text-[#b02a37]'>
-                                            View
-                                          </span>
-                                        </a>
-                                      : <span className='font-medium text-gray-700 break-words'>
-                                          {ans.value}
-                                        </span>
-                                      }
-                                    </div>
-                                  );
-                                },
-                              )}
-                            </div>
-                          )}
-                          {showCartLineControls && sku && (
-                            <div className='mt-3 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
-                              <button
-                                type='button'
-                                disabled={lineBusy}
-                                onClick={() =>
-                                  void bumpLineQty(
-                                    sku,
-                                    -1,
-                                    row.quantity,
-                                    maxLineQty,
-                                  )
-                                }
-                                className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
-                                aria-label={
-                                  row.quantity <= 1 ?
-                                    "Remove item"
-                                  : "Decrease quantity"
-                                }
-                              >
-                                <Minus className='h-3.5 w-3.5' />
-                              </button>
-                              <span className='min-w-[1.75rem] text-center text-sm font-bold tabular-nums'>
-                                {row.quantity}
-                              </span>
-                              <button
-                                type='button'
-                                disabled={
-                                  lineBusy || row.quantity >= maxLineQty
-                                }
-                                onClick={() =>
-                                  void bumpLineQty(
-                                    sku,
-                                    1,
-                                    row.quantity,
-                                    maxLineQty,
-                                  )
-                                }
-                                className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
-                                aria-label='Increase quantity'
-                              >
-                                <Plus className='h-3.5 w-3.5' />
-                              </button>
-                            </div>
-                          )}
-                          {showBuyNowLineControls && buyNowSku && (
-                            <div className='mt-3 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
-                              <button
-                                type='button'
-                                disabled={lineBusy}
-                                onClick={() =>
-                                  void bumpBuyNowQty(
-                                    -1,
-                                    row.quantity,
-                                    maxLineQty,
-                                  )
-                                }
-                                className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
-                                aria-label={
-                                  row.quantity <= 1 ?
-                                    "Remove item"
-                                  : "Decrease quantity"
-                                }
-                              >
-                                <Minus className='h-3.5 w-3.5' />
-                              </button>
-                              <span className='min-w-[1.75rem] text-center text-sm font-bold tabular-nums'>
-                                {row.quantity}
-                              </span>
-                              <button
-                                type='button'
-                                disabled={
-                                  lineBusy || row.quantity >= maxLineQty
-                                }
-                                onClick={() =>
-                                  void bumpBuyNowQty(
-                                    1,
-                                    row.quantity,
-                                    maxLineQty,
-                                  )
-                                }
-                                className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
-                                aria-label='Increase quantity'
-                              >
-                                <Plus className='h-3.5 w-3.5' />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch py-0.5'>
-                          <p className='text-sm font-bold text-navy-900 tabular-nums text-right leading-tight'>
-                            {formatPrice(row.price * row.quantity)}
-                          </p>
-                          {showRemovableLine && (
-                            <button
-                              type='button'
-                              disabled={lineBusy}
-                              onClick={() => {
-                                if (showCartLineControls && sku) {
-                                  void removeLine(sku);
-                                } else {
-                                  void removeBuyNowLine();
-                                }
-                              }}
-                              className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50/90 hover:text-red-600 disabled:opacity-40'
-                              aria-label='Remove item'
-                              title='Remove'
-                            >
-                              <Trash2 className='h-3.5 w-3.5' strokeWidth={2} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                </section>
+              )}
 
-                <div className='border-t border-gray-100 pt-5 space-y-2.5 text-sm'>
-                  <div className='flex justify-between text-gray-600'>
-                    <span>Subtotal</span>
-                    <span className='font-medium tabular-nums'>
-                      {formatPrice(subtotal)}
-                    </span>
-                  </div>
-                  {discount > 0 && (
-                    <div className='flex justify-between text-emerald-600'>
-                      <span>Discount</span>
-                      <span className='font-semibold tabular-nums'>
-                        − {formatPrice(discount)}
-                      </span>
-                    </div>
-                  )}
-                  <div className='flex justify-between text-gray-600'>
-                    <span>Shipping</span>
-                    <span
+              {(!showMobileCheckoutWizard || mobileCheckoutStep === 2) && (
+                <section className='rounded-2xl bg-white p-5 sm:p-7 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
+                  <div className='flex items-center gap-2.5 mb-5'>
+                    <div
                       className={cn(
-                        "font-semibold tabular-nums",
-                        shippingCharge === 0 && "text-emerald-600",
+                        "flex h-10 w-10 items-center justify-center rounded-xl bg-red-50",
+                        checkoutAccent,
                       )}
                     >
-                      {shippingCharge === 0 ?
-                        "FREE"
-                      : formatPrice(shippingCharge)}
-                    </span>
-                  </div>
-                  <div className='flex justify-between border-t border-gray-100 pt-3 text-base font-black text-navy-900'>
-                    <span>Total</span>
-                    <span className='tabular-nums'>{formatPrice(total)}</span>
-                  </div>
-                </div>
-
-                <Button
-                  type='submit'
-                  variant='brand'
-                  size='xl'
-                  className='w-full mt-6 h-14 text-center whitespace-normal leading-snug px-3 max-w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] border-0 text-base font-black shadow-lg shadow-red-900/15 transition-all duration-300 hover:shadow-xl hover:shadow-red-900/20 active:scale-[0.99]'
-                  loading={isPlacingOrder}
-                >
-                  {existingOrder ?
-                    `Pay now — ${formatPrice(total)}`
-                  : `Place order — ${formatPrice(total)}`}
-                </Button>
-
-                <div className='mt-6 grid grid-cols-3 gap-2 text-center'>
-                  {(
-                    [
-                      { Icon: Shield, label: "Secure checkout" },
-                      { Icon: Truck, label: "Free delivery*" },
-                      { Icon: RotateCcw, label: "Easy returns" },
-                    ] as const
-                  ).map(({ Icon, label }) => (
-                    <div
-                      key={label}
-                      className='rounded-xl border border-gray-100 bg-gray-50/80 px-1 py-3 transition hover:border-[#b02a37]/25'
-                    >
-                      <Icon className='mx-auto h-5 w-5 text-[#b02a37]/90' />
-                      <p className='mt-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500 leading-tight'>
-                        {label}
-                      </p>
+                      <Truck className='h-5 w-5' strokeWidth={2} />
                     </div>
-                  ))}
-                </div>
-                <p className='text-[10px] text-center text-gray-400 mt-1'>
-                  *Where applicable per policy
-                </p>
+                    <h2 className='text-lg sm:text-xl font-bold text-navy-900'>
+                      Payment method
+                    </h2>
+                  </div>
 
-                <p className='text-xs text-gray-500 text-center mt-4 leading-relaxed'>
-                  {offerText}
-                </p>
-                <p className='text-[11px] text-gray-400 text-center mt-2'>
-                  By placing this order, you agree to our{" "}
-                  <Link
-                    href='/terms'
-                    className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
-                  >
-                    terms
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    href='/privacy'
-                    className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
-                  >
-                    privacy policy
-                  </Link>
-                  .
-                </p>
-              </div>
+                  {existingOrder ?
+                    <div className='rounded-2xl border-2 border-[#b02a37]/25 bg-gradient-to-br from-red-50/80 to-white p-5 transition-transform duration-300'>
+                      <div className='flex items-start gap-3'>
+                        <CheckCircle2 className='h-6 w-6 text-[#b02a37] shrink-0 mt-0.5' />
+                        <div>
+                          <p className='font-bold text-navy-900'>
+                            Complete payment
+                          </p>
+                          <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
+                            You&apos;ll finish payment on the next step after
+                            placing your order. Secure processing only.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  : <>
+                      <button
+                        type='button'
+                        onClick={() => setCheckoutPaymentMethod("razorpay")}
+                        className={cn(
+                          "mb-3 w-full rounded-2xl border-2 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-5 text-left shadow-sm transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-1",
+                          checkoutPaymentMethod === "razorpay" ?
+                            "border-emerald-600 ring-2 ring-emerald-500/25"
+                          : "border-gray-200 hover:border-emerald-400/50",
+                        )}
+                      >
+                        <div className='flex items-start gap-3'>
+                          <div
+                            className={cn(
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-md",
+                              checkoutPaymentMethod === "razorpay" ?
+                                "bg-emerald-600 text-white"
+                              : "bg-white text-emerald-600 ring-1 ring-gray-200",
+                            )}
+                          >
+                            <Wallet className='h-5 w-5' />
+                          </div>
+                          <div className='min-w-0 flex-1'>
+                            <p className='font-bold text-navy-900'>
+                              Pay online (Razorpay)
+                            </p>
+                            <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
+                              UPI, cards &amp; net banking. No Extra Charges.
+                            </p>
+                          </div>
+                          <CheckCircle2
+                            className={cn(
+                              "h-6 w-6 shrink-0",
+                              checkoutPaymentMethod === "razorpay" ?
+                                "text-emerald-600"
+                              : "text-gray-300",
+                            )}
+                          />
+                        </div>
+                      </button>
+
+                      <button
+                        type='button'
+                        onClick={() => setCheckoutPaymentMethod("cod")}
+                        className={cn(
+                          "w-full rounded-2xl border-2 bg-gradient-to-br from-red-50 via-white to-red-50/30 p-5 text-left shadow-sm transition-all duration-300 hover:shadow-md animate-in fade-in zoom-in-95",
+                          checkoutPaymentMethod === "cod" ?
+                            "border-[#b02a37] ring-2 ring-[#b02a37]/20"
+                          : "border-gray-200 hover:border-[#b02a37]/40",
+                        )}
+                      >
+                        <div className='flex items-start gap-3'>
+                          <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#b02a37] text-white shadow-md'>
+                            <Banknote className='h-5 w-5' />
+                          </div>
+                          <div className='min-w-0 flex-1'>
+                            <p className='font-bold text-navy-900'>
+                              Cash on delivery (COD)
+                            </p>
+                            <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
+                              Pay when your order arrives. A one-time{" "}
+                              <span className='font-semibold text-navy-900'>
+                                {formatPrice(COD_HANDLING_FEE)} COD fee .
+                              </span>
+                            </p>
+                          </div>
+                          <CheckCircle2
+                            className={cn(
+                              "h-6 w-6 shrink-0",
+                              checkoutPaymentMethod === "cod" ? "text-[#b02a37]"
+                              : "text-gray-300",
+                            )}
+                          />
+                        </div>
+                      </button>
+                    </>
+                  }
+                  {showMobileCheckoutWizard && mobileCheckoutStep === 2 && (
+                    <div className='mt-6 flex flex-col gap-3 lg:hidden'>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        className='h-11 w-full rounded-xl border-gray-200 font-bold'
+                        onClick={() => setMobileCheckoutStep(1)}
+                      >
+                        Back to shipping
+                      </Button>
+                      <Button
+                        type='button'
+                        variant='brand'
+                        size='xl'
+                        className='h-12 w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] text-base font-black shadow-lg'
+                        onClick={goToMobileReviewStep}
+                      >
+                        Review order &amp; pay
+                        <ArrowRight className='ml-2 h-4 w-4' aria-hidden />
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
+
+            {(!showMobileCheckoutWizard || mobileCheckoutStep === 3) && (
+              <div className='lg:col-span-5 min-w-0'>
+                <div className='rounded-2xl bg-white p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 lg:sticky lg:top-24 min-w-0 max-w-full transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
+                  {showMobileCheckoutWizard && mobileCheckoutStep === 3 && (
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      className='mb-4 -ml-1 h-10 px-2 text-sm font-bold text-gray-600 hover:text-gray-900 lg:hidden'
+                      onClick={() => setMobileCheckoutStep(2)}
+                    >
+                      ← Back to payment
+                    </Button>
+                  )}
+                  {/* Coupons (shown above order items) */}
+                  <div className='mb-5 pb-5 border-b border-gray-100 min-w-0'>
+                    <div className='flex items-center justify-between gap-2 mb-3 min-w-0'>
+                      <div className='flex items-center gap-2 min-w-0'>
+                        <BadgePercent className='h-5 w-5 text-brand-600 shrink-0' />
+                        <h2 className='text-lg font-semibold text-gray-900 truncate'>
+                          Coupons
+                        </h2>
+                      </div>
+                      {eligibleCoupons.length > 2 && (
+                        <button
+                          type='button'
+                          onClick={() => setIsAllCouponsOpen(true)}
+                          className='text-sm font-semibold text-brand-600 hover:text-brand-700 shrink-0'
+                        >
+                          View all
+                        </button>
+                      )}
+                    </div>
+
+                    {hasAppliedCoupon ?
+                      <div className='rounded-xl border border-green-200 bg-green-50 p-3 min-w-0 space-y-3'>
+                        <div className='flex items-start gap-2 min-w-0'>
+                          <Tag
+                            className='h-4 w-4 text-green-600 shrink-0 mt-0.5'
+                            aria-hidden
+                          />
+                          <div className='min-w-0 flex-1'>
+                            <p className='text-sm font-medium text-green-900 break-words'>
+                              <span className='font-semibold tracking-wide'>
+                                {activeCouponCode || "Coupon"}
+                              </span>
+                              <span className='text-green-800'>
+                                {" "}
+                                · You save {formatPrice(activeCouponDiscount)}
+                              </span>
+                            </p>
+                            <p className='text-xs text-green-800/75 mt-1'>
+                              The discount is reflected in your order total
+                              below.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          className='w-full border-red-200/80 text-red-700 hover:bg-red-50 hover:text-red-800'
+                          disabled={couponBusy}
+                          onClick={async () => {
+                            setCouponBusy(true);
+                            try {
+                              await removeSelectedCoupon();
+                            } finally {
+                              setCouponBusy(false);
+                            }
+                          }}
+                        >
+                          {couponBusy ? "Removing…" : "Remove coupon"}
+                        </Button>
+                      </div>
+                    : <div className='flex flex-col gap-2 sm:flex-row sm:items-stretch min-w-0'>
+                        <input
+                          value={couponCode}
+                          onChange={(e) =>
+                            setCouponCode(e.target.value.toUpperCase())
+                          }
+                          placeholder='Enter coupon code'
+                          autoComplete='off'
+                          className='min-w-0 w-full h-11 px-4 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#b02a37]/35'
+                        />
+                        <Button
+                          type='button'
+                          variant='brand'
+                          className='w-full sm:w-auto shrink-0 sm:min-w-[5.5rem] h-11 rounded-xl bg-[#b02a37] hover:bg-[#8f222c] border-0 shadow-md transition-transform active:scale-[0.98]'
+                          disabled={couponBusy || !couponCode.trim()}
+                          onClick={async () => {
+                            if (!couponCode.trim()) return;
+                            setCouponBusy(true);
+                            try {
+                              await applySelectedCoupon(couponCode.trim());
+                              setCouponCode("");
+                            } catch {
+                              /* toast from store */
+                            } finally {
+                              setCouponBusy(false);
+                            }
+                          }}
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    }
+
+                    {isLoadingCoupons ?
+                      <div className='text-sm text-gray-500 mt-3'>
+                        Loading available offers…
+                      </div>
+                    : eligibleCoupons.length === 0 ?
+                      <div className='text-sm text-gray-500 mt-3'>
+                        No coupons are available for this order.
+                      </div>
+                    : <div className='grid grid-cols-1 gap-2 mt-3 min-w-0'>
+                        {eligibleCoupons.slice(0, 2).map((c) => (
+                          <button
+                            key={c._id}
+                            type='button'
+                            disabled={hasAppliedCoupon || couponBusy}
+                            title={
+                              hasAppliedCoupon ?
+                                "Remove your current coupon to use another"
+                              : undefined
+                            }
+                            onClick={async () => {
+                              try {
+                                await applySelectedCoupon(c.code);
+                              } catch {
+                                // store handles toast
+                              }
+                            }}
+                            className={cn(
+                              "text-left p-3 rounded-xl border border-gray-200 transition-all min-w-0",
+                              hasAppliedCoupon || couponBusy ?
+                                "opacity-50 cursor-not-allowed"
+                              : "hover:border-brand-300 hover:bg-brand-50",
+                            )}
+                          >
+                            <div className='flex items-center justify-between gap-2 min-w-0'>
+                              <span className='font-mono font-bold text-sm text-brand-700 truncate min-w-0'>
+                                {c.code}
+                              </span>
+                              <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
+                                {c.eligibilityType === "first_order" ?
+                                  "First Order"
+                                : c.eligibilityType === "returning" ?
+                                  "Returning"
+                                : "All Users"}
+                              </span>
+                            </div>
+                            <p className='text-xs text-gray-500 mt-1'>
+                              {c.discountType === "percentage" ?
+                                `${c.discountValue}% off`
+                              : `${formatPrice(c.discountValue)} off`}
+                              {c.minOrderAmount ?
+                                ` · Min ${formatPrice(c.minOrderAmount)}`
+                              : ""}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    }
+                  </div>
+
+                  <button
+                    type='button'
+                    className='flex items-center justify-between w-full mb-3 lg:cursor-default min-w-0 gap-2 group'
+                    onClick={() => setShowItems(!showItems)}
+                  >
+                    <div className='flex items-center gap-2 min-w-0 flex-wrap'>
+                      <Package className='h-5 w-5 text-[#b02a37] shrink-0 transition-transform group-hover:scale-105' />
+                      <h2 className='text-lg font-bold text-navy-900 truncate text-left'>
+                        Order summary · {checkoutItems.length}{" "}
+                        {checkoutItems.length === 1 ? "item" : "items"}
+                      </h2>
+                      {buyNowItem && !existingOrder && (
+                        <span className='inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#b02a37] border border-[#b02a37]/20'>
+                          Quick buy
+                        </span>
+                      )}
+                    </div>
+                    <span className='lg:hidden text-gray-400'>
+                      {showItems ?
+                        <ChevronUp className='h-4 w-4' />
+                      : <ChevronDown className='h-4 w-4' />}
+                    </span>
+                  </button>
+
+                  <div
+                    className={cn(
+                      "space-y-4 mb-6",
+                      showItems ? "block" : "hidden lg:block",
+                    )}
+                  >
+                    {checkoutItems.map((item, lineIndex) => {
+                      const row = toCheckoutRowDisplay(item, !!existingOrder);
+                      const rowKey =
+                        existingOrder ?
+                          `ord-${existingOrder._id}-${lineIndex}-${row.variant?.sku || "i"}`
+                        : buyNowItem ?
+                          `bn-${buyNowItem.productId}-${row.variant?.sku || "sku"}`
+                        : "product" in item ? cartLineReactKey(item as CartItem)
+                        : `line-${lineIndex}-${row.name || "x"}`;
+                      const thumb =
+                        row.thumbUrl ||
+                        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
+                      const cartLine =
+                        (
+                          !existingOrder &&
+                          !buyNowItem &&
+                          cart &&
+                          "product" in item
+                        ) ?
+                          (item as CartItem)
+                        : null;
+                      const sku = cartLine?.variant?.sku;
+                      const buyNowSku =
+                        buyNowItem && !existingOrder ?
+                          buyNowItem.variant.sku
+                        : undefined;
+                      const lineBusy = Boolean(
+                        (sku && lineBusySku === sku) ||
+                        (buyNowSku && lineBusySku === buyNowSku),
+                      );
+                      const maxLineQty =
+                        cartLine && sku ?
+                          Math.min(
+                            10,
+                            Math.max(
+                              1,
+                              cartLine.product?.variants?.find(
+                                (v) => v.sku === sku,
+                              )?.stock ?? 10,
+                            ),
+                          )
+                        : buyNowItem && !existingOrder ?
+                          Math.min(10, Math.max(1, buyNowItem.maxStock ?? 10))
+                        : 10;
+                      const showCartLineControls = Boolean(cartLine && sku);
+                      const showBuyNowLineControls = Boolean(
+                        buyNowItem && !existingOrder && buyNowSku,
+                      );
+                      const showRemovableLine =
+                        showCartLineControls || showBuyNowLineControls;
+                      return (
+                        <div
+                          key={rowKey}
+                          className='flex items-stretch gap-3 min-w-0 rounded-2xl border border-gray-100 bg-gray-50/40 p-3 transition-all duration-300 hover:bg-gray-50 animate-in fade-in slide-in-from-bottom-1'
+                        >
+                          <div className='relative h-[4.5rem] w-[3.75rem] shrink-0 self-start overflow-hidden rounded-xl bg-white shadow-inner ring-1 ring-black/5'>
+                            <Image
+                              src={thumb}
+                              alt={row.name || "Product"}
+                              fill
+                              sizes='72px'
+                              className='object-cover'
+                            />
+                            {!cartLine && !buyNowItem && (
+                              <span className='absolute bottom-1 right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#b02a37] px-1 text-[10px] font-bold text-white shadow'>
+                                {row.quantity}
+                              </span>
+                            )}
+                          </div>
+                          <div className='min-w-0 flex-1'>
+                            <p className='text-sm font-bold text-navy-900 line-clamp-2 leading-snug'>
+                              {row.name || "Product"}
+                            </p>
+                            <p className='text-xs text-gray-500 mt-0.5'>
+                              {[row.variant?.size, row.variant?.color]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                            {(row.customFieldAnswers?.length ?? 0) > 0 && (
+                              <div className='mt-1.5 grid grid-cols-1 gap-1'>
+                                {(row.customFieldAnswers || []).map(
+                                  (
+                                    ans: { label: string; value: string },
+                                    i: number,
+                                  ) => {
+                                    const isImage =
+                                      typeof ans.value === "string" &&
+                                      /^https?:\/\//.test(ans.value);
+                                    return (
+                                      <div
+                                        key={i}
+                                        className='inline-flex items-center gap-2 text-[10px] bg-gold-50 border border-gold-100 rounded-md px-2 py-1'
+                                      >
+                                        <span className='font-semibold text-gold-700'>
+                                          {ans.label}:
+                                        </span>
+                                        {isImage ?
+                                          <a
+                                            href={ans.value}
+                                            target='_blank'
+                                            rel='noreferrer'
+                                            className='inline-flex items-center gap-1'
+                                          >
+                                            <span className='relative h-7 w-7 rounded overflow-hidden border border-gold-200 bg-white'>
+                                              <Image
+                                                src={ans.value}
+                                                alt={ans.label}
+                                                fill
+                                                sizes='28px'
+                                                className='object-cover'
+                                              />
+                                            </span>
+                                            <span className='font-semibold text-[#b02a37]'>
+                                              View
+                                            </span>
+                                          </a>
+                                        : <span className='font-medium text-gray-700 break-words'>
+                                            {ans.value}
+                                          </span>
+                                        }
+                                      </div>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            )}
+                            {showCartLineControls && sku && (
+                              <div className='mt-3 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
+                                <button
+                                  type='button'
+                                  disabled={lineBusy}
+                                  onClick={() =>
+                                    void bumpLineQty(
+                                      sku,
+                                      -1,
+                                      row.quantity,
+                                      maxLineQty,
+                                    )
+                                  }
+                                  className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
+                                  aria-label={
+                                    row.quantity <= 1 ?
+                                      "Remove item"
+                                    : "Decrease quantity"
+                                  }
+                                >
+                                  <Minus className='h-3.5 w-3.5' />
+                                </button>
+                                <span className='min-w-[1.75rem] text-center text-sm font-bold tabular-nums'>
+                                  {row.quantity}
+                                </span>
+                                <button
+                                  type='button'
+                                  disabled={
+                                    lineBusy || row.quantity >= maxLineQty
+                                  }
+                                  onClick={() =>
+                                    void bumpLineQty(
+                                      sku,
+                                      1,
+                                      row.quantity,
+                                      maxLineQty,
+                                    )
+                                  }
+                                  className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
+                                  aria-label='Increase quantity'
+                                >
+                                  <Plus className='h-3.5 w-3.5' />
+                                </button>
+                              </div>
+                            )}
+                            {showBuyNowLineControls && buyNowSku && (
+                              <div className='mt-3 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
+                                <button
+                                  type='button'
+                                  disabled={lineBusy}
+                                  onClick={() =>
+                                    void bumpBuyNowQty(
+                                      -1,
+                                      row.quantity,
+                                      maxLineQty,
+                                    )
+                                  }
+                                  className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
+                                  aria-label={
+                                    row.quantity <= 1 ?
+                                      "Remove item"
+                                    : "Decrease quantity"
+                                  }
+                                >
+                                  <Minus className='h-3.5 w-3.5' />
+                                </button>
+                                <span className='min-w-[1.75rem] text-center text-sm font-bold tabular-nums'>
+                                  {row.quantity}
+                                </span>
+                                <button
+                                  type='button'
+                                  disabled={
+                                    lineBusy || row.quantity >= maxLineQty
+                                  }
+                                  onClick={() =>
+                                    void bumpBuyNowQty(
+                                      1,
+                                      row.quantity,
+                                      maxLineQty,
+                                    )
+                                  }
+                                  className='flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:opacity-40'
+                                  aria-label='Increase quantity'
+                                >
+                                  <Plus className='h-3.5 w-3.5' />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch py-0.5'>
+                            <p className='text-sm font-bold text-navy-900 tabular-nums text-right leading-tight'>
+                              {formatPrice(row.price * row.quantity)}
+                            </p>
+                            {showRemovableLine && (
+                              <button
+                                type='button'
+                                disabled={lineBusy}
+                                onClick={() => {
+                                  if (showCartLineControls && sku) {
+                                    void removeLine(sku);
+                                  } else {
+                                    void removeBuyNowLine();
+                                  }
+                                }}
+                                className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50/90 hover:text-red-600 disabled:opacity-40'
+                                aria-label='Remove item'
+                                title='Remove'
+                              >
+                                <Trash2
+                                  className='h-3.5 w-3.5'
+                                  strokeWidth={2}
+                                />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className='border-t border-gray-100 pt-5 space-y-2.5 text-sm'>
+                    <div className='flex justify-between text-gray-600'>
+                      <span>Subtotal</span>
+                      <span className='font-medium tabular-nums'>
+                        {formatPrice(subtotal)}
+                      </span>
+                    </div>
+                    {discount > 0 && (
+                      <div className='flex justify-between text-emerald-600'>
+                        <span>Discount</span>
+                        <span className='font-semibold tabular-nums'>
+                          − {formatPrice(discount)}
+                        </span>
+                      </div>
+                    )}
+                    <div className='flex justify-between gap-3 text-gray-600'>
+                      <span className='min-w-0'>
+                        Shipping
+                        <span className='block text-[10px] font-normal text-gray-400 mt-0.5'>
+                          Below {formatPrice(SHIPPING_THRESHOLD)} order value
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 font-semibold tabular-nums text-right",
+                          shippingCharge === 0 && "text-emerald-600",
+                        )}
+                      >
+                        {shippingCharge === 0 ?
+                          "FREE"
+                        : formatPrice(shippingCharge)}
+                      </span>
+                    </div>
+                    {codFee > 0 && (
+                      <div className='flex justify-between gap-3 text-gray-600'>
+                        <span className='min-w-0'>
+                          COD handling fee
+                          <span className='block text-[10px] font-normal text-gray-400 mt-0.5'>
+                            Cash on delivery only — not shipping
+                          </span>
+                        </span>
+                        <span className='shrink-0 font-semibold tabular-nums'>
+                          {formatPrice(codFee)}
+                        </span>
+                      </div>
+                    )}
+                    {tax > 0 && (
+                      <div className='flex justify-between text-gray-600'>
+                        <span>Tax</span>
+                        <span className='font-semibold tabular-nums'>
+                          {formatPrice(tax)}
+                        </span>
+                      </div>
+                    )}
+                    <div className='flex justify-between border-t border-gray-100 pt-3 text-base font-black text-navy-900'>
+                      <span>Total</span>
+                      <span className='tabular-nums'>{formatPrice(total)}</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type='submit'
+                    variant='brand'
+                    size='xl'
+                    className='w-full mt-6 h-14 text-center whitespace-normal leading-snug px-3 max-w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] border-0 text-base font-black shadow-lg shadow-red-900/15 transition-all duration-300 hover:shadow-xl hover:shadow-red-900/20 active:scale-[0.99]'
+                    loading={isPlacingOrder}
+                  >
+                    {existingOrder ?
+                      `Pay now — ${formatPrice(total)}`
+                    : checkoutPaymentMethod === "razorpay" ?
+                      `Pay securely — ${formatPrice(total)}`
+                    : `Place order — ${formatPrice(total)}`}
+                  </Button>
+
+                  <div className='mt-6 grid grid-cols-3 gap-2 text-center'>
+                    {(
+                      [
+                        { Icon: Shield, label: "Secure checkout" },
+                        { Icon: Truck, label: "Free delivery*" },
+                        { Icon: RotateCcw, label: "Easy returns" },
+                      ] as const
+                    ).map(({ Icon, label }) => (
+                      <div
+                        key={label}
+                        className='rounded-xl border border-gray-100 bg-gray-50/80 px-1 py-3 transition hover:border-[#b02a37]/25'
+                      >
+                        <Icon className='mx-auto h-5 w-5 text-[#b02a37]/90' />
+                        <p className='mt-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500 leading-tight'>
+                          {label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className='text-[10px] text-center text-gray-400 mt-1'>
+                    *Where applicable per policy
+                  </p>
+
+                  <p className='text-xs text-gray-500 text-center mt-4 leading-relaxed'>
+                    {offerText}
+                  </p>
+                  <p className='text-[11px] text-gray-400 text-center mt-2'>
+                    By placing this order, you agree to our{" "}
+                    <Link
+                      href='/terms'
+                      className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
+                    >
+                      terms
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href='/privacy'
+                      className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
+                    >
+                      privacy policy
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </form>
 

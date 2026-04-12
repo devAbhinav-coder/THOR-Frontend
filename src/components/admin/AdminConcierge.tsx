@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -17,6 +26,7 @@ import {
   Shield,
   Lightbulb,
   Zap,
+  GripVertical,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { formatPrice, cn } from "@/lib/utils";
@@ -34,7 +44,23 @@ type ChatMessage = {
 
 const STORAGE_KEY = "rani-admin-concierge-v2";
 const OPEN_KEY = "rani-admin-concierge-open";
+const FAB_ANCHOR_KEY = "rani-admin-concierge-fab-v3";
 const MAX_MESSAGES = 48;
+
+const FAB_SIZE = 56;
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+/** Fixed positioning using `right` + `bottom` (px), matching corner-anchored FAB layout */
+function clampAnchor(right: number, bottom: number, elW: number, elH: number) {
+  const m = 8;
+  return {
+    right: clamp(right, m, window.innerWidth - elW - m),
+    bottom: clamp(bottom, m, window.innerHeight - elH - m),
+  };
+}
 
 /** Primary shortcuts — always visible on fresh chat */
 const INITIAL_ACTIONS: QuickAction[] = [
@@ -42,6 +68,7 @@ const INITIAL_ACTIONS: QuickAction[] = [
   { label: "What can you do?", value: "action:capabilities" },
   { label: "Order workflow tips", value: "action:help_workflow" },
   { label: "Orders", value: "nav:/admin/orders" },
+  { label: "Returns", value: "nav:/admin/returns" },
   { label: "Products", value: "nav:/admin/products" },
   { label: "Analytics", value: "nav:/admin/analytics" },
   { label: "Storefront", value: "nav:/admin/storefront" },
@@ -52,10 +79,10 @@ const INITIAL_ACTIONS: QuickAction[] = [
 ];
 
 const WELCOME_TEXT = [
-  "**Rani Admin Copilot** — your in-panel helper (not a live human).",
+  "**Panel assistant** — in-admin shortcuts and tips (not a live human).",
   "",
   "**Abhi kya kar sakta hai**",
-  "· **Navigation** — ek tap par Orders, Products, Analytics, Storefront, Emails, Coupons, Users, Reviews.",
+  "· **Navigation** — ek tap par Orders, Returns, Products, Analytics, Storefront, Emails, Coupons, Users, Reviews.",
   "· **Quick stats** — revenue, AOV, aaj ke orders, fulfilment queue, users & reviews (live API).",
   "· **Context** — jo page khula hai, uske hisaab se chhota hint.",
   "· **Keywords** — type karo: orders, tracking, stock, coupon, refund idea, email campaign…",
@@ -84,7 +111,7 @@ function detectAdminIntent(q: string): string {
   if (/\b(advanced|aage|scaling|integration|api|webhook|roadmap|future|aur kya)\b/.test(s)) return "advanced";
   if (/\b(stats|overview|dashboard|how many|numbers)\b/.test(s)) return "stats";
   if (/\b(orders?|dispatch|ship|tracking|awb|delivery)\b/.test(s)) return "orders";
-  if (/\b(refund|return|cancel|replacement)\b/.test(s)) return "after_sales";
+  if (/\b(rma|returns?|refund|cancel|replacement)\b/.test(s)) return "after_sales";
   if (/\b(products?|stock|inventory|sku|low stock|out of stock)\b/.test(s)) return "products";
   if (/\b(coupon|discount|promo)\b/.test(s)) return "coupons";
   if (/\b(users?|customers?|ban|block)\b/.test(s)) return "users";
@@ -98,7 +125,7 @@ function detectAdminIntent(q: string): string {
 }
 
 const CAPABILITIES_REPLY = [
-  "**Yeh Copilot abhi kya karta hai**",
+  "**Yeh assistant abhi kya karta hai**",
   "",
   "1. **Ek click par admin pages** — Orders se lekar Reviews tak.",
   "2. **Quick business stats** — total / month revenue, AOV, aaj ke orders, kitne orders abhi pack/confirm pending hain, users & reviews count.",
@@ -136,12 +163,83 @@ const ADVANCED_REPLY = [
 const AFTER_SALES_REPLY = [
   "**Returns / refunds / cancellations**",
   "",
-  "· Customer-side cancellations **sirf jab tak** order **Pending / Confirmed** ho (dispatch se pehle) — detail **Orders** me.",
-  "· Shipped ke baad **Returns** policy + support — **Orders** & **Reviews** se track karo.",
+  "· Customer-side cancellations **sirf jab tak** order **Pending / Confirmed** ho (dispatch se pehle) — detail **Orders** (`/admin/orders`) me.",
+  "· Shipped ke baad **Returns** (`/admin/returns`) — policy + RMA workflow.",
   "· Payment reversal timelines **bank / Razorpay** par depend karte hain.",
   "",
-  "Orders list khol kar specific order kholo:",
+  "Neeche buttons se **Orders**, **Returns**, ya **Reviews** kholo:",
 ].join("\n");
+
+const ADMIN_PATH_RE = /^\/admin(?:\/[a-zA-Z0-9/_-]*)?$/;
+
+function linkifyPlainSegment(segment: string, onAdminNavigate?: () => void): ReactNode[] {
+  const out: ReactNode[] = [];
+  const pathParts = segment.split(/(\/admin(?:\/[a-zA-Z0-9/_-]*)?)/g);
+  let k = 0;
+  for (let i = 0; i < pathParts.length; i++) {
+    const part = pathParts[i];
+    if (i % 2 === 1 && ADMIN_PATH_RE.test(part)) {
+      out.push(
+        <Link
+          key={`p${k++}`}
+          href={part}
+          onClick={() => onAdminNavigate?.()}
+          className="font-medium text-rose-700 underline decoration-rose-400/80 underline-offset-2 hover:text-rose-900"
+        >
+          {part}
+        </Link>
+      );
+      continue;
+    }
+    if (!part) continue;
+    const urlParts = part.split(/(https?:\/\/[^\s<]+)/g);
+    for (let j = 0; j < urlParts.length; j++) {
+      const bit = urlParts[j];
+      if (j % 2 === 1) {
+        out.push(
+          <a
+            key={`u${k++}`}
+            href={bit}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-rose-700 underline decoration-rose-400/80 underline-offset-2 break-all hover:text-rose-900"
+          >
+            {bit}
+          </a>
+        );
+      } else if (bit) {
+        out.push(<span key={`s${k++}`}>{bit}</span>);
+      }
+    }
+  }
+  return out;
+}
+
+function renderBoldLine(line: string, onAdminNavigate?: () => void): ReactNode {
+  const boldParts = line.split(/(\*\*[^*]+\*\*)/g);
+  return boldParts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold text-gray-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return (
+      <Fragment key={i}>{linkifyPlainSegment(part, onAdminNavigate)}</Fragment>
+    );
+  });
+}
+
+function renderMessageBody(text: string, onAdminNavigate?: () => void): ReactNode {
+  const lines = text.split("\n");
+  return lines.map((line, li) => (
+    <Fragment key={li}>
+      {li > 0 && <br />}
+      {renderBoldLine(line, onAdminNavigate)}
+    </Fragment>
+  ));
+}
 
 export default function AdminConcierge() {
   const router = useRouter();
@@ -152,8 +250,56 @@ export default function AdminConcierge() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [fabAnchor, setFabAnchor] = useState<{ right: number; bottom: number } | null>(null);
 
   const welcome = useMemo(() => botMessage(WELCOME_TEXT, INITIAL_ACTIONS), []);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(FAB_ANCHOR_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { right?: number; bottom?: number };
+        if (typeof p.right === "number" && typeof p.bottom === "number") {
+          setFabAnchor(clampAnchor(p.right, p.bottom, FAB_SIZE, FAB_SIZE));
+          return;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    setFabAnchor({ right: 16, bottom: 20 });
+  }, []);
+
+  useEffect(() => {
+    if (!fabAnchor) return;
+    try {
+      localStorage.setItem(FAB_ANCHOR_KEY, JSON.stringify(fabAnchor));
+    } catch {
+      /* ignore */
+    }
+  }, [fabAnchor]);
+
+  const clampWidgetToViewport = useCallback(() => {
+    setFabAnchor((prev) => {
+      if (!prev || !wrapRef.current) return prev;
+      const { width, height } = wrapRef.current.getBoundingClientRect();
+      const next = clampAnchor(prev.right, prev.bottom, width, height);
+      if (next.right === prev.right && next.bottom === prev.bottom) return prev;
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => clampWidgetToViewport();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [clampWidgetToViewport]);
+
+  useLayoutEffect(() => {
+    clampWidgetToViewport();
+  }, [open, clampWidgetToViewport]);
 
   useEffect(() => {
     try {
@@ -198,6 +344,7 @@ export default function AdminConcierge() {
     if (pathname === "/admin" || pathname === "/admin/")
       return "You're on **Dashboard** — overview cards, revenue chart, low stock, recent orders.";
     if (pathname.startsWith("/admin/orders")) return "You're on **Orders** — status, tracking, carrier, notes.";
+    if (pathname.startsWith("/admin/returns")) return "You're on **Returns** — RMAs, refunds, replacements.";
     if (pathname.startsWith("/admin/products")) return "You're on **Products** — SKU, stock, images, pricing.";
     if (pathname.startsWith("/admin/categories")) return "You're on **Categories** — merchandising structure.";
     if (pathname.startsWith("/admin/analytics")) return "You're on **Analytics** — views vs sales, category revenue.";
@@ -276,7 +423,7 @@ export default function AdminConcierge() {
               `· Users: ${n(o.totalUsers)} (${n(o.newUsersThisMonth)} new this month)`,
               `· Reviews: ${n(o.totalReviews)} (${n(o.reviewsThisMonth)} this month)`,
               "",
-              pathHint || "Open **Analytics** for charts and top products.",
+              pathHint || "Charts ke liye /admin/analytics kholo.",
             ].join("\n"),
             [
               { label: "Full analytics", value: "nav:/admin/analytics" },
@@ -295,7 +442,8 @@ export default function AdminConcierge() {
 
     if (intent === "after_sales") {
       pushBot(AFTER_SALES_REPLY, [
-        { label: "Open orders", value: "nav:/admin/orders" },
+        { label: "Orders", value: "nav:/admin/orders" },
+        { label: "Returns", value: "nav:/admin/returns" },
         { label: "Reviews", value: "nav:/admin/reviews" },
       ]);
       return;
@@ -311,7 +459,7 @@ export default function AdminConcierge() {
 
     const goNav = (path: string, title: string) => {
       pushBot(
-        `**${title}**\n\n${pathHint ? `${pathHint}\n\n` : ""}Neeche button se section kholo.`,
+        `**${title}**\n\n${pathHint ? `${pathHint}\n\n` : ""}Link: ${path}\n\nNeeche button se bhi khol sakte ho.`,
         [{ label: `Open ${title}`, value: `nav:${path}` }]
       );
     };
@@ -365,7 +513,10 @@ export default function AdminConcierge() {
   const handleAction = (value: string) => {
     if (value.startsWith("nav:")) {
       const path = value.slice(4);
-      if (path.startsWith("/")) router.push(path);
+      if (path.startsWith("/")) {
+        setOpen(false);
+        router.push(path);
+      }
       return;
     }
     if (
@@ -398,56 +549,103 @@ export default function AdminConcierge() {
     respond(trimmed);
   };
 
-  const renderText = (text: string) => {
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return (
-          <strong key={i} className="font-semibold text-gray-900">
-            {part.slice(2, -2)}
-          </strong>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
-  };
+  const startDragFromPointer = useCallback(
+    (e: React.PointerEvent, opts: { openOnTap: boolean }) => {
+      if (e.button !== 0 || fabAnchor === null) return;
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startRight = fabAnchor.right;
+      const startBottom = fabAnchor.bottom;
+      let moved = false;
+      const target = e.currentTarget as HTMLElement;
+      target.setPointerCapture(e.pointerId);
+
+      const onMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== e.pointerId) return;
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+        if (!wrapRef.current) return;
+        const { width, height } = wrapRef.current.getBoundingClientRect();
+        setFabAnchor(clampAnchor(startRight - dx, startBottom - dy, width, height));
+      };
+
+      const onUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== e.pointerId) return;
+        try {
+          target.releasePointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        if (!moved && opts.openOnTap) setOpen(true);
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [fabAnchor]
+  );
 
   return (
-    <div className="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-[80] flex flex-col items-end gap-2 pointer-events-none [&>*]:pointer-events-auto">
+    <div
+      ref={wrapRef}
+      suppressHydrationWarning
+      className={cn(
+        "fixed z-[100] flex flex-col items-end gap-2 pointer-events-none [&>*]:pointer-events-auto w-max max-w-[min(100vw-1rem,28rem)]",
+        fabAnchor === null && "bottom-5 right-4 sm:bottom-6 sm:right-6"
+      )}
+      style={
+        fabAnchor
+          ? { right: fabAnchor.right, bottom: fabAnchor.bottom, left: "auto", top: "auto" }
+          : undefined
+      }
+    >
       {open && (
         <div
           data-lenis-prevent
-          className="w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px] h-[74vh] sm:h-[600px] bg-white rounded-2xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col ring-1 ring-gold-500/20"
+          className="w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px] h-[min(74vh,40rem)] sm:h-[600px] bg-white rounded-2xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col ring-1 ring-gold-500/20"
         >
-          <div className="bg-gradient-to-r from-gray-900 via-gray-900 to-navy-950 text-white px-4 py-3 shrink-0 border-b border-gold-500/30">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-gold-400 font-semibold flex items-center gap-1.5">
-                  <Shield className="h-3 w-3" /> Admin only
-                </p>
-                <h3 className="text-base font-bold flex items-center gap-2 mt-0.5">
-                  <Sparkles className="h-4 w-4 text-gold-300" />
-                  Rani Admin Copilot
-                </h3>
-                <p className="text-xs text-white/60 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className="inline-flex items-center gap-1">
-                    <Zap className="h-3 w-3 text-gold-400" /> Shortcuts
-                  </span>
-                  <span className="text-white/30">·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <BarChart3 className="h-3 w-3 text-gold-400" /> Live stats
-                  </span>
-                  <span className="text-white/30">·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Lightbulb className="h-3 w-3 text-gold-400" /> Tips
-                  </span>
-                </p>
+          <div className="bg-gradient-to-r from-gray-900 via-gray-900 to-navy-950 text-white px-3 sm:px-4 py-3 shrink-0 border-b border-gold-500/30">
+            <div className="flex items-start justify-between gap-2 sm:gap-3">
+              <div
+                className="flex min-w-0 flex-1 cursor-grab touch-none select-none items-start gap-2 rounded-lg py-0.5 active:cursor-grabbing"
+                onPointerDown={(e) => startDragFromPointer(e, { openOnTap: false })}
+                role="presentation"
+              >
+                <span className="mt-1 shrink-0 text-white/50" aria-hidden>
+                  <GripVertical className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-widest text-gold-400 font-semibold flex items-center gap-1.5">
+                    <Shield className="h-3 w-3 shrink-0" /> Admin only
+                  </p>
+                  <h3 className="text-base font-bold flex items-center gap-2 mt-0.5">
+                    <Sparkles className="h-4 w-4 shrink-0 text-gold-300" />
+                    <span className="truncate">Assistant</span>
+                  </h3>
+                  <p className="text-xs text-white/60 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="inline-flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-gold-400" /> Shortcuts
+                    </span>
+                    <span className="text-white/30">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <BarChart3 className="h-3 w-3 text-gold-400" /> Live stats
+                    </span>
+                    <span className="text-white/30">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Lightbulb className="h-3 w-3 text-gold-400" /> Tips
+                    </span>
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 inline-flex items-center justify-center shrink-0"
-                aria-label="Close admin assistant"
+                className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 inline-flex items-center justify-center shrink-0 touch-manipulation"
+                aria-label="Close assistant"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -465,13 +663,15 @@ export default function AdminConcierge() {
                   )}
                   <div
                     className={cn(
-                      "max-w-[90%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap",
+                      "max-w-[min(90%,20rem)] sm:max-w-[90%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed",
                       m.sender === "user"
-                        ? "bg-rose-700 text-white rounded-br-md"
-                        : "bg-white text-gray-700 border border-gray-200 rounded-bl-md shadow-sm"
+                        ? "bg-rose-700 text-white rounded-br-md whitespace-pre-wrap break-words"
+                        : "bg-white text-gray-700 border border-gray-200 rounded-bl-md shadow-sm whitespace-normal break-words"
                     )}
                   >
-                    <div className="[&_a]:text-brand-600 [&_a]:underline">{renderText(m.text)}</div>
+                    <div className="[&_a]:text-rose-700 [&_a:hover]:text-rose-900">
+                      {renderMessageBody(m.text, () => setOpen(false))}
+                    </div>
                     {m.actions && m.actions.length > 0 && (
                       <div className="mt-2.5 flex flex-wrap gap-1.5">
                         {m.actions.map((a) => (
@@ -555,25 +755,22 @@ export default function AdminConcierge() {
       )}
 
       {!open && (
-        <div className="flex flex-col items-end gap-2">
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-gray-600 bg-gray-900/95 px-3 py-1.5 shadow-lg text-[11px] text-gold-100/90">
-            <LayoutDashboard className="h-3.5 w-3.5 text-gold-400" />
-            Admin Copilot
-          </div>
-          <div className="relative w-[3.5rem] h-[3.5rem] sm:w-16 sm:h-16 shrink-0">
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 to-gray-950 text-gold-300 shadow-xl border border-gold-500/40 hover:scale-105 active:scale-95 transition-transform inline-flex items-center justify-center"
-              aria-label="Open admin assistant"
-            >
-              <MessageCircle className="h-7 w-7 sm:h-8 sm:w-8" />
-            </button>
-            <span
-              className="absolute top-0 right-0 h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full bg-emerald-500 border-2 border-gray-900 shadow-sm"
-              aria-hidden
-            />
-          </div>
+        <div className="relative h-14 w-14 shrink-0 sm:h-16 sm:w-16">
+          <button
+            type="button"
+            onPointerDown={(e) => startDragFromPointer(e, { openOnTap: true })}
+            onClick={() => {
+              if (fabAnchor === null) setOpen(true);
+            }}
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 to-gray-950 text-gold-300 shadow-xl border border-gold-500/40 touch-manipulation inline-flex items-center justify-center hover:brightness-110 active:brightness-95 transition-[filter,transform] active:scale-[0.98]"
+            aria-label="Open assistant — drag to move"
+          >
+            <MessageCircle className="h-7 w-7 sm:h-8 sm:w-8" />
+          </button>
+          <span
+            className="pointer-events-none absolute top-0.5 right-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-emerald-500 border-2 border-gray-900 shadow-sm"
+            aria-hidden
+          />
         </div>
       )}
     </div>

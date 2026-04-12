@@ -74,17 +74,45 @@ export function getCspNonce(): string | undefined {
   return document.documentElement.getAttribute('data-csp-nonce') || undefined;
 }
 
+function razorpayConstructorReady(): boolean {
+  return !!(typeof window !== 'undefined' &&
+    (window as unknown as { Razorpay?: unknown }).Razorpay);
+}
+
+/** Loads Razorpay Checkout script; resolves when `window.Razorpay` is usable. */
 export const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
     if (typeof window === 'undefined') return resolve(false);
-    if (document.getElementById('razorpay-script')) return resolve(true);
+    if (razorpayConstructorReady()) return resolve(true);
+
+    const waitUntilReadyOrTimeout = (maxMs: number) => {
+      const deadline = Date.now() + maxMs;
+      const id = window.setInterval(() => {
+        if (razorpayConstructorReady()) {
+          window.clearInterval(id);
+          resolve(true);
+        } else if (Date.now() > deadline) {
+          window.clearInterval(id);
+          resolve(false);
+        }
+      }, 50);
+    };
+
+    const existing = document.getElementById('razorpay-script');
+    if (existing) {
+      waitUntilReadyOrTimeout(20_000);
+      return;
+    }
 
     const script = document.createElement('script');
     script.id = 'razorpay-script';
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     const n = getCspNonce();
     if (n) script.setAttribute('nonce', n);
-    script.onload = () => resolve(true);
+    script.onload = () => {
+      if (razorpayConstructorReady()) resolve(true);
+      else waitUntilReadyOrTimeout(20_000);
+    };
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });

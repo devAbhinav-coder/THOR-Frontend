@@ -138,6 +138,8 @@ export interface Order {
   subtotal: number;
   discount: number;
   shippingCharge: number;
+  /** COD handling fee when payment is cash on delivery */
+  codFee?: number;
   tax: number;
   total: number;
   coupon?: string | { _id: string; code: string };

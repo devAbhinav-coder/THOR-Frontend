@@ -811,6 +811,12 @@ export default function OrderDetailPage() {
             <span>Shipping</span>
             <span>{order.shippingCharge === 0 ? <span className="text-green-600 font-semibold">FREE</span> : formatPrice(order.shippingCharge)}</span>
           </div>
+          {(order.codFee || 0) > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>COD fee</span>
+              <span>{formatPrice(order.codFee || 0)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-gray-600"><span>Tax</span><span>{formatPrice(order.tax)}</span></div>
           <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
             <span>Total</span><span>{formatPrice(order.total)}</span>

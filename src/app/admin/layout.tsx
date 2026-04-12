@@ -187,27 +187,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             {navSections.map((section, sIdx) => (
               <div key={section.title} className={cn(sIdx > 0 && 'mt-3 pt-3 border-t border-gray-800/80')}>
-                <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                   {section.title}
                 </p>
-                <div className="space-y-0.5">
-                  {section.items.map(({ label, href, icon: Icon }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      prefetch
-                      onClick={() => setIsMenuOpen(false)}
-                      className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                        navLinkActive(pathname, href)
-                          ? 'bg-rose-700 text-white'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      )}
-                    >
-                      <Icon className="h-4 w-4 flex-shrink-0 opacity-90" />
-                      {label}
-                    </Link>
-                  ))}
+                <div className="space-y-1">
+                  {section.items.map(({ label, href, icon: Icon }) => {
+                    const active = navLinkActive(pathname, href);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        prefetch
+                        onClick={() => setIsMenuOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 rounded-xl py-2.5 pl-3 pr-3 text-[13px] transition-colors',
+                          active
+                            ? 'bg-white/[0.08] text-white shadow-[inset_3px_0_0_0_#d4a853]'
+                            : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
+                            active
+                              ? 'border-gold-500/35 bg-gold-500/10 text-gold-200'
+                              : 'border-white/10 bg-gray-800/80 text-slate-400',
+                          )}
+                        >
+                          <Icon className="h-4 w-4" strokeWidth={2} />
+                        </span>
+                        {label}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -224,57 +236,74 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
       <aside
         data-lenis-prevent
-        className="hidden lg:flex w-[260px] min-w-[260px] max-w-[260px] bg-gray-900 flex-col flex-shrink-0 min-h-0 h-full"
+        className="hidden lg:flex w-[272px] min-w-[272px] max-w-[272px] flex-shrink-0 flex-col border-r border-white/[0.06] bg-gradient-to-b from-slate-900 via-gray-900 to-slate-950 min-h-0 h-full shadow-[inset_-1px_0_0_rgba(255,255,255,0.03)]"
       >
-        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
-          <div>
-            <h1 className="font-serif text-base font-bold text-white">
+        <div className="flex items-center justify-between border-b border-white/[0.06] bg-gray-900/40 px-5 py-4 backdrop-blur-sm">
+          <div className="min-w-0">
+            <h1 className="font-serif text-base font-bold tracking-tight text-white">
               <span className="text-gold-400">✦</span> Rani Admin
             </h1>
-            <p className="text-gray-400 text-xs mt-0.5">{user?.name}</p>
+            <p className="mt-1 truncate text-[11px] text-slate-400">{user?.name}</p>
           </div>
-          <div className="theme-dark text-white">
+          <div className="theme-dark shrink-0 text-white">
             <NotificationBell align="left" />
           </div>
         </div>
 
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-4 px-3 space-y-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-y">
+        <nav className="flex-1 min-h-0 space-y-5 overflow-y-auto overscroll-y-contain px-3 py-5 [scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.35)_transparent] touch-pan-y">
           {navSections.map((section) => (
             <div key={section.title}>
-              <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 {section.title}
               </p>
-              <div className="space-y-0.5">
-                {section.items.map(({ label, href, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    prefetch
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                      navLinkActive(pathname, href)
-                        ? 'bg-rose-700 text-white shadow-sm'
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0 opacity-90" />
-                    <span className="leading-snug">{label}</span>
-                  </Link>
-                ))}
+              <div className="space-y-1">
+                {section.items.map(({ label, href, icon: Icon }) => {
+                  const active = navLinkActive(pathname, href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      prefetch
+                      className={cn(
+                        'group relative flex items-center gap-3 rounded-xl py-2.5 pl-3 pr-3 text-[13px] transition-colors',
+                        active
+                          ? 'bg-white/[0.08] text-white shadow-[inset_3px_0_0_0_#d4a853]'
+                          : 'text-slate-400 hover:bg-white/[0.04] hover:text-white',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors',
+                          active
+                            ? 'border-gold-500/35 bg-gold-500/10 text-gold-200'
+                            : 'border-transparent bg-white/[0.04] text-slate-400 group-hover:border-white/10 group-hover:text-slate-200',
+                        )}
+                      >
+                        <Icon className="h-4 w-4" strokeWidth={2} />
+                      </span>
+                      <span className="leading-snug">{label}</span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-800 space-y-2">
-          <Link href="/" prefetch className="flex items-center gap-2 text-xs text-gray-400 hover:text-white transition-colors">
-            <ChevronRight className="h-3 w-3" /> View Storefront
+        <div className="space-y-2 border-t border-white/[0.06] bg-gray-950/30 px-4 py-4">
+          <Link
+            href="/"
+            prefetch
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-white"
+          >
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gold-500/80" /> View storefront
           </Link>
           <button
+            type="button"
             onClick={logout}
-            className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors w-full"
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-rose-300/90 transition-colors hover:bg-rose-950/40 hover:text-rose-200"
           >
-            <LogOut className="h-3 w-3" /> Sign Out
+            <LogOut className="h-3.5 w-3.5 shrink-0" /> Sign out
           </button>
         </div>
       </aside>

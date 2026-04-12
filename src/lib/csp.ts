@@ -35,6 +35,10 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "https://*.google.com",
     "https://*.ingest.sentry.io",
     "https://*.ingest.de.sentry.io",
+    // Razorpay Checkout (SDK + payment flows)
+    "https://api.razorpay.com",
+    "https://checkout.razorpay.com",
+    "https://lumberjack.razorpay.com",
   ].filter(Boolean);
 
   const connectSrc = connectParts.join(" ");
@@ -46,12 +50,12 @@ export function buildContentSecurityPolicy(nonce: string): string {
   const directives = [
     "default-src 'self'",
     // With a nonce in script-src, browsers ignore 'unsafe-inline'; omit it to avoid confusion.
-    `script-src 'self' 'nonce-${nonce}' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com${scriptSrcExtra}`,
+    `script-src 'self' 'nonce-${nonce}' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com${scriptSrcExtra}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     `connect-src ${connectSrc}`,
-    "frame-src 'self' https://accounts.google.com https://*.google.com",
+    "frame-src 'self' https://accounts.google.com https://*.google.com https://api.razorpay.com https://checkout.razorpay.com",
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",

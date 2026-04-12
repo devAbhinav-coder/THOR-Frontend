@@ -167,6 +167,12 @@ export default function OrderInvoiceDocument({ order }: Props) {
               <span className="text-gray-600 font-medium">Shipping Charge</span>
               <span className="tabular-nums font-medium">{order.shippingCharge === 0 ? "Free" : formatPrice(order.shippingCharge || 0)}</span>
             </div>
+            {(order.codFee || 0) > 0 && (
+              <div className="flex justify-between py-1.5 px-2 text-xs border-b border-gray-200">
+                <span className="text-gray-600 font-medium">COD handling fee</span>
+                <span className="tabular-nums font-medium">{formatPrice(order.codFee || 0)}</span>
+              </div>
+            )}
             <div className="flex justify-between py-1.5 px-2 text-xs border-b border-gray-400">
               <span className="text-gray-600 font-medium">Tax</span>
               <span className="tabular-nums font-medium">{formatPrice(order.tax || 0)}</span>
