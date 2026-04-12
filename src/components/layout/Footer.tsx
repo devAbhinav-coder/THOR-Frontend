@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import { Facebook, Instagram, Mail, Phone, MapPin } from "lucide-react";
 import { categoryApi, storefrontApi } from "@/lib/api";
+import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { Category, StorefrontSettings } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -25,22 +27,21 @@ function normalizeHref(href: string): string {
     return raw;
   }
 }
-/**
- * Footer component
- we need to filter the categirues that that is not a gift categorry true 
- * 
- */
+/** Footer — same React Query cache as Navbar: full list, then filter non-gift for shop links. */
 export default function Footer() {
-  const { data: categories = [] } = useQuery({
+  const { data: categoriesRaw = [] } = useQuery({
     queryKey: queryKeys.categories,
     queryFn: async () => {
       const body = await categoryApi.getAll();
-      return (body.data.categories || []).filter(
-        (category) => category.isGiftCategory !== true,
-      ) as Category[];
+      return (body.data.categories || []) as Category[];
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  const categories = useMemo(
+    () => categoriesRaw.filter(isShopCatalogCategory),
+    [categoriesRaw],
+  );
 
   const { data: settings = null } = useQuery({
     queryKey: queryKeys.storefrontSettings,

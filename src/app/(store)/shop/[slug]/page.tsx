@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import ProductDetailClient from '@/components/product/ProductDetailClient';
+import { fetchProductBySlugServer } from '@/lib/storePrefetch';
 import { getSiteUrl } from '@/lib/siteUrl';
 
 interface Props {
@@ -58,6 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
+  const initialProduct = await fetchProductBySlugServer(slug);
   const safeSlug = encodeURIComponent(slug);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const appUrl = getSiteUrl();
@@ -148,7 +150,7 @@ export default async function ProductDetailPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
         />
       )}
-      <ProductDetailClient slug={slug} />
+      <ProductDetailClient slug={slug} initialProduct={initialProduct} />
     </>
   );
 }

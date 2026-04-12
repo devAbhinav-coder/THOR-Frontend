@@ -7,6 +7,7 @@ import { Tag, ArrowRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperType } from "swiper";
 import { categoryApi } from "@/lib/api";
+import { isGiftCategory } from "@/lib/categoryFilters";
 import { Category } from "@/types";
 
 import "swiper/css";
@@ -41,15 +42,6 @@ function getImageForCategory(cat: Category): string {
   return "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85";
 }
 
-function isGiftCategory(cat: Category): boolean {
-  if (cat.isGiftCategory) return true;
-  const name = String(cat.name || "").toLowerCase();
-  const slug = (cat.slug || "").toLowerCase();
-  return (
-    name.includes("gift") || name.includes("gifting") || slug.includes("gift")
-  );
-}
-
 function sortSareeFirst(a: Category, b: Category): number {
   const aName = String(a.name || "");
   const bName = String(b.name || "");
@@ -59,18 +51,32 @@ function sortSareeFirst(a: Category, b: Category): number {
   return aName.localeCompare(bName);
 }
 
+type CategorySectionProps = {
+  /** Server-prefetched list; `null` = prefetch failed, client will fetch. */
+  initialCategories?: (Category & { productCount: number })[] | null;
+};
+
 /* ── Main Section ────────────────────────────────────────── */
-export default function CategorySection() {
+export default function CategorySection({
+  initialCategories,
+}: CategorySectionProps = {}) {
   const [categories, setCategories] = useState<
     (Category & { productCount: number })[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+  >(() => (Array.isArray(initialCategories) ? initialCategories : []));
+  const [loading, setLoading] = useState(
+    () => !Array.isArray(initialCategories),
+  );
   const [swiperReady, setSwiperReady] = useState<SwiperType | null>(null);
   const directionRef = useRef<1 | -1>(1);
   const userPauseRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (Array.isArray(initialCategories)) {
+      setCategories(initialCategories);
+      setLoading(false);
+      return;
+    }
     categoryApi
       .getStats()
       .then((res) =>
@@ -83,7 +89,7 @@ export default function CategorySection() {
       )
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [initialCategories]);
 
   const filteredCategories = useMemo(() => {
     const list = categories.filter((c) => !isGiftCategory(c));

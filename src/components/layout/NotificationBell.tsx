@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactElement } from "react";
 import {
   Bell,
   Check,
@@ -16,10 +16,24 @@ import { useAuthStore } from "@/store/useAuthStore";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { queryKeys } from "@/lib/queryKeys";
 import { useNotificationBrowserPush } from "@/hooks/useNotificationBrowserPush";
 
 const TOAST_CLEAR = "notif-clear-all";
 const TOAST_MARK_READ = "notif-mark-all-read";
+
+const NOTIFICATION_TYPE_ICONS: Record<string, ReactElement> = {
+  order: <PackageOpen className="w-5 h-5 text-blue-500" />,
+  alert: <AlertCircle className="w-5 h-5 text-red-500" />,
+};
+
+function notificationTypeIcon(type: string): ReactElement {
+  return (
+    NOTIFICATION_TYPE_ICONS[type] ?? (
+      <Info className="w-5 h-5 text-emerald-500" />
+    )
+  );
+}
 
 export default function NotificationBell({
   align = "right",
@@ -50,7 +64,7 @@ export default function NotificationBell({
   }, [isOpen]);
 
   const { data } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: queryKeys.notifications,
     queryFn: () => notificationApi.getAll({ limit: 50 }),
     enabled: !!user,
     refetchInterval: user?.role === "admin" ? 15000 : 30000,
@@ -67,7 +81,7 @@ export default function NotificationBell({
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => notificationApi.markAsRead(id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications }),
   });
 
   const markAllAsReadMutation = useMutation({
@@ -78,7 +92,7 @@ export default function NotificationBell({
     onSuccess: () => {
       toast.dismiss(TOAST_MARK_READ);
       toast.success("All marked as read");
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
     },
     onError: (err: { message?: string }) => {
       toast.dismiss(TOAST_MARK_READ);
@@ -94,7 +108,7 @@ export default function NotificationBell({
     onSuccess: () => {
       toast.dismiss(TOAST_CLEAR);
       toast.success("All notifications cleared");
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
       setIsOpen(false);
     },
     onError: (err: { message?: string }) => {
@@ -116,17 +130,6 @@ export default function NotificationBell({
   const handleNotificationClick = (id: string, isRead: boolean) => {
     if (!isRead) markAsReadMutation.mutate(id);
     setIsOpen(false);
-  };
-
-  const IconForType = (type: string) => {
-    switch (type) {
-      case "order":
-        return <PackageOpen className="w-5 h-5 text-blue-500" />;
-      case "alert":
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
-      default:
-        return <Info className="w-5 h-5 text-emerald-500" />;
-    }
   };
 
   if (!user) return null;
@@ -273,7 +276,7 @@ export default function NotificationBell({
                           : "bg-gray-100 text-gray-500",
                       )}
                     >
-                      {IconForType(n.type || "system")}
+                      {notificationTypeIcon(n.type || "system")}
                     </div>
 
                     <div className="flex-1 min-w-0 pr-2">

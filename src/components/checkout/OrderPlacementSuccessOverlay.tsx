@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -11,13 +11,14 @@ type Props = {
 };
 
 /**
- * Post-checkout transition: reassuring “we’re confirming” moment before SPA navigation.
+ * Post-checkout transition: full-screen confirmation before navigating to order details.
  * Respects prefers-reduced-motion (shorter, simpler).
  */
 export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
   const router = useRouter();
   const [phase, setPhase] = useState<"confirming" | "ready">("confirming");
   const [barFill, setBarFill] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
     if (!orderId || typeof document === "undefined") return;
@@ -37,21 +38,24 @@ export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
 
     setPhase("confirming");
     setBarFill(false);
-    const raf = requestAnimationFrame(() => setBarFill(true));
+    setEntered(false);
+    const rafEnter = requestAnimationFrame(() => setEntered(true));
+    const rafBar = requestAnimationFrame(() => setBarFill(true));
 
     const t1 = window.setTimeout(
       () => setPhase("ready"),
-      reduceMotion ? 200 : 650,
+      reduceMotion ? 220 : 780,
     );
     const t2 = window.setTimeout(
       () => {
         router.push(`/dashboard/orders/${encodeURIComponent(orderId)}`);
       },
-      reduceMotion ? 500 : 1650,
+      reduceMotion ? 520 : 2400,
     );
 
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(rafEnter);
+      cancelAnimationFrame(rafBar);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
@@ -62,7 +66,7 @@ export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
   const prefersReducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const barMs = prefersReducedMotion ? 280 : 1100;
+  const barMs = prefersReducedMotion ? 300 : 1200;
 
   return (
     <div
@@ -73,23 +77,65 @@ export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
       aria-describedby='order-success-desc'
     >
       <div
-        className='absolute inset-0 bg-navy-950/55 backdrop-blur-[2px] motion-safe:animate-fadeIn'
+        className={cn(
+          "absolute inset-0 bg-navy-950/65 backdrop-blur-md transition-opacity duration-500",
+          entered ? "opacity-100" : "opacity-0",
+        )}
         aria-hidden
       />
       <div
         className={cn(
-          "relative w-full max-w-[min(100%,22rem)] rounded-3xl border border-white/20 bg-white px-6 py-8 sm:px-10 sm:py-10 shadow-2xl shadow-navy-900/20 text-center",
-          "motion-safe:animate-fadeIn",
+          "relative w-full max-w-[min(100%,24rem)] overflow-hidden rounded-3xl border border-white/30 bg-gradient-to-b from-white to-gray-50/95 px-6 py-9 text-center shadow-[0_25px_80px_-20px_rgba(15,23,42,0.45)] sm:px-10 sm:py-11",
+          "transition-all duration-500 ease-out",
+          entered ?
+            "translate-y-0 scale-100 opacity-100"
+          : "translate-y-6 scale-[0.96] opacity-0",
         )}
       >
-        <div className='mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 ring-2 ring-brand-100'>
+        {/* soft accent */}
+        <div
+          className='pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand-400/15 blur-2xl'
+          aria-hidden
+        />
+        <div
+          className='pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-gold-400/10 blur-2xl'
+          aria-hidden
+        />
+
+        {phase === "ready" && !prefersReducedMotion && (
+          <>
+            <Sparkles
+              className='pointer-events-none absolute right-6 top-6 h-4 w-4 text-brand-400/80 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-500'
+              aria-hidden
+            />
+            <Sparkles
+              className='pointer-events-none absolute bottom-8 left-5 h-3 w-3 text-gold-500/70 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in duration-700'
+              aria-hidden
+            />
+          </>
+        )}
+
+        <div
+          className={cn(
+            "relative mx-auto mb-6 flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full transition-all duration-500 ease-out",
+            phase === "ready" ?
+              "bg-emerald-50 ring-[3px] ring-emerald-200/90 shadow-lg shadow-emerald-900/10"
+            : "bg-brand-50 ring-2 ring-brand-100",
+          )}
+        >
           {phase === "ready" ?
             <Check
-              className='h-8 w-8 text-brand-600 motion-safe:animate-[fadeIn_0.4s_ease-out]'
-              strokeWidth={2.5}
+              key='check'
+              className={cn(
+                "h-9 w-9 text-emerald-600",
+                !prefersReducedMotion &&
+                  "motion-safe:animate-in motion-safe:zoom-in-95 motion-safe:duration-300",
+              )}
+              strokeWidth={2.75}
               aria-hidden
             />
           : <Loader2
+              key='load'
               className='h-9 w-9 text-brand-600 animate-spin motion-reduce:animate-none'
               aria-hidden
             />
@@ -98,23 +144,36 @@ export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
 
         <h2
           id='order-success-title'
-          className='font-serif text-xl sm:text-2xl font-bold text-navy-900 tracking-tight'
+          className={cn(
+            "font-serif text-xl font-bold tracking-tight text-navy-900 sm:text-2xl",
+            phase === "ready" &&
+              !prefersReducedMotion &&
+              "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-400",
+          )}
         >
           {phase === "ready" ? "Order confirmed" : "Confirming your order"}
         </h2>
         <p
           id='order-success-desc'
-          className='mt-2 text-sm text-gray-600 leading-relaxed'
+          className={cn(
+            "mt-2.5 text-sm leading-relaxed text-gray-600",
+            phase === "ready" ?
+              "text-gray-600"
+            : "text-gray-500",
+            phase === "ready" &&
+              !prefersReducedMotion &&
+              "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-400 motion-safe:delay-75",
+          )}
         >
           {phase === "ready" ?
             "Taking you to your order details…"
           : "Hang tight — we’re saving everything securely."}
         </p>
 
-        <div className='mt-6 h-1.5 w-full overflow-hidden rounded-full bg-gray-100'>
+        <div className='mt-7 h-2 w-full overflow-hidden rounded-full bg-gray-100/90 ring-1 ring-gray-200/60'>
           <div
             className={cn(
-              "h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600",
+              "h-full rounded-full bg-gradient-to-r from-brand-500 via-brand-500 to-emerald-500",
               prefersReducedMotion ? "transition-none" : "transition-[width] ease-out",
             )}
             style={{
@@ -123,6 +182,9 @@ export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
             }}
           />
         </div>
+        <p className='mt-4 text-[11px] font-medium uppercase tracking-[0.2em] text-gray-400'>
+          {phase === "ready" ? "Success" : "Processing"}
+        </p>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
   ShoppingBag,
   Heart,
@@ -27,10 +28,21 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { categoryApi, storefrontApi } from "@/lib/api";
 import { Category, StorefrontSettings } from "@/types";
 import { cn } from "@/lib/utils";
+import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
+import { useStoreNavActive, type StoreNavActive } from "@/hooks/useStoreNavActive";
+
+type MobileBottomItem = {
+  id: string;
+  label: string;
+  Icon: LucideIcon;
+  href: string;
+  activeKey: keyof StoreNavActive;
+  showCartBadge?: boolean;
+};
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -53,17 +65,10 @@ export default function Navbar() {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const navCategories = useMemo(() => {
-    const isShopNavCategory = (cat: Category) => {
-      if (cat.isGiftCategory) return false;
-      const n = String(cat.name ?? "")
-        .trim()
-        .toLowerCase();
-      if (n === "gifting") return false;
-      return true;
-    };
-    return categoriesData.filter(isShopNavCategory).slice(0, 7);
-  }, [categoriesData]);
+  const navCategories = useMemo(
+    () => categoriesData.filter(isShopCatalogCategory).slice(0, 7),
+    [categoriesData],
+  );
 
   const { data: storefrontSettings } = useQuery({
     queryKey: queryKeys.storefrontSettings,
@@ -170,16 +175,49 @@ export default function Navbar() {
       "/auth/login?redirect=/dashboard/orders"
     );
 
-  const isShopActive = pathname === "/shop" || pathname.startsWith("/shop");
-  const isOrdersActive = pathname.startsWith("/dashboard/orders");
-  const isCartActive = pathname === "/cart" || pathname.startsWith("/cart");
-  const isGiftingActive =
-    pathname === "/gifting" || pathname.startsWith("/gifting");
+  const navActive = useStoreNavActive();
+
+  const mobileBottomNavItems: MobileBottomItem[] = useMemo(
+    () => [
+      { id: "home", label: "Home", Icon: Home, href: "/", activeKey: "home" },
+      { id: "shop", label: "Shop", Icon: Store, href: "/shop", activeKey: "shop" },
+      {
+        id: "gifting",
+        label: "Gifting",
+        Icon: Gift,
+        href: "/gifting",
+        activeKey: "gifting",
+      },
+      {
+        id: "cart",
+        label: "Cart",
+        Icon: ShoppingBag,
+        href: "/cart",
+        activeKey: "cart",
+        showCartBadge: true,
+      },
+      {
+        id: "orders",
+        label: "Orders",
+        Icon: Package,
+        href: ordersHref,
+        activeKey: "orders",
+      },
+      {
+        id: "profile",
+        label: "Profile",
+        Icon: User,
+        href: isAuthenticated ? "/dashboard" : "/auth/login",
+        activeKey: "userHub",
+      },
+    ],
+    [ordersHref, isAuthenticated],
+  );
 
   return (
     <>
       <BrowserNotificationPrompt />
-      {announcementMessages.length > 0 && pathname === "/" && (
+      {announcementMessages.length > 0 && navActive.home && (
         <div className='bg-navy-950 min-h-8 border-b border-navy-700 flex items-center justify-center px-3 py-1.5 text-center relative z-40 group cursor-default'>
           <p className='text-xs sm:text-sm text-gold-300 font-medium leading-snug max-w-4xl animate-fadeIn'>
             {announcementMessages[announcementIndex]}
@@ -229,7 +267,7 @@ export default function Navbar() {
                 href='/'
                 className={cn(
                   "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  pathname === "/" ?
+                  navActive.home ?
                     "text-white bg-navy-700"
                   : "text-white/75 hover:text-white hover:bg-navy-800",
                 )}
@@ -288,7 +326,7 @@ export default function Navbar() {
 
             <div className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'>
               <StoreSearchAutocomplete
-                scope={isGiftingActive ? "gifting" : "shop"}
+                scope={navActive.gifting ? "gifting" : "shop"}
                 variant='nav-dark'
                 urlSearch={urlSearchForNav}
               />
@@ -420,7 +458,7 @@ export default function Navbar() {
           {isSearchOpen && (
             <div className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'>
               <StoreSearchAutocomplete
-                scope={isGiftingActive ? "gifting" : "shop"}
+                scope={navActive.gifting ? "gifting" : "shop"}
                 variant='nav-mobile'
                 urlSearch={urlSearchForNav}
               />
@@ -638,119 +676,41 @@ export default function Navbar() {
         aria-label='Primary'
       >
         <div className='grid w-full grid-cols-6 max-w-xl mx-auto px-0.5 min-h-[3.25rem]'>
-          <Link
-            href='/'
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              pathname === "/" ? "text-white" : (
-                "text-white/70 hover:text-white"
-              ),
-            )}
-          >
-            <Home
-              className={cn(
+          {mobileBottomNavItems.map(
+            ({ id, label, Icon, href, activeKey, showCartBadge }) => {
+              const isOn = navActive[activeKey];
+              const linkClass = cn(
+                "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
+                isOn ? "text-white" : "text-white/70 hover:text-white",
+              );
+              const iconClass = cn(
                 "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                pathname === "/" ? "text-brand-400" : "text-white/75",
-              )}
-              strokeWidth={pathname === "/" ? 2.5 : 2}
-            />
-            Home
-          </Link>
-          <Link
-            href='/shop'
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isShopActive ? "text-white" : "text-white/70 hover:text-white",
-            )}
-          >
-            <Store
-              className={cn(
-                "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isShopActive ? "text-brand-400" : "text-white/75",
-              )}
-              strokeWidth={isShopActive ? 2.5 : 2}
-            />
-            Shop
-          </Link>
-          <Link
-            href='/gifting'
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isGiftingActive ? "text-white" : "text-white/70 hover:text-white",
-            )}
-          >
-            <Gift
-              className={cn(
-                "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isGiftingActive ? "text-brand-400" : "text-white/75",
-              )}
-              strokeWidth={isGiftingActive ? 2.5 : 2}
-            />
-            <span>Gifting</span>
-          </Link>
-          <Link
-            href='/cart'
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isCartActive ? "text-white" : "text-white/70 hover:text-white",
-            )}
-          >
-            <span className='relative inline-flex'>
-              <ShoppingBag
-                className={cn(
-                  "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                  isCartActive ? "text-brand-400" : "text-white/75",
-                )}
-                strokeWidth={isCartActive ? 2.5 : 2}
-              />
-              {itemCount > 0 && (
-                <span className='absolute -right-1.5 -top-1 min-w-[14px] h-3.5 px-0.5 bg-brand-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none border border-navy-900'>
-                  {itemCount > 9 ? "9+" : itemCount}
-                </span>
-              )}
-            </span>
-            Cart
-          </Link>
-          <Link
-            href={ordersHref}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              isOrdersActive ? "text-white" : "text-white/70 hover:text-white",
-            )}
-          >
-            <Package
-              className={cn(
-                "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isOrdersActive ? "text-brand-400" : "text-white/75",
-              )}
-              strokeWidth={isOrdersActive ? 2.5 : 2}
-            />
-            Orders
-          </Link>
-          <Link
-            href={isAuthenticated ? "/dashboard" : "/auth/login"}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-              pathname === "/dashboard" || pathname === "/auth/login" ?
-                "text-white"
-              : "text-white/70 hover:text-white",
-            )}
-          >
-            <User
-              className={cn(
-                "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                pathname === "/dashboard" || pathname === "/auth/login" ?
-                  "text-brand-400"
-                : "text-white/75",
-              )}
-              strokeWidth={
-                pathname === "/dashboard" || pathname === "/auth/login" ?
-                  2.5
-                : 2
-              }
-            />
-            Profile
-          </Link>
+                isOn ? "text-brand-400" : "text-white/75",
+              );
+              return (
+                <Link key={id} href={href} className={linkClass}>
+                  {showCartBadge ?
+                    <span className='relative inline-flex'>
+                      <Icon
+                        className={iconClass}
+                        strokeWidth={isOn ? 2.5 : 2}
+                      />
+                      {itemCount > 0 && (
+                        <span className='absolute -right-1.5 -top-1 min-w-[14px] h-3.5 px-0.5 bg-brand-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none border border-navy-900'>
+                          {itemCount > 9 ? "9+" : itemCount}
+                        </span>
+                      )}
+                    </span>
+                  : <Icon
+                      className={iconClass}
+                      strokeWidth={isOn ? 2.5 : 2}
+                    />
+                  }
+                  {label}
+                </Link>
+              );
+            },
+          )}
         </div>
       </nav>
     </>

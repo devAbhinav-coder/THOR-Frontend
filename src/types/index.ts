@@ -154,6 +154,16 @@ export interface Order {
   shippedAt?: string;
   deliveredAt?: string;
   createdAt: string;
+  /** Returns / refunds — populated when customer or admin uses return flow */
+  returnStatus?: string;
+  returnRequest?: {
+    reason?: string;
+    note?: string;
+    refundMethod?: string;
+    requestedAt?: string;
+    userBankDetails?: Record<string, string | undefined>;
+  };
+  refundData?: { amount: number; method: string };
 }
 
 export interface Review {

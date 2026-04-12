@@ -179,10 +179,10 @@ export default function CartClient() {
                       ? `/shop/${encodeURIComponent(item.product.slug)}`
                       : "#";
                     return (
-                  <div key={rowKey} className='p-5 flex gap-4'>
+                  <div key={rowKey} className='flex items-stretch gap-4 p-5'>
                     <Link
                       href={productHref}
-                      className='relative w-20 h-24 sm:w-24 sm:h-28 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 ring-1 ring-gray-100'
+                      className='relative h-24 w-20 shrink-0 self-start overflow-hidden rounded-xl bg-gray-50 ring-1 ring-gray-100 sm:h-28 sm:w-24'
                     >
                       <Image
                         key={rowKey}
@@ -196,7 +196,7 @@ export default function CartClient() {
 
                     <div className='flex-1 min-w-0'>
                       <div className='flex items-start justify-between gap-3'>
-                        <div className='min-w-0'>
+                        <div className='min-w-0 flex-1'>
                           <Link
                             href={productHref}
                             className='font-medium text-gray-900 text-sm hover:text-brand-700 line-clamp-2'
@@ -240,19 +240,31 @@ export default function CartClient() {
                              </p>
                            )}
                          </div>
-                        <div className='text-right flex-shrink-0'>
-                          <p className='font-semibold text-gray-900'>
-                            {formatPrice(item.price * item.quantity)}
-                          </p>
-                          {item.quantity > 1 && (
-                            <p className='text-xs text-gray-400'>
-                              {formatPrice(item.price)} each
+                        <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch'>
+                          <div className='text-right'>
+                            <p className='font-semibold text-gray-900'>
+                              {formatPrice(item.price * item.quantity)}
                             </p>
-                          )}
+                            {item.quantity > 1 && (
+                              <p className='text-xs text-gray-400'>
+                                {formatPrice(item.price)} each
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type='button'
+                            onClick={() => removeItem(item.variant.sku)}
+                            disabled={isLoading}
+                            className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
+                            aria-label='Remove item'
+                            title='Remove'
+                          >
+                            <Trash2 className='h-3.5 w-3.5' strokeWidth={2} />
+                          </button>
                         </div>
                       </div>
 
-                      <div className='mt-4 flex items-center justify-between gap-3'>
+                      <div className='mt-4'>
                         <div className='inline-flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden'>
                           <button
                             onClick={() =>
@@ -282,15 +294,6 @@ export default function CartClient() {
                             <Plus className='h-4 w-4' />
                           </button>
                         </div>
-
-                        <button
-                          onClick={() => removeItem(item.variant.sku)}
-                          className='inline-flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors'
-                          aria-label='Remove item'
-                        >
-                          <Trash2 className='h-4 w-4' />
-                          Remove
-                        </button>
                       </div>
                     </div>
                   </div>

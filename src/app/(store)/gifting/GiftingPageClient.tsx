@@ -21,6 +21,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/SkeletonLoader";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { queryKeys } from "@/lib/queryKeys";
 
 type SortKey =
   | "relevance"
@@ -68,8 +69,18 @@ type GiftingProductsResponse = {
 
 export default function GiftingPageClient({
   initialStorefront,
+  initialGiftingCategories,
+  initialGiftingProductsPage,
 }: {
   initialStorefront: StorefrontSettingsApiEnvelope | null;
+  /** Server JSON for `giftingApi.getCategories()` — removes category-strip skeleton flash. */
+  initialGiftingCategories?: Awaited<
+    ReturnType<typeof giftingApi.getCategories>
+  > | null;
+  /** Server JSON for first page of `giftingApi.getProducts` — hydrates product grid. */
+  initialGiftingProductsPage?: Awaited<
+    ReturnType<typeof giftingApi.getProducts>
+  > | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -99,6 +110,7 @@ export default function GiftingPageClient({
     queryKey: ["gifting-categories"],
     queryFn: () => giftingApi.getCategories(),
     staleTime: 120_000,
+    initialData: initialGiftingCategories ?? undefined,
   });
 
   const { data: catalogCategoriesBody } = useQuery({
@@ -108,7 +120,7 @@ export default function GiftingPageClient({
   });
 
   const { data: settingsBody, isPending: settingsPending } = useQuery({
-    queryKey: ["storefront-settings-gifting"],
+    queryKey: queryKeys.storefrontSettings,
     queryFn: () => storefrontApi.getSettings(),
     staleTime: 120_000,
     initialData: initialStorefront ?? undefined,
@@ -141,6 +153,16 @@ export default function GiftingPageClient({
       initialPageParam: 1,
       staleTime: 45_000,
       placeholderData: (previousData) => previousData,
+      initialData:
+        initialGiftingProductsPage &&
+        activeOccasion === "all" &&
+        activeCategory === "all" &&
+        !debouncedSearch
+          ? {
+              pages: [initialGiftingProductsPage],
+              pageParams: [1],
+            }
+          : undefined,
     });
 
   const giftCategories: Category[] = categoriesBody?.data?.categories || [];

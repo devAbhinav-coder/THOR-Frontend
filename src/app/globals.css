@@ -123,6 +123,75 @@
   .gradient-hero {
     background: linear-gradient(160deg, #0a0e1a 0%, var(--prussian-blue) 58%, #7d0b1f 100%);
   }
+
+  /* Checkout empty cart — soft motion */
+  @keyframes checkout-empty-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-7px);
+    }
+  }
+  .animate-checkout-empty-float {
+    animation: checkout-empty-float 3.2s ease-in-out infinite;
+  }
+  @keyframes checkout-empty-glow {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.75;
+      transform: scale(1.06);
+    }
+  }
+  .animate-checkout-empty-glow {
+    animation: checkout-empty-glow 4s ease-in-out infinite;
+  }
+  @keyframes checkout-empty-wiggle {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    20% {
+      transform: rotate(-5deg);
+    }
+    40% {
+      transform: rotate(4deg);
+    }
+    60% {
+      transform: rotate(-2deg);
+    }
+    80% {
+      transform: rotate(1deg);
+    }
+  }
+  .animate-checkout-empty-wiggle {
+    animation: checkout-empty-wiggle 0.75s ease-in-out 1 both;
+  }
+
+  /* react-hot-toast — top-center: light slide + fade (reference-style) */
+  @keyframes hor-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .hor-toast-enter {
+    animation: hor-toast-in 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hor-toast-enter {
+      animation: none;
+    }
+  }
 }
 
 /* Swiper overrides */

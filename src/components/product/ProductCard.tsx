@@ -374,7 +374,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
 
       {isGiftModalOpen && (
         <GiftCustomizationModal
-          product={product as any}
+          product={product}
           onClose={() => setIsGiftModalOpen(false)}
         />
       )}

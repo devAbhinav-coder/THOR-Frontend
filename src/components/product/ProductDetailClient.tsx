@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, memo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   Heart,
   ShoppingBag,
   ChevronRight,
-  ChevronLeft,
   Minus,
   Plus,
   Truck,
@@ -17,19 +16,15 @@ import {
   Zap,
   Package,
   MapPin,
-  Share2,
   Check,
   MessageSquare,
-  ThumbsUp,
-  Flag,
   ChevronDown,
   ChevronUp,
   Gift,
-  X,
 } from "lucide-react";
 import { cartApi, productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
-import { formatPrice, formatDate, cn } from "@/lib/utils";
+import { formatPrice, cn } from "@/lib/utils";
 import { variantSwatchBackground } from "@/lib/variantSwatch";
 import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/product/ProductDetailSkeleton";
@@ -38,137 +33,34 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
-import ProductCard from "@/components/product/ProductCard";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
-import ProductImageLightbox from "@/components/product/ProductImageLightbox";
 import RichTextContent from "@/components/ui/RichTextContent";
 import { isLowInStockVariant } from "@/lib/inventoryConstants";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import {
+  type ReviewEligibility,
+  type ReviewFormState,
+  PdpImageGallery,
+  PdpReviewsSection,
+  PdpRelatedProductRows,
+} from "@/components/product/pdp";
 
-/** Desktop PDP hover magnifier — module scope so rAF flush can stay stable. */
-const PDP_MAIN_LENS_PX = 120;
-const PDP_MAIN_LENS_ZOOM = 2.45;
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
 
 interface Props {
   slug: string;
+  /** Server-rendered product — skips full-page skeleton while reviews/related load. */
+  initialProduct?: Product | null;
 }
 
-interface ReviewEligibility {
-  canReview: boolean;
-  hasPurchased: boolean;
-  hasReviewed: boolean;
-  orderId: string | null;
-}
-
-interface ReviewFormState {
-  rating: number;
-  title: string;
-  comment: string;
-}
-
-const StarSelector = memo(function StarSelector({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  const [hovered, setHovered] = useState(0);
-  return (
-    <div className='flex gap-1'>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type='button'
-          onMouseEnter={() => setHovered(n)}
-          onMouseLeave={() => setHovered(0)}
-          onClick={() => onChange(n)}
-          className='transition-transform hover:scale-110'
-          aria-label={`${n} star`}
-        >
-          <Star
-            className={cn(
-              "h-7 w-7 transition-colors",
-              (hovered || value) >= n ?
-                "fill-gold-400 text-gold-400"
-              : "fill-gray-200 text-gray-200",
-            )}
-          />
-        </button>
-      ))}
-    </div>
-  );
-});
-
-const RatingBar = memo(function RatingBar({
-  label,
-  count,
-  total,
-}: {
-  label: string;
-  count: number;
-  total: number;
-}) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  const colors: Record<string, string> = {
-    "5": "bg-[#10b981]", // Green
-    "4": "bg-[#10b981]", // Green
-    "3": "bg-[#ffb400]", // Yellow/Gold
-    "2": "bg-[#ff8a00]", // Orange
-    "1": "bg-[#f44336]", // Red
-  };
-  const labels: Record<string, string> = {
-    "5": "Excellent",
-    "4": "Very Good",
-    "3": "Good",
-    "2": "Average",
-    "1": "Poor",
-  };
-
-  return (
-    <div className='flex items-center gap-4 group cursor-default'>
-      <span className='text-[13px] font-medium text-gray-600 w-20 shrink-0'>
-        {labels[label] || label}
-      </span>
-      <div className='flex-1 h-2 bg-gray-100 rounded-full overflow-hidden relative'>
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-1000 ease-out",
-            colors[label] || "bg-brand-400",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className='text-[13px] font-bold text-gray-400 w-10 shrink-0 text-right group-hover:text-gray-900 transition-colors'>
-        {count}
-      </span>
-    </div>
-  );
-});
-
-export default function ProductDetailClient({ slug }: Props) {
+export default function ProductDetailClient({
+  slug,
+  initialProduct,
+}: Props) {
   /* Core */
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  /* Gallery */
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
-  const thumbsRef = useRef<HTMLDivElement>(null);
-  const pdpMainImageRef = useRef<HTMLDivElement>(null);
-  const pdpLensBoxRef = useRef<HTMLDivElement>(null);
-  const pdpLensImgRef = useRef<HTMLImageElement>(null);
-  const pdpLensMetricsRef = useRef<{
-    mx: number;
-    my: number;
-    cw: number;
-    ch: number;
-  } | null>(null);
-  const pdpLensRafRef = useRef<number | null>(null);
-  /** Lens visibility only — position updates run via rAF + transform (no per-pixel re-renders). */
-  const [pdpLensVisible, setPdpLensVisible] = useState(false);
 
   /* Variant / Qty */
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
@@ -256,28 +148,15 @@ export default function ProductDetailClient({ slug }: Props) {
     [product, needsCustomization],
   );
 
-  useEffect(() => {
-    setPdpLensVisible(false);
-    pdpLensMetricsRef.current = null;
-    if (pdpLensRafRef.current != null) {
-      cancelAnimationFrame(pdpLensRafRef.current);
-      pdpLensRafRef.current = null;
-    }
-  }, [selectedImage]);
-
-  useEffect(() => {
-    return () => {
-      if (pdpLensRafRef.current != null) {
-        cancelAnimationFrame(pdpLensRafRef.current);
-      }
-    };
-  }, []);
-
   /* Initial fetch */
   useEffect(() => {
-    setIsLoading(true);
-    setSelectedImage(0);
-    setImageLightboxOpen(false);
+    const hydratedFromServer =
+      initialProduct &&
+      String(initialProduct.slug).toLowerCase() ===
+        String(slug).toLowerCase();
+    if (!hydratedFromServer) {
+      setIsLoading(true);
+    }
     setReviews([]);
     setRelatedProducts([]);
     setMoreProducts([]);
@@ -286,14 +165,26 @@ export default function ProductDetailClient({ slug }: Props) {
 
     const fetchAll = async () => {
       try {
-        const main = await productApi.getBySlug(slug);
-        const p = main.data.product as Product;
-        setProduct({
-          ...p,
-          images: normalizeProductImages(p.images),
-        });
-        const variants = p.variants || [];
-        setSelectedVariant(variants.find((v) => v.stock > 0) || variants[0]);
+        let p: Product;
+        if (hydratedFromServer && initialProduct) {
+          p = {
+            ...initialProduct,
+            images: normalizeProductImages(initialProduct.images),
+          };
+          setProduct(p);
+          const variants = p.variants || [];
+          setSelectedVariant(variants.find((v) => v.stock > 0) || variants[0]);
+          setIsLoading(false);
+        } else {
+          const main = await productApi.getBySlug(slug);
+          p = main.data.product as Product;
+          setProduct({
+            ...p,
+            images: normalizeProductImages(p.images),
+          });
+          const variants = p.variants || [];
+          setSelectedVariant(variants.find((v) => v.stock > 0) || variants[0]);
+        }
 
         let bestRelated: Product[] = [];
         const [reviewsRes, relatedRes, moreRes] = await Promise.allSettled([
@@ -468,7 +359,7 @@ export default function ProductDetailClient({ slug }: Props) {
       }
     };
     fetchAll();
-  }, [slug]);
+  }, [slug, initialProduct]);
 
   /* Review eligibility (only when authenticated & product loaded) */
   useEffect(() => {
@@ -565,56 +456,6 @@ export default function ProductDetailClient({ slug }: Props) {
       </div>
     );
   }
-  const flushPdpLensDom = () => {
-    pdpLensRafRef.current = null;
-    const m = pdpLensMetricsRef.current;
-    const box = pdpLensBoxRef.current;
-    const img = pdpLensImgRef.current;
-    if (!m || !box || !img) return;
-    const { mx, my, cw, ch } = m;
-    const L = PDP_MAIN_LENS_PX;
-    const z = PDP_MAIN_LENS_ZOOM;
-    const left = Math.max(0, Math.min(cw - L, mx - L / 2));
-    const top = Math.max(0, Math.min(ch - L, my - L / 2));
-    box.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-    img.style.width = `${cw * z}px`;
-    img.style.height = `${ch * z}px`;
-    img.style.transform = `translate3d(${L / 2 - mx * z}px, ${L / 2 - my * z}px, 0)`;
-  };
-
-  /** Desktop-only hover magnifier — rAF + transform to avoid React re-renders every mousemove. */
-  const onPdpMainImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
-    const el = pdpMainImageRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top;
-    if (mx < 0 || my < 0 || mx > r.width || my > r.height) {
-      if (pdpLensRafRef.current != null) {
-        cancelAnimationFrame(pdpLensRafRef.current);
-        pdpLensRafRef.current = null;
-      }
-      setPdpLensVisible(false);
-      pdpLensMetricsRef.current = null;
-      return;
-    }
-    setPdpLensVisible(true);
-    pdpLensMetricsRef.current = { mx, my, cw: r.width, ch: r.height };
-    if (pdpLensRafRef.current == null) {
-      pdpLensRafRef.current = requestAnimationFrame(flushPdpLensDom);
-    }
-  };
-
-  const onPdpMainImageMouseLeave = () => {
-    if (pdpLensRafRef.current != null) {
-      cancelAnimationFrame(pdpLensRafRef.current);
-      pdpLensRafRef.current = null;
-    }
-    setPdpLensVisible(false);
-    pdpLensMetricsRef.current = null;
-  };
-
   /* Actions */
   const requireAuth = (msg: string) => {
     toast.error(msg);
@@ -692,6 +533,7 @@ export default function ProductDetailClient({ slug }: Props) {
             image: product.images?.[0]?.url || "",
             quantity,
             price: selectedPrice,
+            maxStock: selectedVariant.stock,
             variant: {
               sku: selectedVariant.sku,
               size: selectedVariant.size,
@@ -930,236 +772,18 @@ export default function ProductDetailClient({ slug }: Props) {
       {/* HERO - Gallery + Info */}
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-6 min-w-0'>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 xl:gap-10 min-w-0'>
-          {/* Gallery */}
-          <div className='relative flex gap-3.5 lg:gap-5 min-w-0 overflow-x-hidden overflow-y-visible lg:overflow-visible'>
-            {/* Desktop vertical thumbnail strip */}
-            {product.images.length > 1 && (
-              <div
-                ref={thumbsRef}
-                className='hidden lg:flex flex-col gap-2 w-[88px] flex-shrink-0 overflow-y-auto scrollbar-hide relative z-30'
-                style={{
-                  marginLeft:
-                    "calc(-1 * (max((100vw - 1280px) / 2, 0px) + 2rem) + 12px)",
-                }}
-              >
-                {product.images.map((img, i) => (
-                  <button
-                    key={i}
-                    onMouseEnter={() => setSelectedImage(i)}
-                    onClick={() => setSelectedImage(i)}
-                    className={cn(
-                      "flex-shrink-0 w-full overflow-hidden rounded-xl border-2 transition-all duration-150 bg-gray-50",
-                      i === selectedImage ?
-                        "border-brand-600 ring-2 ring-brand-100"
-                      : "border-gray-200 hover:border-brand-400",
-                    )}
-                    style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
-                  >
-                    <div className='relative w-full h-full'>
-                      <Image
-                        src={img.url}
-                        alt={img.alt || `${product.name} ${i + 1}`}
-                        fill
-                        sizes='176px'
-                        quality={90}
-                        className={
-                          isGiftMarketingContext ? "object-cover" : "object-contain"
-                        }
-                      />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Main image */}
-            <div className='flex-1 min-w-0 space-y-3'>
-              <div
-                ref={pdpMainImageRef}
-                className='relative w-full overflow-hidden rounded-2xl bg-gray-50'
-                style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
-                onMouseMove={onPdpMainImageMouseMove}
-                onMouseLeave={onPdpMainImageMouseLeave}
-              >
-                {product.images[selectedImage]?.url ?
-                  <div className='absolute inset-0 z-0'>
-                    <Image
-                      src={product.images[selectedImage].url}
-                      alt={product.images[selectedImage].alt || product.name}
-                      fill
-                      sizes='(max-width: 1024px) 100vw, (max-width: 1536px) 50vw, 720px'
-                      quality={92}
-                      className={cn(
-                        "transition-opacity duration-200",
-                        isGiftMarketingContext ? "object-cover" : "object-contain",
-                      )}
-                      priority
-                    />
-                  </div>
-                : <div className='absolute inset-0 flex items-center justify-center text-gray-300'>
-                    <Package className='w-20 h-20' />
-                  </div>
-                }
-
-                {product.images[selectedImage]?.url && (
-                  <div
-                    ref={pdpLensBoxRef}
-                    className={cn(
-                      "pointer-events-none absolute left-0 top-0 z-[7] hidden overflow-hidden rounded-xl border-2 border-white shadow-2xl ring-2 ring-black/15 lg:block",
-                      "will-change-transform [backface-visibility:hidden]",
-                      "transition-opacity duration-200 ease-out",
-                      pdpLensVisible ? "opacity-100" : "opacity-0",
-                    )}
-                    style={{
-                      width: PDP_MAIN_LENS_PX,
-                      height: PDP_MAIN_LENS_PX,
-                      transform: "translate3d(0,0,0)",
-                    }}
-                    aria-hidden
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      ref={pdpLensImgRef}
-                      src={product.images[selectedImage].url}
-                      alt=''
-                      draggable={false}
-                      className='absolute max-w-none object-cover [backface-visibility:hidden]'
-                      style={{
-                        willChange: "transform",
-                        transform: "translate3d(0,0,0)",
-                      }}
-                    />
-                  </div>
-                )}
-
-                {product.images[selectedImage]?.url && (
-                  <button
-                    type='button'
-                    className='absolute inset-0 z-[5] cursor-default bg-transparent transition-colors hover:bg-black/[0.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 lg:cursor-zoom-in'
-                    aria-label='Open zoom gallery'
-                    onClick={() => setImageLightboxOpen(true)}
-                  >
-                    <span className='sr-only'>Open zoom gallery</span>
-                  </button>
-                )}
-
-                {/* Badges */}
-                <div className='pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5'>
-                  {product.isFeatured && (
-                    <span className='text-xs font-bold bg-gold-500 text-white px-2.5 py-1 rounded-full shadow flex items-center gap-1'>
-                      <Star className='w-3 h-3 fill-white' /> Editor&apos;s Pick
-                    </span>
-                  )}
-                  {isOutOfStock && (
-                    <span className='text-xs font-semibold bg-gray-800/80 text-white px-2.5 py-1 rounded-full'>
-                      Sold Out
-                    </span>
-                  )}
-                </div>
-
-                {/* Wishlist + Share */}
-                <div className='absolute top-3 right-3 z-20 flex flex-col gap-2'>
-                  <button
-                    type='button'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleWishlist();
-                    }}
-                    className={cn(
-                      "h-9 w-9 rounded-full flex items-center justify-center shadow-md transition-all",
-                      inWishlist ?
-                        "bg-brand-600 text-white"
-                      : "bg-white/90 text-gray-600 hover:bg-white hover:text-brand-600",
-                    )}
-                    aria-label='Wishlist'
-                  >
-                    <Heart
-                      className={cn("h-4 w-4", inWishlist && "fill-current")}
-                    />
-                  </button>
-                  <button
-                    type='button'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleShare();
-                    }}
-                    className='h-9 w-9 rounded-full bg-white/90 hover:bg-white text-gray-600 hover:text-navy-700 flex items-center justify-center shadow-md transition-all'
-                    aria-label='Share'
-                  >
-                    {copied ?
-                      <Check className='h-4 w-4 text-green-500' />
-                    : <Share2 className='h-4 w-4' />}
-                  </button>
-                </div>
-
-                {/* Mobile prev/next */}
-                {product.images.length > 1 && (
-                  <>
-                    <button
-                      type='button'
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedImage(
-                          (selectedImage - 1 + product.images.length) %
-                            product.images.length,
-                        );
-                      }}
-                      className='lg:hidden absolute left-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow hover:bg-white'
-                    >
-                      <ChevronLeft className='h-4 w-4' />
-                    </button>
-                    <button
-                      type='button'
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedImage(
-                          (selectedImage + 1) % product.images.length,
-                        );
-                      }}
-                      className='lg:hidden absolute right-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow hover:bg-white'
-                    >
-                      <ChevronRight className='h-4 w-4' />
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Mobile horizontal thumbnails */}
-              {product.images.length > 1 && (
-                <div
-                  className='lg:hidden w-full min-w-0 max-w-full flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide pb-1'
-                  style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}
-                >
-                  {product.images.map((img, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedImage(i)}
-                      className={cn(
-                        "flex-shrink-0 w-14 overflow-hidden rounded-lg border-2 transition-all bg-gray-50",
-                        i === selectedImage ?
-                          "border-brand-600 ring-2 ring-brand-200"
-                        : "border-transparent hover:border-brand-400",
-                      )}
-                      style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
-                    >
-                      <div className='relative w-full h-full'>
-                        <Image
-                          src={img.url}
-                          alt={img.alt || `${product.name} ${i + 1}`}
-                          fill
-                          sizes='112px'
-                          quality={88}
-                          className={
-                            isGiftMarketingContext ? "object-cover" : "object-contain"
-                          }
-                        />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <PdpImageGallery
+            productId={product._id}
+            name={product.name}
+            images={product.images}
+            isGiftMarketingContext={isGiftMarketingContext}
+            isFeatured={product.isFeatured}
+            isOutOfStock={isOutOfStock}
+            inWishlist={inWishlist}
+            copied={copied}
+            onWishlist={handleWishlist}
+            onShare={handleShare}
+          />
 
           {/* Product Info */}
           <div className='min-w-0 space-y-4 sm:space-y-5'>
@@ -1763,742 +1387,51 @@ export default function ProductDetailClient({ slug }: Props) {
         </div>
       </div>
 
-      {/* REVIEWS */}
-      <section id='reviews-section' className='py-8 sm:py-12 bg-[#faf9f7]'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          {/* Section header */}
-          <div className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-10'>
-            <div>
-              <p className='text-[11px] font-bold text-brand-600 uppercase tracking-[0.2em] mb-2'>
-                Customer Experience
-              </p>
-              <h2 className='text-2xl sm:text-4xl font-serif font-black text-navy-900 flex items-center gap-2 sm:gap-3'>
-                Ratings & Reviews
-                {totalReviews > 0 && (
-                  <span className='inline-flex items-center justify-center bg-navy-50 text-navy-600 text-sm font-bold h-7 px-2.5 rounded-lg border border-navy-100'>
-                    {totalReviews}
-                  </span>
-                )}
-              </h2>
-            </div>
+      <PdpReviewsSection
+        product={product}
+        isAuthenticated={isAuthenticated}
+        totalReviews={totalReviews}
+        previewReviewCount={previewReviewCount}
+        visibleReviews={visibleReviews}
+        reviews={reviews}
+        ratingDistribution={ratingDistribution}
+        positiveReviewsPercent={positiveReviewsPercent}
+        reviewEligibility={reviewEligibility}
+        showReviewForm={showReviewForm}
+        setShowReviewForm={setShowReviewForm}
+        reviewForm={reviewForm}
+        setReviewForm={setReviewForm}
+        reviewImages={reviewImages}
+        reviewPreviews={reviewPreviews}
+        onReviewImageChange={handleReviewImageChange}
+        onRemoveReviewImage={removeReviewImage}
+        isSubmittingReview={isSubmittingReview}
+        onSubmitReview={handleSubmitReview}
+        expandedReviewPhotos={expandedReviewPhotos}
+        setExpandedReviewPhotos={setExpandedReviewPhotos}
+        reviewLightbox={reviewLightbox}
+        setReviewLightbox={setReviewLightbox}
+        showAllReviewsModal={showAllReviewsModal}
+        setShowAllReviewsModal={setShowAllReviewsModal}
+        isVotingHelpful={isVotingHelpful}
+        onHelpfulVote={handleHelpfulVote}
+        onOpenReportReview={openReportReview}
+        reportTarget={reportTarget}
+        setReportTarget={setReportTarget}
+        reportingReviewId={reportingReviewId}
+        reportReason={reportReason}
+        setReportReason={setReportReason}
+        reportDetails={reportDetails}
+        setReportDetails={setReportDetails}
+        onSubmitReport={handleReportReview}
+      />
 
-            {/* Write review CTA */}
-            {isAuthenticated ?
-              reviewEligibility?.canReview ?
-                <button
-                  onClick={() => setShowReviewForm((v) => !v)}
-                  className='flex items-center gap-2.5 px-6 py-3 bg-navy-900 hover:bg-navy-800 text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-navy-100 active:scale-95'
-                >
-                  <MessageSquare className='h-4.5 w-4.5' />
-                  Share Your Story
-                </button>
-              : reviewEligibility?.hasReviewed ?
-                <span className='text-sm text-green-600 font-bold flex items-center gap-2 bg-green-50 px-4 py-2 rounded-xl border border-green-100'>
-                  <Check className='h-4 w-4' /> Review Submitted
-                </span>
-                // : reviewEligibility && !reviewEligibility.hasPurchased ?
-                //   <div className='flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl'>
-                //     <Package className='h-4 w-4 text-gray-400' />
-                //     <span className='text-xs text-gray-500 font-medium'>
-                //       Available after delivered purchase
-                //     </span>
-                //   </div>
-              : null
-            : <Link
-                href='/auth/login'
-                className='text-sm text-brand-600 font-bold hover:bg-brand-50 px-4 py-2 rounded-xl transition-all flex items-center gap-2'
-              >
-                Sign in to review <ChevronRight className='h-4 w-4' />
-              </Link>
-            }
-          </div>
-
-          {/* Write review form */}
-          {showReviewForm && reviewEligibility?.canReview && (
-            <div className='bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 p-4 sm:p-10 mb-8 sm:mb-12 animate-fadeIn ring-1 ring-black/5'>
-              <div className='max-w-3xl mx-auto'>
-                <h3 className='font-serif text-2xl font-bold text-navy-900 mb-2'>
-                  How was your product?
-                </h3>
-                <p className='text-sm text-gray-500 mb-8'>
-                  Your feedback helps thousands of House of Rani shoppers.
-                </p>
-
-                <form
-                  onSubmit={handleSubmitReview}
-                  className='space-y-5 sm:space-y-8'
-                >
-                  <div className='bg-gray-50/50 p-4 sm:p-6 rounded-2xl border border-gray-100'>
-                    <label className='block text-[11px] font-bold text-navy-900 uppercase tracking-widest mb-4'>
-                      Select Rating
-                    </label>
-                    <StarSelector
-                      value={reviewForm.rating}
-                      onChange={(v) =>
-                        setReviewForm((f) => ({ ...f, rating: v }))
-                      }
-                    />
-                  </div>
-
-                  <div className='grid grid-cols-1 gap-6'>
-                    <div className='space-y-2'>
-                      <label className='block text-xs font-bold text-gray-700 uppercase tracking-tight'>
-                        Review Title
-                      </label>
-                      <input
-                        type='text'
-                        value={reviewForm.title}
-                        onChange={(e) =>
-                          setReviewForm((f) => ({
-                            ...f,
-                            title: e.target.value,
-                          }))
-                        }
-                        maxLength={100}
-                        placeholder="Summarize your experience (e.g., 'Amazing Quality', 'Perfect Fit')"
-                        className='w-full px-5 py-4 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-400 placeholder-gray-400 transition-all bg-white'
-                      />
-                    </div>
-
-                    <div className='space-y-2'>
-                      <label className='block text-xs font-bold text-gray-700 uppercase tracking-tight'>
-                        Your Feedback *
-                      </label>
-                      <textarea
-                        value={reviewForm.comment}
-                        onChange={(e) =>
-                          setReviewForm((f) => ({
-                            ...f,
-                            comment: e.target.value,
-                          }))
-                        }
-                        maxLength={1000}
-                        rows={5}
-                        required
-                        placeholder='Detail your thoughts on fabric, fit, and style...'
-                        className='w-full px-5 py-4 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-400 placeholder-gray-400 resize-none transition-all bg-white'
-                      />
-                      <div className='flex justify-end'>
-                        <span
-                          className={cn(
-                            "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                            reviewForm.comment.length > 950 ?
-                              "bg-red-50 text-red-500"
-                            : "bg-gray-100 text-gray-400",
-                          )}
-                        >
-                          {reviewForm.comment.length} / 1000
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Image Upload Redesign */}
-                  <div className='space-y-4'>
-                    <label className='block text-xs font-bold text-gray-700 uppercase tracking-tight'>
-                      Attach Photos (Up to 3)
-                    </label>
-                    <div className='flex flex-wrap gap-4'>
-                      {reviewPreviews.map((preview, i) => (
-                        <div
-                          key={i}
-                          className='relative h-24 w-24 rounded-2xl overflow-hidden border-2 border-brand-100 ring-4 ring-brand-50/30 group'
-                        >
-                          <Image
-                            src={preview}
-                            alt='Preview'
-                            fill
-                            className='object-cover'
-                          />
-                          <button
-                            type='button'
-                            onClick={() => removeReviewImage(i)}
-                            className='absolute top-1.5 right-1.5 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all scale-75 hover:scale-90'
-                          >
-                            <Plus className='h-4 w-4 rotate-45' />
-                          </button>
-                        </div>
-                      ))}
-
-                      {reviewImages.length < 3 && (
-                        <label className='h-24 w-24 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-brand-300 transition-all flex flex-col items-center justify-center cursor-pointer group active:scale-95'>
-                          <Plus className='h-6 w-6 text-gray-400 group-hover:text-brand-600 transition-colors' />
-                          <span className='text-[10px] font-bold text-gray-400 group-hover:text-brand-600 mt-1 uppercase'>
-                            Add Photo
-                          </span>
-                          <input
-                            type='file'
-                            accept='image/*'
-                            multiple
-                            onChange={handleReviewImageChange}
-                            className='hidden'
-                          />
-                        </label>
-                      )}
-                    </div>
-                    <p className='text-[10px] text-gray-400 italic'>
-                      Images help other shoppers see the product in real life.
-                    </p>
-                  </div>
-
-                  <div className='flex items-center gap-4 pt-4 border-t border-gray-50'>
-                    <button
-                      type='submit'
-                      disabled={isSubmittingReview}
-                      className='flex-1 sm:flex-none sm:px-12 py-4 bg-navy-900 hover:bg-black text-white text-sm font-black rounded-2xl transition-all shadow-xl shadow-navy-100 disabled:opacity-60 flex items-center justify-center gap-3 active:scale-[0.98]'
-                    >
-                      {isSubmittingReview ?
-                        <>
-                          <span className='h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin' />{" "}
-                          Publishing...
-                        </>
-                      : "Post My Review"}
-                    </button>
-                    <button
-                      type='button'
-                      onClick={() => setShowReviewForm(false)}
-                      className='px-8 py-4 border border-gray-200 text-gray-500 text-sm font-bold rounded-2xl hover:bg-gray-50 transition-all active:scale-[0.98]'
-                    >
-                      Wait, not now
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Rating summary + reviews list */}
-          {reviews.length === 0 ?
-            <div className='text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm'>
-              <div className='inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-50 mb-6'>
-                <Star className='h-8 w-8 text-gray-200' />
-              </div>
-              <p className='text-gray-900 font-serif text-xl font-bold'>
-                No reviews yet
-              </p>
-              <p className='text-sm text-gray-500 mt-2 max-w-xs mx-auto'>
-                Be the first to share your thoughts and help our community.
-              </p>
-            </div>
-          : <div className='grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 sm:gap-10 xl:gap-16'>
-              {/* Premium Rating summary sidebar */}
-              <div className='bg-white rounded-3xl border border-gray-100 p-5 sm:p-6 h-fit shadow-xl shadow-gray-200/20 self-start z-10'>
-                <div className='text-center mb-8 pb-8 border-b border-gray-100'>
-                  <div className='flex justify-center items-center gap-3 mb-1'>
-                    <p className='text-7xl font-black text-navy-900 tracking-tighter'>
-                      {product!.ratings.average}
-                    </p>
-                    <div className='text-left'>
-                      <Star className='h-8 w-8 fill-gold-400 text-gold-400 mb-1' />
-                      <p className='text-[10px] font-bold text-gray-300 uppercase tracking-widest leading-none'>
-                        out of 5.0
-                      </p>
-                    </div>
-                  </div>
-                  <p className='text-sm font-bold text-gray-400 mt-4 tracking-tight'>
-                    Verified ratings from {totalReviews} customers
-                  </p>
-                </div>
-
-                <div className='space-y-4'>
-                  <div className='flex justify-between items-center mb-2 px-1'>
-                    <span className='text-[11px] font-black text-navy-900 uppercase tracking-wider'>
-                      Rating Breakdown
-                    </span>
-                    <span className='text-[11px] font-black text-brand-600 uppercase tracking-wider'>
-                      {positiveReviewsPercent}% Positive
-                    </span>
-                  </div>
-                  {[5, 4, 3, 2, 1].map((star) => {
-                    const found = ratingDistribution.find(
-                      (d) => d._id === star,
-                    );
-                    return (
-                      <RatingBar
-                        key={star}
-                        label={String(star)}
-                        count={found?.count || 0}
-                        total={totalReviews}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Review cards */}
-              <div className='space-y-6'>
-                {visibleReviews.map((review) => (
-                  <div
-                    key={review._id}
-                    className='bg-white rounded-3xl border border-gray-100 p-4 sm:p-8 shadow-sm hover:shadow-md transition-shadow'
-                  >
-                    {/* Reviewer header */}
-                    <div className='flex items-start justify-between mb-6 gap-4'>
-                      <div className='flex items-center gap-4'>
-                        <div className='h-12 w-12 rounded-2xl bg-gradient-to-br from-brand-600 to-navy-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-100/50 rotate-3'>
-                          <span className='text-white font-black text-lg'>
-                            {String(review.user?.name || "Customer")
-                              .charAt(0)
-                              .toUpperCase()}
-                          </span>
-                        </div>
-                        <div>
-                          <p className='text-[15px] font-bold text-gray-900 tracking-tight'>
-                            {review.user?.name || "Customer"}
-                          </p>
-                          <div className='flex items-center gap-2.5 mt-1'>
-                            {review.isVerifiedPurchase && (
-                              <span className='text-[10px] bg-green-50 text-green-700 font-bold px-2 py-0.5 rounded flex items-center gap-1 ring-1 ring-green-100'>
-                                <Check className='h-2.5 w-2.5' /> VERIFIED
-                              </span>
-                            )}
-                            <span className='text-[10px] font-bold text-gray-400 tracking-widest uppercase'>
-                              {formatDate(review.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Stars */}
-                      <div className='flex items-center gap-1 shrink-0 bg-gray-50 px-2.5 py-1.5 rounded-xl border border-gray-100'>
-                        <span className='text-xs font-black text-navy-900 mr-0.5'>
-                          {review.rating}.0
-                        </span>
-                        <Star className='h-3.5 w-3.5 fill-gold-400 text-gold-400' />
-                      </div>
-                    </div>
-
-                    <div className='relative'>
-                      {review.title && (
-                        <h4 className='font-bold text-gray-900 mb-2 text-lg tracking-tight font-serif italic'>
-                          &ldquo;{review.title}&rdquo;
-                        </h4>
-                      )}
-                      <p className='text-[15px] text-gray-700 leading-relaxed break-words font-medium'>
-                        {review.comment}
-                      </p>
-                    </div>
-
-                    {/* Review photos: compact horizontal row */}
-                    {review.images && review.images.length > 0 && (
-                      <div className='mt-4'>
-                        <div className='flex min-w-0 max-w-full items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide touch-pan-x'>
-                          {(expandedReviewPhotos[review._id] ?
-                            review.images
-                          : review.images.slice(0, 3)
-                          ).map((img, i) => (
-                            <button
-                              key={i}
-                              type='button'
-                              onClick={() =>
-                                setReviewLightbox({
-                                  images: review.images!.map((x) => x.url),
-                                  index: i,
-                                })
-                              }
-                              className='relative h-16 w-16 sm:h-20 sm:w-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0'
-                            >
-                              <Image
-                                src={img.url}
-                                alt='Review photo'
-                                fill
-                                className='object-cover'
-                                sizes='80px'
-                              />
-                            </button>
-                          ))}
-                          {!expandedReviewPhotos[review._id] &&
-                            review.images.length > 3 && (
-                              <button
-                                type='button'
-                                onClick={() =>
-                                  setExpandedReviewPhotos((prev) => ({
-                                    ...prev,
-                                    [review._id]: true,
-                                  }))
-                                }
-                                className='h-16 w-16 sm:h-20 sm:w-20 rounded-xl border border-dashed border-gray-300 text-xs font-semibold text-gray-600 bg-white flex-shrink-0'
-                              >
-                                +{review.images.length - 3} more
-                              </button>
-                            )}
-                        </div>
-                        {review.images.length > 3 &&
-                          expandedReviewPhotos[review._id] && (
-                            <button
-                              type='button'
-                              onClick={() =>
-                                setExpandedReviewPhotos((prev) => ({
-                                  ...prev,
-                                  [review._id]: false,
-                                }))
-                              }
-                              className='mt-2 text-xs font-medium text-brand-600 hover:text-brand-700'
-                            >
-                              Show less
-                            </button>
-                          )}
-                      </div>
-                    )}
-
-                    {/* Helpful vote redesigned */}
-                    <div className='mt-8 pt-6 border-t border-gray-50 flex items-center justify-between gap-3'>
-                      <button
-                        type='button'
-                        onClick={() => handleHelpfulVote(review._id)}
-                        disabled={!!isVotingHelpful[review._id]}
-                        className='flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-brand-600 transition-all hover:bg-brand-50 px-3 py-1.5 rounded-lg active:scale-95 disabled:opacity-60'
-                      >
-                        <ThumbsUp className='h-3.5 w-3.5' />
-                        Was this helpful?{" "}
-                        {review.helpfulVotes.length > 0 && (
-                          <span className='ml-1 text-navy-900'>
-                            ({review.helpfulVotes.length})
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        type='button'
-                        onClick={() => openReportReview(review)}
-                        className='text-[10px] font-bold text-gray-300 uppercase tracking-widest hover:text-gray-500 transition-colors inline-flex items-center gap-1'
-                      >
-                        <Flag className='h-3 w-3' />
-                        Report Review
-                      </button>
-                    </div>
-
-                    {/* Admin reply with premium styling */}
-                    {review.adminReply?.text && (
-                      <div className='mt-6 ml-4 sm:ml-8 pl-6 border-l-4 border-brand-200 bg-brand-50/20 rounded-2xl p-5 relative overflow-hidden'>
-                        <div className='absolute top-0 right-0 p-2 opacity-[0.03] scale-150 grayscale'>
-                          <Package className='h-12 w-12' />
-                        </div>
-                        <p className='text-xs font-black text-brand-700 mb-2 flex items-center gap-2 uppercase tracking-widest'>
-                          <MessageSquare className='h-4 w-4' />
-                          Official Response
-                        </p>
-                        <p className='text-sm font-medium text-gray-700 leading-relaxed italic'>
-                          &ldquo;{review.adminReply.text}&rdquo;
-                        </p>
-                        <p className='text-[10px] font-bold text-gray-400 mt-3 uppercase tracking-widest'>
-                          {formatDate(review.adminReply.createdAt)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {reviews.length > previewReviewCount && (
-                  <button
-                    type='button'
-                    onClick={() => setShowAllReviewsModal(true)}
-                    className='w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-brand-300 hover:text-brand-700'
-                  >
-                    View all reviews ({reviews.length})
-                  </button>
-                )}
-              </div>
-            </div>
-          }
-        </div>
-      </section>
-
-      {showAllReviewsModal && (
-        <div className='fixed inset-0 z-[75] bg-black/60 p-4 sm:p-6'>
-          <div className='mx-auto h-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden'>
-            <div className='px-4 sm:px-6 py-3 border-b border-gray-100 flex items-center justify-between'>
-              <div>
-                <p className='text-xs text-gray-500'>Customer reviews</p>
-                <h3 className='text-lg font-bold text-navy-900'>
-                  All reviews ({reviews.length})
-                </h3>
-              </div>
-              <button
-                type='button'
-                onClick={() => setShowAllReviewsModal(false)}
-                className='h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center'
-                aria-label='Close reviews'
-              >
-                <X className='h-5 w-5' />
-              </button>
-            </div>
-            <div className='flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50'>
-              {reviews.map((review) => (
-                <div
-                  key={`all_${review._id}`}
-                  className='bg-white border border-gray-100 rounded-2xl p-4 sm:p-5'
-                >
-                  <div className='flex items-center justify-between gap-3'>
-                    <div>
-                      <p className='text-sm font-semibold text-gray-900'>
-                        {review.user?.name || "Customer"}
-                      </p>
-                      <p className='text-[11px] text-gray-400'>
-                        {formatDate(review.createdAt)}
-                      </p>
-                    </div>
-                    <div className='text-xs font-semibold text-gray-700 bg-gray-100 rounded-lg px-2 py-1'>
-                      {review.rating}.0 ★
-                    </div>
-                  </div>
-                  {review.title && (
-                    <p className='mt-2 text-sm font-semibold text-gray-900'>
-                      {review.title}
-                    </p>
-                  )}
-                  <p className='mt-1 text-sm text-gray-700 leading-relaxed'>
-                    {review.comment}
-                  </p>
-                  <div className='mt-3 flex justify-end'>
-                    <button
-                      type='button'
-                      onClick={() => openReportReview(review)}
-                      className='text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600 inline-flex items-center gap-1'
-                    >
-                      <Flag className='h-3 w-3' />
-                      Report Review
-                    </button>
-                  </div>
-                  {review.images && review.images.length > 0 && (
-                    <div className='mt-3 flex min-w-0 max-w-full gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide touch-pan-x'>
-                      {review.images.slice(0, 3).map((img, i) => (
-                        <button
-                          key={`all_img_${review._id}_${i}`}
-                          type='button'
-                          onClick={() =>
-                            setReviewLightbox({
-                              images: review.images!.map((x) => x.url),
-                              index: i,
-                            })
-                          }
-                          className='relative h-16 w-16 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0'
-                        >
-                          <Image
-                            src={img.url}
-                            alt='Review image'
-                            fill
-                            className='object-cover'
-                            sizes='64px'
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {reportTarget && (
-        <div className='fixed inset-0 z-[78] bg-black/55 p-3 sm:p-6 flex items-end sm:items-center justify-center'>
-          <div className='w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-2xl max-h-[92vh] overflow-y-auto'>
-            <div className='px-4 sm:px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-3'>
-              <div>
-                <p className='text-xs font-semibold uppercase tracking-widest text-gray-500'>
-                  Report review
-                </p>
-                <h3 className='text-lg font-bold text-navy-900'>
-                  Help us keep reviews trustworthy
-                </h3>
-              </div>
-              <button
-                type='button'
-                onClick={() => setReportTarget(null)}
-                className='h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center'
-                aria-label='Close report form'
-              >
-                <X className='h-4 w-4' />
-              </button>
-            </div>
-
-            <form
-              onSubmit={handleReportReview}
-              className='p-4 sm:p-6 space-y-4'
-            >
-              <div className='space-y-2'>
-                <label className='text-xs font-bold text-gray-700 uppercase tracking-tight'>
-                  Reason
-                </label>
-                <select
-                  value={reportReason}
-                  onChange={(e) =>
-                    setReportReason(
-                      e.target.value as
-                        | "spam"
-                        | "abusive"
-                        | "misleading"
-                        | "other",
-                    )
-                  }
-                  className='w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400'
-                >
-                  <option value='spam'>Spam or promotion</option>
-                  <option value='abusive'>Abusive language</option>
-                  <option value='misleading'>Misleading content</option>
-                  <option value='other'>Other</option>
-                </select>
-              </div>
-
-              <div className='space-y-2'>
-                <label className='text-xs font-bold text-gray-700 uppercase tracking-tight'>
-                  Additional details (optional)
-                </label>
-                <textarea
-                  value={reportDetails}
-                  onChange={(e) => setReportDetails(e.target.value)}
-                  maxLength={300}
-                  rows={4}
-                  placeholder='Tell us what is wrong with this review'
-                  className='w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400 resize-none'
-                />
-                <p className='text-[11px] text-gray-400 text-right'>
-                  {reportDetails.length}/300
-                </p>
-              </div>
-
-              <div className='flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2'>
-                <button
-                  type='button'
-                  onClick={() => setReportTarget(null)}
-                  className='px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50'
-                >
-                  Cancel
-                </button>
-                <button
-                  type='submit'
-                  disabled={reportingReviewId === reportTarget._id}
-                  className='px-4 py-2.5 rounded-xl bg-navy-900 text-white text-sm font-semibold hover:bg-black disabled:opacity-60'
-                >
-                  {reportingReviewId === reportTarget._id ?
-                    "Submitting..."
-                  : "Submit report"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════ RELATED PRODUCTS ══════════════ */}
-      {relatedProducts.length > 0 && (
-        <section className='py-8 sm:py-12 bg-[#faf9f7] overflow-x-hidden'>
-          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
-            <div className='flex items-end justify-between mb-5 sm:mb-7'>
-              <div>
-                <p className='text-xs font-semibold text-brand-600 uppercase tracking-widest mb-1'>
-                  You might also like
-                </p>
-                <h2 className='text-xl sm:text-3xl font-serif font-bold text-navy-900'>
-                  {isGiftMarketingContext ?
-                    "Similar Gift Products"
-                  : "Similar Styles"}
-                </h2>
-              </div>
-              <Link
-                href={
-                  isGiftMarketingContext ?
-                    "/gifting"
-                  : `/shop?category=${encodeURIComponent(product.category)}${product.fabric ? `&fabric=${encodeURIComponent(product.fabric)}` : ""}`
-                }
-                className='text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors'
-              >
-                View all <ChevronRight className='h-4 w-4' />
-              </Link>
-            </div>
-            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide touch-pan-x'>
-              {relatedProducts.slice(0, 8).map((p) => (
-                <div
-                  key={p._id}
-                  className='w-[calc((100%-0.75rem)/2)] min-w-[170px] max-w-[240px] shrink-0 snap-start'
-                >
-                  <ProductCard product={p} />
-                </div>
-              ))}
-            </div>
-            <div className='hidden sm:grid grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
-              {relatedProducts.slice(0, 4).map((p) => (
-                <ProductCard key={p._id} product={p} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ══════════════ MORE FROM HOUSE OF RANI ══════════════ */}
-      {moreProducts.length > 0 && (
-        <section className='py-8 sm:py-12 bg-white overflow-x-hidden'>
-          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
-            <div className='flex items-end justify-between mb-5 sm:mb-7'>
-              <div>
-                <p className='text-xs font-semibold text-brand-600 uppercase tracking-widest mb-1'>
-                  Curated for you
-                </p>
-                <h2 className='text-xl sm:text-3xl font-serif font-bold text-navy-900'>
-                  {isGiftMarketingContext ?
-                    "More Gift Products"
-                  : "More from The House of Rani"}
-                </h2>
-              </div>
-              <Link
-                href={isGiftMarketingContext ? "/gifting" : "/shop"}
-                className='text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors'
-              >
-                Explore all <ChevronRight className='h-4 w-4' />
-              </Link>
-            </div>
-            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide touch-pan-x'>
-              {moreProducts.slice(0, 8).map((p) => (
-                <div
-                  key={p._id}
-                  className='w-[calc((100%-0.75rem)/2)] min-w-[170px] max-w-[240px] shrink-0 snap-start'
-                >
-                  <ProductCard product={p} />
-                </div>
-              ))}
-            </div>
-            <div className='hidden sm:grid grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
-              {moreProducts.slice(0, 4).map((p) => (
-                <ProductCard key={p._id} product={p} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {reviewLightbox && (
-        <div className='fixed inset-0 z-[80] bg-black/80 flex items-center justify-center p-4'>
-          <button
-            type='button'
-            className='absolute top-4 right-4 h-9 w-9 rounded-full bg-white/20 text-white flex items-center justify-center'
-            onClick={() => setReviewLightbox(null)}
-            aria-label='Close image preview'
-          >
-            <X className='h-5 w-5' />
-          </button>
-          <div className='relative w-full max-w-xl aspect-[3/4] bg-black/30 rounded-xl overflow-hidden'>
-            <Image
-              src={reviewLightbox.images[reviewLightbox.index]}
-              alt='Review photo preview'
-              fill
-              className='object-contain'
-              sizes='80vw'
-            />
-          </div>
-        </div>
-      )}
-
-      {product && product.images.length > 0 && (
-        <ProductImageLightbox
-          images={product.images.map((img) => ({ url: img.url, alt: img.alt }))}
-          productName={product.name}
-          isSquareAspect={isGiftMarketingContext}
-          open={imageLightboxOpen}
-          initialIndex={selectedImage}
-          onClose={() => setImageLightboxOpen(false)}
-          onActiveIndexChange={setSelectedImage}
-        />
-      )}
+      <PdpRelatedProductRows
+        product={product}
+        isGiftMarketingContext={isGiftMarketingContext}
+        relatedProducts={relatedProducts}
+        moreProducts={moreProducts}
+      />
 
       {isGiftModalOpen && product && (
         <GiftCustomizationModal

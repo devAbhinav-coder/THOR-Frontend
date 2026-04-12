@@ -3,32 +3,46 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+/** Stable key for same-origin navigations (trailing slash + search order tolerant). */
+function routeKeyFromLocation(pathname: string, searchWithoutQuestion: string): string {
+  const path =
+    pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return `${path}?${searchWithoutQuestion}`;
+}
+
+const FAILSAFE_MS = 8000;
+
 /**
- * Shows a slim top bar while client-side navigation is in flight.
- * Next often keeps the previous page visible until the new route is ready (especially in dev where prefetch is limited).
+ * Slim top bar during client navigations. Clears when the URL updates, on back/forward,
+ * or after a failsafe — avoids getting stuck when a click does not change the route key.
  */
 export function NavigationProgress() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [active, setActive] = useState(false);
-  const prevRouteKey = useRef<string | null>(null);
+  const skipNextRouteClear = useRef(true);
+  const failsafeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const routeKey = `${pathname}?${searchParams.toString()}`;
+  const search = searchParams.toString();
 
+  const clearFailsafe = () => {
+    if (failsafeRef.current != null) {
+      clearTimeout(failsafeRef.current);
+      failsafeRef.current = null;
+    }
+  };
+
+  /** Successful navigation (pathname or query changed) always hides the bar. */
   useEffect(() => {
-    if (prevRouteKey.current === null) {
-      prevRouteKey.current = routeKey;
+    if (skipNextRouteClear.current) {
+      skipNextRouteClear.current = false;
       return;
     }
-    if (prevRouteKey.current !== routeKey) {
-      prevRouteKey.current = routeKey;
-      setActive(false);
-    }
-  }, [routeKey]);
+    setActive(false);
+    clearFailsafe();
+  }, [pathname, search]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
     const onClick = (e: MouseEvent) => {
       if (e.button !== 0) return;
       const el = e.target as HTMLElement | null;
@@ -44,22 +58,33 @@ export function NavigationProgress() {
         return;
       }
       if (url.origin !== window.location.origin) return;
-      const nextKey = `${url.pathname}${url.search}`;
-      const currentKey = `${window.location.pathname}${window.location.search}`;
-      if (nextKey === currentKey) return;
-      setActive(true);
 
-      // Failsafe: hide loader after 5 seconds if navigation hasn't completed
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
+      const nextKey = routeKeyFromLocation(url.pathname, url.search.slice(1));
+      const currentKey = routeKeyFromLocation(
+        window.location.pathname,
+        window.location.search.slice(1),
+      );
+      if (nextKey === currentKey) return;
+
+      setActive(true);
+      clearFailsafe();
+      failsafeRef.current = setTimeout(() => {
         setActive(false);
-      }, 10000);
+        failsafeRef.current = null;
+      }, FAILSAFE_MS);
+    };
+
+    const onPopState = () => {
+      setActive(false);
+      clearFailsafe();
     };
 
     document.addEventListener("click", onClick, true);
+    window.addEventListener("popstate", onPopState);
     return () => {
       document.removeEventListener("click", onClick, true);
-      clearTimeout(timeoutId);
+      window.removeEventListener("popstate", onPopState);
+      clearFailsafe();
     };
   }, []);
 

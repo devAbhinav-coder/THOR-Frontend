@@ -8,11 +8,27 @@ import { Product } from "@/types";
 import ProductCard from "@/components/product/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
 
-export default function FeaturedProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+type FeaturedProductsProps = {
+  /** Server-prefetched; `null` = prefetch failed, client will fetch. */
+  initialProducts?: Product[] | null;
+};
+
+export default function FeaturedProducts({
+  initialProducts,
+}: FeaturedProductsProps = {}) {
+  const [products, setProducts] = useState<Product[]>(() =>
+    Array.isArray(initialProducts) ? initialProducts : [],
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => !Array.isArray(initialProducts),
+  );
 
   useEffect(() => {
+    if (Array.isArray(initialProducts)) {
+      setProducts(initialProducts);
+      setIsLoading(false);
+      return;
+    }
     const fetchFeatured = async () => {
       try {
         const res = await productApi.getFeatured();
@@ -24,7 +40,7 @@ export default function FeaturedProducts() {
       }
     };
     fetchFeatured();
-  }, []);
+  }, [initialProducts]);
 
   return (
     <section className='py-2 sm:py-6 bg-gray-50'>

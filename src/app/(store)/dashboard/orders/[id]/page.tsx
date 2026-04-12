@@ -504,8 +504,8 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {((order as any).returnStatus && (order as any).returnStatus !== 'none') && (() => {
-        const rs = (order as any).returnStatus as string;
+      {(order.returnStatus && order.returnStatus !== 'none') && (() => {
+        const rs = order.returnStatus as string;
         const refundMethodLabel = (m: string) => m.replace(/_/g, ' ');
         const returnCopy: Record<string, string> = {
           requested: 'Our team is reviewing your return request. We will update you shortly.',
@@ -519,10 +519,10 @@ export default function OrderDetailPage() {
             <div className="flex-1">
               <h3 className="font-bold text-amber-800 capitalize">Return Status: {rs}</h3>
               <p className="text-sm text-amber-700 mt-1">{returnCopy[rs] ?? 'We will update you on your return.'}</p>
-              {((order as any).refundData) && (
+              {order.refundData && (
                 <div className="mt-3 bg-white/60 p-3 rounded-xl border border-amber-100">
-                  <p className="text-sm font-semibold text-amber-900">Refund Processed: {formatPrice(((order as any).refundData.amount))}</p>
-                  <p className="text-xs text-amber-700">Method: <span className="capitalize">{refundMethodLabel(String((order as any).refundData.method))}</span></p>
+                  <p className="text-sm font-semibold text-amber-900">Refund Processed: {formatPrice(order.refundData.amount)}</p>
+                  <p className="text-xs text-amber-700">Method: <span className="capitalize">{refundMethodLabel(String(order.refundData.method))}</span></p>
                 </div>
               )}
             </div>
@@ -618,7 +618,7 @@ export default function OrderDetailPage() {
         )}
 
       {/* Custom gift details — shown for bespoke orders */}
-      {(order as any).productType === 'custom' && <CustomGiftDetails order={order as any} />}
+      {order.productType === 'custom' && <CustomGiftDetails order={order} />}
 
       {/* ── Order Items ── */}
       <div id="review-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">

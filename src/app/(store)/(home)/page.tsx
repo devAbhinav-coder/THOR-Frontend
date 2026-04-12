@@ -1,6 +1,10 @@
 import { Metadata } from "next";
 import dynamic from "next/dynamic";
 import HeroSection from "@/components/home/HeroSection";
+import {
+  fetchHomeCategoryStats,
+  fetchHomeFeaturedProducts,
+} from "@/lib/storePrefetch";
 import { fetchStorefrontHeroSlides } from "@/lib/storefrontServer";
 
 const CategorySection = dynamic(() => import("@/components/home/CategorySection"));
@@ -35,13 +39,17 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const heroSlides = await fetchStorefrontHeroSlides();
+  const [heroSlides, categoryStats, featuredProducts] = await Promise.all([
+    fetchStorefrontHeroSlides(),
+    fetchHomeCategoryStats(),
+    fetchHomeFeaturedProducts(),
+  ]);
 
   return (
     <>
       <HeroSection initialSlides={heroSlides} />
-      <CategorySection />
-      <FeaturedProducts />
+      <CategorySection initialCategories={categoryStats} />
+      <FeaturedProducts initialProducts={featuredProducts} />
       <HomeBanner />
       <ExploreCollection />
       <HomeGiftShowcase />
