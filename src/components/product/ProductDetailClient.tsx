@@ -55,10 +55,7 @@ interface Props {
   initialProduct?: Product | null;
 }
 
-export default function ProductDetailClient({
-  slug,
-  initialProduct,
-}: Props) {
+export default function ProductDetailClient({ slug, initialProduct }: Props) {
   /* Core */
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,8 +151,7 @@ export default function ProductDetailClient({
   useEffect(() => {
     const hydratedFromServer =
       initialProduct &&
-      String(initialProduct.slug).toLowerCase() ===
-        String(slug).toLowerCase();
+      String(initialProduct.slug).toLowerCase() === String(slug).toLowerCase();
     if (!hydratedFromServer) {
       setIsLoading(true);
     }
@@ -542,7 +538,8 @@ export default function ProductDetailClient({
               color: selectedVariant.color,
               colorCode: selectedVariant.colorCode,
             },
-            customFieldAnswers: answersArray.length > 0 ? answersArray : undefined,
+            customFieldAnswers:
+              answersArray.length > 0 ? answersArray : undefined,
           }),
         );
       }
@@ -845,8 +842,10 @@ export default function ProductDetailClient({
                       key={i}
                       className={cn(
                         "h-4 w-4",
-                        product.ratings.count > 0 &&
-                          i < Math.round(product.ratings.average) ?
+                        (
+                          product.ratings.count > 0 &&
+                            i < Math.round(product.ratings.average)
+                        ) ?
                           "fill-gold-400 text-gold-400"
                         : "fill-gray-200 text-gray-200",
                       )}
@@ -866,7 +865,10 @@ export default function ProductDetailClient({
                       {product.ratings.count === 1 ? "review" : "reviews"}
                     </a>
                   </>
-                : <span className='text-sm text-gray-500'>No reviews yet — be the first</span>}
+                : <span className='text-sm text-gray-500'>
+                    No reviews yet — be the first
+                  </span>
+                }
               </div>
               {isAuthenticated && reviewEligibility?.canReview && (
                 <button
@@ -1196,7 +1198,7 @@ export default function ProductDetailClient({
                   {isBuyingNow ?
                     <>
                       <span className='h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin' />{" "}
-                      Launching checkout…
+                      Processing...
                     </>
                   : <>
                       <Zap className='h-4 w-4' /> Buy Now
