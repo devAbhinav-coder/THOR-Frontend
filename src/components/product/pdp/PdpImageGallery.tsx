@@ -241,8 +241,9 @@ export function PdpImageGallery({
 
             <div className='pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5'>
               {isFeatured && (
-                <span className='text-xs font-bold bg-gold-500 text-white px-2.5 py-1 rounded-full shadow flex items-center gap-1'>
-                  <Star className='w-3 h-3 fill-white' /> Editor&apos;s Pick
+                <span className='text-xs font-bold bg-white text-gold-500 px-2.5 py-1 rounded-full shadow flex items-center gap-1'>
+                  <Star className='w-3 h-3 fill-gold-500 ' />
+                  Editor&apos;s Pick
                 </span>
               )}
               {isOutOfStock && (
@@ -330,7 +331,9 @@ export function PdpImageGallery({
                       "border-brand-600 ring-2 ring-brand-200"
                     : "border-transparent hover:border-brand-400",
                   )}
-                  style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
+                  style={{
+                    aspectRatio: isGiftMarketingContext ? "1/1" : "3/4",
+                  }}
                 >
                   <div className='relative w-full h-full'>
                     <Image
@@ -340,7 +343,9 @@ export function PdpImageGallery({
                       sizes='112px'
                       quality={88}
                       className={
-                        isGiftMarketingContext ? "object-cover" : "object-contain"
+                        isGiftMarketingContext ? "object-cover" : (
+                          "object-contain"
+                        )
                       }
                     />
                   </div>

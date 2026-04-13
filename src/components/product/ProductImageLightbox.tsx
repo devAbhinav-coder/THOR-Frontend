@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 export type LightboxImage = { url: string; alt?: string };
 
 /** Magnification for the right (or stacked) zoom panel only — main preview stays fixed at 1×. */
-const ZOOM_LENS_SCALE = 3.05;
+const ZOOM_LENS_SCALE = 2.2;
+/** Cap for pinch-zoom on touch devices (browser zoom was feeling too strong). */
+const MOBILE_LIGHTBOX_MAX_PINCH_ZOOM = 1.85;
 
 interface ProductImageLightboxProps {
   images: LightboxImage[];
@@ -35,8 +37,13 @@ export default function ProductImageLightbox({
   const [hoveringZoom, setHoveringZoom] = useState(false);
   const [focal, setFocal] = useState({ x: 50, y: 50 });
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  /** 1×–MOBILE_LIGHTBOX_MAX_PINCH_ZOOM; coarse pointer only. */
+  const [mobilePinchZoom, setMobilePinchZoom] = useState(1);
+  const mobilePinchZoomRef = useRef(1);
+  const pinchGestureRef = useRef<{ d0: number; z0: number } | null>(null);
 
   const mainRef = useRef<HTMLDivElement>(null);
+  mobilePinchZoomRef.current = mobilePinchZoom;
 
   useEffect(() => setMounted(true), []);
 
@@ -53,8 +60,17 @@ export default function ProductImageLightbox({
       setIdx(initialIndex);
       setFocal({ x: 50, y: 50 });
       setHoveringZoom(false);
+      setMobilePinchZoom(1);
+      mobilePinchZoomRef.current = 1;
+      pinchGestureRef.current = null;
     }
   }, [open, initialIndex]);
+
+  useEffect(() => {
+    setMobilePinchZoom(1);
+    mobilePinchZoomRef.current = 1;
+    pinchGestureRef.current = null;
+  }, [idx]);
 
   useEffect(() => {
     if (!open) return;
@@ -77,6 +93,53 @@ export default function ProductImageLightbox({
     },
     [images.length, onActiveIndexChange],
   );
+
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el || !open || !coarsePointer) return;
+
+    const touchDistance = (a: Touch, b: Touch) =>
+      Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        pinchGestureRef.current = {
+          d0: touchDistance(e.touches[0], e.touches[1]),
+          z0: mobilePinchZoomRef.current,
+        };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !pinchGestureRef.current) return;
+      e.preventDefault();
+      const { d0, z0 } = pinchGestureRef.current;
+      const d = touchDistance(e.touches[0], e.touches[1]);
+      const raw = z0 * (d / d0);
+      const next = Math.max(
+        1,
+        Math.min(MOBILE_LIGHTBOX_MAX_PINCH_ZOOM, raw),
+      );
+      mobilePinchZoomRef.current = next;
+      setMobilePinchZoom(next);
+    };
+
+    const endPinch = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinchGestureRef.current = null;
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", endPinch);
+    el.addEventListener("touchcancel", endPinch);
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", endPinch);
+      el.removeEventListener("touchcancel", endPinch);
+    };
+  }, [open, coarsePointer, idx]);
 
   useEffect(() => {
     if (!open) return;
@@ -254,6 +317,14 @@ export default function ProductImageLightbox({
                 "h-full w-full select-none",
                 isSquareAspect ? "object-cover" : "object-contain",
               )}
+              style={
+                coarsePointer && mobilePinchZoom !== 1 ?
+                  {
+                    transform: `scale(${mobilePinchZoom})`,
+                    transformOrigin: "center center",
+                  }
+                : undefined
+              }
             />
 
             {!coarsePointer && (

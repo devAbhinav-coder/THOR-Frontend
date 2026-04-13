@@ -723,7 +723,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   /* JSX */
   /* Bottom padding for store mobile tab bar only (CTAs are inline, not fixed) */
   const mobileBottomReserve =
-    "pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8";
+    "pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6";
 
   return (
     <div
@@ -733,7 +733,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
       )}
     >
       {/* Breadcrumb */}
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-1'>
         <nav className='flex items-center gap-1.5 text-xs text-gray-400 flex-wrap'>
           <Link href='/' className='hover:text-brand-600 transition-colors'>
             Home
@@ -769,7 +769,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
       </div>
 
       {/* HERO - Gallery + Info */}
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-6 min-w-0'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 lg:py-6 min-w-0'>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 xl:gap-10 min-w-0'>
           <PdpImageGallery
             productId={product._id}

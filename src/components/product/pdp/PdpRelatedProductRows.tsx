@@ -21,7 +21,12 @@ export function PdpRelatedProductRows({
   return (
     <>
       {relatedProducts.length > 0 && (
-        <section className='py-8 sm:py-12 bg-[#faf9f7] overflow-x-hidden'>
+        <section
+          className='py-8 sm:py-12 bg-[#faf9f7] overflow-x-auto  snap-x snap-mandatory 
+            [touch-action:pan-y] 
+            [-webkit-overflow-scrolling:touch] 
+            overscroll-x-contain"'
+        >
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
             <div className='flex items-end justify-between mb-5 sm:mb-7'>
               <div>
@@ -30,15 +35,15 @@ export function PdpRelatedProductRows({
                 </p>
                 <h2 className='text-xl sm:text-3xl font-serif font-bold text-navy-900'>
                   {isGiftMarketingContext ?
-                    "Similar Gift Products"
+                    "Similar Gifting Products"
                   : "Similar Styles"}
                 </h2>
               </div>
               <Link
                 href={
-                  isGiftMarketingContext ?
-                    "/gifting"
-                  : `/shop?category=${encodeURIComponent(product.category)}${product.fabric ? `&fabric=${encodeURIComponent(product.fabric)}` : ""}`
+                  isGiftMarketingContext ? "/gifting" : (
+                    `/shop?category=${encodeURIComponent(product.category)}${product.fabric ? `&fabric=${encodeURIComponent(product.fabric)}` : ""}`
+                  )
                 }
                 className='text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors'
               >
@@ -65,7 +70,12 @@ export function PdpRelatedProductRows({
       )}
 
       {moreProducts.length > 0 && (
-        <section className='py-8 sm:py-12 bg-white overflow-x-hidden'>
+        <section
+          className='py-8 sm:py-12 bg-white overflow-x-auto  snap-x snap-mandatory 
+            [touch-action:pan-y] 
+            [-webkit-overflow-scrolling:touch] 
+            overscroll-x-contain'
+        >
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
             <div className='flex items-end justify-between mb-5 sm:mb-7'>
               <div>
