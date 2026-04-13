@@ -23,7 +23,7 @@ type Props = {
 export default function MonthlyRevenueChart({
   data,
   title = 'Monthly revenue',
-  subtitle = 'Last 12 months · paid orders',
+  subtitle = 'Last 12 months · gross (paid + refunded orders)',
   chartHeight = 200,
   className,
   highlightLatest = true,

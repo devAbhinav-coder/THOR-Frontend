@@ -110,7 +110,7 @@ export default function AdminDashboardPage() {
     {
       label: 'Total revenue',
       value: formatPrice(overview.totalRevenue),
-      sub: `${formatPrice(overview.monthRevenue)} this month · paid orders only (refunds excluded)`,
+      sub: `${formatPrice(overview.monthRevenue)} this month · gross includes refunded orders; net = gross − refunds`,
       icon: TrendingUp,
       growth: overview.revenueGrowth,
       color: 'bg-brand-50 text-brand-600',
@@ -144,7 +144,7 @@ export default function AdminDashboardPage() {
         <AdminPageHeader
           title="Dashboard"
           badge="Live"
-          description="Paid-order revenue, fulfilment mix, and storefront signals — same analytics API as Revenue &amp; Analytics."
+          description="Gross revenue, fulfilment mix, and storefront signals — same analytics API as Revenue &amp; Analytics."
           actions={
             <>
               <Button
@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
               data={analytics.revenueByMonth}
               height={320}
               title="Revenue & order volume"
-              subtitle="Trailing 12 months — paid revenue (gradient) and order count (line)"
+              subtitle="Trailing 12 months — gross order totals, paid + refunded (gradient) and order count (line)"
             />
           </div>
           <div className="xl:col-span-2 rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]">
@@ -247,7 +247,7 @@ export default function AdminDashboardPage() {
         <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Avg. order</p>
           <p className="text-lg font-bold text-gray-900 mt-1">{formatPrice(overview.avgOrderValue ?? 0)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">Paid orders</p>
+          <p className="text-xs text-gray-400 mt-0.5">Paid + refunded</p>
         </div>
         <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Orders today</p>
@@ -275,7 +275,9 @@ export default function AdminDashboardPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Refunds overview</h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">Lifetime refunded orders · not deducted from revenue totals above</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Cash returned to customers (product portion). Gross revenue above includes original order totals; net retained uses gross − refunds.
+                </p>
               </div>
             </div>
             <Link
@@ -285,7 +287,7 @@ export default function AdminDashboardPage() {
               Returns hub →
             </Link>
           </div>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl gap-4 flex-wrap">
             <div>
               <p className="text-xs text-gray-500 font-medium">Total Amount Refunded</p>
               <p className="text-xl font-bold text-gray-900 mt-1">{formatPrice(overview.refundedAmount ?? 0)}</p>
@@ -294,6 +296,15 @@ export default function AdminDashboardPage() {
               <p className="text-xs text-gray-500 font-medium">Refunded Orders</p>
               <p className="text-xl font-bold text-gray-900 mt-1">{overview.refundedOrdersCount ?? 0}</p>
             </div>
+            {(overview.nonRefundableFeesRetained ?? 0) > 0 && (
+              <div className="w-full sm:w-auto sm:flex-1 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/80 sm:text-right">
+                <p className="text-xs text-emerald-800 font-medium">Fees kept (shipping / COD)</p>
+                <p className="text-lg font-bold text-emerald-900 tabular-nums mt-0.5">
+                  {formatPrice(overview.nonRefundableFeesRetained ?? 0)}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">On those refunds, per policy</p>
+              </div>
+            )}
           </div>
         </div>
         <div className="bg-white rounded-xl p-5 border border-gray-100">

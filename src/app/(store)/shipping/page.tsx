@@ -97,6 +97,11 @@ export default function ShippingPage() {
         explicitly stated and may exclude certain products or regions. Taxes and duties within India are
         handled as shown on your invoice unless law requires otherwise.
       </p>
+      <p>
+        <strong>Returns:</strong> Shipping and any separate COD (cash on delivery) handling fee are{' '}
+        <strong>not refundable</strong> when a return is approved — refunds cover the eligible product
+        value only, consistent with our Terms of Service.
+      </p>
 
       <h2>11. Split shipments</h2>
       <p>

@@ -54,7 +54,7 @@ function RevenueTooltip({ active, payload }: TooltipProps<number, string>) {
         </span>
       </div>
       <p className="mt-1 text-[11px] text-gray-500">
-        revenue · {orderVal} {orderVal === 1 ? 'order' : 'orders'}
+        gross · {orderVal} {orderVal === 1 ? 'order' : 'orders'}
       </p>
     </div>
   );
@@ -197,7 +197,7 @@ export function RevenueTrendAreaChart({
                 yAxisId="left"
                 type={curve as 'natural' | 'monotone'}
                 dataKey="revenue"
-                name="Paid revenue"
+                name="Gross (paid + refunded)"
                 stroke={`url(#${strokeGradId})`}
                 strokeWidth={2}
                 fill={`url(#${gradId})`}
@@ -227,7 +227,7 @@ export function RevenueTrendAreaChart({
               className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-rose-900 via-rose-500 to-white shadow-sm ring-1 ring-rose-200/60"
               aria-hidden
             />
-            <span className="font-medium text-stone-700">Paid revenue</span>
+            <span className="font-medium text-stone-700">Gross (paid + refunded)</span>
           </span>
           {showOrdersLine && (
             <span className="inline-flex items-center gap-2">

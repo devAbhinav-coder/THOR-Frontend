@@ -13,6 +13,7 @@ import {
   CreditCard,
   Clock,
   ExternalLink,
+  FileText,
   Gift,
   ChevronDown,
   Sparkles,
@@ -29,6 +30,7 @@ import { adminApi } from '@/lib/api';
 import { Order, OrderItem, OrderStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { formatDateTime, formatPrice, getOrderStatusColor, cn, getPaymentStatusColor } from '@/lib/utils';
+import { getMaxRefundableInr, getNonRefundableFeesInr } from '@/lib/orderRefundPolicy';
 
 const ORDER_STATUSES: OrderStatus[] = [
   'pending',
@@ -188,6 +190,14 @@ export default function AdminOrderDetailsPage() {
     return order.trackingUrl || getAutoTrackingUrl(order.shippingCarrier, order.trackingNumber);
   }, [order]);
 
+  const refundPolicy = useMemo(() => {
+    if (!order) return null;
+    return {
+      nonRefundable: getNonRefundableFeesInr(order),
+      maxRefundable: getMaxRefundableInr(order),
+    };
+  }, [order]);
+
   useEffect(() => {
     const run = async () => {
       setIsLoading(true);
@@ -262,8 +272,13 @@ export default function AdminOrderDetailsPage() {
     if (!order) return;
     setRefunding(true);
     try {
+      const refundAmount = refundPolicy?.maxRefundable ?? order.total;
+      if (refundAmount <= 0) {
+        toast.error('Nothing eligible to refund (non-refundable fees may equal order total).');
+        return;
+      }
       await adminApi.processRefund(order._id, {
-        amount: order.total,
+        amount: refundAmount,
         refundMethod: order.paymentMethod === 'razorpay' ? 'razorpay_auto' : refundMethod,
         notes: refundNotes,
       });
@@ -422,8 +437,9 @@ export default function AdminOrderDetailsPage() {
             {order.invoice?.isGenerated && (
               <Link
                 href={`/admin/orders/${encodeURIComponent(order._id)}/invoice`}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-800 text-xs font-semibold text-white shadow-sm transition-all hover:from-navy-800 hover:to-navy-700 hover:shadow-md"
               >
+                <FileText className="h-3.5 w-3.5" />
                 View Invoice
               </Link>
             )}
@@ -539,9 +555,22 @@ export default function AdminOrderDetailsPage() {
                     )}
 
                     {(o as any).refundData && (
-                      <div className="mt-2 pt-3 border-t border-amber-200/60 text-sm text-amber-800 flex justify-between">
-                        <span><span className="font-semibold">Refunded:</span> {formatPrice((o as any).refundData.amount)}</span>
-                        <span><span className="font-semibold">Via:</span> <span className="capitalize">{String((o as any).refundData.method).replace(/_/g, ' ')}</span></span>
+                      <div className="mt-2 pt-3 border-t border-amber-200/60 text-sm text-amber-800 space-y-1">
+                        <div className="flex justify-between gap-2">
+                          <span><span className="font-semibold">Refunded:</span> {formatPrice((o as any).refundData.amount)}</span>
+                          <span><span className="font-semibold">Via:</span>{' '}
+                            <span className="capitalize">{String((o as any).refundData.method).replace(/_/g, ' ')}</span>
+                          </span>
+                        </div>
+                        {(o as any).refundData.nonRefundableFees > 0 && (
+                          <p className="text-xs text-amber-700/90">
+                            Non-refundable fees retained:{' '}
+                            <span className="font-semibold tabular-nums">
+                              {formatPrice((o as any).refundData.nonRefundableFees)}
+                            </span>{' '}
+                            (shipping / COD)
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -776,14 +805,46 @@ export default function AdminOrderDetailsPage() {
                   <span>- {formatPrice(order.discount)}</span>
                 </div>
               )}
+              <div className="flex justify-between text-gray-600 gap-2">
+                <span className="min-w-0">
+                  Shipping
+                  <span className="block text-[10px] font-normal text-amber-700/90 mt-0.5">
+                    Non-refundable on returns
+                  </span>
+                </span>
+                <span className="shrink-0 tabular-nums text-right">
+                  {order.shippingCharge === 0 ?
+                    <span className="text-emerald-600 font-semibold">FREE</span>
+                  : formatPrice(order.shippingCharge || 0)}
+                </span>
+              </div>
+              {(order.codFee || 0) > 0 && (
+                <div className="flex justify-between text-gray-600 gap-2">
+                  <span className="min-w-0">
+                    COD handling fee
+                    <span className="block text-[10px] font-normal text-amber-700/90 mt-0.5">
+                      COD only — non-refundable on returns
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums">{formatPrice(order.codFee || 0)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-600">
-                <span>Shipping</span>
-                <span>{formatPrice(order.shippingCharge || 0)}</span>
+                <span>Tax</span>
+                <span>{formatPrice(order.tax)}</span>
               </div>
               <div className="pt-3 mt-3 border-t border-gray-100 flex justify-between font-bold text-gray-900">
                 <span>Total</span>
                 <span>{formatPrice(order.total)}</span>
               </div>
+              {refundPolicy && refundPolicy.nonRefundable > 0 && (
+                <div className="rounded-xl bg-amber-50/80 border border-amber-100 px-3 py-2 text-[11px] text-amber-900 leading-snug">
+                  <span className="font-semibold">Return refunds:</span> max{' '}
+                  <span className="tabular-nums font-bold">{formatPrice(refundPolicy.maxRefundable)}</span> to
+                  customer (shipping {formatPrice(order.shippingCharge || 0)}
+                  {(order.codFee || 0) > 0 ? ` + COD ${formatPrice(order.codFee || 0)}` : ''} retained).
+                </div>
+              )}
             </div>
           </div>
 
@@ -908,7 +969,19 @@ export default function AdminOrderDetailsPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
           <div className="bg-white w-full sm:w-[480px] rounded-t-2xl sm:rounded-3xl p-6 sm:p-8 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95">
             <h2 className="text-xl font-bold text-gray-900 mb-1">Process Refund</h2>
-            <p className="text-sm text-gray-500 mb-6">Refund total amount of {formatPrice(order.total)}.</p>
+            <p className="text-sm text-gray-600 mb-3">
+              Eligible refund:{' '}
+              <span className="font-bold text-gray-900 tabular-nums">
+                {formatPrice(refundPolicy?.maxRefundable ?? order.total)}
+              </span>{' '}
+              (order total minus non-refundable shipping &amp; COD fees).
+            </p>
+            {refundPolicy && refundPolicy.nonRefundable > 0 && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mb-4">
+                Retained: shipping {formatPrice(order.shippingCharge || 0)}
+                {(order.codFee || 0) > 0 ? ` · COD ${formatPrice(order.codFee || 0)}` : ''}.
+              </p>
+            )}
             <div className="space-y-4">
               {order.paymentMethod === 'razorpay' ? (
                 <div className="p-4 bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl">

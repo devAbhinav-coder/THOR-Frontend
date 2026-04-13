@@ -90,7 +90,12 @@ export default function AnalyticsPage() {
   const topViewed = analytics.topViewedProducts ?? [];
   const revenueByCat = analytics.revenueByCategory ?? [];
   const primaryKpis = [
-    { label: 'Total revenue', value: formatPrice(overview.totalRevenue), sub: `${formatPrice(overview.monthRevenue)} this month`, icon: TrendingUp },
+    {
+      label: 'Total revenue',
+      value: formatPrice(overview.totalRevenue),
+      sub: `${formatPrice(overview.monthRevenue)} this month · gross (paid + refunded)`,
+      icon: TrendingUp,
+    },
     { label: 'Total orders', value: overview.totalOrders.toLocaleString(), sub: `${overview.monthOrders} this month`, icon: ShoppingBag },
     { label: 'Customers', value: overview.totalUsers.toLocaleString(), sub: `${overview.newUsersThisMonth} new`, icon: Users },
     {
@@ -102,7 +107,12 @@ export default function AnalyticsPage() {
   ];
 
   const secondaryKpis = [
-    { label: 'Avg. order value', value: formatPrice(overview.avgOrderValue ?? 0), sub: 'Paid orders', icon: Percent },
+    {
+      label: 'Avg. order value',
+      value: formatPrice(overview.avgOrderValue ?? 0),
+      sub: 'Gross order totals (paid + refunded)',
+      icon: Percent,
+    },
     { label: 'Orders today', value: String(overview.ordersToday ?? 0), sub: 'Since midnight', icon: Package },
     { label: 'Awaiting fulfilment', value: String(overview.pendingFulfillmentCount ?? 0), sub: 'Pending · Confirmed · Processing', icon: Layers },
     { label: 'Reviews', value: String(overview.totalReviews ?? 0), sub: `${overview.reviewsThisMonth ?? 0} this month`, icon: Star },
@@ -114,7 +124,7 @@ export default function AnalyticsPage() {
         <AdminPageHeader
         title="Analytics & insights"
         badge="Merchandising"
-        description="Traffic, conversion, and category revenue — same API as Dashboard. For gross vs refunds, use Revenue."
+        description="Traffic, conversion, and category revenue — same API as Dashboard. Category/product sales exclude refunded orders; headline revenue on Dashboard/Revenue includes gross for paid + refunded."
         actions={
           <>
             <Button
@@ -185,7 +195,7 @@ export default function AnalyticsPage() {
           data={revenueByMonth}
           height={340}
           title="Revenue & orders over time"
-          subtitle="Paid revenue (area) and number of orders (line) — last 12 months"
+          subtitle="Gross order totals, paid + refunded (area) and order count (line) — last 12 months"
         />
       </div>
 

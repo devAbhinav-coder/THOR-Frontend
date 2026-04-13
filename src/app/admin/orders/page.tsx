@@ -194,7 +194,7 @@ export default function AdminOrdersPage() {
     <div className="p-4 sm:p-6 xl:p-8 space-y-6 max-w-[1600px] mx-auto">
       <AdminPageHeader
         title="Orders"
-        description="Fulfil, track, and update status — row click opens the full order. Revenue tiles use analytics (paid orders)."
+        description="Fulfil, track, and update status — row click opens the full order. Revenue tiles use gross analytics (paid + refunded), with refunds shown separately."
         badge={pagination.total ? `${pagination.total.toLocaleString()} total` : undefined}
         actions={
           <>

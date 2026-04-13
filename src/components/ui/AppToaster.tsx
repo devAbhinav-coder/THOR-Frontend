@@ -15,9 +15,10 @@ const TOAST_BG = {
   default: "#fafaf9",
 } as const;
 
-function splitToastContent(
-  resolved: ReactNode,
-): { title: ReactNode; description: ReactNode | null } {
+function splitToastContent(resolved: ReactNode): {
+  title: ReactNode;
+  description: ReactNode | null;
+} {
   if (typeof resolved === "string") {
     const parts = resolved
       .split(/\n+/)
@@ -58,7 +59,7 @@ function ErrorGlyph() {
 function ToastIconBlock({ t }: { t: Toast }) {
   if (t.icon !== undefined) {
     return (
-      <div className='relative z-[1] flex h-9 w-9 shrink-0 items-center justify-center'>
+      <div className='relative z-[1] flex h-8 w-8 shrink-0 items-center justify-center'>
         {typeof t.icon === "string" ?
           <span className='text-base'>{t.icon}</span>
         : t.icon}
@@ -69,7 +70,7 @@ function ToastIconBlock({ t }: { t: Toast }) {
   return (
     <div
       className={cn(
-        "relative z-[1] flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white",
+        "relative z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white",
         "shadow-sm ring-1 ring-black/[0.06]",
       )}
     >
@@ -107,7 +108,10 @@ function toastShellClass(type: Toast["type"]): string {
         "shadow-[0_4px_18px_rgba(196,18,48,0.1)]",
       );
     default:
-      return cn("border border-gray-200", "shadow-[0_4px_18px_rgba(20,25,47,0.08)]");
+      return cn(
+        "border border-gray-200",
+        "shadow-[0_4px_18px_rgba(20,25,47,0.08)]",
+      );
   }
 }
 
@@ -130,18 +134,17 @@ function ToastCard({ toast: t }: { toast: Toast }) {
   const solidBg = solidBackgroundFor(t.type);
 
   const titleClass =
-    t.type === "success" ?
-      "text-emerald-950"
-    : t.type === "error" ?
-      "text-[#7f1d1d]"
+    t.type === "success" ? "text-emerald-950"
+    : t.type === "error" ? "text-[#7f1d1d]"
     : "text-navy-900";
 
   const descClass =
-    t.type === "success" ?
-      "text-emerald-900/85"
-    : t.type === "error" ?
-      "text-red-900/80"
+    t.type === "success" ? "text-emerald-900/85"
+    : t.type === "error" ? "text-red-900/80"
     : "text-gray-600";
+  const hasDescription =
+    description != null &&
+    (typeof description === "string" ? description.trim().length > 0 : true);
 
   // react-hot-toast merges toastOptions.style (often background: transparent) — override with opaque fill.
   const mergedStyle: CSSProperties = {
@@ -154,7 +157,10 @@ function ToastCard({ toast: t }: { toast: Toast }) {
   return (
     <div
       className={cn(
-        "hor-toast-enter pointer-events-auto relative flex w-full max-w-[22.5rem] items-center gap-3.5 overflow-hidden rounded-[1.35rem] px-4 py-4 pr-11 transition-[opacity,transform] duration-300 ease-out sm:max-w-[24rem] sm:gap-4 sm:px-5 sm:py-[1.05rem] sm:pr-12",
+        "hor-toast-enter pointer-events-auto relative box-border flex w-full max-w-[17.5rem] shrink-0 items-center gap-2.5 overflow-hidden rounded-xl pl-7 pr-10 transition-[opacity,transform] duration-300 ease-out sm:max-w-[19rem] sm:gap-3 sm:pl-8 sm:pr-11",
+        hasDescription ?
+          "min-h-[72px] py-4 sm:min-h-[76px] sm:py-[1.05rem]"
+        : "min-h-[60px] py-3 sm:min-h-[64px] sm:py-3",
         toastShellClass(t.type),
         t.visible ? "opacity-100" : "pointer-events-none opacity-0",
       )}
@@ -164,7 +170,7 @@ function ToastCard({ toast: t }: { toast: Toast }) {
 
       <div
         {...t.ariaProps}
-        className='relative z-[1] min-w-0 flex-1 py-0.5 text-left'
+        className='relative z-[1] min-w-0 flex-1 py-1 text-left'
       >
         <p
           className={cn(
@@ -174,10 +180,7 @@ function ToastCard({ toast: t }: { toast: Toast }) {
         >
           {title}
         </p>
-        {description != null &&
-          (typeof description === "string" ?
-            description.trim().length > 0
-          : true) && (
+        {hasDescription && (
           <p
             className={cn(
               "mt-1 font-sans text-[13px] font-normal leading-relaxed whitespace-pre-line",
@@ -192,7 +195,7 @@ function ToastCard({ toast: t }: { toast: Toast }) {
       <button
         type='button'
         onClick={() => toast.dismiss(t.id)}
-        className='absolute right-3 top-1/2 z-[2] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-black/10 hover:text-gray-800'
+        className='absolute right-3 top-1/2 z-[2] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-black/10 hover:text-gray-800'
         aria-label='Dismiss notification'
       >
         <X className='h-[15px] w-[15px]' strokeWidth={1.75} />
@@ -204,13 +207,14 @@ function ToastCard({ toast: t }: { toast: Toast }) {
 export default function AppToaster() {
   return (
     <Toaster
-      position='top-center'
+      position='top-right'
       reverseOrder={false}
-      gutter={10}
+      gutter={12}
       containerClassName='hor-toast-container !z-[10050]'
       containerStyle={{
         /* Below sticky navbar (~h-16) + small gap; add safe-area for notched devices */
         top: "calc(env(safe-area-inset-top, 0px) + 5.25rem)",
+        right: "max(env(safe-area-inset-right, 0px), 14px)",
       }}
       toastOptions={{
         duration: 4200,

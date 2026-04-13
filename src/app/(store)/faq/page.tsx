@@ -51,6 +51,10 @@ const faqItems = [
     q: "Can I cancel or return an order?",
     a: "Eligibility depends on product type and order stage. Please review terms and shipping policy for full details.",
   },
+  {
+    q: "Are shipping and COD fees refunded if I return an item?",
+    a: "No. Shipping charges (when applicable) and any COD handling fee are not refunded on approved returns. Refunds apply to the product-value portion of your order as explained at checkout and in our Terms.",
+  },
 ];
 
 export default function FaqPage() {
@@ -103,9 +107,9 @@ export default function FaqPage() {
       >
         <h2>Common questions</h2>
         {faqItems.map((item) => (
-          <div key={item.q}>
-            <h3>{item.q}</h3>
-            <p>{item.a}</p>
+          <div key={item.q} className='rounded-2xl border border-gray-100 bg-white/80 px-4 py-3.5 mb-3'>
+            <h3 className='text-gray-900 font-extrabold tracking-tight'>{item.q}</h3>
+            <p className='text-gray-700 mt-1.5'>{item.a}</p>
           </div>
         ))}
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Minus,
   Plus,
@@ -20,9 +21,10 @@ import { cartLineReactKey } from "@/lib/cartLineKey";
 import { couponApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CartItem, Coupon } from "@/types";
+import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 
-const SHIPPING_THRESHOLD = 1000;
-const SHIPPING_CHARGE = 100;
+const SHIPPING_THRESHOLD = 1499;
+const SHIPPING_CHARGE = 99;
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
@@ -38,6 +40,9 @@ export default function CartClient() {
     appliedCouponCode,
   } = useCartStore();
   const { isAuthenticated } = useAuthStore();
+  const router = useRouter();
+  const checkoutBtnRef = useRef<HTMLButtonElement>(null);
+  const [isCheckoutLaunching, setIsCheckoutLaunching] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
@@ -61,6 +66,18 @@ export default function CartClient() {
     run();
   }, [isAuthenticated, cart?.subtotal, cart?.items?.length]);
 
+  const goToCheckout = useCallback(async () => {
+    if (isCheckoutLaunching) return;
+    setIsCheckoutLaunching(true);
+    try {
+      await playCheckoutLaunchAnimation(checkoutBtnRef.current);
+      router.push("/checkout");
+    } finally {
+      // If navigation fails / is cancelled, allow retry.
+      setTimeout(() => setIsCheckoutLaunching(false), 250);
+    }
+  }, [isCheckoutLaunching, router]);
+
   if (!isAuthenticated) {
     return (
       <div className='min-h-[min(70vh,calc(100dvh-14rem))] flex flex-col items-center justify-center px-4 py-10 sm:py-14 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-navy-100/90 via-indigo-50/50 to-white border border-navy-200/60 shadow-sm shadow-navy-900/5'>
@@ -74,7 +91,12 @@ export default function CartClient() {
           <p className='text-sm sm:text-base text-navy-700/75 mb-8 leading-relaxed'>
             Create an account or sign in to start shopping
           </p>
-          <Button asChild variant='brand' size='lg' className='w-full sm:w-auto min-w-[200px]'>
+          <Button
+            asChild
+            variant='brand'
+            size='lg'
+            className='w-full sm:w-auto min-w-[200px]'
+          >
             <Link href='/auth/login?redirect=/cart'>Sign In</Link>
           </Button>
         </div>
@@ -95,7 +117,12 @@ export default function CartClient() {
           <p className='text-sm sm:text-base text-navy-700/75 mb-8 leading-relaxed'>
             Add some beautiful pieces to get started
           </p>
-          <Button asChild variant='brand' size='lg' className='w-full sm:w-auto min-w-[200px]'>
+          <Button
+            asChild
+            variant='brand'
+            size='lg'
+            className='w-full sm:w-auto min-w-[200px]'
+          >
             <Link href='/shop'>Start Shopping</Link>
           </Button>
         </div>
@@ -164,141 +191,181 @@ export default function CartClient() {
             <div className='divide-y divide-gray-100'>
               {cart.items
                 .filter((item: CartItem) => item.product)
-                .map((item: CartItem) => (
+                .map((item: CartItem) =>
                   (() => {
-                    const isCorporateGift = (item.product?.giftOccasions || []).some(
-                      (o) => String(o).trim().toLowerCase() === "corporate"
+                    const isCorporateGift = (
+                      item.product?.giftOccasions || []
+                    ).some(
+                      (o) => String(o).trim().toLowerCase() === "corporate",
                     );
-                    const minQty = isCorporateGift
-                      ? Math.max(item.product?.minOrderQty || 1, 10)
+                    const minQty =
+                      isCorporateGift ?
+                        Math.max(item.product?.minOrderQty || 1, 10)
                       : Math.max(item.product?.minOrderQty || 1, 1);
                     const thumb =
                       item.product?.images?.[0]?.url || PLACEHOLDER_IMAGE;
                     const rowKey = cartLineReactKey(item);
-                    const productHref = item.product?.slug
-                      ? `/shop/${encodeURIComponent(item.product.slug)}`
+                    const productHref =
+                      item.product?.slug ?
+                        `/shop/${encodeURIComponent(item.product.slug)}`
                       : "#";
                     return (
-                  <div key={rowKey} className='flex items-stretch gap-4 p-5'>
-                    <Link
-                      href={productHref}
-                      className='relative h-24 w-20 shrink-0 self-start overflow-hidden rounded-xl bg-gray-50 ring-1 ring-gray-100 sm:h-28 sm:w-24'
-                    >
-                      <Image
+                      <div
                         key={rowKey}
-                        src={thumb}
-                        alt={item.product?.name || "Product"}
-                        fill
-                        sizes='96px'
-                        className='object-cover'
-                      />
-                    </Link>
+                        className='flex items-stretch gap-4 p-5'
+                      >
+                        <Link
+                          href={productHref}
+                          className='relative h-24 w-20 shrink-0 self-start overflow-hidden rounded-xl bg-gray-50 ring-1 ring-gray-100 sm:h-28 sm:w-24'
+                        >
+                          <Image
+                            key={rowKey}
+                            src={thumb}
+                            alt={item.product?.name || "Product"}
+                            fill
+                            sizes='96px'
+                            className='object-cover'
+                          />
+                        </Link>
 
-                    <div className='flex-1 min-w-0'>
-                      <div className='flex items-start justify-between gap-3'>
-                        <div className='min-w-0 flex-1'>
-                          <Link
-                            href={productHref}
-                            className='font-medium text-gray-900 text-sm hover:text-brand-700 line-clamp-2'
-                          >
-                            {item.product?.name || "Product"}
-                          </Link>
-                          <p className='text-xs text-gray-500 mt-1'>
-                             {[
-                               item.variant.size && `Size ${item.variant.size}`,
-                               item.variant.color && item.variant.color,
-                             ]
-                               .filter(Boolean)
-                               .join(" · ")}
-                           </p>
-                           {/* Gifting Custom Fields */}
-                           {item.customFieldAnswers && item.customFieldAnswers.length > 0 && (
-                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                               {item.customFieldAnswers.map((ans, i) => {
-                                 const isImage = typeof ans.value === "string" && /^https?:\/\//.test(ans.value);
-                                 return (
-                                   <div key={i} className="rounded-md bg-gold-50 border border-gold-100 px-2 py-1.5">
-                                     <p className="text-[10px] font-semibold text-gold-700">{ans.label}</p>
-                                     {isImage ? (
-                                       <a href={ans.value} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1">
-                                         <span className="relative h-9 w-9 rounded overflow-hidden border border-gold-200 bg-white">
-                                           <Image src={ans.value} alt={ans.label} fill sizes="36px" className="object-cover" />
-                                         </span>
-                                         <span className="text-[10px] font-semibold text-brand-600">View</span>
-                                       </a>
-                                     ) : (
-                                       <p className="text-[10px] font-medium text-gray-700 break-words">{ans.value}</p>
-                                     )}
-                                   </div>
-                                 );
-                               })}
-                             </div>
-                           )}
-                           {minQty > 1 && (
-                             <p className='text-[11px] text-amber-700 mt-1'>
-                               Minimum quantity: {minQty}
-                             </p>
-                           )}
-                         </div>
-                        <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch'>
-                          <div className='text-right'>
-                            <p className='font-semibold text-gray-900'>
-                              {formatPrice(item.price * item.quantity)}
-                            </p>
-                            {item.quantity > 1 && (
-                              <p className='text-xs text-gray-400'>
-                                {formatPrice(item.price)} each
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-start justify-between gap-3'>
+                            <div className='min-w-0 flex-1'>
+                              <Link
+                                href={productHref}
+                                className='font-medium text-gray-900 text-sm hover:text-brand-700 line-clamp-2'
+                              >
+                                {item.product?.name || "Product"}
+                              </Link>
+                              <p className='text-xs text-gray-500 mt-1'>
+                                {[
+                                  item.variant.size &&
+                                    `Size ${item.variant.size}`,
+                                  item.variant.color && item.variant.color,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                               </p>
-                            )}
+                              {/* Gifting Custom Fields */}
+                              {item.customFieldAnswers &&
+                                item.customFieldAnswers.length > 0 && (
+                                  <div className='mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5'>
+                                    {item.customFieldAnswers.map((ans, i) => {
+                                      const isImage =
+                                        typeof ans.value === "string" &&
+                                        /^https?:\/\//.test(ans.value);
+                                      return (
+                                        <div
+                                          key={i}
+                                          className='rounded-md bg-gold-50 border border-gold-100 px-2 py-1.5'
+                                        >
+                                          <p className='text-[10px] font-semibold text-gold-700'>
+                                            {ans.label}
+                                          </p>
+                                          {isImage ?
+                                            <a
+                                              href={ans.value}
+                                              target='_blank'
+                                              rel='noreferrer'
+                                              className='mt-1 inline-flex items-center gap-1'
+                                            >
+                                              <span className='relative h-9 w-9 rounded overflow-hidden border border-gold-200 bg-white'>
+                                                <Image
+                                                  src={ans.value}
+                                                  alt={ans.label}
+                                                  fill
+                                                  sizes='36px'
+                                                  className='object-cover'
+                                                />
+                                              </span>
+                                              <span className='text-[10px] font-semibold text-brand-600'>
+                                                View
+                                              </span>
+                                            </a>
+                                          : <p className='text-[10px] font-medium text-gray-700 break-words'>
+                                              {ans.value}
+                                            </p>
+                                          }
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              {minQty > 1 && (
+                                <p className='text-[11px] text-amber-700 mt-1'>
+                                  Minimum quantity: {minQty}
+                                </p>
+                              )}
+                            </div>
+                            <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch'>
+                              <div className='text-right'>
+                                <p className='font-semibold text-gray-900'>
+                                  {formatPrice(item.price * item.quantity)}
+                                </p>
+                                {item.quantity > 1 && (
+                                  <p className='text-xs text-gray-400'>
+                                    {formatPrice(item.price)} each
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                type='button'
+                                onClick={() => removeItem(item.variant.sku)}
+                                disabled={isLoading}
+                                className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
+                                aria-label='Remove item'
+                                title='Remove'
+                              >
+                                <Trash2
+                                  className='h-3.5 w-3.5'
+                                  strokeWidth={2}
+                                />
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            type='button'
-                            onClick={() => removeItem(item.variant.sku)}
-                            disabled={isLoading}
-                            className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                            aria-label='Remove item'
-                            title='Remove'
-                          >
-                            <Trash2 className='h-3.5 w-3.5' strokeWidth={2} />
-                          </button>
-                        </div>
-                      </div>
 
-                      <div className='mt-4'>
-                        <div className='inline-flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden'>
-                          <button
-                            onClick={() =>
-                              item.quantity > minQty
-                                ? updateItem(item.variant.sku, item.quantity - 1)
-                                : item.quantity === 1
-                                  ? removeItem(item.variant.sku)
+                          <div className='mt-4'>
+                            <div className='inline-flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden'>
+                              <button
+                                onClick={() =>
+                                  item.quantity > minQty ?
+                                    updateItem(
+                                      item.variant.sku,
+                                      item.quantity - 1,
+                                    )
+                                  : item.quantity === 1 ?
+                                    removeItem(item.variant.sku)
                                   : undefined
-                            }
-                            className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
-                            disabled={isLoading || item.quantity <= minQty}
-                            aria-label='Decrease quantity'
-                          >
-                            <Minus className='h-4 w-4' />
-                          </button>
-                          <span className='w-10 text-center text-sm font-semibold text-gray-900'>
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() =>
-                              updateItem(item.variant.sku, item.quantity + 1)
-                            }
-                            className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
-                            disabled={isLoading}
-                            aria-label='Increase quantity'
-                          >
-                            <Plus className='h-4 w-4' />
-                          </button>
+                                }
+                                className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
+                                disabled={isLoading || item.quantity <= minQty}
+                                aria-label='Decrease quantity'
+                              >
+                                <Minus className='h-4 w-4' />
+                              </button>
+                              <span className='w-10 text-center text-sm font-semibold text-gray-900'>
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  updateItem(
+                                    item.variant.sku,
+                                    item.quantity + 1,
+                                  )
+                                }
+                                className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
+                                disabled={isLoading}
+                                aria-label='Increase quantity'
+                              >
+                                <Plus className='h-4 w-4' />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )})()
-                ))}
+                    );
+                  })(),
+                )}
             </div>
           </div>
         </div>
@@ -316,7 +383,9 @@ export default function CartClient() {
               {/* Coupon */}
               <div className='rounded-2xl border border-gray-100 bg-gray-50/60 p-4 min-w-0'>
                 <div className='flex items-center justify-between gap-3 min-w-0'>
-                  <p className='text-sm font-semibold text-gray-900'>Promotional code</p>
+                  <p className='text-sm font-semibold text-gray-900'>
+                    Promotional code
+                  </p>
                   {eligibleCoupons.length > 2 && (
                     <button
                       type='button'
@@ -331,13 +400,19 @@ export default function CartClient() {
                 {cart.discount > 0 ?
                   <div className='mt-3 space-y-3 rounded-xl border border-green-200 bg-green-50 p-3'>
                     <div className='flex items-start gap-2 min-w-0'>
-                      <Tag className='h-4 w-4 text-green-700 shrink-0 mt-0.5' aria-hidden />
+                      <Tag
+                        className='h-4 w-4 text-green-700 shrink-0 mt-0.5'
+                        aria-hidden
+                      />
                       <div className='min-w-0'>
                         <p className='text-sm font-medium text-green-900 break-words'>
                           <span className='font-semibold tracking-wide'>
                             {appliedCouponCode || "Coupon"}
                           </span>
-                          <span className='text-green-800'> · You save {formatPrice(cart.discount)}</span>
+                          <span className='text-green-800'>
+                            {" "}
+                            · You save {formatPrice(cart.discount)}
+                          </span>
                         </p>
                         <p className='text-xs text-green-800/75 mt-1'>
                           The discount is included in your total below.
@@ -392,7 +467,9 @@ export default function CartClient() {
                 {/* Eligible coupons (top 2) */}
                 <div className='mt-4'>
                   {isLoadingCoupons ?
-                    <p className='text-xs text-gray-500'>Loading available offers…</p>
+                    <p className='text-xs text-gray-500'>
+                      Loading available offers…
+                    </p>
                   : eligibleCoupons.length === 0 ?
                     <p className='text-xs text-gray-500'>
                       No coupons are available for this cart.
@@ -402,7 +479,11 @@ export default function CartClient() {
                         <button
                           key={c._id}
                           type='button'
-                          title={cart.discount > 0 ? "Remove your current coupon to use another" : undefined}
+                          title={
+                            cart.discount > 0 ?
+                              "Remove your current coupon to use another"
+                            : undefined
+                          }
                           onClick={async () => {
                             try {
                               setCouponLoading(true);
@@ -481,17 +562,23 @@ export default function CartClient() {
               </div>
 
               <Button
-                asChild
+                ref={checkoutBtnRef}
+                type='button'
                 variant='brand'
                 size='xl'
                 className='w-full rounded-xl'
+                disabled={isCheckoutLaunching}
+                onClick={() => void goToCheckout()}
               >
-                <Link
-                  href='/checkout'
-                  className='flex items-center justify-center gap-2'
-                >
-                  Proceed to Checkout <ArrowRight className='h-4 w-4' />
-                </Link>
+                {isCheckoutLaunching ?
+                  <>
+                    <span className='h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin' />
+                    Opening checkout…
+                  </>
+                : <>
+                    Proceed to Checkout <ArrowRight className='h-4 w-4' />
+                  </>
+                }
               </Button>
 
               <p className='text-[11px] text-gray-400 leading-relaxed'>

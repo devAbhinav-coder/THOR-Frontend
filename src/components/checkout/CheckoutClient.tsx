@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +39,7 @@ import {
 } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
-import { couponApi, orderApi } from "@/lib/api";
+import { authApi, couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
 import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Button } from "@/components/ui/button";
@@ -71,10 +78,10 @@ const addressSchema = z.object({
 
 type AddressForm = z.infer<typeof addressSchema>;
 
-const SHIPPING_THRESHOLD = 1000;
-const SHIPPING_CHARGE = 100;
+const SHIPPING_THRESHOLD = 1499;
+const SHIPPING_CHARGE = 99;
 /** Must match backend `COD_HANDLING_FEE` — added when paying cash on delivery */
-const COD_HANDLING_FEE = 100;
+const COD_HANDLING_FEE = 99;
 const TAX_RATE = 0;
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
 
@@ -176,7 +183,7 @@ export default function CheckoutClient() {
     updateItem,
     removeItem,
   } = useCartStore();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, setUser } = useAuthStore();
   const router = useRouter();
 
   const {
@@ -413,8 +420,60 @@ export default function CheckoutClient() {
   const confirmShippingForm = useCallback(async () => {
     const ok = await trigger();
     if (!ok) return;
-    setShowShippingForm(false);
-  }, [trigger]);
+
+    const raw = getValues();
+    const payload = {
+      name: raw.name.trim(),
+      phone: raw.phone.replace(/\s+/g, ""),
+      street: raw.street.trim(),
+      city: raw.city.trim(),
+      state: raw.state.trim(),
+      pincode: raw.pincode.trim(),
+      country: raw.country?.trim() || "India",
+    };
+
+    if (!isAuthenticated || !user) {
+      setShowShippingForm(false);
+      return;
+    }
+
+    try {
+      const selected =
+        selectedAddressId ?
+          user.addresses.find((a) => a._id === selectedAddressId)
+        : undefined;
+      if (selected?._id) {
+        await authApi.removeAddress(selected._id);
+      }
+
+      const saved = await authApi.addAddress({
+        ...payload,
+        label: selected?.label || "Home",
+        isDefault: selected?.isDefault || user.addresses.length === 0,
+      });
+
+      const addresses = saved.data.addresses || [];
+      const match = addresses.find(
+        (a) =>
+          a.name === payload.name &&
+          a.phone.replace(/\s+/g, "") === payload.phone &&
+          a.street === payload.street &&
+          a.city === payload.city &&
+          a.state === payload.state &&
+          a.pincode === payload.pincode,
+      );
+      if (match?._id) setSelectedAddressId(match._id);
+      setUser({ ...user, addresses });
+      toast.success("Address saved to your profile.");
+      setShowShippingForm(false);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ?
+          err.message
+        : "Could not save address. Please try again.";
+      toast.error(msg);
+    }
+  }, [getValues, isAuthenticated, selectedAddressId, setUser, trigger, user]);
 
   const goToMobilePaymentStep = useCallback(async () => {
     const ok = await trigger();
@@ -428,6 +487,26 @@ export default function CheckoutClient() {
   const goToMobileReviewStep = useCallback(() => {
     setMobileCheckoutStep(3);
   }, []);
+
+  const goToMobileStep = useCallback(
+    async (targetStep: 1 | 2 | 3) => {
+      if (targetStep === 1) {
+        setMobileCheckoutStep(1);
+        return;
+      }
+      if (targetStep === 2) {
+        await goToMobilePaymentStep();
+        return;
+      }
+      const ok = await trigger();
+      if (!ok) {
+        toast.error("Please complete your delivery address.");
+        return;
+      }
+      setMobileCheckoutStep(3);
+    },
+    [goToMobilePaymentStep, trigger],
+  );
 
   const openNewAddressForm = useCallback(() => {
     setSelectedAddressId("");
@@ -448,6 +527,33 @@ export default function CheckoutClient() {
       }),
     );
   }, [reset, user?.name, user?.phone]);
+
+  const removeSavedAddress = useCallback(
+    async (addressId: string) => {
+      if (!user) return;
+      try {
+        const res = await authApi.removeAddress(addressId);
+        const addresses = res.data.addresses || [];
+        setUser({ ...user, addresses });
+
+        if (selectedAddressId === addressId) {
+          const fallbackId = addresses[0]?._id;
+          if (fallbackId) {
+            loadAddress(fallbackId);
+            setShowShippingForm(false);
+          } else {
+            openNewAddressForm();
+          }
+        }
+        toast.success("Address removed.");
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error ? err.message : "Could not remove address.";
+        toast.error(msg);
+      }
+    },
+    [loadAddress, openNewAddressForm, selectedAddressId, setUser, user],
+  );
 
   const offerText = useMemo(() => {
     if (existingOrder) return "";
@@ -871,12 +977,12 @@ export default function CheckoutClient() {
   return (
     <div className='w-full min-w-0 overflow-x-hidden bg-[#faf9f7]'>
       <OrderPlacementSuccessOverlay orderId={pendingOrderSuccessId} />
-      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 box-border min-w-0 animate-in fade-in duration-500'>
-        <header className='mb-8 lg:mb-10'>
-          <h1 className='text-3xl sm:text-[2.35rem] font-serif font-black text-navy-900 tracking-tight leading-tight'>
+      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-8 box-border min-w-0 animate-in fade-in duration-500'>
+        <header className='mb-2 lg:mb-10'>
+          <h1 className='text-[2.1rem] sm:text-[2.35rem] font-serif font-black text-navy-900 tracking-tight leading-tight'>
             Checkout
           </h1>
-          <p className='mt-2 text-sm sm:text-base text-gray-500 max-w-2xl'>
+          <p className='mt-1 text-[13px] sm:text-base text-gray-500 max-w-2xl'>
             Secure checkout.{" "}
             {existingOrder ?
               "Complete your payment to confirm this order."
@@ -886,37 +992,61 @@ export default function CheckoutClient() {
 
         {showMobileCheckoutWizard && (
           <div
-            className='mb-6 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5 lg:hidden'
+            className='mb-2 rounded-2xl border border-gray-200/80 bg-white p-1.5 shadow-sm sm:p-5 lg:hidden overflow-hidden'
             aria-label='Checkout steps'
           >
-            <div className='grid grid-cols-3 gap-2 text-center'>
+            <div className='flex items-center'>
               {(
                 [
                   { step: 1, label: "Shipping" },
                   { step: 2, label: "Payment" },
                   { step: 3, label: "Review" },
                 ] as const
-              ).map(({ step, label }) => (
-                <div key={step} className='min-w-0'>
-                  <div
+              ).map(({ step, label }, idx) => (
+                <Fragment key={step}>
+                  <button
+                    type='button'
+                    onClick={() => void goToMobileStep(step)}
                     className={cn(
-                      "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-black transition-colors",
+                      "min-w-0 flex-1 h-[54px] rounded-xl border px-2 py-1 text-center transition-all duration-250",
                       mobileCheckoutStep >= step ?
-                        "bg-[#b02a37] text-white shadow-md"
-                      : "bg-gray-200 text-gray-500",
+                        "border-[#b02a37]/35 bg-red-50/60 shadow-sm"
+                      : "border-gray-200 bg-white hover:border-gray-300",
                     )}
                   >
-                    {step}
-                  </div>
-                  <p
-                    className={cn(
-                      "mt-2 text-[10px] font-bold uppercase leading-tight tracking-wide text-gray-600",
-                      mobileCheckoutStep === step && "text-[#b02a37]",
-                    )}
-                  >
-                    {label}
-                  </p>
-                </div>
+                    <div
+                      className={cn(
+                        "mx-auto flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black transition-colors duration-250",
+                        mobileCheckoutStep >= step ?
+                          "bg-[#b02a37] text-white shadow"
+                        : "bg-gray-200 text-gray-500",
+                      )}
+                    >
+                      {step}
+                    </div>
+                    <p
+                      className={cn(
+                        "mt-2 text-[9px] font-bold uppercase leading-tight tracking-[0.07em] text-gray-600",
+                        mobileCheckoutStep === step && "text-[#b02a37]",
+                      )}
+                    >
+                      {label}
+                    </p>
+                  </button>
+
+                  {idx < 2 && (
+                    <div className='mx-1 w-6 shrink-0'>
+                      <div className='h-0.5 w-full rounded-full bg-gray-200 overflow-hidden'>
+                        <div
+                          className='h-full rounded-full bg-[#b02a37] transition-all duration-300'
+                          style={{
+                            width: mobileCheckoutStep > step ? "100%" : "0%",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Fragment>
               ))}
             </div>
           </div>
@@ -932,10 +1062,10 @@ export default function CheckoutClient() {
             void handleSubmit(onSubmit)(e);
           }}
         >
-          <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 xl:gap-10 min-w-0 items-start'>
+          <div className='grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-8 xl:gap-10 min-w-0 items-start'>
             <div className='lg:col-span-7 space-y-6 min-w-0'>
               {(!showMobileCheckoutWizard || mobileCheckoutStep === 1) && (
-                <section className='rounded-2xl bg-white p-5 sm:p-7 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
+                <section className='rounded-2xl bg-white p-4 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
                   <div className='flex items-center gap-2.5 mb-6'>
                     <div
                       className={cn(
@@ -950,7 +1080,7 @@ export default function CheckoutClient() {
                     </h2>
                   </div>
 
-                  <div className='mb-6 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3.5'>
+                  <div className='mb-2 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3'>
                     <p className='text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold'>
                       Email
                     </p>
@@ -960,7 +1090,7 @@ export default function CheckoutClient() {
                   </div>
 
                   {showManualAddressPreview && (
-                    <div className='mb-6 rounded-2xl border-2 border-[#b02a37]/40 bg-red-50/40 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300'>
+                    <div className='mb-2 rounded-2xl border-2 border-[#b02a37]/40 bg-red-50/40 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300'>
                       <div className='flex items-start justify-between gap-3'>
                         <div className='min-w-0'>
                           <p className='flex items-center gap-2 text-sm font-black text-navy-900'>
@@ -996,7 +1126,7 @@ export default function CheckoutClient() {
                   )}
 
                   {user?.addresses && user.addresses.length > 0 && (
-                    <div className='mb-6'>
+                    <div className='mb-2'>
                       <p className='text-sm font-bold text-navy-900 mb-3'>
                         Saved addresses
                       </p>
@@ -1054,6 +1184,18 @@ export default function CheckoutClient() {
                               <Pencil className='h-3.5 w-3.5' />
                               Edit
                             </button>
+                            <button
+                              type='button'
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!addr._id) return;
+                                void removeSavedAddress(addr._id);
+                              }}
+                              className='absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 shadow-sm transition hover:bg-red-50'
+                            >
+                              <Trash2 className='h-3.5 w-3.5' />
+                            </button>
                           </div>
                         ))}
                         <button
@@ -1083,13 +1225,13 @@ export default function CheckoutClient() {
                       <Input
                         {...register("name")}
                         label='Full name'
-                        placeholder='e.g. Rani Sharma'
+                        placeholder='e.g. Your Name'
                         error={errors.name?.message}
                       />
                       <Input
                         {...register("phone")}
                         label='Mobile number'
-                        placeholder='e.g. 9876543210'
+                        placeholder='e.g. 9887654321'
                         error={errors.phone?.message}
                         inputMode='tel'
                       />
@@ -1164,7 +1306,7 @@ export default function CheckoutClient() {
               )}
 
               {(!showMobileCheckoutWizard || mobileCheckoutStep === 2) && (
-                <section className='rounded-2xl bg-white p-5 sm:p-7 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
+                <section className='rounded-2xl bg-white p-4 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
                   <div className='flex items-center gap-2.5 mb-5'>
                     <div
                       className={cn(
@@ -1218,7 +1360,7 @@ export default function CheckoutClient() {
                           </div>
                           <div className='min-w-0 flex-1'>
                             <p className='font-bold text-navy-900'>
-                              Pay online (Razorpay)
+                              Pay online
                             </p>
                             <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
                               UPI, cards &amp; net banking. No Extra Charges.
@@ -1272,7 +1414,7 @@ export default function CheckoutClient() {
                     </>
                   }
                   {showMobileCheckoutWizard && mobileCheckoutStep === 2 && (
-                    <div className='mt-6 flex flex-col gap-3 lg:hidden'>
+                    <div className='mt-2 flex flex-col gap-3 lg:hidden'>
                       <Button
                         type='button'
                         variant='outline'
@@ -1298,13 +1440,13 @@ export default function CheckoutClient() {
             </div>
 
             {(!showMobileCheckoutWizard || mobileCheckoutStep === 3) && (
-              <div className='lg:col-span-5 min-w-0'>
-                <div className='rounded-2xl bg-white p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 lg:sticky lg:top-24 min-w-0 max-w-full transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
+              <div className='lg:col-span-5 min-w-0 animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
+                <div className='rounded-2xl bg-white p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 lg:sticky lg:top-24 min-w-0 max-w-full transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
                   {showMobileCheckoutWizard && mobileCheckoutStep === 3 && (
                     <Button
                       type='button'
                       variant='ghost'
-                      className='mb-4 -ml-1 h-10 px-2 text-sm font-bold text-gray-600 hover:text-gray-900 lg:hidden'
+                      className='mb-2 -ml-1 h-10 px-2 text-sm font-bold text-gray-600 hover:text-gray-900 lg:hidden'
                       onClick={() => setMobileCheckoutStep(2)}
                     >
                       ← Back to payment
@@ -1797,6 +1939,19 @@ export default function CheckoutClient() {
                       <span>Total</span>
                       <span className='tabular-nums'>{formatPrice(total)}</span>
                     </div>
+                    {(shippingCharge > 0 || codFee > 0) && (
+                      <p className='text-[10px] text-gray-500 mt-2 leading-snug'>
+                        On returns, shipping and COD fees (if any) are not
+                        refunded — only the product value portion. See{" "}
+                        <Link
+                          href='/terms'
+                          className='text-brand-700 font-semibold underline-offset-2 hover:underline'
+                        >
+                          Terms
+                        </Link>
+                        .
+                      </p>
+                    )}
                   </div>
 
                   <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -45,6 +45,7 @@ import {
   PdpReviewsSection,
   PdpRelatedProductRows,
 } from "@/components/product/pdp";
+import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
 
@@ -71,6 +72,7 @@ export default function ProductDetailClient({
   /* Actions */
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const buyNowBtnRef = useRef<HTMLButtonElement>(null);
   const [copied, setCopied] = useState(false);
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
   const [customFieldAnswers, setCustomFieldAnswers] = useState<
@@ -544,7 +546,7 @@ export default function ProductDetailClient({
           }),
         );
       }
-      toast.success("Taking you to secure checkout…", { duration: 2200 });
+      await playCheckoutLaunchAnimation(buyNowBtnRef.current);
       router.push("/checkout?buyNow=1");
     } catch {
       setIsBuyingNow(false);
@@ -1181,6 +1183,7 @@ export default function ProductDetailClient({
                 </button>
 
                 <button
+                  ref={buyNowBtnRef}
                   onClick={handleBuyNow}
                   disabled={isOutOfStock || isBuyingNow}
                   className={cn(
@@ -1193,7 +1196,7 @@ export default function ProductDetailClient({
                   {isBuyingNow ?
                     <>
                       <span className='h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin' />{" "}
-                      Going to checkout…
+                      Launching checkout…
                     </>
                   : <>
                       <Zap className='h-4 w-4' /> Buy Now

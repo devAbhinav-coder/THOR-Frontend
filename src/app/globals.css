@@ -173,15 +173,15 @@
     animation: checkout-empty-wiggle 0.75s ease-in-out 1 both;
   }
 
-  /* react-hot-toast — top-center: light slide + fade (reference-style) */
+  /* react-hot-toast — top-right: light slide + fade */
   @keyframes hor-toast-in {
     from {
       opacity: 0;
-      transform: translateY(-10px);
+      transform: translate(12px, -8px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translate(0, 0);
     }
   }
   .hor-toast-enter {

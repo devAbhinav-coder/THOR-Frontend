@@ -83,6 +83,13 @@ export default function TermsPage() {
         under the Consumer Protection Act, 2019 and other applicable law remain unaffected where they
         apply.
       </p>
+      <p>
+        <strong>Shipping and COD fees:</strong> Any shipping charge shown at checkout (including when
+        free shipping does not apply) and any cash-on-delivery (COD) handling or convenience fee are{' '}
+        <strong>not refundable</strong> on approved returns or goodwill refunds. Refunds apply only to
+        the product-value portion of your order (typically your order total minus those charges), unless
+        we state otherwise in writing for a specific case.
+      </p>
 
       <h2>8. Intellectual property</h2>
       <p>

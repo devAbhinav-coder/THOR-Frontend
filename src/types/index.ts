@@ -165,7 +165,14 @@ export interface Order {
     requestedAt?: string;
     userBankDetails?: Record<string, string | undefined>;
   };
-  refundData?: { amount: number; method: string };
+  refundData?: {
+    amount: number;
+    method: string;
+    notes?: string;
+    processedAt?: string;
+    nonRefundableFees?: number;
+    gatewayRefundId?: string;
+  };
 }
 
 export interface Review {
@@ -275,6 +282,8 @@ export interface DashboardAnalytics {
     reviewsThisMonth: number;
     refundedAmount: number;
     refundedOrdersCount: number;
+    /** Sum of shipping + COD fees kept on refunded orders (matches refund policy) */
+    nonRefundableFeesRetained?: number;
   };
   refundsByReason: { _id: string; count: number }[];
   lowStockProducts: { _id: string; name: string; totalStock: number; category: string }[];

@@ -18,6 +18,24 @@ import type { Product, Review } from "@/types";
 import { StarSelector, RatingBar } from "./PdpReviewPrimitives";
 import type { ReviewEligibility, ReviewFormState } from "./types";
 
+const REVIEW_TITLE_OPTIONS = [
+  { value: "Not satisfied", label: "😕 Not satisfied" },
+  { value: "Could be better", label: "🙂 Could be better" },
+  { value: "Good overall", label: "👍 Good overall" },
+  { value: "Very good", label: "✨ Very good" },
+  { value: "Loved it", label: "😍 Loved it" },
+  { value: "Excellent purchase", label: "🌟 Excellent purchase" },
+] as const;
+const isPresetReviewTitle = (title: string) =>
+  REVIEW_TITLE_OPTIONS.some((o) => o.value === title);
+
+function titleForRating(rating: number): string {
+  if (rating <= 2) return "Not satisfied";
+  if (rating === 3) return "Good overall";
+  if (rating === 4) return "Very good";
+  return "Loved it";
+}
+
 export interface PdpReviewsSectionProps {
   product: Product;
   isAuthenticated: boolean;
@@ -165,7 +183,12 @@ export function PdpReviewsSection({
                     <StarSelector
                       value={reviewForm.rating}
                       onChange={(v) =>
-                        setReviewForm((f) => ({ ...f, rating: v }))
+                        setReviewForm((f) => {
+                          const next = titleForRating(v);
+                          const shouldAutoTitle =
+                            !f.title || isPresetReviewTitle(f.title);
+                          return { ...f, rating: v, title: shouldAutoTitle ? next : f.title };
+                        })
                       }
                     />
                   </div>
@@ -175,19 +198,50 @@ export function PdpReviewsSection({
                       <label className='block text-xs font-bold text-gray-700 uppercase tracking-tight'>
                         Review Title
                       </label>
-                      <input
-                        type='text'
-                        value={reviewForm.title}
-                        onChange={(e) =>
-                          setReviewForm((f) => ({
-                            ...f,
-                            title: e.target.value,
-                          }))
-                        }
-                        maxLength={100}
-                        placeholder="Summarize your experience (e.g., 'Amazing Quality', 'Perfect Fit')"
-                        className='w-full px-5 py-4 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-400 placeholder-gray-400 transition-all bg-white'
-                      />
+                      <div className='rounded-2xl border border-gray-200 bg-white p-3'>
+                        <div className='flex flex-wrap gap-2'>
+                          <button
+                            type='button'
+                            onClick={() =>
+                              setReviewForm((f) => ({
+                                ...f,
+                                title: "",
+                              }))
+                            }
+                            className={cn(
+                              "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                              !reviewForm.title ?
+                                "border-gray-900 bg-gray-900 text-white"
+                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
+                            )}
+                          >
+                            Skip
+                          </button>
+                          {REVIEW_TITLE_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type='button'
+                              onClick={() =>
+                                setReviewForm((f) => ({
+                                  ...f,
+                                  title: opt.value,
+                                }))
+                              }
+                              className={cn(
+                                "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                                reviewForm.title === opt.value ?
+                                  "border-brand-500 bg-brand-50 text-brand-700 shadow-sm"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-brand-300 hover:bg-brand-50/40",
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className='text-[11px] text-gray-500'>
+                        Pick a quick headline so other shoppers can scan reviews easily.
+                      </p>
                     </div>
 
                     <div className='space-y-2'>
