@@ -21,12 +21,7 @@ export function PdpRelatedProductRows({
   return (
     <>
       {relatedProducts.length > 0 && (
-        <section
-          className='py-8 sm:py-12 bg-[#faf9f7] overflow-x-auto  snap-x snap-mandatory 
-            [touch-action:pan-y] 
-            [-webkit-overflow-scrolling:touch] 
-            overscroll-x-contain"'
-        >
+        <section className='py-8 sm:py-12 bg-[#faf9f7]'>
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
             <div className='flex items-end justify-between mb-5 sm:mb-7'>
               <div>
@@ -50,7 +45,7 @@ export function PdpRelatedProductRows({
                 View all <ChevronRight className='h-4 w-4' />
               </Link>
             </div>
-            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide touch-pan-x'>
+            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide [-webkit-overflow-scrolling:touch] touch-manipulation'>
               {relatedProducts.slice(0, 8).map((p) => (
                 <div
                   key={p._id}
@@ -70,12 +65,7 @@ export function PdpRelatedProductRows({
       )}
 
       {moreProducts.length > 0 && (
-        <section
-          className='py-8 sm:py-12 bg-white overflow-x-auto  snap-x snap-mandatory 
-            [touch-action:pan-y] 
-            [-webkit-overflow-scrolling:touch] 
-            overscroll-x-contain'
-        >
+        <section className='py-8 sm:py-12 bg-white'>
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0'>
             <div className='flex items-end justify-between mb-5 sm:mb-7'>
               <div>
@@ -95,7 +85,7 @@ export function PdpRelatedProductRows({
                 Explore all <ChevronRight className='h-4 w-4' />
               </Link>
             </div>
-            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide touch-pan-x'>
+            <div className='sm:hidden w-full min-w-0 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 snap-x snap-mandatory scrollbar-hide [-webkit-overflow-scrolling:touch] touch-manipulation'>
               {moreProducts.slice(0, 8).map((p) => (
                 <div
                   key={p._id}
