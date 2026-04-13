@@ -59,19 +59,30 @@ import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import OrderPlacementSuccessOverlay from "@/components/checkout/OrderPlacementSuccessOverlay";
 
+function normalizeIndianMobileDigits(val: string): string {
+  let d = val.replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+  if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  return d;
+}
+
 const addressSchema = z.object({
   name: z.string().min(2, "Full name is required").max(80, "Name is too long"),
   phone: z
     .string()
     .min(1, "Mobile number is required")
+    .refine(
+      (val) => normalizeIndianMobileDigits(val).length === 10,
+      "Enter exactly 10 digits",
+    )
     .refine((val) => {
-      const raw = val.replace(/\s+/g, "");
+      const raw = normalizeIndianMobileDigits(val);
       const pn = parsePhoneNumberFromString(raw, "IN");
       return !!pn && pn.isValid() && pn.country === "IN";
     }, "Enter a valid Indian mobile number"),
   street: z.string().min(5, "Street address required"),
   city: z.string().min(2, "City required"),
-  state: z.string().min(2, "State required"),
+  state: z.string().min(1, "Please select state"),
   pincode: z.string().regex(/^\d{6}$/, "Enter valid 6-digit pincode"),
   country: z.string().default("India"),
 });
@@ -199,6 +210,9 @@ export default function CheckoutClient() {
     resolver: zodResolver(addressSchema),
     defaultValues: { country: "India" },
     shouldUnregister: false,
+    mode: "onTouched",
+    reValidateMode: "onChange",
+    shouldFocusError: true,
   });
 
   const watchedStreet = watch("street");
@@ -417,9 +431,38 @@ export default function CheckoutClient() {
     }
   }, [existingOrder]);
 
+  /** Opens shipping fields if needed so focus + inline errors work (saved-address collapsed UI). */
+  const validateAddressFields = useCallback(async (): Promise<boolean> => {
+    let ok = await trigger(undefined, { shouldFocus: true });
+    if (!ok) {
+      setShowShippingForm(true);
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      ok = await trigger(undefined, { shouldFocus: true });
+      if (!ok) {
+        toast.error("Please fix the highlighted fields in your delivery address.");
+        requestAnimationFrame(() =>
+          shippingFieldsRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          }),
+        );
+      }
+    }
+    return ok;
+  }, [trigger]);
+
   const confirmShippingForm = useCallback(async () => {
-    const ok = await trigger();
-    if (!ok) return;
+    const ok = await trigger(undefined, { shouldFocus: true });
+    if (!ok) {
+      toast.error("Please fix the highlighted fields.");
+      requestAnimationFrame(() =>
+        shippingFieldsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      );
+      return;
+    }
 
     const raw = getValues();
     const payload = {
@@ -476,13 +519,10 @@ export default function CheckoutClient() {
   }, [getValues, isAuthenticated, selectedAddressId, setUser, trigger, user]);
 
   const goToMobilePaymentStep = useCallback(async () => {
-    const ok = await trigger();
-    if (!ok) {
-      toast.error("Please complete your delivery address.");
-      return;
-    }
+    const ok = await validateAddressFields();
+    if (!ok) return;
     setMobileCheckoutStep(2);
-  }, [trigger]);
+  }, [validateAddressFields]);
 
   const goToMobileReviewStep = useCallback(() => {
     setMobileCheckoutStep(3);
@@ -498,14 +538,11 @@ export default function CheckoutClient() {
         await goToMobilePaymentStep();
         return;
       }
-      const ok = await trigger();
-      if (!ok) {
-        toast.error("Please complete your delivery address.");
-        return;
-      }
+      const ok = await validateAddressFields();
+      if (!ok) return;
       setMobileCheckoutStep(3);
     },
-    [goToMobilePaymentStep, trigger],
+    [goToMobilePaymentStep, validateAddressFields],
   );
 
   const openNewAddressForm = useCallback(() => {
@@ -1223,40 +1260,58 @@ export default function CheckoutClient() {
                     </p>
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                       <Input
+                        id='checkout-field-name'
                         {...register("name")}
                         label='Full name'
                         placeholder='e.g. Your Name'
                         error={errors.name?.message}
                       />
                       <Input
+                        id='checkout-field-phone'
                         {...register("phone")}
                         label='Mobile number'
-                        placeholder='e.g. 9887654321'
+                        placeholder='e.g. 9876543210'
+                        hint='10-digit Indian mobile'
                         error={errors.phone?.message}
                         inputMode='tel'
+                        autoComplete='tel'
                       />
                     </div>
 
                     <Input
+                      id='checkout-field-street'
                       {...register("street")}
                       label='Street address'
                       placeholder='House no., Street, Area'
                       error={errors.street?.message}
+                      autoComplete='street-address'
                     />
                     <div className='grid grid-cols-2 gap-4'>
                       <Input
+                        id='checkout-field-city'
                         {...register("city")}
                         label='City'
                         placeholder='City'
                         error={errors.city?.message}
+                        autoComplete='address-level2'
                       />
                       <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-1'>
+                        <label
+                          htmlFor='checkout-field-state'
+                          className='block text-sm font-medium text-gray-700 mb-1'
+                        >
                           State
                         </label>
                         <select
+                          id='checkout-field-state'
                           {...register("state")}
-                          className='w-full h-10 px-3 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#b02a37]/30'
+                          aria-invalid={errors.state ? true : undefined}
+                          className={cn(
+                            "w-full h-10 px-3 border rounded-xl text-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#b02a37]/30 bg-white",
+                            errors.state ?
+                              "border-red-500 focus:ring-red-500/40"
+                            : "border-input",
+                          )}
                         >
                           <option value=''>Select state</option>
                           {INDIAN_STATES.map((s) => (
@@ -1266,18 +1321,23 @@ export default function CheckoutClient() {
                           ))}
                         </select>
                         {errors.state && (
-                          <p className='text-xs text-red-600 mt-1'>
+                          <p className='text-xs text-red-600 mt-1 animate-in fade-in duration-200'>
                             {errors.state.message}
                           </p>
                         )}
                       </div>
                     </div>
                     <Input
+                      id='checkout-field-pincode'
                       {...register("pincode")}
                       label='Pincode'
                       placeholder='6-digit PIN'
                       maxLength={6}
+                      inputMode='numeric'
+                      pattern='[0-9]*'
+                      hint='6-digit area PIN'
                       error={errors.pincode?.message}
+                      autoComplete='postal-code'
                     />
                     <Button
                       type='button'
