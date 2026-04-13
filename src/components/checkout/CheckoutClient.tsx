@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,7 +38,11 @@ import {
   Truck,
   Wallet,
 } from "lucide-react";
-import { useCartStore } from "@/store/useCartStore";
+import {
+  useCartStore,
+  getCartAppliedCouponCodeForOrder,
+  readPersistedCartCouponCode,
+} from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { authApi, couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
@@ -89,7 +94,7 @@ const addressSchema = z.object({
 
 type AddressForm = z.infer<typeof addressSchema>;
 
-const SHIPPING_THRESHOLD = 1499;
+const SHIPPING_THRESHOLD = 1099;
 const SHIPPING_CHARGE = 99;
 /** Must match backend `COD_HANDLING_FEE` — added when paying cash on delivery */
 const COD_HANDLING_FEE = 99;
@@ -275,6 +280,25 @@ export default function CheckoutClient() {
     }
   }, [isAuthenticated, fetchCart, orderId, router, setValue, buyNowItem]);
 
+  /** If cart still has a discount but Zustand lost the code (race / sync bug), restore from sessionStorage. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isAuthenticated || buyNowItem || existingOrder) return;
+    const { cart: stCart, appliedCouponCode: stCode } =
+      useCartStore.getState();
+    if (!stCart?.items?.length || (stCart.discount ?? 0) <= 0) return;
+    if (stCode) return;
+    const stored = readPersistedCartCouponCode();
+    if (stored) useCartStore.setState({ appliedCouponCode: stored });
+  }, [
+    isAuthenticated,
+    cart?.discount,
+    cart?.items?.length,
+    appliedCouponCode,
+    buyNowItem,
+    existingOrder,
+  ]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     const amountForEligibility =
@@ -337,7 +361,7 @@ export default function CheckoutClient() {
     const hasAppliedCoupon =
       existingOrder ? !!existingOrder.coupon
       : buyNowItem ? !!buyNowCouponCode
-      : !!cart?.discount;
+      : (cart?.discount ?? 0) > 0 || Boolean(appliedCouponCode);
     const activeCouponCode = buyNowItem ? buyNowCouponCode : appliedCouponCode;
     const activeCouponDiscount =
       buyNowItem ? buyNowCouponDiscount : cart?.discount || 0;
@@ -660,11 +684,15 @@ export default function CheckoutClient() {
               crypto.randomUUID()
             : `k${Date.now()}_${Math.floor(Math.random() * 1e12)}`;
 
+          const couponCodeForOrder =
+            buyNowItem ? buyNowCouponCode || undefined
+            : getCartAppliedCouponCodeForOrder() || undefined;
+
           const res = await orderApi.create(
             {
               shippingAddress: { ...addressData, phone: normalizedPhone },
               paymentMethod: paymentMethodForApi,
-              ...(buyNowCouponCode ? { couponCode: buyNowCouponCode } : {}),
+              ...(couponCodeForOrder ? { couponCode: couponCodeForOrder } : {}),
               ...(buyNowItem ?
                 {
                   buyNowItem: {
@@ -1499,8 +1527,8 @@ export default function CheckoutClient() {
               )}
             </div>
 
-            {(!showMobileCheckoutWizard || mobileCheckoutStep === 3) && (
-              <div className='lg:col-span-5 min-w-0 animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
+            {/* Summary + coupons: visible on all steps (mobile) so apply / View all always work; navbar is z-50 so coupon modal uses a portal */}
+            <div className='lg:col-span-5 min-w-0 animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
                 <div className='rounded-2xl bg-white p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 lg:sticky lg:top-24 min-w-0 max-w-full transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
                   {showMobileCheckoutWizard && mobileCheckoutStep === 3 && (
                     <Button
@@ -2014,146 +2042,162 @@ export default function CheckoutClient() {
                     )}
                   </div>
 
-                  <Button
-                    type='submit'
-                    variant='brand'
-                    size='xl'
-                    className='w-full mt-6 h-14 text-center whitespace-normal leading-snug px-3 max-w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] border-0 text-base font-black shadow-lg shadow-red-900/15 transition-all duration-300 hover:shadow-xl hover:shadow-red-900/20 active:scale-[0.99]'
-                    loading={isPlacingOrder}
-                  >
-                    {existingOrder ?
-                      `Pay now — ${formatPrice(total)}`
-                    : checkoutPaymentMethod === "razorpay" ?
-                      `Pay securely — ${formatPrice(total)}`
-                    : `Place order — ${formatPrice(total)}`}
-                  </Button>
-
-                  <div className='mt-6 grid grid-cols-3 gap-2 text-center'>
-                    {(
-                      [
-                        { Icon: Shield, label: "Secure checkout" },
-                        { Icon: Truck, label: "Free delivery*" },
-                        { Icon: RotateCcw, label: "Easy returns" },
-                      ] as const
-                    ).map(({ Icon, label }) => (
-                      <div
-                        key={label}
-                        className='rounded-xl border border-gray-100 bg-gray-50/80 px-1 py-3 transition hover:border-[#b02a37]/25'
+                  {(!showMobileCheckoutWizard || mobileCheckoutStep === 3) && (
+                    <>
+                      <Button
+                        type='submit'
+                        variant='brand'
+                        size='xl'
+                        className='w-full mt-6 h-14 text-center whitespace-normal leading-snug px-3 max-w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] border-0 text-base font-black shadow-lg shadow-red-900/15 transition-all duration-300 hover:shadow-xl hover:shadow-red-900/20 active:scale-[0.99]'
+                        loading={isPlacingOrder}
                       >
-                        <Icon className='mx-auto h-5 w-5 text-[#b02a37]/90' />
-                        <p className='mt-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500 leading-tight'>
-                          {label}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className='text-[10px] text-center text-gray-400 mt-1'>
-                    *Where applicable per policy
-                  </p>
+                        {existingOrder ?
+                          `Pay now — ${formatPrice(total)}`
+                        : checkoutPaymentMethod === "razorpay" ?
+                          `Pay securely — ${formatPrice(total)}`
+                        : `Place order — ${formatPrice(total)}`}
+                      </Button>
 
-                  <p className='text-xs text-gray-500 text-center mt-4 leading-relaxed'>
-                    {offerText}
-                  </p>
-                  <p className='text-[11px] text-gray-400 text-center mt-2'>
-                    By placing this order, you agree to our{" "}
-                    <Link
-                      href='/terms'
-                      className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
-                    >
-                      terms
-                    </Link>{" "}
-                    and{" "}
-                    <Link
-                      href='/privacy'
-                      className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
-                    >
-                      privacy policy
-                    </Link>
-                    .
-                  </p>
+                      <div className='mt-6 grid grid-cols-3 gap-2 text-center'>
+                        {(
+                          [
+                            { Icon: Shield, label: "Secure checkout" },
+                            { Icon: Truck, label: "Free delivery*" },
+                            { Icon: RotateCcw, label: "Easy returns" },
+                          ] as const
+                        ).map(({ Icon, label }) => (
+                          <div
+                            key={label}
+                            className='rounded-xl border border-gray-100 bg-gray-50/80 px-1 py-3 transition hover:border-[#b02a37]/25'
+                          >
+                            <Icon className='mx-auto h-5 w-5 text-[#b02a37]/90' />
+                            <p className='mt-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500 leading-tight'>
+                              {label}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className='text-[10px] text-center text-gray-400 mt-1'>
+                        *Where applicable per policy
+                      </p>
+
+                      <p className='text-xs text-gray-500 text-center mt-4 leading-relaxed'>
+                        {offerText}
+                      </p>
+                      <p className='text-[11px] text-gray-400 text-center mt-2'>
+                        By placing this order, you agree to our{" "}
+                        <Link
+                          href='/terms'
+                          className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
+                        >
+                          terms
+                        </Link>{" "}
+                        and{" "}
+                        <Link
+                          href='/privacy'
+                          className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
+                        >
+                          privacy policy
+                        </Link>
+                        .
+                      </p>
+                    </>
+                  )}
+                  {showMobileCheckoutWizard &&
+                    mobileCheckoutStep < 3 &&
+                    !existingOrder && (
+                      <p className='mt-6 text-center text-xs text-gray-500'>
+                        Continue the steps above — you can place your order on
+                        the last step.
+                      </p>
+                    )}
                 </div>
               </div>
-            )}
           </div>
         </form>
 
-        {/* See all coupons modal (checkout) */}
-        {isAllCouponsOpen && (
-          <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 overflow-x-hidden'>
-            <div
-              className='absolute inset-0'
-              onClick={() => setIsAllCouponsOpen(false)}
-            />
-            <div className='relative w-full max-w-[100vw] sm:max-w-lg min-w-0 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden'>
-              <div className='p-4 border-b border-gray-100 flex items-center justify-between min-w-0 gap-2'>
-                <div className='min-w-0'>
-                  <p className='text-xs uppercase tracking-widest text-gray-400 font-semibold'>
-                    Promotional codes
-                  </p>
-                  <h3 className='text-lg font-bold text-gray-900 truncate'>
-                    Available for your order
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setIsAllCouponsOpen(false)}
-                  className='h-9 w-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center'
-                  aria-label='Close'
-                >
-                  <span className='text-gray-600 text-lg leading-none'>×</span>
-                </button>
-              </div>
-              <div className='p-4 overflow-y-auto overflow-x-hidden space-y-2 min-w-0'>
-                {eligibleCoupons.map((coupon) => (
-                  <button
-                    key={coupon._id}
-                    type='button'
-                    disabled={hasAppliedCoupon || couponBusy}
-                    onClick={async () => {
-                      try {
-                        await applySelectedCoupon(coupon.code);
-                        setIsAllCouponsOpen(false);
-                      } catch {
-                        // store handles toast
-                      }
-                    }}
-                    className={cn(
-                      "w-full min-w-0 text-left p-3 rounded-xl border border-gray-200 transition-all",
-                      hasAppliedCoupon || couponBusy ?
-                        "opacity-50 cursor-not-allowed"
-                      : "hover:border-brand-300 hover:bg-brand-50",
-                    )}
-                  >
-                    <div className='flex items-center justify-between gap-2 min-w-0'>
-                      <span className='font-mono font-bold text-sm text-brand-700 truncate'>
-                        {coupon.code}
-                      </span>
-                      <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
-                        {coupon.eligibilityType === "first_order" ?
-                          "First Order"
-                        : coupon.eligibilityType === "returning" ?
-                          "Returning"
-                        : "All Users"}
-                      </span>
-                    </div>
-                    <p className='text-xs text-gray-500 mt-1'>
-                      {coupon.discountType === "percentage" ?
-                        `${coupon.discountValue}% off`
-                      : `${formatPrice(coupon.discountValue)} off`}
-                      {coupon.minOrderAmount ?
-                        ` · Min ${formatPrice(coupon.minOrderAmount)}`
-                      : ""}
+        {/* See all coupons modal — portal + z-index above sticky nav (z-50) */}
+        {typeof document !== "undefined" &&
+          isAllCouponsOpen &&
+          createPortal(
+            <div className='fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 overflow-x-hidden'>
+              <div
+                className='absolute inset-0'
+                role='presentation'
+                onClick={() => setIsAllCouponsOpen(false)}
+              />
+              <div className='relative w-full max-w-[100vw] sm:max-w-lg min-w-0 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden'>
+                <div className='p-4 border-b border-gray-100 flex items-center justify-between min-w-0 gap-2'>
+                  <div className='min-w-0'>
+                    <p className='text-xs uppercase tracking-widest text-gray-400 font-semibold'>
+                      Promotional codes
                     </p>
-                    {coupon.description && (
-                      <p className='text-xs text-gray-400 mt-1 line-clamp-2'>
-                        {coupon.description}
-                      </p>
-                    )}
+                    <h3 className='text-lg font-bold text-gray-900 truncate'>
+                      Available for your order
+                    </h3>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => setIsAllCouponsOpen(false)}
+                    className='h-9 w-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center'
+                    aria-label='Close'
+                  >
+                    <span className='text-gray-600 text-lg leading-none'>×</span>
                   </button>
-                ))}
+                </div>
+                <div className='p-4 overflow-y-auto overflow-x-hidden space-y-2 min-w-0'>
+                  {eligibleCoupons.map((coupon) => (
+                    <button
+                      key={coupon._id}
+                      type='button'
+                      disabled={hasAppliedCoupon || couponBusy}
+                      onClick={async () => {
+                        try {
+                          await applySelectedCoupon(coupon.code);
+                          setIsAllCouponsOpen(false);
+                        } catch {
+                          // store handles toast
+                        }
+                      }}
+                      className={cn(
+                        "w-full min-w-0 text-left p-3 rounded-xl border border-gray-200 transition-all",
+                        hasAppliedCoupon || couponBusy ?
+                          "opacity-50 cursor-not-allowed"
+                        : "hover:border-brand-300 hover:bg-brand-50",
+                      )}
+                    >
+                      <div className='flex items-center justify-between gap-2 min-w-0'>
+                        <span className='font-mono font-bold text-sm text-brand-700 truncate'>
+                          {coupon.code}
+                        </span>
+                        <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
+                          {coupon.eligibilityType === "first_order" ?
+                            "First Order"
+                          : coupon.eligibilityType === "returning" ?
+                            "Returning"
+                          : "All Users"}
+                        </span>
+                      </div>
+                      <p className='text-xs text-gray-500 mt-1'>
+                        {coupon.discountType === "percentage" ?
+                          `${coupon.discountValue}% off`
+                        : `${formatPrice(coupon.discountValue)} off`}
+                        {coupon.minOrderAmount ?
+                          ` · Min ${formatPrice(coupon.minOrderAmount)}`
+                        : ""}
+                      </p>
+                      {coupon.description && (
+                        <p className='text-xs text-gray-400 mt-1 line-clamp-2'>
+                          {coupon.description}
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
   );
