@@ -124,8 +124,8 @@ export default function GiftingPageClient({
     queryFn: () => storefrontApi.getSettings(),
     staleTime: 120_000,
     initialData: initialStorefront ?? undefined,
+    placeholderData: (prev) => prev ?? initialStorefront ?? undefined,
   });
-  const settingsLoading = !settingsBody?.data?.settings && settingsPending;
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery<GiftingProductsResponse>({
@@ -209,7 +209,9 @@ export default function GiftingPageClient({
     const href = next ? `${pathname}?${next}` : pathname;
     router.replace(href, { scroll: false });
   }, [serializeGiftingQuery, searchParams, pathname, router]);
-  const settings: StorefrontSettings | undefined = settingsBody?.data?.settings;
+  const settings: StorefrontSettings | undefined =
+    settingsBody?.data?.settings ?? initialStorefront?.data?.settings;
+  const settingsLoading = settings == null && settingsPending;
   const promo = settings?.promoBanner;
   const blog = settings?.blogBanner;
   const giftingHeroBanners = (settings?.giftingHeroBanners || []).filter(

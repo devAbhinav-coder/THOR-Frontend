@@ -108,15 +108,41 @@ export default async function RootLayout({
 }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const appUrl = SITE_URL;
-  const organizationLd = {
+  /** Single @graph: Organization ↔ WebSite publisher — helps Google show a brand site name vs raw domain. */
+  const siteGraphLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "The House of Rani",
-    alternateName: ["House of Rani", "TheHouseOfRani"],
-    url: appUrl,
-    logo: `${appUrl}/logo.png`,
-    description:
-      "Premium sarees, bridal collections, and thoughtful gifting for every special occasion.",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${appUrl}/#organization`,
+        name: "The House of Rani",
+        alternateName: ["House of Rani"],
+        url: appUrl,
+        logo: {
+          "@type": "ImageObject",
+          url: `${appUrl}/logo.png`,
+        },
+        description:
+          "Premium sarees, bridal collections, and thoughtful gifting for every special occasion.",
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${appUrl}/#website`,
+        name: "The House of Rani",
+        alternateName: ["House of Rani"],
+        url: appUrl,
+        inLanguage: "en-IN",
+        publisher: { "@id": `${appUrl}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${appUrl}/shop?search={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
   };
   const consentModeDefaultScript = `
 window.dataLayer = window.dataLayer || [];
@@ -132,19 +158,6 @@ gtag('consent', 'default', {
 });
 `;
 
-  const websiteLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "The House of Rani",
-    alternateName: ["House of Rani", "TheHouseOfRani"],
-    url: appUrl,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${appUrl}/shop?search={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
-  };
-
   return (
     <html
       lang='en'
@@ -153,7 +166,12 @@ gtag('consent', 'default', {
     >
       <head>
         {preconnectHints().map((p) => (
-          <link key={p.href} rel='preconnect' href={p.href} crossOrigin={p.crossOrigin} />
+          <link
+            key={p.href}
+            rel='preconnect'
+            href={p.href}
+            crossOrigin={p.crossOrigin}
+          />
         ))}
         {/* Per-request CSP nonces can differ between SSR snapshot and client hydration in dev; suppressHydrationWarning is the supported escape hatch. */}
         <script
@@ -166,13 +184,7 @@ gtag('consent', 'default', {
           type='application/ld+json'
           nonce={nonce}
           suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
-        />
-        <script
-          type='application/ld+json'
-          nonce={nonce}
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteGraphLd) }}
         />
       </head>
       <body className='min-h-screen'>

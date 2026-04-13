@@ -75,6 +75,17 @@ export default async function ProductDetailPage({ params }: Props) {
         const data = await res.json();
         const product = data?.data?.product;
         if (product) {
+          const productPageUrl = `${appUrl}/shop/${safeSlug}`;
+          const productDesc =
+            product.seoDescription ||
+            product.shortDescription ||
+            String(product.description || "").slice(0, 200);
+          const images = (product.images || [])
+            .map((img: { url?: string }) => img.url)
+            .filter(Boolean);
+          const sku = product?.variants?.[0]?.sku;
+          const inStock = Number(product.totalStock || 0) > 0;
+
           breadcrumbLd = {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
@@ -95,39 +106,47 @@ export default async function ProductDetailPage({ params }: Props) {
                 "@type": "ListItem",
                 position: 3,
                 name: product.name,
-                item: `${appUrl}/shop/${safeSlug}`,
+                item: productPageUrl,
               },
             ],
           };
+
           productLd = {
             "@context": "https://schema.org",
             "@type": "Product",
+            "@id": `${productPageUrl}#product`,
             name: product.name,
-            description:
-              product.seoDescription ||
-              product.shortDescription ||
-              String(product.description || "").slice(0, 200),
-            image: (product.images || []).map((img: { url?: string }) => img.url).filter(Boolean),
-            sku: product?.variants?.[0]?.sku,
+            url: productPageUrl,
+            description: productDesc,
+            image: images,
+            category: product.category,
+            ...(sku ? { sku } : {}),
             brand: { "@type": "Brand", name: "The House of Rani" },
+            itemCondition: "https://schema.org/NewCondition",
             offers: {
               "@type": "Offer",
-              url: `${appUrl}/shop/${safeSlug}`,
+              url: productPageUrl,
               priceCurrency: "INR",
               price: String(product.price || 0),
-              availability:
-                Number(product.totalStock || 0) > 0
-                  ? "https://schema.org/InStock"
-                  : "https://schema.org/OutOfStock",
+              availability: inStock
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+              itemCondition: "https://schema.org/NewCondition",
+              seller: {
+                "@type": "Organization",
+                name: "The House of Rani",
+                url: appUrl,
+              },
             },
-            aggregateRating:
-              Number(product?.ratings?.count || 0) > 0
-                ? {
-                    "@type": "AggregateRating",
-                    ratingValue: String(product.ratings.average || 0),
-                    reviewCount: String(product.ratings.count || 0),
-                  }
-                : undefined,
+            ...(Number(product?.ratings?.count || 0) > 0 ?
+              {
+                aggregateRating: {
+                  "@type": "AggregateRating",
+                  ratingValue: String(product.ratings.average || 0),
+                  reviewCount: String(product.ratings.count || 0),
+                },
+              }
+            : {}),
           };
         }
       }
