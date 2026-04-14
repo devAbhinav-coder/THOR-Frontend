@@ -203,18 +203,16 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
         if (reviewsRes.status === "fulfilled") {
           const rv = reviewsRes.value;
-          const rvData = rv.data as
-            | {
-                ratingDistribution?: RatingDistributionBucket[];
-                pagination?: { totalPages?: number; total?: number };
-              }
-            | undefined;
+          const rvData = rv.data as {
+            reviews?: Review[];
+            ratingDistribution?: RatingDistributionBucket[];
+          };
           setReviews(rv.data.reviews || []);
           setRatingDistribution(
-            rv.ratingDistribution || rvData?.ratingDistribution || [],
+            rv.ratingDistribution || rvData.ratingDistribution || [],
           );
           setReviewsPagination(
-            rv.pagination || rvData?.pagination || { totalPages: 1, total: 0 },
+            rv.pagination || { totalPages: 1, total: 0 },
           );
         }
         const isGiftBaseProduct =

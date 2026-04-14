@@ -198,7 +198,12 @@ export const reviewsProduct = z
       })
       .passthrough(),
     ratingDistribution: z.array(z.any()).optional(),
-    data: z.object({ reviews: z.array(doc) }),
+    data: z
+      .object({
+        reviews: z.array(doc),
+        ratingDistribution: z.array(z.any()).optional(),
+      })
+      .passthrough(),
   })
   .passthrough();
 

@@ -11,7 +11,8 @@ import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import CookieConsentBanner from "@/components/layout/CookieConsentBanner";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import { getSiteUrl } from "@/lib/siteUrl";
-
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-inter",
