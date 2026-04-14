@@ -1,16 +1,11 @@
 import type { Category, Product } from "@/types";
-
-function apiBase(): string | null {
-  const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (!raw) return null;
-  return raw.replace(/\/+$/, "");
-}
+import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 
 /** Categories with counts for home “Browse by Category” — avoids a client-only skeleton flash. */
 export async function fetchHomeCategoryStats(): Promise<
   (Category & { productCount: number })[] | null
 > {
-  const base = apiBase();
+  const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
     const res = await fetch(`${base}/categories/stats`, {
@@ -30,7 +25,7 @@ export async function fetchHomeCategoryStats(): Promise<
 
 /** Featured products for home — same as `productApi.getFeatured()`. */
 export async function fetchHomeFeaturedProducts(): Promise<Product[] | null> {
-  const base = apiBase();
+  const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
     const res = await fetch(`${base}/products/featured`, {
@@ -50,7 +45,7 @@ export async function fetchHomeFeaturedProducts(): Promise<Product[] | null> {
 export async function fetchProductBySlugServer(
   slug: string,
 ): Promise<Product | null> {
-  const base = apiBase();
+  const base = await getBuildSafeApiBase();
   if (!base) return null;
   const safe = encodeURIComponent(slug);
   try {
@@ -83,7 +78,7 @@ type GiftingProductsEnvelope = {
 };
 
 export async function fetchGiftingCategoriesServer(): Promise<GiftingCategoriesEnvelope | null> {
-  const base = apiBase();
+  const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
     const res = await fetch(`${base}/gifting/categories`, {
@@ -99,7 +94,7 @@ export async function fetchGiftingCategoriesServer(): Promise<GiftingCategoriesE
 
 /** First page of gifting grid (default filters) — hydrates infinite query. */
 export async function fetchGiftingProductsFirstPageServer(): Promise<GiftingProductsEnvelope | null> {
-  const base = apiBase();
+  const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
     const qs = new URLSearchParams({ page: "1", limit: "20" });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 
 type Props = {
   children: React.ReactNode;
@@ -8,7 +9,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = await getBuildSafeApiBase();
   const appUrl = getSiteUrl();
   const safeSlug = encodeURIComponent(slug);
 
@@ -43,13 +44,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     return {
       title,
-      description: description || "Read this story from The House of Rani Journal.",
+      description:
+        description || "Read this story from The House of Rani Journal.",
       alternates: {
         canonical: `/blog/${safeSlug}`,
       },
       openGraph: {
         title,
-        description: description || "Read this story from The House of Rani Journal.",
+        description:
+          description || "Read this story from The House of Rani Journal.",
         url: `${appUrl}/blog/${safeSlug}`,
         images: image ? [{ url: image, alt: title }] : undefined,
         type: "article",
@@ -57,7 +60,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       twitter: {
         card: "summary_large_image",
         title,
-        description: description || "Read this story from The House of Rani Journal.",
+        description:
+          description || "Read this story from The House of Rani Journal.",
         images: image ? [image] : undefined,
       },
     };

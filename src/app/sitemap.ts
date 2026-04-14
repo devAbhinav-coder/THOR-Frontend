@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 
 type ProductLite = {
   slug?: string;
@@ -13,18 +14,58 @@ type BlogLite = {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getSiteUrl();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = await getBuildSafeApiBase();
   const now = new Date();
 
   const baseRoutes: MetadataRoute.Sitemap = [
-    { url: `${appUrl}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${appUrl}/shop`, lastModified: now, changeFrequency: "daily", priority: 0.95 },
-    { url: `${appUrl}/gifting`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
-    { url: `${appUrl}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${appUrl}/faq`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${appUrl}/shipping`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${appUrl}/privacy`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
-    { url: `${appUrl}/terms`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
+    {
+      url: `${appUrl}/`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 1,
+    },
+    {
+      url: `${appUrl}/shop`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.95,
+    },
+    {
+      url: `${appUrl}/gifting`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${appUrl}/blog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${appUrl}/faq`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${appUrl}/shipping`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${appUrl}/privacy`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.4,
+    },
+    {
+      url: `${appUrl}/terms`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.4,
+    },
   ];
 
   if (!apiUrl) return baseRoutes;
@@ -47,22 +88,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const productUrls: MetadataRoute.Sitemap = products.flatMap((p) => {
       if (!p?.slug) return [];
-      return [{
-        url: `${appUrl}/shop/${encodeURIComponent(p.slug)}`,
-        lastModified: p.updatedAt ? new Date(p.updatedAt) : undefined,
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-      }];
+      return [
+        {
+          url: `${appUrl}/shop/${encodeURIComponent(p.slug)}`,
+          lastModified: p.updatedAt ? new Date(p.updatedAt) : undefined,
+          changeFrequency: "weekly" as const,
+          priority: 0.8,
+        },
+      ];
     });
 
     const blogUrls: MetadataRoute.Sitemap = blogs.flatMap((b) => {
       if (!b?.slug) return [];
-      return [{
-        url: `${appUrl}/blog/${encodeURIComponent(b.slug)}`,
-        lastModified: b.updatedAt ? new Date(b.updatedAt) : undefined,
-        changeFrequency: "weekly" as const,
-        priority: 0.7,
-      }];
+      return [
+        {
+          url: `${appUrl}/blog/${encodeURIComponent(b.slug)}`,
+          lastModified: b.updatedAt ? new Date(b.updatedAt) : undefined,
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        },
+      ];
     });
 
     return [...baseRoutes, ...productUrls, ...blogUrls];

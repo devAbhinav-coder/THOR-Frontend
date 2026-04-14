@@ -1,7 +1,8 @@
-import { Metadata } from 'next';
-import ProductDetailClient from '@/components/product/ProductDetailClient';
-import { fetchProductBySlugServer } from '@/lib/storePrefetch';
-import { getSiteUrl } from '@/lib/siteUrl';
+import { Metadata } from "next";
+import ProductDetailClient from "@/components/product/ProductDetailClient";
+import { fetchProductBySlugServer } from "@/lib/storePrefetch";
+import { getSiteUrl } from "@/lib/siteUrl";
+import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -11,14 +12,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const safeSlug = encodeURIComponent(slug);
   const appUrl = getSiteUrl();
+  const apiUrl = await getBuildSafeApiBase();
+  if (!apiUrl) {
+    return { title: "Product | The House of Rani" };
+  }
   try {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/products/${safeSlug}`,
-      { next: { revalidate: 3600 } }
+      `${apiUrl}/products/${safeSlug}`,
+      { next: { revalidate: 3600 } },
     );
     if (!res.ok) {
       return {
-        title: 'Product Not Found',
+        title: "Product Not Found",
         robots: { index: false, follow: true },
       };
     }
@@ -27,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const descRaw =
       product.seoDescription ||
       product.shortDescription ||
-      String(product.description || '').slice(0, 160);
+      String(product.description || "").slice(0, 160);
     const ogImage = product.images?.[0]?.url;
 
     return {
@@ -41,19 +46,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title: product.name,
         description: descRaw,
         images: ogImage ? [{ url: ogImage, alt: product.name }] : undefined,
-        type: 'website',
+        type: "website",
         url: `${appUrl}/shop/${safeSlug}`,
-        siteName: 'The House of Rani',
+        siteName: "The House of Rani",
       },
       twitter: {
-        card: 'summary_large_image',
+        card: "summary_large_image",
         title: product.name,
         description: descRaw,
         images: ogImage ? [ogImage] : undefined,
       },
     };
   } catch {
-    return { title: 'Product | The House of Rani' };
+    return { title: "Product | The House of Rani" };
   }
 }
 
@@ -61,7 +66,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
   const initialProduct = await fetchProductBySlugServer(slug);
   const safeSlug = encodeURIComponent(slug);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = await getBuildSafeApiBase();
   const appUrl = getSiteUrl();
   let productLd: Record<string, unknown> | null = null;
   let breadcrumbLd: Record<string, unknown> | null = null;
@@ -128,8 +133,9 @@ export default async function ProductDetailPage({ params }: Props) {
               url: productPageUrl,
               priceCurrency: "INR",
               price: String(product.price || 0),
-              availability: inStock
-                ? "https://schema.org/InStock"
+              availability:
+                inStock ?
+                  "https://schema.org/InStock"
                 : "https://schema.org/OutOfStock",
               itemCondition: "https://schema.org/NewCondition",
               seller: {

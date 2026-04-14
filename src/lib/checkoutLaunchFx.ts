@@ -245,7 +245,7 @@ export async function playCheckoutLaunchAnimation(
     ]);
   };
 
-  let textSwapTimer: ReturnType<typeof window.setTimeout> | null = null;
+  let textSwapTimer: number | null = null;
   try {
     const bagRect = bag.getBoundingClientRect();
     const targetX = bagRect.left + bagRect.width / 2;
