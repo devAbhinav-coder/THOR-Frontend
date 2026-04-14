@@ -46,7 +46,7 @@ export async function playCheckoutLaunchAnimation(
   card.style.background =
     "linear-gradient(170deg, rgba(255,255,255,0.97), rgba(248,250,252,0.93))";
   card.style.backdropFilter = "blur(8px)";
-  card.style.webkitBackdropFilter = "blur(8px)";
+  card.style.setProperty("-webkit-backdrop-filter", "blur(8px)");
   card.style.padding = "16px 18px";
   card.style.boxShadow = "0 20px 60px -24px rgba(15,23,42,0.45)";
   card.style.opacity = "0";
