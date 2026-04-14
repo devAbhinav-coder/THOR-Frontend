@@ -183,6 +183,7 @@ export default function CheckoutClient() {
   // Custom Order support
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
+  const isExplicitBuyNowFlow = searchParams.get("buyNow") === "1";
   const [existingOrder, setExistingOrder] = useState<Order | null>(null);
   const [isOrderLoading, setIsOrderLoading] = useState(!!orderId);
 
@@ -225,19 +226,31 @@ export default function CheckoutClient() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!isExplicitBuyNowFlow) {
+      setBuyNowItem(null);
+      setBuyNowCouponCode(null);
+      setBuyNowCouponDiscount(0);
+      sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+      return;
+    }
     try {
       const raw = sessionStorage.getItem(BUY_NOW_SESSION_KEY);
-      if (!raw) return;
+      if (!raw) {
+        setBuyNowItem(null);
+        return;
+      }
       const parsed = JSON.parse(raw) as BuyNowCheckoutItem;
       if (!parsed?.productId || !parsed?.variant?.sku || !parsed?.quantity) {
         sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+        setBuyNowItem(null);
         return;
       }
       setBuyNowItem(parsed);
     } catch {
       sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+      setBuyNowItem(null);
     }
-  }, []);
+  }, [isExplicitBuyNowFlow]);
 
   useEffect(() => {
     if (!isAuthenticated) {
