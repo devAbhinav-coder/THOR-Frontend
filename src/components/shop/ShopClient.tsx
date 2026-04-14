@@ -326,7 +326,7 @@ export default function ShopClient() {
       {showShopBanner && (
         <section className='relative  overflow-x-clip'>
           {shopBanner.centerImage ?
-            <div className='relative h-[140px] sm:h-[200px] lg:h-[230px]'>
+            <div className='relative h-[140px] sm:h-[220px] lg:h-[230px]'>
               <Image
                 src={shopBanner.centerImage}
                 alt='Shop banner'

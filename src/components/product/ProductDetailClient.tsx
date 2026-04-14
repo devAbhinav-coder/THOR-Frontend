@@ -48,6 +48,7 @@ import {
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
+type RatingDistributionBucket = { _id: number | string; count: number };
 
 interface Props {
   slug: string;
@@ -92,7 +93,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   /* Reviews */
   const [reviews, setReviews] = useState<Review[]>([]);
   const [ratingDistribution, setRatingDistribution] = useState<
-    { _id: number; count: number }[]
+    RatingDistributionBucket[]
   >([]);
   const [reviewsPagination, setReviewsPagination] = useState({
     totalPages: 1,
@@ -163,7 +164,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
     const fetchAll = async () => {
       try {
-        let p: Product;
+        let p: Product | null = null;
         if (hydratedFromServer && initialProduct) {
           p = {
             ...initialProduct,
@@ -173,7 +174,9 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           const variants = p.variants || [];
           setSelectedVariant(variants.find((v) => v.stock > 0) || variants[0]);
           setIsLoading(false);
-        } else {
+        }
+
+        try {
           const main = await productApi.getBySlug(slug);
           p = main.data.product as Product;
           setProduct({
@@ -181,8 +184,15 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
             images: normalizeProductImages(p.images),
           });
           const variants = p.variants || [];
-          setSelectedVariant(variants.find((v) => v.stock > 0) || variants[0]);
+          setSelectedVariant((prev) =>
+            variants.find((v) => v.sku === prev?.sku) ||
+            variants.find((v) => v.stock > 0) ||
+            variants[0],
+          );
+        } catch {
+          if (!p) throw new Error("Failed to fetch product");
         }
+        if (!p) throw new Error("Product unavailable");
 
         let bestRelated: Product[] = [];
         const [reviewsRes, relatedRes, moreRes] = await Promise.allSettled([
@@ -193,9 +203,19 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
         if (reviewsRes.status === "fulfilled") {
           const rv = reviewsRes.value;
+          const rvData = rv.data as
+            | {
+                ratingDistribution?: RatingDistributionBucket[];
+                pagination?: { totalPages?: number; total?: number };
+              }
+            | undefined;
           setReviews(rv.data.reviews || []);
-          setRatingDistribution(rv.ratingDistribution || []);
-          setReviewsPagination(rv.pagination || { totalPages: 1, total: 0 });
+          setRatingDistribution(
+            rv.ratingDistribution || rvData?.ratingDistribution || [],
+          );
+          setReviewsPagination(
+            rv.pagination || rvData?.pagination || { totalPages: 1, total: 0 },
+          );
         }
         const isGiftBaseProduct =
           p.isGiftable ||
@@ -420,7 +440,26 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
     variants.find(
       (v) => (!size || v.size === size) && (!color || v.color === color),
     );
-  const totalReviews = reviewsPagination.total;
+  const totalReviews = useMemo(() => {
+    const fromPagination = Number(reviewsPagination.total || 0);
+    return fromPagination > 0 ? fromPagination : reviews.length;
+  }, [reviewsPagination.total, reviews.length]);
+  const displayAverageRating = useMemo(() => {
+    const fromProduct = Number(product?.ratings?.average || 0);
+    if (fromProduct > 0) return fromProduct;
+    if (reviews.length === 0) return 0;
+    return Number(
+      (
+        reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
+        reviews.length
+      ).toFixed(1),
+    );
+  }, [product?.ratings?.average, reviews]);
+  const displayReviewCount = useMemo(() => {
+    const fromProduct = Number(product?.ratings?.count || 0);
+    if (fromProduct > 0) return fromProduct;
+    return totalReviews;
+  }, [product?.ratings?.count, totalReviews]);
   const previewReviewCount = 5;
   const visibleReviews = useMemo(
     () => reviews.slice(0, previewReviewCount),
@@ -640,9 +679,42 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
       const created = await reviewApi.create(product!._id, formData);
       const newReview: Review = created.data.review;
+      const submittedRating = Math.max(
+        1,
+        Math.min(5, Number(newReview.rating || reviewForm.rating || 0)),
+      );
 
       setReviews((prev) => [newReview, ...prev]);
       setReviewsPagination((prev) => ({ ...prev, total: prev.total + 1 }));
+      setRatingDistribution((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((d) => Number(d._id) === submittedRating);
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], count: Number(next[idx].count || 0) + 1 };
+        } else {
+          next.push({ _id: submittedRating, count: 1 });
+        }
+        return next;
+      });
+      setProduct((prev) => {
+        if (!prev) return prev;
+        const prevCount = Number(prev.ratings?.count || 0);
+        const prevAvg = Number(prev.ratings?.average || 0);
+        const nextCount = prevCount + 1;
+        const nextAvg =
+          nextCount > 0 ?
+            Number(
+              ((prevAvg * prevCount + submittedRating) / nextCount).toFixed(1),
+            )
+          : submittedRating;
+        return {
+          ...prev,
+          ratings: {
+            average: nextAvg,
+            count: nextCount,
+          },
+        };
+      });
       setReviewEligibility((prev) =>
         prev ? { ...prev, canReview: false, hasReviewed: true } : prev,
       );
@@ -843,8 +915,8 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                       className={cn(
                         "h-4 w-4",
                         (
-                          product.ratings.count > 0 &&
-                            i < Math.round(product.ratings.average)
+                          displayReviewCount > 0 &&
+                            i < Math.round(displayAverageRating)
                         ) ?
                           "fill-gold-400 text-gold-400"
                         : "fill-gray-200 text-gray-200",
@@ -852,17 +924,17 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                     />
                   ))}
                 </div>
-                {product.ratings.count > 0 ?
+                {displayReviewCount > 0 ?
                   <>
                     <span className='text-sm font-semibold text-gray-800'>
-                      {product.ratings.average}
+                      {displayAverageRating.toFixed(1)}
                     </span>
                     <a
                       href='#reviews-section'
                       className='text-sm text-gray-500 hover:text-brand-600 transition-colors underline-offset-2 hover:underline'
                     >
-                      {product.ratings.count}{" "}
-                      {product.ratings.count === 1 ? "review" : "reviews"}
+                      {displayReviewCount}{" "}
+                      {displayReviewCount === 1 ? "review" : "reviews"}
                     </a>
                   </>
                 : <span className='text-sm text-gray-500'>

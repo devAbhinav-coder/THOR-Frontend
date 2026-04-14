@@ -257,9 +257,6 @@ export default function OrderInvoiceDocument({ order }: Props) {
                   as per our Terms.
                 </p>
               )}
-              {/* <p className="mt-1 text-[9px] uppercase font-semibold">
-              SUBJECT TO UTTAR PRADESH JURISDICTION
-            </p> */}
             </div>
 
             <div className='w-full sm:w-[260px] border border-gray-400 rounded-sm order-1 sm:order-2 shrink-0'>

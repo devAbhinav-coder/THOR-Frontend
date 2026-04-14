@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo } from "react";
 import {
   Star,
   MessageSquare,
@@ -43,7 +44,7 @@ export interface PdpReviewsSectionProps {
   previewReviewCount: number;
   visibleReviews: Review[];
   reviews: Review[];
-  ratingDistribution: { _id: number; count: number }[];
+  ratingDistribution: { _id: number | string; count: number }[];
   positiveReviewsPercent: number;
   reviewEligibility: ReviewEligibility | null;
   showReviewForm: boolean;
@@ -119,6 +120,18 @@ export function PdpReviewsSection({
   setReportDetails,
   onSubmitReport,
 }: PdpReviewsSectionProps) {
+  const displayAverageRating = useMemo(() => {
+    const fromProduct = Number(product.ratings?.average || 0);
+    if (fromProduct > 0) return fromProduct;
+    if (reviews.length === 0) return 0;
+    return Number(
+      (
+        reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
+        reviews.length
+      ).toFixed(1),
+    );
+  }, [product.ratings?.average, reviews]);
+
   return (
     <>
       <section id='reviews-section' className='py-8 sm:py-12 bg-[#faf9f7]'>
@@ -367,7 +380,7 @@ export function PdpReviewsSection({
                 <div className='text-center mb-8 pb-8 border-b border-gray-100'>
                   <div className='flex justify-center items-center gap-3 mb-1'>
                     <p className='text-7xl font-black text-navy-900 tracking-tighter'>
-                      {product.ratings.average}
+                      {displayAverageRating.toFixed(1)}
                     </p>
                     <div className='text-left'>
                       <Star className='h-8 w-8 fill-gold-400 text-gold-400 mb-1' />
@@ -392,7 +405,7 @@ export function PdpReviewsSection({
                   </div>
                   {[5, 4, 3, 2, 1].map((star) => {
                     const found = ratingDistribution.find(
-                      (d) => d._id === star,
+                      (d) => Number(d._id) === star,
                     );
                     return (
                       <RatingBar

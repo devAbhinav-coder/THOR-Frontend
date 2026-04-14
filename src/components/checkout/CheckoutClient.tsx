@@ -50,10 +50,7 @@ import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Coupon, Order } from "@/types";
-import type {
-  BuyNowCheckoutDisplayItem,
-  CheckoutDisplayItem,
-} from "@/types/checkoutDisplay";
+import type { CheckoutDisplayItem } from "@/types/checkoutDisplay";
 import {
   getRazorpayConstructor,
   type RazorpaySuccessPayload,
@@ -284,8 +281,7 @@ export default function CheckoutClient() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!isAuthenticated || buyNowItem || existingOrder) return;
-    const { cart: stCart, appliedCouponCode: stCode } =
-      useCartStore.getState();
+    const { cart: stCart, appliedCouponCode: stCode } = useCartStore.getState();
     if (!stCart?.items?.length || (stCart.discount ?? 0) <= 0) return;
     if (stCode) return;
     const stored = readPersistedCartCouponCode();
@@ -463,7 +459,9 @@ export default function CheckoutClient() {
       await new Promise<void>((r) => requestAnimationFrame(() => r()));
       ok = await trigger(undefined, { shouldFocus: true });
       if (!ok) {
-        toast.error("Please fix the highlighted fields in your delivery address.");
+        toast.error(
+          "Please fix the highlighted fields in your delivery address.",
+        );
         requestAnimationFrame(() =>
           shippingFieldsRef.current?.scrollIntoView({
             behavior: "smooth",
@@ -685,7 +683,8 @@ export default function CheckoutClient() {
             : `k${Date.now()}_${Math.floor(Math.random() * 1e12)}`;
 
           const couponCodeForOrder =
-            buyNowItem ? buyNowCouponCode || undefined
+            buyNowItem ?
+              buyNowCouponCode || undefined
             : getCartAppliedCouponCodeForOrder() || undefined;
 
           const res = await orderApi.create(
@@ -1528,7 +1527,8 @@ export default function CheckoutClient() {
             </div>
 
             {/* Summary + coupons: visible on all steps (mobile) so apply / View all always work; navbar is z-50 so coupon modal uses a portal */}
-            <div className='lg:col-span-5 min-w-0 animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
+            {(!showMobileCheckoutWizard || mobileCheckoutStep === 3) && (
+              <div className='lg:col-span-5 min-w-0 animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
                 <div className='rounded-2xl bg-white p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 lg:sticky lg:top-24 min-w-0 max-w-full transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
                   {showMobileCheckoutWizard && mobileCheckoutStep === 3 && (
                     <Button
@@ -2113,6 +2113,7 @@ export default function CheckoutClient() {
                     )}
                 </div>
               </div>
+            )}
           </div>
         </form>
 
@@ -2142,7 +2143,9 @@ export default function CheckoutClient() {
                     className='h-9 w-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center'
                     aria-label='Close'
                   >
-                    <span className='text-gray-600 text-lg leading-none'>×</span>
+                    <span className='text-gray-600 text-lg leading-none'>
+                      ×
+                    </span>
                   </button>
                 </div>
                 <div className='p-4 overflow-y-auto overflow-x-hidden space-y-2 min-w-0'>
