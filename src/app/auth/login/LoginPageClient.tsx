@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { authApi } from "@/lib/api";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
+import AuthPendingOverlay from "@/components/auth/AuthPendingOverlay";
 import { ApiValidationError } from "@/lib/parseApi";
 
 const loginSchema = z.object({
@@ -33,23 +34,16 @@ const otpCodeSchema = z.object({
 
 type OtpEmailForm = z.infer<typeof otpEmailSchema>;
 type OtpCodeForm = z.infer<typeof otpCodeSchema>;
+type PendingCopy = { title: string; description: string };
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-function googleIframeWidth(): number {
-  if (typeof window === "undefined") return 320;
-  const viewport = window.innerWidth;
-  if (viewport < 380) return 230;
-  if (viewport < 430) return 250;
-  if (viewport < 500) return 280;
-  return 320;
-}
 
 export default function LoginPageClient() {
   const [showPassword, setShowPassword] = useState(false);
   /** GSI re-inits on every `width` change — render only after mount so width is stable (fixes first-click failures). */
   const [googleUiReady, setGoogleUiReady] = useState(false);
   const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
+  const googleButtonHostRef = useRef<HTMLDivElement | null>(null);
   const { login, loginWithGoogle, loginWithOtp, isLoading } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,6 +53,10 @@ export default function LoginPageClient() {
   const [otpStep, setOtpStep] = useState<"email" | "code">("email");
   const [otpEmail, setOtpEmail] = useState("");
   const [otpSending, setOtpSending] = useState(false);
+  const [pendingCopy, setPendingCopy] = useState<PendingCopy>({
+    title: "Please wait",
+    description: "We are preparing your secure sign-in session.",
+  });
 
   const {
     register,
@@ -79,6 +77,10 @@ export default function LoginPageClient() {
 
   const onSendLoginOtp = async (data: OtpEmailForm) => {
     setOtpSending(true);
+    setPendingCopy({
+      title: "Sending sign-in code",
+      description: "Checking your account and delivering OTP to your inbox.",
+    });
     try {
       await authApi.sendOtp({ type: "login", email: data.email });
       setOtpEmail(data.email);
@@ -93,6 +95,10 @@ export default function LoginPageClient() {
   };
 
   const onVerifyLoginOtp = async (data: OtpCodeForm) => {
+    setPendingCopy({
+      title: "Verifying code",
+      description: "Finalizing sign-in and restoring your secure session.",
+    });
     try {
       await loginWithOtp(otpEmail, data.otp);
       toast.success("Welcome back!");
@@ -110,6 +116,10 @@ export default function LoginPageClient() {
   };
 
   const onSubmit = async (data: LoginForm) => {
+    setPendingCopy({
+      title: "Signing you in",
+      description: "Validating credentials and loading your account.",
+    });
     try {
       await login(data.email, data.password);
       toast.success("Welcome back!");
@@ -126,6 +136,10 @@ export default function LoginPageClient() {
       toast.error("Google sign-in did not return a credential.");
       return;
     }
+    setPendingCopy({
+      title: "Verifying Google account",
+      description: "Securing your Google sign-in and preparing your session.",
+    });
     try {
       await loginWithGoogle(credential);
       toast.success("Welcome back!");
@@ -137,121 +151,133 @@ export default function LoginPageClient() {
   };
 
   const updateGoogleButtonWidth = useCallback(() => {
-    setGoogleButtonWidth(googleIframeWidth());
+    const hostWidth = googleButtonHostRef.current?.clientWidth || 0;
+    setGoogleButtonWidth(Math.max(230, hostWidth || 320));
   }, []);
 
   useEffect(() => {
-    setGoogleButtonWidth(googleIframeWidth());
+    updateGoogleButtonWidth();
     setGoogleUiReady(true);
-  }, []);
+  }, [updateGoogleButtonWidth]);
 
   useEffect(() => {
     if (!googleUiReady) return;
-    let t: ReturnType<typeof setTimeout>;
-    const onResize = () => {
-      clearTimeout(t);
-      t = setTimeout(updateGoogleButtonWidth, 200);
-    };
+    const host = googleButtonHostRef.current;
+    if (!host || typeof window === "undefined") return;
+    const observer = new ResizeObserver(() => updateGoogleButtonWidth());
+    observer.observe(host);
+    const onResize = () => updateGoogleButtonWidth();
     window.addEventListener("resize", onResize);
     return () => {
-      clearTimeout(t);
+      observer.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, [googleUiReady, updateGoogleButtonWidth]);
 
   if (loginMode === "otp") {
     if (otpStep === "code") {
+      const isPending = isLoading || otpSending;
       return (
-        <div className="w-full max-w-md">
-          <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
-            <div className="text-center mb-6">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
-                <Mail className="h-6 w-6" />
+        <>
+          <div className="w-full max-w-md">
+            <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
+              <div className="text-center mb-6">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
+                  <Mail className="h-6 w-6" />
+                </div>
+                <h2 className="text-2xl font-serif font-bold text-white">Enter sign-in code</h2>
+                <p className="text-white/50 mt-2 text-sm">
+                  Code sent to <span className="text-white/80 font-medium">{otpEmail}</span>
+                </p>
               </div>
-              <h2 className="text-2xl font-serif font-bold text-white">Enter sign-in code</h2>
-              <p className="text-white/50 mt-2 text-sm">
-                Code sent to <span className="text-white/80 font-medium">{otpEmail}</span>
-              </p>
+
+              <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-4">
+                <Input
+                  {...otpCodeForm.register("otp")}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  label="6-digit code"
+                  placeholder="000000"
+                  error={otpCodeForm.formState.errors.otp?.message}
+                />
+                <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
+                  Sign in
+                </Button>
+                <OtpResendCooldown email={otpEmail} type="login" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpStep("email");
+                    otpCodeForm.reset();
+                  }}
+                  className="w-full text-sm text-white/40 hover:text-white/70"
+                >
+                  ← Use a different email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMode("password");
+                    setOtpStep("email");
+                  }}
+                  className="w-full text-sm text-white/30 hover:text-white/50"
+                >
+                  Sign in with password instead
+                </button>
+              </form>
             </div>
-            <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-4">
+          </div>
+          <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
+        </>
+      );
+    }
+
+    const isPending = isLoading || otpSending;
+    return (
+      <>
+        <div className="w-full max-w-md">
+          <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-serif font-bold text-white">Email sign-in code</h2>
+              <p className="text-white/50 mt-1 text-sm">We&apos;ll email you a one-time 6-digit code</p>
+            </div>
+            <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-4">
               <Input
-                {...otpCodeForm.register("otp")}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                label="6-digit code"
-                placeholder="000000"
-                error={otpCodeForm.formState.errors.otp?.message}
+                {...otpEmailForm.register("email")}
+                type="email"
+                label="Email address"
+                placeholder="you@example.com"
+                error={otpEmailForm.formState.errors.email?.message}
+                autoComplete="email"
               />
-              <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
-                Sign in
+              <Button type="submit" variant="brand" size="lg" className="w-full" loading={otpSending}>
+                Send code
               </Button>
-              <OtpResendCooldown email={otpEmail} type="login" />
               <button
                 type="button"
-                onClick={() => {
-                  setOtpStep("email");
-                  otpCodeForm.reset();
-                }}
+                onClick={() => setLoginMode("password")}
                 className="w-full text-sm text-white/40 hover:text-white/70"
               >
-                ← Use a different email
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMode("password");
-                  setOtpStep("email");
-                }}
-                className="w-full text-sm text-white/30 hover:text-white/50"
-              >
-                Sign in with password instead
+                ← Back to password sign-in
               </button>
             </form>
           </div>
         </div>
-      );
-    }
-
-    return (
-      <div className="w-full max-w-md">
-        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-serif font-bold text-white">Email sign-in code</h2>
-            <p className="text-white/50 mt-1 text-sm">We&apos;ll email you a one-time 6-digit code</p>
-          </div>
-          <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-4">
-            <Input
-              {...otpEmailForm.register("email")}
-              type="email"
-              label="Email address"
-              placeholder="you@example.com"
-              error={otpEmailForm.formState.errors.email?.message}
-              autoComplete="email"
-            />
-            <Button type="submit" variant="brand" size="lg" className="w-full" loading={otpSending}>
-              Send code
-            </Button>
-            <button
-              type="button"
-              onClick={() => setLoginMode("password")}
-              className="w-full text-sm text-white/40 hover:text-white/70"
-            >
-              ← Back to password sign-in
-            </button>
-          </form>
-        </div>
-      </div>
+        <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
+      </>
     );
   }
 
+  const isPending = isLoading || otpSending;
   return (
-    <div className="w-full max-w-md">
-      <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-serif font-bold text-white">Welcome back</h2>
-          <p className="text-white/50 mt-1 text-sm">Sign in to your account to continue</p>
-        </div>
+    <>
+      <div className="w-full max-w-md">
+        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-serif font-bold text-white">Welcome back</h2>
+            <p className="text-white/50 mt-1 text-sm">Sign in to your account to continue</p>
+          </div>
 
         <button
           type="button"
@@ -262,7 +288,7 @@ export default function LoginPageClient() {
         </button>
 
         {googleClientId ? (
-          <div className="mb-6 w-full flex flex-col items-center overflow-hidden min-h-[40px]">
+          <div ref={googleButtonHostRef} className="mb-6 w-full overflow-hidden min-h-[40px]">
             {googleUiReady ?
               <GoogleLogin
                 theme="outline"
@@ -342,7 +368,9 @@ export default function LoginPageClient() {
             </Link>
           </p>
         </div>
+        </div>
       </div>
-    </div>
+      <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
+    </>
   );
 }

@@ -76,7 +76,11 @@ export const authApi = {
       schemas.authWithUser,
     ),
   forgotPassword: (data: { email: string }) =>
-    unwrapAxios("auth.forgotPassword", api.post("/auth/forgot-password", data), schemas.authMessage),
+    unwrapAxios(
+      "auth.forgotPassword",
+      api.post("/auth/send-otp", { type: "forgot_password", email: data.email }),
+      schemas.authMessage,
+    ),
   resetPassword: (data: { email: string; otp: string; newPassword: string }) =>
     unwrapAxios("auth.resetPassword", api.post("/auth/reset-password", data), schemas.authResetPassword),
   sendOtp: (

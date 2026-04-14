@@ -173,6 +173,21 @@
     animation: checkout-empty-wiggle 0.75s ease-in-out 1 both;
   }
 
+  @keyframes auth-pending-bar {
+    0% {
+      transform: translateX(-42%) scaleX(0.52);
+      opacity: 0.72;
+    }
+    50% {
+      transform: translateX(0%) scaleX(0.9);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(42%) scaleX(0.52);
+      opacity: 0.72;
+    }
+  }
+
   /* react-hot-toast — premium micro-interaction */
   @keyframes slideIn {
     from {

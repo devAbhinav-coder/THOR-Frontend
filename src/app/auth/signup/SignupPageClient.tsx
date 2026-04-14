@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
 import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
+import AuthPendingOverlay from '@/components/auth/AuthPendingOverlay';
 import { ApiValidationError } from '@/lib/parseApi';
 
 const strongPassword = z
@@ -53,24 +54,21 @@ const otpSchema = z.object({
 });
 
 type OtpForm = z.infer<typeof otpSchema>;
+type PendingCopy = { title: string; description: string };
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-function googleIframeWidth(): number {
-  if (typeof window === 'undefined') return 320;
-  const viewport = window.innerWidth;
-  if (viewport < 380) return 230;
-  if (viewport < 430) return 250;
-  if (viewport < 500) return 280;
-  return 320;
-}
 
 export default function SignupPageClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [googleUiReady, setGoogleUiReady] = useState(false);
   const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
+  const googleButtonHostRef = useRef<HTMLDivElement | null>(null);
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingCopy, setPendingCopy] = useState<PendingCopy>({
+    title: 'Please wait',
+    description: 'We are preparing your secure authentication session.',
+  });
   const { signupStart, signupVerify, loginWithGoogle, isLoading } = useAuthStore();
   const router = useRouter();
 
@@ -84,6 +82,10 @@ export default function SignupPageClient() {
   });
 
   const onSubmitForm = async (data: SignupForm) => {
+    setPendingCopy({
+      title: 'Sending verification code',
+      description: 'Creating your secure signup session and delivering OTP.',
+    });
     try {
       const phoneDigits = data.phone.replace(/\D/g, '');
       await signupStart({
@@ -102,6 +104,10 @@ export default function SignupPageClient() {
   };
 
   const onSubmitOtp = async (data: OtpForm) => {
+    setPendingCopy({
+      title: 'Verifying your email',
+      description: 'Final checks in progress before creating your account.',
+    });
     try {
       await signupVerify(pendingEmail, data.otp);
       toast.success('Account verified. Welcome to The House of Rani!');
@@ -124,6 +130,10 @@ export default function SignupPageClient() {
       toast.error('Google sign-up did not return a credential.');
       return;
     }
+    setPendingCopy({
+      title: 'Verifying Google account',
+      description: 'Securing Google sign-up and preparing your account.',
+    });
     try {
       await loginWithGoogle(credential);
       toast.success('Welcome! Your account is ready.');
@@ -135,83 +145,90 @@ export default function SignupPageClient() {
   };
 
   const updateGoogleButtonWidth = useCallback(() => {
-    setGoogleButtonWidth(googleIframeWidth());
+    const hostWidth = googleButtonHostRef.current?.clientWidth || 0;
+    setGoogleButtonWidth(Math.max(230, hostWidth || 320));
   }, []);
 
   useEffect(() => {
-    setGoogleButtonWidth(googleIframeWidth());
+    updateGoogleButtonWidth();
     setGoogleUiReady(true);
-  }, []);
+  }, [updateGoogleButtonWidth]);
 
   useEffect(() => {
     if (!googleUiReady) return;
-    let t: ReturnType<typeof setTimeout>;
-    const onResize = () => {
-      clearTimeout(t);
-      t = setTimeout(updateGoogleButtonWidth, 200);
-    };
+    const host = googleButtonHostRef.current;
+    if (!host || typeof window === 'undefined') return;
+    const observer = new ResizeObserver(() => updateGoogleButtonWidth());
+    observer.observe(host);
+    const onResize = () => updateGoogleButtonWidth();
     window.addEventListener('resize', onResize);
     return () => {
-      clearTimeout(t);
+      observer.disconnect();
       window.removeEventListener('resize', onResize);
     };
   }, [googleUiReady, updateGoogleButtonWidth]);
 
   if (step === 'otp') {
+    const isPending = isLoading;
     return (
-      <div className="w-full max-w-md">
-        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
-          <div className="text-center mb-6">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
-              <Mail className="h-6 w-6" />
+      <>
+        <div className="w-full max-w-md">
+          <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
+            <div className="text-center mb-6">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
+                <Mail className="h-6 w-6" />
+              </div>
+              <h2 className="text-2xl font-serif font-bold text-white">Check your email</h2>
+              <p className="text-white/50 mt-2 text-sm">
+                Enter the 6-digit code we sent to{' '}
+                <span className="text-white/80 font-medium">{pendingEmail}</span>
+              </p>
             </div>
-            <h2 className="text-2xl font-serif font-bold text-white">Check your email</h2>
-            <p className="text-white/50 mt-2 text-sm">
-              Enter the 6-digit code we sent to{' '}
-              <span className="text-white/80 font-medium">{pendingEmail}</span>
-            </p>
-          </div>
 
-          <form onSubmit={otpForm.handleSubmit(onSubmitOtp)} className="space-y-4">
-            <Input
-              {...otpForm.register('otp')}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              label="Verification code"
-              placeholder="000000"
-              error={otpForm.formState.errors.otp?.message}
-            />
-            <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
-              Verify & create account
-            </Button>
-            <OtpResendCooldown email={pendingEmail} type="signup" />
-            <button
-              type="button"
-              onClick={() => {
-                setStep('form');
-                otpForm.reset();
-              }}
-              className="w-full text-sm text-white/40 hover:text-white/70"
-            >
-              ← Back to edit details
-            </button>
-          </form>
+            <form onSubmit={otpForm.handleSubmit(onSubmitOtp)} className="space-y-4">
+              <Input
+                {...otpForm.register('otp')}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                label="Verification code"
+                placeholder="000000"
+                error={otpForm.formState.errors.otp?.message}
+              />
+              <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
+                Verify & create account
+              </Button>
+              <OtpResendCooldown email={pendingEmail} type="signup" />
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('form');
+                  otpForm.reset();
+                }}
+                className="w-full text-sm text-white/40 hover:text-white/70"
+              >
+                ← Back to edit details
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
+        <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
+      </>
     );
   }
 
+  const isPending = isLoading;
   return (
-    <div className="w-full max-w-md">
-      <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-serif font-bold text-white">Create Account</h2>
-          <p className="text-white/50 mt-1 text-sm">Join The House of Rani — verify your email to finish</p>
-        </div>
+    <>
+      <div className="w-full max-w-md">
+        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-serif font-bold text-white">Create Account</h2>
+            <p className="text-white/50 mt-1 text-sm">Join The House of Rani — verify your email to finish</p>
+          </div>
 
         {googleClientId ? (
-          <div className="mb-6 w-full flex flex-col items-center overflow-hidden min-h-[40px]">
+          <div ref={googleButtonHostRef} className="mb-6 w-full overflow-hidden min-h-[40px]">
             {googleUiReady ?
               <GoogleLogin
                 theme="outline"
@@ -321,7 +338,9 @@ export default function SignupPageClient() {
           </Link>
           .
         </p>
+        </div>
       </div>
-    </div>
+      <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
+    </>
   );
 }
