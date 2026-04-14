@@ -48,6 +48,9 @@ import {
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
+const MAX_REVIEW_IMAGES = 3;
+const MAX_REVIEW_IMAGE_SIZE_MB = 8;
+const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
 type RatingDistributionBucket = { _id: number | string; count: number };
 
 interface Props {
@@ -633,12 +636,21 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
   const handleReviewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + reviewImages.length > 3) {
-      toast.error("You can only upload up to 3 images");
+    if (files.length + reviewImages.length > MAX_REVIEW_IMAGES) {
+      toast.error(`You can only upload up to ${MAX_REVIEW_IMAGES} images`);
+      e.target.value = "";
+      return;
+    }
+    const oversized = files.find(
+      (file) => file.size > MAX_REVIEW_IMAGE_SIZE_BYTES,
+    );
+    if (oversized) {
+      toast.error(`Each review image must be under ${MAX_REVIEW_IMAGE_SIZE_MB}MB`);
+      e.target.value = "";
       return;
     }
 
-    const newFiles = [...reviewImages, ...files].slice(0, 3);
+    const newFiles = [...reviewImages, ...files].slice(0, MAX_REVIEW_IMAGES);
     setReviewImages(newFiles);
 
     reviewPreviews.forEach((url) => URL.revokeObjectURL(url));

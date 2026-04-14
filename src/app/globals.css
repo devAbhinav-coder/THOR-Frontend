@@ -173,19 +173,24 @@
     animation: checkout-empty-wiggle 0.75s ease-in-out 1 both;
   }
 
-  /* react-hot-toast — top-right: light slide + fade */
-  @keyframes hor-toast-in {
+  /* react-hot-toast — premium micro-interaction */
+  @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translate(12px, -8px);
+      transform: translateX(44px) scale(calc(var(--toast-stack-scale, 1) - 0.08));
+    }
+    72% {
+      opacity: 1;
+      transform: translateX(-3px) scale(calc(var(--toast-stack-scale, 1) + 0.012));
     }
     to {
       opacity: 1;
-      transform: translate(0, 0);
+      transform: translateX(0) scale(var(--toast-stack-scale, 1));
     }
   }
   .hor-toast-enter {
-    animation: hor-toast-in 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    animation: slideIn 0.3s ease both;
+    box-shadow: var(--toast-stack-shadow, 0 10px 30px rgba(0, 0, 0, 0.08));
   }
   @media (prefers-reduced-motion: reduce) {
     .hor-toast-enter {

@@ -20,6 +20,8 @@ const profileSchema = z.object({
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
+const MAX_AVATAR_SIZE_MB = 8;
+const MAX_AVATAR_SIZE_BYTES = MAX_AVATAR_SIZE_MB * 1024 * 1024;
 
 export default function ProfilePage() {
   const { user, setUser, logout } = useAuthStore();
@@ -72,6 +74,11 @@ export default function ProfilePage() {
   const onAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      toast.error(`Profile photo must be under ${MAX_AVATAR_SIZE_MB}MB`);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      return;
+    }
     setIsUploadingAvatar(true);
     try {
       const fd = new FormData();

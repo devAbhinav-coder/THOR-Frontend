@@ -333,7 +333,7 @@ export function PdpReviewsSection({
                       )}
                     </div>
                     <p className='text-[10px] text-gray-400 italic'>
-                      Images help other shoppers see the product in real life.
+                      Images help other shoppers see the product in real life (max 3 photos, 8MB each).
                     </p>
                   </div>
 
