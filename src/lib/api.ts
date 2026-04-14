@@ -70,7 +70,11 @@ export const authApi = {
   login: (data: { email: string; password: string }) =>
     unwrapAxios("auth.login", api.post("/auth/login", data), schemas.authWithUser),
   google: (data: { credential: string }) =>
-    unwrapAxios("auth.google", api.post("/auth/google", data), schemas.authWithUser),
+    unwrapAxios(
+      "auth.google",
+      api.post("/auth/google", data, { timeout: 30000 }),
+      schemas.authWithUser,
+    ),
   forgotPassword: (data: { email: string }) =>
     unwrapAxios("auth.forgotPassword", api.post("/auth/forgot-password", data), schemas.authMessage),
   resetPassword: (data: { email: string; otp: string; newPassword: string }) =>
