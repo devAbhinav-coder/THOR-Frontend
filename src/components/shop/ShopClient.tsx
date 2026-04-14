@@ -187,10 +187,7 @@ export default function ShopClient() {
         return p.hasNextPage ? cur + 1 : undefined;
       }
       if (cur < tp) return cur + 1;
-      if (
-        batch.length === SHOP_PAGE_LIMIT &&
-        total > cur * SHOP_PAGE_LIMIT
-      ) {
+      if (batch.length === SHOP_PAGE_LIMIT && total > cur * SHOP_PAGE_LIMIT) {
         return cur + 1;
       }
       return undefined;
@@ -227,12 +224,7 @@ export default function ShopClient() {
     const io = new IntersectionObserver(
       (entries) => {
         const hit = entries[0]?.isIntersecting;
-        if (
-          hit &&
-          hasNextPage &&
-          !isFetchingNextPage &&
-          !isPending
-        ) {
+        if (hit && hasNextPage && !isFetchingNextPage && !isPending) {
           void fetchNextPage();
         }
       },
@@ -290,10 +282,13 @@ export default function ShopClient() {
     : filters.search;
   const shopBanner = useMemo(() => {
     const raw =
-      ((storefrontSettings as StorefrontSettings & {
-        shopBanner?: Partial<typeof defaultShopBanner>;
-      } | null)?.shopBanner as Partial<typeof defaultShopBanner> | undefined) ||
-      {};
+      ((
+        storefrontSettings as
+          | (StorefrontSettings & {
+              shopBanner?: Partial<typeof defaultShopBanner>;
+            })
+          | null
+      )?.shopBanner as Partial<typeof defaultShopBanner> | undefined) || {};
     return {
       ...defaultShopBanner,
       ...raw,
@@ -329,9 +324,9 @@ export default function ShopClient() {
   return (
     <div>
       {showShopBanner && (
-        <section className='relative border-y border-gray-200/70 overflow-x-clip'>
-          {shopBanner.centerImage ? (
-            <div className='relative h-[130px] sm:h-[180px] lg:h-[210px]'>
+        <section className='relative  overflow-x-clip'>
+          {shopBanner.centerImage ?
+            <div className='relative h-[140px] sm:h-[200px] lg:h-[230px]'>
               <Image
                 src={shopBanner.centerImage}
                 alt='Shop banner'
@@ -351,8 +346,7 @@ export default function ShopClient() {
                 </p>
               </div>
             </div>
-          ) : (
-            <div className='bg-[#f2eceb]'>
+          : <div className='bg-[#f2eceb]'>
               <div className='max-w-[1800px] mx-auto px-2 sm:px-4'>
                 <div className='grid grid-cols-1 sm:grid-cols-[150px_1fr_150px] lg:grid-cols-[220px_1fr_220px] items-stretch min-h-[130px] sm:min-h-[180px] lg:min-h-[210px]'>
                   <div className='relative hidden sm:block'>
@@ -391,7 +385,7 @@ export default function ShopClient() {
                 </div>
               </div>
             </div>
-          )}
+          }
         </section>
       )}
 
@@ -403,9 +397,15 @@ export default function ShopClient() {
           <Link href='/' className='hover:text-brand-700 transition-colors'>
             Home
           </Link>
-          <ChevronRight className='h-3.5 w-3.5 shrink-0 opacity-70' aria-hidden />
+          <ChevronRight
+            className='h-3.5 w-3.5 shrink-0 opacity-70'
+            aria-hidden
+          />
           <span className='text-gray-600'>Shop</span>
-          <ChevronRight className='h-3.5 w-3.5 shrink-0 opacity-70' aria-hidden />
+          <ChevronRight
+            className='h-3.5 w-3.5 shrink-0 opacity-70'
+            aria-hidden
+          />
           <span className='truncate max-w-[56vw] sm:max-w-none normal-case tracking-normal text-gray-800 font-medium'>
             {breadcrumbContext}
           </span>
@@ -450,227 +450,230 @@ export default function ShopClient() {
       </div>
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-7'>
-      <div className='lg:flex lg:items-start lg:gap-6'>
-        <aside
-          id='shop-filters-drawer'
-          role={isSidebarOpen ? "dialog" : undefined}
-          aria-modal={isSidebarOpen ? true : undefined}
-          aria-labelledby='shop-filters-drawer-title'
-          className={cn(
-            "flex-shrink-0",
-            // Mobile drawer vs desktop sidebar
-            isSidebarOpen ?
-              "fixed top-2 bottom-2 left-0 z-50 w-80 max-w-[92vw] bg-white shadow-2xl overflow-y-auto rounded-2xl border border-gray-100"
-            : "hidden",
-            "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:pl-1 lg:sticky lg:top-20 lg:self-start lg:h-fit lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto",
-          )}
-        >
-          <h2 id='shop-filters-drawer-title' className='sr-only'>
-            Product filters
-          </h2>
-          {isSidebarOpen && (
-            <div className='flex items-center justify-between p-4 border-b lg:hidden'>
-              <p className='font-semibold text-base' aria-hidden>
-                Filters
-              </p>
-              <button
-                type='button'
-                onClick={() => setIsSidebarOpen(false)}
-                className='rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                aria-label='Close filters'
-              >
-                <X className='h-5 w-5' aria-hidden />
-              </button>
-            </div>
-          )}
-
-          <div className='space-y-5 p-4 sm:p-5 lg:p-0 lg:pr-2'>
-            {activeFilterCount > 0 && (
-              <button
-                type='button'
-                onClick={clearFilters}
-                className='flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-medium'
-              >
-                <X className='h-4 w-4' aria-hidden /> Clear all filters (
-                {activeFilterCount})
-              </button>
+        <div className='lg:flex lg:items-start lg:gap-6'>
+          <aside
+            id='shop-filters-drawer'
+            role={isSidebarOpen ? "dialog" : undefined}
+            aria-modal={isSidebarOpen ? true : undefined}
+            aria-labelledby='shop-filters-drawer-title'
+            className={cn(
+              "flex-shrink-0",
+              // Mobile drawer vs desktop sidebar
+              isSidebarOpen ?
+                "fixed top-2 bottom-2 left-0 z-50 w-80 max-w-[92vw] bg-white shadow-2xl overflow-y-auto rounded-2xl border border-gray-100"
+              : "hidden",
+              "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:pl-1 lg:sticky lg:top-20 lg:self-start lg:h-fit lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto",
+            )}
+          >
+            <h2 id='shop-filters-drawer-title' className='sr-only'>
+              Product filters
+            </h2>
+            {isSidebarOpen && (
+              <div className='flex items-center justify-between p-4 border-b lg:hidden'>
+                <p className='font-semibold text-base' aria-hidden>
+                  Filters
+                </p>
+                <button
+                  type='button'
+                  onClick={() => setIsSidebarOpen(false)}
+                  className='rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  aria-label='Close filters'
+                >
+                  <X className='h-5 w-5' aria-hidden />
+                </button>
+              </div>
             )}
 
-            <FilterSection title='Category'>
-              <div className='space-y-2'>
-                {filterOptions?.categories.map((cat) => (
-                  <label
-                    key={cat}
-                    className='flex items-center gap-2 cursor-pointer group'
-                  >
-                    <input
-                      type='radio'
-                      name='category'
-                      value={cat}
-                      checked={filters.category === cat}
-                      onChange={() =>
-                        updateFilter(
-                          "category",
-                          filters.category === cat ? "" : cat,
-                        )
-                      }
-                      className='text-brand-600 focus:ring-brand-500'
-                    />
-                    <span className='text-sm text-gray-700 group-hover:text-brand-700'>
-                      {cat}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
+            <div className='space-y-5 p-4 sm:p-5 lg:p-0 lg:pr-2'>
+              {activeFilterCount > 0 && (
+                <button
+                  type='button'
+                  onClick={clearFilters}
+                  className='flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-medium'
+                >
+                  <X className='h-4 w-4' aria-hidden /> Clear all filters (
+                  {activeFilterCount})
+                </button>
+              )}
 
-            <FilterSection title='Fabric'>
-              <div className='space-y-2'>
-                {filterOptions?.fabrics.map((fabric) => (
-                  <label
-                    key={fabric}
-                    className='flex items-center gap-2 cursor-pointer group'
-                  >
-                    <input
-                      type='radio'
-                      name='fabric'
-                      value={fabric}
-                      checked={filters.fabric === fabric}
-                      onChange={() =>
-                        updateFilter(
-                          "fabric",
-                          filters.fabric === fabric ? "" : fabric,
-                        )
-                      }
-                      className='text-brand-600 focus:ring-brand-500'
-                    />
-                    <span className='text-sm text-gray-700 group-hover:text-brand-700'>
-                      {fabric}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-
-            <FilterSection title='Price Range'>
-              <div className='space-y-3'>
-                <div className='flex items-center gap-2'>
-                  <input
-                    type='number'
-                    placeholder='Min'
-                    value={filters.minPrice}
-                    onChange={(e) => updateFilter("minPrice", e.target.value)}
-                    aria-label='Minimum price'
-                    className='w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-500'
-                  />
-                  <span className='text-gray-600' aria-hidden>
-                    —
-                  </span>
-                  <input
-                    type='number'
-                    placeholder='Max'
-                    value={filters.maxPrice}
-                    onChange={(e) => updateFilter("maxPrice", e.target.value)}
-                    aria-label='Maximum price'
-                    className='w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-500'
-                  />
-                </div>
-                {filterOptions?.priceRange && (
-                  <p className='text-xs text-gray-600'>
-                    {formatPrice(filterOptions.priceRange.minPrice)} —{" "}
-                    {formatPrice(filterOptions.priceRange.maxPrice)}
-                  </p>
-                )}
-              </div>
-            </FilterSection>
-
-            <FilterSection title='Minimum Rating'>
-              <div className='space-y-2'>
-                {[4, 3, 2, 1].map((r) => (
-                  <label
-                    key={r}
-                    className='flex items-center gap-2 cursor-pointer group'
-                  >
-                    <input
-                      type='radio'
-                      name='rating'
-                      value={r}
-                      checked={filters.rating === String(r)}
-                      onChange={() =>
-                        updateFilter(
-                          "rating",
-                          filters.rating === String(r) ? "" : String(r),
-                        )
-                      }
-                      className='text-brand-600 focus:ring-brand-500'
-                    />
-                    <span className='text-sm text-gray-700 group-hover:text-brand-700'>
-                      {"★".repeat(r)} & above
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-          </div>
-        </aside>
-
-        {isSidebarOpen && (
-          <button
-            type='button'
-            className='fixed inset-0 z-40 cursor-default bg-black/50 lg:hidden'
-            aria-label='Close filters'
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-
-        <div className='w-full min-w-0 lg:flex-1 lg:min-h-[70vh] lg:-mt-1'>
-
-          {isLoading ?
-            <div className={productGridClass}>
-              {[...Array(9)].map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
-            </div>
-          : !isLoading && (isError || products.length === 0) ?
-            <div className='w-full'>
-              <div className='w-full rounded-2xl border border-gray-100 bg-white min-h-[420px] sm:min-h-[460px] flex flex-col items-start justify-start text-left px-6 pt-10'>
-                <p className='text-gray-700 text-lg mb-4'>
-                  {isError ?
-                    "Something went wrong loading products. Try again or adjust filters."
-                  : "No products found matching your filters."}
-                </p>
-                <Button type='button' variant='brand' onClick={clearFilters}>
-                  Clear Filters
-                </Button>
-              </div>
-            </div>
-          : <>
-              <div className={productGridClass}>
-                {products.map((product) => (
-                  <ProductCard key={product._id} product={product} />
-                ))}
-              </div>
-
-              {/* Infinite scroll sentinel */}
-              <div ref={loadMoreRef} className='h-12 w-full shrink-0' aria-hidden />
-
-              {isFetchingNextPage && (
-                <div className={`mt-6 ${productGridClass}`}>
-                  {[...Array(6)].map((_, i) => (
-                    <ProductCardSkeleton key={`more-${i}`} />
+              <FilterSection title='Category'>
+                <div className='space-y-2'>
+                  {filterOptions?.categories.map((cat) => (
+                    <label
+                      key={cat}
+                      className='flex items-center gap-2 cursor-pointer group'
+                    >
+                      <input
+                        type='radio'
+                        name='category'
+                        value={cat}
+                        checked={filters.category === cat}
+                        onChange={() =>
+                          updateFilter(
+                            "category",
+                            filters.category === cat ? "" : cat,
+                          )
+                        }
+                        className='text-brand-600 focus:ring-brand-500'
+                      />
+                      <span className='text-sm text-gray-700 group-hover:text-brand-700'>
+                        {cat}
+                      </span>
+                    </label>
                   ))}
                 </div>
-              )}
+              </FilterSection>
 
-              {!pagination?.hasNextPage && products.length > 0 && (
-                <p className='mt-8 text-center text-sm text-gray-600'>
-                  You’ve reached the end.
-                </p>
-              )}
-            </>
-          }
+              <FilterSection title='Fabric'>
+                <div className='space-y-2'>
+                  {filterOptions?.fabrics.map((fabric) => (
+                    <label
+                      key={fabric}
+                      className='flex items-center gap-2 cursor-pointer group'
+                    >
+                      <input
+                        type='radio'
+                        name='fabric'
+                        value={fabric}
+                        checked={filters.fabric === fabric}
+                        onChange={() =>
+                          updateFilter(
+                            "fabric",
+                            filters.fabric === fabric ? "" : fabric,
+                          )
+                        }
+                        className='text-brand-600 focus:ring-brand-500'
+                      />
+                      <span className='text-sm text-gray-700 group-hover:text-brand-700'>
+                        {fabric}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </FilterSection>
+
+              <FilterSection title='Price Range'>
+                <div className='space-y-3'>
+                  <div className='flex items-center gap-2'>
+                    <input
+                      type='number'
+                      placeholder='Min'
+                      value={filters.minPrice}
+                      onChange={(e) => updateFilter("minPrice", e.target.value)}
+                      aria-label='Minimum price'
+                      className='w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-500'
+                    />
+                    <span className='text-gray-600' aria-hidden>
+                      —
+                    </span>
+                    <input
+                      type='number'
+                      placeholder='Max'
+                      value={filters.maxPrice}
+                      onChange={(e) => updateFilter("maxPrice", e.target.value)}
+                      aria-label='Maximum price'
+                      className='w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-500'
+                    />
+                  </div>
+                  {filterOptions?.priceRange && (
+                    <p className='text-xs text-gray-600'>
+                      {formatPrice(filterOptions.priceRange.minPrice)} —{" "}
+                      {formatPrice(filterOptions.priceRange.maxPrice)}
+                    </p>
+                  )}
+                </div>
+              </FilterSection>
+
+              <FilterSection title='Minimum Rating'>
+                <div className='space-y-2'>
+                  {[4, 3, 2, 1].map((r) => (
+                    <label
+                      key={r}
+                      className='flex items-center gap-2 cursor-pointer group'
+                    >
+                      <input
+                        type='radio'
+                        name='rating'
+                        value={r}
+                        checked={filters.rating === String(r)}
+                        onChange={() =>
+                          updateFilter(
+                            "rating",
+                            filters.rating === String(r) ? "" : String(r),
+                          )
+                        }
+                        className='text-brand-600 focus:ring-brand-500'
+                      />
+                      <span className='text-sm text-gray-700 group-hover:text-brand-700'>
+                        {"★".repeat(r)} & above
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </FilterSection>
+            </div>
+          </aside>
+
+          {isSidebarOpen && (
+            <button
+              type='button'
+              className='fixed inset-0 z-40 cursor-default bg-black/50 lg:hidden'
+              aria-label='Close filters'
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+
+          <div className='w-full min-w-0 lg:flex-1 lg:min-h-[70vh] lg:-mt-1'>
+            {isLoading ?
+              <div className={productGridClass}>
+                {[...Array(9)].map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
+            : !isLoading && (isError || products.length === 0) ?
+              <div className='w-full'>
+                <div className='w-full rounded-2xl border border-gray-100 bg-white min-h-[420px] sm:min-h-[460px] flex flex-col items-start justify-start text-left px-6 pt-10'>
+                  <p className='text-gray-700 text-lg mb-4'>
+                    {isError ?
+                      "Something went wrong loading products. Try again or adjust filters."
+                    : "No products found matching your filters."}
+                  </p>
+                  <Button type='button' variant='brand' onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            : <>
+                <div className={productGridClass}>
+                  {products.map((product) => (
+                    <ProductCard key={product._id} product={product} />
+                  ))}
+                </div>
+
+                {/* Infinite scroll sentinel */}
+                <div
+                  ref={loadMoreRef}
+                  className='h-12 w-full shrink-0'
+                  aria-hidden
+                />
+
+                {isFetchingNextPage && (
+                  <div className={`mt-6 ${productGridClass}`}>
+                    {[...Array(6)].map((_, i) => (
+                      <ProductCardSkeleton key={`more-${i}`} />
+                    ))}
+                  </div>
+                )}
+
+                {!pagination?.hasNextPage && products.length > 0 && (
+                  <p className='mt-8 text-center text-sm text-gray-600'>
+                    You’ve reached the end.
+                  </p>
+                )}
+              </>
+            }
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );
