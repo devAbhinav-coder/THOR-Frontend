@@ -134,15 +134,37 @@ interface Props {
   initialProduct?: Product | null;
 }
 
+function canHydrateFromInitial(
+  slug: string,
+  initialProduct: Product | null | undefined,
+): initialProduct is Product {
+  return (
+    !!initialProduct &&
+    String(initialProduct.slug).toLowerCase() === String(slug).toLowerCase()
+  );
+}
+
 export default function ProductDetailClient({ slug, initialProduct }: Props) {
-  /* Core */
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  /* Core — initialize from SSR product so first paint is not a duplicate skeleton after loading.tsx */
+  const [product, setProduct] = useState<Product | null>(() => {
+    if (!canHydrateFromInitial(slug, initialProduct)) return null;
+    return {
+      ...initialProduct,
+      images: normalizeProductImages(initialProduct.images),
+    };
+  });
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
+    () => {
+      if (!canHydrateFromInitial(slug, initialProduct)) return null;
+      const variants = initialProduct.variants || [];
+      return variants.find((v) => v.stock > 0) || variants[0] || null;
+    },
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => !canHydrateFromInitial(slug, initialProduct),
+  );
 
   /* Variant / Qty */
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    null,
-  );
   const [quantity, setQuantity] = useState(1);
 
   /* Actions */
