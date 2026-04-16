@@ -17,7 +17,11 @@ export interface Address {
   name: string;
   phone: string;
   label: string;
+  /** House / flat / building details (optional). */
+  house?: string;
   street: string;
+  /** Nearby landmark (optional). */
+  landmark?: string;
   city: string;
   state: string;
   pincode: string;

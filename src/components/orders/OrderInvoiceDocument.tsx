@@ -142,7 +142,13 @@ export default function OrderInvoiceDocument({ order }: Props) {
                 {order.shippingAddress?.name || "Customer"}
               </p>
               <div className='text-xs text-gray-700 mt-0.5 leading-snug'>
+                {order.shippingAddress?.house && (
+                  <p>{order.shippingAddress.house}</p>
+                )}
                 <p>{order.shippingAddress?.street}</p>
+                {order.shippingAddress?.landmark && (
+                  <p>Landmark: {order.shippingAddress.landmark}</p>
+                )}
                 <p>
                   {order.shippingAddress?.city}, {order.shippingAddress?.state}
                 </p>
@@ -165,7 +171,13 @@ export default function OrderInvoiceDocument({ order }: Props) {
                 {order.shippingAddress?.name || "Customer"}
               </p>
               <div className='text-xs text-gray-700 mt-0.5 leading-snug'>
+                {order.shippingAddress?.house && (
+                  <p>{order.shippingAddress.house}</p>
+                )}
                 <p>{order.shippingAddress?.street}</p>
+                {order.shippingAddress?.landmark && (
+                  <p>Landmark: {order.shippingAddress.landmark}</p>
+                )}
                 <p>
                   {order.shippingAddress?.city}, {order.shippingAddress?.state}
                 </p>

@@ -215,7 +215,54 @@ function StoreSearchAutocomplete({
     };
   }, [showPanel, updatePanelBox]);
 
-  const placeholderText = placeholder ?? PLACEHOLDER_BY_SCOPE[scope];
+  const basePlaceholder = placeholder ?? PLACEHOLDER_BY_SCOPE[scope];
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState(basePlaceholder);
+
+  useEffect(() => {
+    // If a custom placeholder is passed in, respect it and skip animation.
+    if (placeholder) {
+      setAnimatedPlaceholder(basePlaceholder);
+      return;
+    }
+    // Only run typing effect for navbar variants so other usages stay static.
+    if (!(variant === "nav-dark" || variant === "nav-mobile")) {
+      setAnimatedPlaceholder(basePlaceholder);
+      return;
+    }
+
+    const text = "What are you looking for?";
+    let i = 0;
+    let holdTicks = 0;
+    const HOLD_MAX = 10; // how long to keep full text before resetting
+
+    const interval = window.setInterval(() => {
+      // typing phase
+      if (i < text.length) {
+        i += 1;
+        setAnimatedPlaceholder(text.slice(0, i));
+        return;
+      }
+
+      // full text phase (includes question mark), just hold
+      if (holdTicks < HOLD_MAX) {
+        holdTicks += 1;
+        setAnimatedPlaceholder(text);
+        return;
+      }
+
+      // reset and start again
+      i = 0;
+      holdTicks = 0;
+      setAnimatedPlaceholder(text.charAt(0));
+    }, 120);
+
+    return () => window.clearInterval(interval);
+  }, [variant, basePlaceholder, placeholder]);
+
+  const placeholderText =
+    variant === "nav-dark" || variant === "nav-mobile"
+      ? animatedPlaceholder
+      : basePlaceholder;
 
   const inputBase =
     variant === "nav-dark" ?
@@ -228,7 +275,9 @@ function StoreSearchAutocomplete({
     : "w-full rounded-xl border border-amber-200/80 bg-white py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-500 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden";
 
   const iconLeft =
-    variant === "gifting-inline" ? "left-3 text-amber-700" : "left-3 text-white/35";
+    variant === "gifting-inline" ?
+      "left-3 text-amber-700"
+    : "left-3 text-white/35";
 
   return (
     <div ref={rootRef} className={cn("relative w-full", className)}>
@@ -295,7 +344,9 @@ function StoreSearchAutocomplete({
           role='listbox'
           className={cn(
             "fixed z-[200] rounded-2xl border shadow-xl overflow-hidden overscroll-contain",
-            isLightPanel ? "border-gray-200 bg-white" : "border-navy-600 bg-navy-900",
+            isLightPanel ?
+              "border-gray-200 bg-white"
+            : "border-navy-600 bg-navy-900",
           )}
           style={{
             top: panelBox.top,
@@ -320,7 +371,9 @@ function StoreSearchAutocomplete({
                       onClick={() => setOpen(false)}
                       className={cn(
                         "flex gap-3 rounded-xl px-2 py-2 text-left transition-colors",
-                        isLightPanel ? "hover:bg-brand-50" : "hover:bg-navy-800",
+                        isLightPanel ? "hover:bg-brand-50" : (
+                          "hover:bg-navy-800"
+                        ),
                       )}
                     >
                       <div className='relative h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100'>

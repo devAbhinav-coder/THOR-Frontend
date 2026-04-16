@@ -1321,7 +1321,21 @@ export default function OrderDetailPage() {
             <MapPin className='h-4 w-4 text-brand-600' /> Shipping Address
           </h3>
           <p className='text-sm text-gray-700 leading-relaxed'>
+            {order.shippingAddress.house && (
+              <>
+                {order.shippingAddress.house}
+                <br />
+              </>
+            )}
             {order.shippingAddress.street}
+            {order.shippingAddress.landmark && (
+              <>
+                <br />
+                <span className='text-gray-500'>
+                  Landmark: {order.shippingAddress.landmark}
+                </span>
+              </>
+            )}
             <br />
             {order.shippingAddress.city}, {order.shippingAddress.state}
             <br />

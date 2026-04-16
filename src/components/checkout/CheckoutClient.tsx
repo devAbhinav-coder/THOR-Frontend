@@ -82,7 +82,11 @@ const addressSchema = z.object({
       const pn = parsePhoneNumberFromString(raw, "IN");
       return !!pn && pn.isValid() && pn.country === "IN";
     }, "Enter a valid Indian mobile number"),
-  street: z.string().min(5, "Street address required"),
+  /** House / flat / building (optional, separate from street). */
+  house: z.string().max(120, "House / flat / building is too long").optional(),
+  street: z.string().min(5, "Street / area is required"),
+  /** Nearby landmark (optional). */
+  landmark: z.string().max(160, "Landmark is too long").optional(),
   city: z.string().min(2, "City required"),
   state: z.string().min(1, "Please select state"),
   pincode: z.string().regex(/^\d{6}$/, "Enter valid 6-digit pincode"),
@@ -170,6 +174,20 @@ export default function CheckoutClient() {
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<
     "cod" | "razorpay"
   >("cod");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Close any pre-checkout launch modal once checkout page is mounted.
+    const launchFxNodes = document.querySelectorAll("[data-checkout-launch-fx='1']");
+    launchFxNodes.forEach((node) => {
+      const timerRaw = (node as HTMLElement).getAttribute("data-stale-timer");
+      if (timerRaw) {
+        const timerId = Number(timerRaw);
+        if (Number.isFinite(timerId)) window.clearTimeout(timerId);
+      }
+      node.remove();
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -432,7 +450,9 @@ export default function CheckoutClient() {
       if (addr) {
         setValue("name", addr.name || user?.name || "");
         setValue("phone", addr.phone || user?.phone || "");
+        setValue("house", addr.house || "");
         setValue("street", addr.street);
+        setValue("landmark", addr.landmark || "");
         setValue("city", addr.city);
         setValue("state", addr.state);
         setValue("pincode", addr.pincode);
@@ -503,7 +523,9 @@ export default function CheckoutClient() {
     const payload = {
       name: raw.name.trim(),
       phone: raw.phone.replace(/\s+/g, ""),
+      house: raw.house?.trim() || undefined,
       street: raw.street.trim(),
+      landmark: raw.landmark?.trim() || undefined,
       city: raw.city.trim(),
       state: raw.state.trim(),
       pincode: raw.pincode.trim(),
@@ -535,7 +557,9 @@ export default function CheckoutClient() {
         (a) =>
           a.name === payload.name &&
           a.phone.replace(/\s+/g, "") === payload.phone &&
+          (a.house || "") === (payload.house || "") &&
           a.street === payload.street &&
+          (a.landmark || "") === (payload.landmark || "") &&
           a.city === payload.city &&
           a.state === payload.state &&
           a.pincode === payload.pincode,
@@ -585,7 +609,9 @@ export default function CheckoutClient() {
     reset({
       name: user?.name || "",
       phone: (user?.phone || "").replace(/\s/g, ""),
+      house: "",
       street: "",
+      landmark: "",
       city: "",
       state: "",
       pincode: "",
@@ -1053,7 +1079,10 @@ export default function CheckoutClient() {
 
   return (
     <div className='w-full min-w-0 overflow-x-hidden bg-[#faf9f7]'>
-      <OrderPlacementSuccessOverlay orderId={pendingOrderSuccessId} />
+      <OrderPlacementSuccessOverlay
+        isOpen={isPlacingOrder || Boolean(pendingOrderSuccessId)}
+        orderId={pendingOrderSuccessId}
+      />
       <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-8 box-border min-w-0 animate-in fade-in duration-500'>
         <header className='mb-2 lg:mb-10'>
           <h1 className='text-[2.1rem] sm:text-[2.35rem] font-serif font-black text-navy-900 tracking-tight leading-tight'>
@@ -1178,8 +1207,24 @@ export default function CheckoutClient() {
                             {getValues("name")} · {getValues("phone")}
                           </p>
                           <p className='mt-1 text-sm text-gray-600 leading-relaxed'>
-                            {getValues("street")}, {getValues("city")},{" "}
-                            {getValues("state")} {getValues("pincode")}
+                            {getValues("house") && (
+                              <>
+                                {getValues("house")}
+                                <br />
+                              </>
+                            )}
+                            {getValues("street")}
+                            {getValues("landmark") && (
+                              <>
+                                <br />
+                                <span className='text-gray-500'>
+                                  Landmark: {getValues("landmark")}
+                                </span>
+                              </>
+                            )}
+                            <br />
+                            {getValues("city")} {getValues("state")}{" "}
+                            {getValues("pincode")}
                           </p>
                         </div>
                         <button
@@ -1318,14 +1363,31 @@ export default function CheckoutClient() {
                       />
                     </div>
 
-                    <Input
-                      id='checkout-field-street'
-                      {...register("street")}
-                      label='Street address'
-                      placeholder='House no., Street, Area'
-                      error={errors.street?.message}
-                      autoComplete='street-address'
-                    />
+                    <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+                      <Input
+                        id='checkout-field-house'
+                        {...register("house")}
+                        label='House / Flat / Building'
+                        placeholder='e.g. B-203, Tower 4'
+                        error={errors.house?.message}
+                        autoComplete='address-line1'
+                      />
+                      <Input
+                        id='checkout-field-street'
+                        {...register("street")}
+                        label='Street & Area'
+                        placeholder='Street name, locality / sector'
+                        error={errors.street?.message}
+                        autoComplete='address-line2'
+                      />
+                      <Input
+                        id='checkout-field-landmark'
+                        {...register("landmark")}
+                        label='Landmark (optional)'
+                        placeholder='e.g. Near City Mall'
+                        error={errors.landmark?.message}
+                      />
+                    </div>
                     <div className='grid grid-cols-2 gap-4'>
                       <Input
                         id='checkout-field-city'
@@ -2062,7 +2124,7 @@ export default function CheckoutClient() {
                         variant='brand'
                         size='xl'
                         className='w-full mt-6 h-14 text-center whitespace-normal leading-snug px-3 max-w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] border-0 text-base font-black shadow-lg shadow-red-900/15 transition-all duration-300 hover:shadow-xl hover:shadow-red-900/20 active:scale-[0.99]'
-                        loading={isPlacingOrder}
+                        disabled={isPlacingOrder}
                       >
                         {existingOrder ?
                           `Pay now — ${formatPrice(total)}`

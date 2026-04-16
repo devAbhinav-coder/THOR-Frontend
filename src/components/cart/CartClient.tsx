@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,10 +22,10 @@ import { couponApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CartItem, Coupon } from "@/types";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
+import shoppingCartGif from "@/assets/shopping-cart.gif";
 
-const SHIPPING_THRESHOLD = 1499;
+const SHIPPING_THRESHOLD = 1099;
 const SHIPPING_CHARGE = 99;
-
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
 
@@ -70,7 +70,9 @@ export default function CartClient() {
     if (isCheckoutLaunching) return;
     setIsCheckoutLaunching(true);
     try {
-      await playCheckoutLaunchAnimation(checkoutBtnRef.current);
+      await playCheckoutLaunchAnimation(checkoutBtnRef.current, {
+        gifSrc: shoppingCartGif.src,
+      });
       router.push("/checkout");
     } finally {
       // If navigation fails / is cancelled, allow retry.
@@ -135,6 +137,26 @@ export default function CartClient() {
   const estimatedTotal = cart.subtotal - cart.discount + shippingCharge;
   const freeShippingRemaining =
     SHIPPING_THRESHOLD - (cart.subtotal - cart.discount);
+  const unavailableItemSkus = useMemo(() => {
+    const skus = new Set<string>();
+    for (const item of cart.items) {
+      const product = item.product;
+      if (!product || product.isActive === false) {
+        skus.add(item.variant.sku);
+        continue;
+      }
+      const variant = (product.variants || []).find(
+        (v) => v.sku === item.variant.sku,
+      );
+      if (!variant || Number(variant.stock || 0) <= 0) {
+        skus.add(item.variant.sku);
+      } else if (item.quantity > Number(variant.stock || 0)) {
+        skus.add(item.variant.sku);
+      }
+    }
+    return skus;
+  }, [cart.items]);
+  const hasUnavailableItems = unavailableItemSkus.size > 0;
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
@@ -187,12 +209,32 @@ export default function CartClient() {
                 Continue shopping
               </Link>
             </div>
+            {hasUnavailableItems && (
+              <div className='mx-5 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3'>
+                <p className='text-xs font-semibold text-red-700'>
+                  Some items are out of stock. Remove or adjust them before
+                  checkout.
+                </p>
+              </div>
+            )}
 
             <div className='divide-y divide-gray-100'>
               {cart.items
                 .filter((item: CartItem) => item.product)
                 .map((item: CartItem) =>
                   (() => {
+                    const variantStock = Number(
+                      (item.product?.variants || []).find(
+                        (v) => v.sku === item.variant.sku,
+                      )?.stock ?? -1,
+                    );
+                    const isOutOfStock = variantStock === 0;
+                    const exceedsCurrentStock =
+                      variantStock > 0 && item.quantity > variantStock;
+                    const isUnavailable =
+                      unavailableItemSkus.has(item.variant.sku) ||
+                      isOutOfStock ||
+                      exceedsCurrentStock;
                     const isCorporateGift = (
                       item.product?.giftOccasions || []
                     ).some(
@@ -296,6 +338,15 @@ export default function CartClient() {
                                   Minimum quantity: {minQty}
                                 </p>
                               )}
+                              {isUnavailable && (
+                                <p className='text-[11px] text-red-600 mt-1 font-semibold'>
+                                  {isOutOfStock ?
+                                    "This item is out of stock. Remove it to continue."
+                                  : exceedsCurrentStock ?
+                                    `Only ${variantStock} left. Reduce quantity or remove this item.`
+                                  : "This item is unavailable right now. Remove it to continue."}
+                                </p>
+                              )}
                             </div>
                             <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch'>
                               <div className='text-right'>
@@ -338,7 +389,9 @@ export default function CartClient() {
                                   : undefined
                                 }
                                 className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
-                                disabled={isLoading || item.quantity <= minQty}
+                                disabled={
+                                  isLoading || isOutOfStock || item.quantity <= minQty
+                                }
                                 aria-label='Decrease quantity'
                               >
                                 <Minus className='h-4 w-4' />
@@ -354,7 +407,11 @@ export default function CartClient() {
                                   )
                                 }
                                 className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
-                                disabled={isLoading}
+                                disabled={
+                                  isLoading ||
+                                  isOutOfStock ||
+                                  (variantStock > 0 && item.quantity >= variantStock)
+                                }
                                 aria-label='Increase quantity'
                               >
                                 <Plus className='h-4 w-4' />
@@ -567,7 +624,7 @@ export default function CartClient() {
                 variant='brand'
                 size='xl'
                 className='w-full rounded-xl'
-                disabled={isCheckoutLaunching}
+                disabled={isCheckoutLaunching || hasUnavailableItems}
                 onClick={() => void goToCheckout()}
               >
                 {isCheckoutLaunching ?
@@ -580,6 +637,11 @@ export default function CartClient() {
                   </>
                 }
               </Button>
+              {hasUnavailableItems && (
+                <p className='text-xs text-red-600 font-medium'>
+                  Remove out-of-stock items to proceed to checkout.
+                </p>
+              )}
 
               <p className='text-[11px] text-gray-400 leading-relaxed'>
                 By continuing, you agree to our terms and conditions.

@@ -23,7 +23,11 @@ const addressSchema = z.object({
       return !!pn && pn.isValid() && pn.country === 'IN';
     }, 'Enter a valid Indian mobile number'),
   label: z.string().default('Home'),
-  street: z.string().min(5, 'Street address required'),
+  /** House / flat / building */
+  house: z.string().max(120, 'House / flat / building is too long').optional(),
+  street: z.string().min(5, 'Street / area is required'),
+  /** Nearby landmark, optional */
+  landmark: z.string().max(160, 'Landmark is too long').optional(),
   city: z.string().min(2, 'City required'),
   state: z.string().min(2, 'State required'),
   pincode: z.string().regex(/^\d{6}$/, 'Invalid pincode'),
@@ -45,13 +49,24 @@ export default function AddressesPage() {
   const onSubmit = async (data: AddressForm) => {
     setIsSaving(true);
     try {
-      const normalizedPhone =
+          const normalizedPhone =
         parsePhoneNumberFromString(data.phone.replace(/\s+/g, ''), 'IN')?.number || data.phone;
       const res = await authApi.addAddress({ ...data, phone: normalizedPhone });
       setUser({ ...user!, addresses: res.data.addresses });
       toast.success('Address added');
       setIsAdding(false);
-      reset({ name: user?.name || '', phone: user?.phone || '', label: 'Home', isDefault: false, street: '', city: '', state: '', pincode: '' });
+      reset({
+        name: user?.name || '',
+        phone: user?.phone || '',
+        label: 'Home',
+        house: '',
+        street: '',
+        landmark: '',
+        city: '',
+        state: '',
+        pincode: '',
+        isDefault: false,
+      });
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || 'Failed to add address');
@@ -98,7 +113,9 @@ export default function AddressesPage() {
               {addr.label}
             </p>
             <p className="text-sm text-gray-700">{addr.name} · {addr.phone}</p>
+            {addr.house && <p className="text-sm text-gray-600">{addr.house}</p>}
             <p className="text-sm text-gray-600">{addr.street}</p>
+            {addr.landmark && <p className="text-sm text-gray-500">Landmark: {addr.landmark}</p>}
             <p className="text-sm text-gray-600">{addr.city}, {addr.state} — {addr.pincode}</p>
             <p className="text-sm text-gray-500">{addr.country}</p>
             <button
@@ -116,14 +133,46 @@ export default function AddressesPage() {
           <h3 className="font-semibold text-gray-900 mb-4">Add New Address</h3>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input {...register('name')} label="Full Name" placeholder="e.g. Rani Sharma" error={errors.name?.message} />
-              <Input {...register('phone')} label="Mobile Number" placeholder="e.g. 9876543210" error={errors.phone?.message} inputMode="tel" />
+              <Input
+                {...register('name')}
+                label="Full Name"
+                placeholder="e.g. Rani Sharma"
+                error={errors.name?.message}
+              />
+              <Input
+                {...register('phone')}
+                label="Mobile Number"
+                placeholder="e.g. 9876543210"
+                error={errors.phone?.message}
+                inputMode="tel"
+              />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input {...register('label')} label="Label" placeholder="Home / Office" error={errors.label?.message} />
-              <div />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Input
+                {...register('label')}
+                label="Label"
+                placeholder="Home / Office"
+                error={errors.label?.message}
+              />
+              <Input
+                {...register('house')}
+                label="House / Flat / Building"
+                placeholder="e.g. B-203, Tower 4"
+                error={errors.house?.message}
+              />
+              <Input
+                {...register('landmark')}
+                label="Landmark (optional)"
+                placeholder="e.g. Near City Mall"
+                error={errors.landmark?.message}
+              />
             </div>
-            <Input {...register('street')} label="Street Address" placeholder="House no., Street, Area" error={errors.street?.message} />
+            <Input
+              {...register('street')}
+              label="Street & Area"
+              placeholder="Street name, locality / sector"
+              error={errors.street?.message}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input {...register('city')} label="City" error={errors.city?.message} />
               <Input {...register('state')} label="State" error={errors.state?.message} />

@@ -33,7 +33,10 @@ import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
-import { useStoreNavActive, type StoreNavActive } from "@/hooks/useStoreNavActive";
+import {
+  useStoreNavActive,
+  type StoreNavActive,
+} from "@/hooks/useStoreNavActive";
 
 type MobileBottomItem = {
   id: string;
@@ -180,7 +183,13 @@ export default function Navbar() {
   const mobileBottomNavItems: MobileBottomItem[] = useMemo(
     () => [
       { id: "home", label: "Home", Icon: Home, href: "/", activeKey: "home" },
-      { id: "shop", label: "Shop", Icon: Store, href: "/shop", activeKey: "shop" },
+      {
+        id: "shop",
+        label: "Shop",
+        Icon: Store,
+        href: "/shop",
+        activeKey: "shop",
+      },
       {
         id: "gifting",
         label: "Gifting",
@@ -392,7 +401,9 @@ export default function Navbar() {
                           className='h-full w-full object-cover'
                         />
                       : <span className='text-white font-semibold text-sm'>
-                          {String(user?.name || "U").charAt(0).toUpperCase()}
+                          {String(user?.name || "U")
+                            .charAt(0)
+                            .toUpperCase()}
                         </span>
                       }
                     </div>
@@ -701,11 +712,7 @@ export default function Navbar() {
                         </span>
                       )}
                     </span>
-                  : <Icon
-                      className={iconClass}
-                      strokeWidth={isOn ? 2.5 : 2}
-                    />
-                  }
+                  : <Icon className={iconClass} strokeWidth={isOn ? 2.5 : 2} />}
                   {label}
                 </Link>
               );

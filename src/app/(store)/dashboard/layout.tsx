@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   User,
@@ -63,11 +64,23 @@ export default function DashboardLayout({
       {pathname === "/dashboard" && (
         <div className='bg-gradient-to-r from-navy-900 via-navy-800 to-brand-700 text-white relative'>
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex items-center gap-4'>
-            <div className='h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center ring-2 ring-white/20 shadow-xl flex-shrink-0'>
-              <span className='text-xl sm:text-2xl font-black text-white'>
-                {user?.name?.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            {user?.avatar ? (
+              <div className='relative h-12 w-12 sm:h-14 sm:w-14 rounded-full overflow-hidden ring-2 ring-white/30 shadow-xl flex-shrink-0 bg-white/10'>
+                <Image
+                  src={user.avatar}
+                  alt={user?.name || "User"}
+                  fill
+                  sizes='56px'
+                  className='object-cover'
+                />
+              </div>
+            ) : (
+              <div className='h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center ring-2 ring-white/20 shadow-xl flex-shrink-0'>
+                <span className='text-xl sm:text-2xl font-black text-white'>
+                  {user?.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div>
               <p className='text-white/70 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-0.5'>
                 Welcome back

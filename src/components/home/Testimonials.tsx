@@ -1,6 +1,7 @@
  'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import StarRating from '@/components/ui/StarRating';
 import { reviewApi } from '@/lib/api';
 import { Review } from '@/types';
@@ -74,11 +75,23 @@ export default function Testimonials() {
               <StarRating rating={review.rating} size="sm" className="mb-4" />
               <p className="text-white/60 text-sm leading-relaxed mb-5 italic">&ldquo;{review.comment}&rdquo;</p>
               <div className="flex items-center gap-3 pt-4 border-t border-navy-700">
-                <div className="h-10 w-10 rounded-full bg-brand-700 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-sm">
-                    {reviewerName.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {review.user?.avatar ? (
+                  <div className="relative h-10 w-10 rounded-full overflow-hidden ring-1 ring-white/15 flex-shrink-0">
+                    <Image
+                      src={review.user.avatar}
+                      alt={reviewerName}
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-brand-700 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold text-sm">
+                      {reviewerName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <p className="font-semibold text-sm text-white">{reviewerName}</p>
                   <p className="text-xs text-white/40">{productName}</p>

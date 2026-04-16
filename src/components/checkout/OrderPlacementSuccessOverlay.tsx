@@ -1,67 +1,80 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import conveyorBeltGif from "@/assets/conveyor-belt.gif";
+import shoppingBagGif from "@/assets/shopping-bag.gif";
 
 type Props = {
   /** When set, shows full-screen confirmation then navigates to this order */
   orderId: string | null;
+  /** Keep overlay open while the order API is processing. */
+  isOpen?: boolean;
 };
 
 /**
  * Post-checkout transition: full-screen confirmation before navigating to order details.
  * Respects prefers-reduced-motion (shorter, simpler).
  */
-export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
+export default function OrderPlacementSuccessOverlay({
+  orderId,
+  isOpen,
+}: Props) {
   const router = useRouter();
-  const [phase, setPhase] = useState<"confirming" | "ready">("confirming");
+  const isVisible = Boolean(isOpen ?? orderId);
+  const [phase, setPhase] = useState<"packing" | "ready">("packing");
   const [barFill, setBarFill] = useState(false);
   const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    if (!orderId || typeof document === "undefined") return;
+    if (!isVisible || typeof document === "undefined") return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [orderId]);
+  }, [isVisible]);
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!isVisible) return;
 
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    setPhase("confirming");
+    setPhase("packing");
     setBarFill(false);
     setEntered(false);
     const rafEnter = requestAnimationFrame(() => setEntered(true));
     const rafBar = requestAnimationFrame(() => setBarFill(true));
 
-    const t1 = window.setTimeout(
-      () => setPhase("ready"),
-      reduceMotion ? 220 : 780,
-    );
-    const t2 = window.setTimeout(
-      () => {
-        router.push(`/dashboard/orders/${encodeURIComponent(orderId)}`);
-      },
-      reduceMotion ? 520 : 2400,
-    );
+    let t1: number | null = null;
+    let t2: number | null = null;
+    if (orderId) {
+      t1 = window.setTimeout(
+        () => setPhase("ready"),
+        reduceMotion ? 260 : 1050,
+      );
+      t2 = window.setTimeout(
+        () => {
+          router.push(`/dashboard/orders/${encodeURIComponent(orderId)}`);
+        },
+        reduceMotion ? 1000 : 3200,
+      );
+    }
 
     return () => {
       cancelAnimationFrame(rafEnter);
       cancelAnimationFrame(rafBar);
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      if (t1) window.clearTimeout(t1);
+      if (t2) window.clearTimeout(t2);
     };
-  }, [orderId, router]);
+  }, [isVisible, orderId, router]);
 
-  if (!orderId) return null;
+  if (!isVisible) return null;
 
   const prefersReducedMotion =
     typeof window !== "undefined" &&
@@ -151,15 +164,13 @@ export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
               "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-400",
           )}
         >
-          {phase === "ready" ? "Order confirmed" : "Confirming your order"}
+          {phase === "ready" ? "Order confirmed" : "Processing your order"}
         </h2>
         <p
           id='order-success-desc'
           className={cn(
             "mt-2.5 text-sm leading-relaxed text-gray-600",
-            phase === "ready" ?
-              "text-gray-600"
-            : "text-gray-500",
+            phase === "ready" ? "text-gray-600" : "text-gray-500",
             phase === "ready" &&
               !prefersReducedMotion &&
               "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-400 motion-safe:delay-75",
@@ -167,14 +178,51 @@ export default function OrderPlacementSuccessOverlay({ orderId }: Props) {
         >
           {phase === "ready" ?
             "Taking you to your order details…"
-          : "Hang tight — we’re saving everything securely."}
+          : "Packing and securing your items on the conveyor..."}
         </p>
+
+        {phase === "packing" && (
+          <div className='mt-5 rounded-2xl border border-gray-200 bg-white/90 p-3.5'>
+            <div className='mx-auto h-20 w-28 overflow-hidden rounded-xl ring-1 ring-gray-100'>
+              <Image
+                src={conveyorBeltGif}
+                alt='Conveyor running'
+                width={112}
+                height={80}
+                className='h-full w-full object-cover'
+                unoptimized
+                priority
+              />
+            </div>
+          </div>
+        )}
+
+        {phase === "ready" && (
+          <div className='mt-5 flex flex-col items-center'>
+            <div className='h-20 w-20 overflow-hidden rounded-2xl ring-1 ring-emerald-100'>
+              <Image
+                src={shoppingBagGif}
+                alt='Order confirmed'
+                width={80}
+                height={80}
+                className='h-full w-full object-cover'
+                unoptimized
+                priority
+              />
+            </div>
+            <p className='mt-2 text-xs font-semibold text-emerald-700'>
+              Bag packed successfully
+            </p>
+          </div>
+        )}
 
         <div className='mt-7 h-2 w-full overflow-hidden rounded-full bg-gray-100/90 ring-1 ring-gray-200/60'>
           <div
             className={cn(
               "h-full rounded-full bg-gradient-to-r from-brand-500 via-brand-500 to-emerald-500",
-              prefersReducedMotion ? "transition-none" : "transition-[width] ease-out",
+              prefersReducedMotion ? "transition-none" : (
+                "transition-[width] ease-out"
+              ),
             )}
             style={{
               width: barFill ? "100%" : "0%",

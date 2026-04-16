@@ -364,7 +364,9 @@ export default function AdminOrderDetailsPage() {
   }
 
   const user =
-    typeof order.user === 'object' ? (order.user as { name?: string; email?: string; phone?: string }) : null;
+    typeof order.user === 'object'
+      ? (order.user as { name?: string; email?: string; phone?: string; avatar?: string })
+      : null;
   const orderItems = order.items ?? [];
   const invoiceEligible = order.paymentStatus === 'paid' || order.status === 'delivered';
 
@@ -767,9 +769,26 @@ export default function AdminOrderDetailsPage() {
             <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
               <UserIcon className="h-4 w-4 text-brand-600" /> Customer
             </h2>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <p className="text-sm font-semibold text-gray-900">{user?.name || '—'}</p>
-              {loyaltyTierBadge(loyaltySegment)}
+            <div className="flex items-center gap-3 mb-1">
+              {user?.avatar ? (
+                <div className="relative h-11 w-11 overflow-hidden rounded-full ring-1 ring-gray-200">
+                  <Image
+                    src={user.avatar}
+                    alt={user?.name || 'Customer'}
+                    fill
+                    sizes="44px"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-11 w-11 rounded-full bg-gradient-to-br from-brand-100 to-navy-100 flex items-center justify-center text-sm font-black text-brand-700">
+                  {String(user?.name || 'U').charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-gray-900">{user?.name || '—'}</p>
+                {loyaltyTierBadge(loyaltySegment)}
+              </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">{user?.email || ''}</p>
             {user?.phone && <p className="text-xs text-gray-500 mt-1">{user.phone}</p>}
@@ -786,7 +805,24 @@ export default function AdminOrderDetailsPage() {
               {order.shippingAddress?.phone || ''}
             </p>
             <p className="text-sm text-gray-700 mt-3">
-              {order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.state} — {order.shippingAddress.pincode}
+              {order.shippingAddress.house && (
+                <>
+                  {order.shippingAddress.house}
+                  <br />
+                </>
+              )}
+              {order.shippingAddress.street}
+              {order.shippingAddress.landmark && (
+                <>
+                  <br />
+                  <span className="text-gray-500">
+                    Landmark: {order.shippingAddress.landmark}
+                  </span>
+                </>
+              )}
+              <br />
+              {order.shippingAddress.city}, {order.shippingAddress.state} —{' '}
+              {order.shippingAddress.pincode}
             </p>
           </div>
 

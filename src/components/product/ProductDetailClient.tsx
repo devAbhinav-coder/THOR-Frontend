@@ -46,12 +46,87 @@ import {
   PdpRelatedProductRows,
 } from "@/components/product/pdp";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
+import shoppingCartGif from "@/assets/shopping-cart.gif";
 
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
 const MAX_REVIEW_IMAGES = 3;
-const MAX_REVIEW_IMAGE_SIZE_MB = 8;
+const MAX_REVIEW_IMAGE_SIZE_MB = 5;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
+const REVIEW_IMAGE_MAX_DIMENSION = 1600;
 type RatingDistributionBucket = { _id: number | string; count: number };
+
+async function compressReviewImageToWebp(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only image files are allowed.");
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Could not read image."));
+      img.src = objectUrl;
+    });
+
+    const maxSide = Math.max(image.naturalWidth, image.naturalHeight, 1);
+    const initialScale =
+      maxSide > REVIEW_IMAGE_MAX_DIMENSION ?
+        REVIEW_IMAGE_MAX_DIMENSION / maxSide
+      : 1;
+    let width = Math.max(1, Math.round(image.naturalWidth * initialScale));
+    let height = Math.max(1, Math.round(image.naturalHeight * initialScale));
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Your browser does not support image processing.");
+
+    const qualities = [0.88, 0.8, 0.72, 0.64, 0.56, 0.48];
+    let smallestBlob: Blob | null = null;
+
+    for (let shrink = 0; shrink < 4; shrink += 1) {
+      canvas.width = width;
+      canvas.height = height;
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(image, 0, 0, width, height);
+
+      for (const quality of qualities) {
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/webp", quality),
+        );
+        if (!blob) continue;
+        if (!smallestBlob || blob.size < smallestBlob.size) smallestBlob = blob;
+        if (blob.size <= MAX_REVIEW_IMAGE_SIZE_BYTES) {
+          return new File(
+            [blob],
+            `${file.name.replace(/\.[^.]+$/, "") || "review-image"}.webp`,
+            {
+              type: "image/webp",
+              lastModified: Date.now(),
+            },
+          );
+        }
+      }
+
+      width = Math.max(1, Math.round(width * 0.82));
+      height = Math.max(1, Math.round(height * 0.82));
+    }
+
+    if (smallestBlob && smallestBlob.size <= MAX_REVIEW_IMAGE_SIZE_BYTES) {
+      return new File(
+        [smallestBlob],
+        `${file.name.replace(/\.[^.]+$/, "") || "review-image"}.webp`,
+        {
+          type: "image/webp",
+          lastModified: Date.now(),
+        },
+      );
+    }
+    throw new Error(`Each image must be under ${MAX_REVIEW_IMAGE_SIZE_MB}MB.`);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 
 interface Props {
   slug: string;
@@ -187,10 +262,11 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
             images: normalizeProductImages(p.images),
           });
           const variants = p.variants || [];
-          setSelectedVariant((prev) =>
-            variants.find((v) => v.sku === prev?.sku) ||
-            variants.find((v) => v.stock > 0) ||
-            variants[0],
+          setSelectedVariant(
+            (prev) =>
+              variants.find((v) => v.sku === prev?.sku) ||
+              variants.find((v) => v.stock > 0) ||
+              variants[0],
           );
         } catch {
           if (!p) throw new Error("Failed to fetch product");
@@ -214,9 +290,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           setRatingDistribution(
             rv.ratingDistribution || rvData.ratingDistribution || [],
           );
-          setReviewsPagination(
-            rv.pagination || { totalPages: 1, total: 0 },
-          );
+          setReviewsPagination(rv.pagination || { totalPages: 1, total: 0 });
         }
         const isGiftBaseProduct =
           p.isGiftable ||
@@ -583,7 +657,9 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           }),
         );
       }
-      await playCheckoutLaunchAnimation(buyNowBtnRef.current);
+      await playCheckoutLaunchAnimation(buyNowBtnRef.current, {
+        gifSrc: shoppingCartGif.src,
+      });
       router.push("/checkout?buyNow=1");
     } catch {
       setIsBuyingNow(false);
@@ -634,28 +710,33 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
     }
   };
 
-  const handleReviewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReviewImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = Array.from(e.target.files || []);
     if (files.length + reviewImages.length > MAX_REVIEW_IMAGES) {
       toast.error(`You can only upload up to ${MAX_REVIEW_IMAGES} images`);
       e.target.value = "";
       return;
     }
-    const oversized = files.find(
-      (file) => file.size > MAX_REVIEW_IMAGE_SIZE_BYTES,
-    );
-    if (oversized) {
-      toast.error(`Each review image must be under ${MAX_REVIEW_IMAGE_SIZE_MB}MB`);
+    try {
+      const converted = await Promise.all(
+        files.map((file) => compressReviewImageToWebp(file)),
+      );
+      const newFiles = [...reviewImages, ...converted].slice(0, MAX_REVIEW_IMAGES);
+      setReviewImages(newFiles);
+
+      reviewPreviews.forEach((url) => URL.revokeObjectURL(url));
+      const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+      setReviewPreviews(newPreviews);
+    } catch (err: unknown) {
+      toast.error(
+        (err as { message?: string })?.message ||
+          `Each review image must be under ${MAX_REVIEW_IMAGE_SIZE_MB}MB`,
+      );
+    } finally {
       e.target.value = "";
-      return;
     }
-
-    const newFiles = [...reviewImages, ...files].slice(0, MAX_REVIEW_IMAGES);
-    setReviewImages(newFiles);
-
-    reviewPreviews.forEach((url) => URL.revokeObjectURL(url));
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-    setReviewPreviews(newPreviews);
   };
 
   const removeReviewImage = (index: number) => {
@@ -991,7 +1072,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                 </p>
               )}
               <p className='text-xs text-gray-400'>
-                Inclusive of all taxes - Free delivery above Rs. 999
+                Inclusive of all taxes - Free delivery above Rs. 1099
               </p>
             </div>
 
@@ -1322,7 +1403,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
             {/* Trust badges */}
             <div className='grid grid-cols-3 gap-3'>
               {[
-                { icon: Truck, label: "Free Delivery", sub: "Above Rs. 999" },
+                { icon: Truck, label: "Free Delivery", sub: "Above Rs. 1099" },
                 { icon: RotateCcw, label: "Easy Return", sub: "7 days" },
                 {
                   icon: ShieldCheck,
@@ -1350,8 +1431,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                 <span className='font-semibold'>
                   Estimated delivery in 3-7 business days.
                 </span>{" "}
-                Free shipping on orders above Rs. 999. Express delivery
-                available at checkout.
+                Free shipping on orders above Rs. 1099.
               </p>
             </div>
 

@@ -333,7 +333,7 @@ export function PdpReviewsSection({
                       )}
                     </div>
                     <p className='text-[10px] text-gray-400 italic'>
-                      Images help other shoppers see the product in real life (max 3 photos, 8MB each).
+                      Images help other shoppers see the product in real life (max 3 photos, 5MB each, uploaded as WebP).
                     </p>
                   </div>
 
@@ -427,13 +427,24 @@ export function PdpReviewsSection({
                   >
                     <div className='flex items-start justify-between mb-6 gap-4'>
                       <div className='flex items-center gap-4'>
-                        <div className='h-12 w-12 rounded-2xl bg-gradient-to-br from-brand-600 to-navy-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-100/50 rotate-3'>
-                          <span className='text-white font-black text-lg'>
-                            {String(review.user?.name || "Customer")
-                              .charAt(0)
-                              .toUpperCase()}
-                          </span>
-                        </div>
+                        {review.user?.avatar ?
+                          <div className='relative h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-gray-200 flex-shrink-0 shadow-sm'>
+                            <Image
+                              src={review.user.avatar}
+                              alt={review.user?.name || "Customer"}
+                              fill
+                              sizes='48px'
+                              className='object-cover'
+                            />
+                          </div>
+                        : <div className='h-12 w-12 rounded-2xl bg-gradient-to-br from-brand-600 to-navy-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-100/50 rotate-3'>
+                            <span className='text-white font-black text-lg'>
+                              {String(review.user?.name || "Customer")
+                                .charAt(0)
+                                .toUpperCase()}
+                            </span>
+                          </div>
+                        }
                         <div>
                           <p className='text-[15px] font-bold text-gray-900 tracking-tight'>
                             {review.user?.name || "Customer"}
@@ -616,13 +627,26 @@ export function PdpReviewsSection({
                   className='bg-white border border-gray-100 rounded-2xl p-4 sm:p-5'
                 >
                   <div className='flex items-center justify-between gap-3'>
-                    <div>
+                    <div className='flex items-center gap-3'>
+                      {review.user?.avatar ?
+                        <div className='relative h-9 w-9 overflow-hidden rounded-xl ring-1 ring-gray-200 flex-shrink-0'>
+                          <Image
+                            src={review.user.avatar}
+                            alt={review.user?.name || "Customer"}
+                            fill
+                            sizes='36px'
+                            className='object-cover'
+                          />
+                        </div>
+                      : null}
+                      <div>
                       <p className='text-sm font-semibold text-gray-900'>
                         {review.user?.name || "Customer"}
                       </p>
                       <p className='text-[11px] text-gray-400'>
                         {formatDate(review.createdAt)}
                       </p>
+                      </div>
                     </div>
                     <div className='text-xs font-semibold text-gray-700 bg-gray-100 rounded-lg px-2 py-1'>
                       {review.rating}.0 ★
