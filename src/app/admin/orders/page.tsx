@@ -48,7 +48,7 @@ export default function AdminOrdersPage() {
   });
   const [trackingErrors, setTrackingErrors] = useState<{ shippingCarrier?: string; trackingNumber?: string; trackingUrl?: string }>({});
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'value_high' | 'value_low'>('newest');
   const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [ordersLoadError, setOrdersLoadError] = useState(false);
@@ -186,6 +186,24 @@ export default function AdminOrdersPage() {
     });
   }, [orders, debouncedSearch]);
 
+  const visibleOrders = useMemo(() => {
+    const list = [...filteredOrders];
+    switch (sortBy) {
+      case 'oldest':
+        list.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+        break;
+      case 'value_high':
+        list.sort((a, b) => b.total - a.total);
+        break;
+      case 'value_low':
+        list.sort((a, b) => a.total - b.total);
+        break;
+      default:
+        list.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    }
+    return list;
+  }, [filteredOrders, sortBy]);
+
   // Build status counts from analytics
   const statusCounts: Record<string, number> = {};
   analytics?.ordersByStatus?.forEach(({ _id, count }) => { statusCounts[_id] = count; });
@@ -280,7 +298,7 @@ export default function AdminOrdersPage() {
 
       {/* Filters + list */}
       {!ordersLoadError && (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3">
           <SearchField
             value={search}
@@ -298,6 +316,19 @@ export default function AdminOrdersPage() {
             <option value="">All Statuses</option>
             {ORDER_STATUSES.map((s) => <option key={s} value={s} className="capitalize">{s}</option>)}
           </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 bg-white transition-all"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="value_high">Order value: high to low</option>
+            <option value="value_low">Order value: low to high</option>
+          </select>
+          <div className="flex items-center rounded-xl bg-gray-50 px-3 text-xs font-semibold text-gray-600 border border-gray-200">
+            Showing {visibleOrders.length} of {orders.length} loaded
+          </div>
           <div className="ml-auto flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white">
             <button
               type="button"
@@ -318,10 +349,10 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Tablet / desktop table — horizontal scroll on narrow widths */}
+        {/* Tablet / desktop table */}
         {viewMode === 'table' && (
-        <div className="hidden md:block overflow-x-auto [scrollbar-gutter:stable]">
-          <table className="w-full min-w-[920px]">
+        <div className="hidden md:block">
+          <table className="w-full table-fixed">
             <thead>
               <tr className="bg-gray-50 text-[11px] text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-5 py-3.5">Order</th>
@@ -343,7 +374,7 @@ export default function AdminOrdersPage() {
                     </td>
                   </tr>
                 ))
-              ) : filteredOrders.map((order) => (
+              ) : visibleOrders.map((order) => (
                 <tr
                   key={order._id}
                   className="hover:bg-gray-50/80 transition-colors cursor-pointer"
@@ -398,6 +429,24 @@ export default function AdminOrdersPage() {
                   </td>
                 </tr>
               ))}
+              {isLoadingMore && (
+                <>
+                  {[...Array(3)].map((_, i) => (
+                    <tr key={`load-more-table-${i}`}>
+                      <td colSpan={8} className="px-5 py-3.5">
+                        <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
+              {!isLoading && !isLoadingMore && !hasMore && orders.length > 0 && (
+                <tr>
+                  <td colSpan={8} className="px-5 py-3.5 text-center text-xs font-semibold text-gray-500">
+                    You’ve reached the end of the orders list.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -407,7 +456,7 @@ export default function AdminOrdersPage() {
           <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 gap-4 p-4">
             {isLoading ? (
               [...Array(6)].map((_, i) => <div key={i} className="h-48 rounded-2xl bg-gray-100 animate-pulse" />)
-            ) : filteredOrders.map((order) => (
+            ) : visibleOrders.map((order) => (
               <div
                 key={order._id}
                 className="rounded-2xl border border-gray-200/90 bg-white p-4 shadow-sm transition-shadow hover:border-gray-300 hover:shadow-md"
@@ -470,6 +519,15 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
             ))}
+            {isLoadingMore &&
+              [...Array(3)].map((_, i) => (
+                <div key={`load-more-grid-${i}`} className="h-48 rounded-2xl bg-gray-100 animate-pulse" />
+              ))}
+            {!isLoading && !isLoadingMore && !hasMore && orders.length > 0 && (
+              <div className="col-span-full text-center text-xs font-semibold text-gray-500 py-1">
+                You’ve reached the end of the orders list.
+              </div>
+            )}
           </div>
         )}
 
@@ -487,7 +545,7 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
             ))
-          ) : filteredOrders.map((order) => {
+          ) : visibleOrders.map((order) => {
             const lineItems = order.items ?? [];
             const firstLine = lineItems[0];
             return (
@@ -553,19 +611,30 @@ export default function AdminOrdersPage() {
             </div>
           );
           })}
+          {isLoadingMore &&
+            [...Array(2)].map((_, i) => (
+              <div key={`load-more-mobile-${i}`} className="p-4 space-y-2 animate-pulse">
+                <div className="flex gap-3">
+                  <div className="h-14 w-11 rounded-xl bg-gray-100" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-100 rounded w-2/3" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          {!isLoading && !isLoadingMore && !hasMore && orders.length > 0 && (
+            <div className="py-3 text-center text-xs font-semibold text-gray-500">
+              You’ve reached the end of the orders list.
+            </div>
+          )}
         </div>
 
-        {!isLoading && filteredOrders.length === 0 && (
+        {!isLoading && visibleOrders.length === 0 && (
           <div className="py-12 text-center text-gray-400 text-sm">No orders match your filters.</div>
         )}
+        <div ref={loadMoreRef} className="h-px" aria-hidden />
       </div>
-      )}
-
-      <div ref={loadMoreRef} className="h-8" />
-      {isLoadingMore && (
-        <div className="flex items-center justify-center pb-2">
-          <span className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-brand-600 animate-spin" />
-        </div>
       )}
 
       {/* Tracking modal (when marking shipped) */}
