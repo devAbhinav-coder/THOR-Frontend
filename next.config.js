@@ -9,6 +9,8 @@ const nextConfig = {
     optimizePackageImports: ["lucide-react"],
   },
   images: {
+    // Explicit qualities required for Next.js 16+; must cover every `quality` prop + default (75).
+    qualities: [58, 68, 72, 75, 88, 90, 92],
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },

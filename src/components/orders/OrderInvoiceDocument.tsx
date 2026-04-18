@@ -53,7 +53,7 @@ export default function OrderInvoiceDocument({ order }: Props) {
               {/* Logo */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src='/logo.png'
+                src='/logoNew.png'
                 alt='The House of Rani Logo'
                 className='h-10 w-auto object-contain mb-1 print:block'
               />

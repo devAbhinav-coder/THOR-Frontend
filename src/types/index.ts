@@ -154,6 +154,29 @@ export interface Order {
     generatedAt?: string;
   };
   statusHistory: { status: string; timestamp: string; note?: string }[];
+  /** Delhivery automation metadata from backend */
+  delhivery?: {
+    provider?: string;
+    waybills?: string[];
+    masterWaybill?: string;
+    shipmentCreatedAt?: string;
+    lastTrackSyncAt?: string;
+    lastTrackSummary?: string;
+    lastPackageStatus?: string;
+    estimatedTatDays?: number | null;
+    package?: {
+      shippingMode?: string;
+      ipkg_type?: string | null;
+      lengthCm?: number;
+      breadthCm?: number;
+      heightCm?: number;
+      weightGmTotal?: number;
+      boxCount?: number;
+      chargeableWeightGm?: number;
+    };
+    trackScansSnapshot?: { status?: string; time?: string; location?: string; detail?: string }[];
+    rtoDetected?: boolean;
+  };
   shippingCarrier?: string;
   trackingNumber?: string;
   trackingUrl?: string;

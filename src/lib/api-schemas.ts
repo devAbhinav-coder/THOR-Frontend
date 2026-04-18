@@ -368,6 +368,93 @@ export const adminOrderDetail = z.object({
   data: z.object({ order: doc }),
 });
 
+/** POST .../delhivery/sync-tracking — includes human summary + parsed tracking */
+export const adminDelhiveryTrackSync = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      order: doc,
+      summary: z.string().optional(),
+      tracking: z
+        .object({
+          lastStatus: z.string().optional(),
+          scanCount: z.number().optional(),
+          lastScan: z.record(z.unknown()).optional(),
+          waybill: z.string().optional(),
+          usedRefFallback: z.boolean().optional(),
+        })
+        .passthrough()
+        .optional(),
+    })
+    .passthrough(),
+});
+
+export const delhiveryStatus = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      configured: z.boolean(),
+      baseUrl: z.string().optional(),
+      pickupLocationName: z.string().nullable().optional(),
+      originPincode: z.string().nullable().optional(),
+    })
+    .passthrough(),
+});
+
+export const delhiveryPinCheck = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      pin: z.string().optional(),
+      serviceable: z.boolean().optional(),
+      remark: z.string().optional(),
+    })
+    .passthrough(),
+});
+
+/** Same payload as pin-check on order — used for GET /admin/delhivery/serviceability?pin= */
+export const delhiveryServiceability = delhiveryPinCheck;
+
+export const delhiveryEstimate = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      boxCount: z.number().optional(),
+      perBoxDeadWeightGm: z.number().optional(),
+      chargeableWeightGm: z.number().optional(),
+      cgmRequested: z.number().optional(),
+      chargedWeightDelhivery: z.number().optional(),
+      charges: z.unknown().optional(),
+      tatDays: z.number().optional(),
+      tatRaw: z.unknown().optional(),
+    })
+    .passthrough(),
+});
+
+/** GET .../delhivery/packing-slip — Delhivery S3 PDF link */
+export const delhiveryPackingSlip = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      pdfUrl: z.string().min(1),
+      waybill: z.string(),
+      pdfSize: z.enum(['4R', 'A4']),
+    })
+    .passthrough(),
+});
+
+/** GET .../delhivery/packing-slip/json — Delhivery pdf=false payload (custom label data). */
+export const delhiveryPackingSlipJson = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      waybill: z.string(),
+      pdfSize: z.enum(['4R', 'A4']),
+      payload: z.unknown(),
+    })
+    .passthrough(),
+});
+
 export const adminStorefront = z.object({
   status: z.string(),
   data: z.object({ settings: doc }),

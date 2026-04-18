@@ -324,6 +324,106 @@ export const adminApi = {
     unwrapAxios("admin.returnsInsights", api.get("/admin/returns/insights"), schemas.adminReturnsInsights),
   resolveReturn: (id: string, payload: { action: 'approve' | 'reject'; adminNote?: string }) =>
     unwrapAxios("admin.resolveReturn", api.patch(`/admin/orders/${id}/return/resolve`, payload), schemas.adminOrderDetail),
+
+  getDelhiveryStatus: () =>
+    unwrapAxios("admin.delhiveryStatus", api.get("/admin/delhivery/status"), schemas.delhiveryStatus),
+  checkDelhiveryPin: (orderId: string) =>
+    unwrapAxios(
+      "admin.delhiveryPin",
+      api.get(`/admin/orders/${orderId}/delhivery/pin-check`),
+      schemas.delhiveryPinCheck,
+    ),
+  /** Delhivery: check if any 6-digit PIN is serviceable (not tied to an order). */
+  checkDelhiveryServiceability: (pin: string) =>
+    unwrapAxios(
+      "admin.delhiveryServiceability",
+      api.get("/admin/delhivery/serviceability", { params: { pin: pin.replace(/\D/g, "").slice(0, 6) } }),
+      schemas.delhiveryServiceability,
+    ),
+  estimateDelhivery: (
+    orderId: string,
+    payload: {
+      md: "E" | "S";
+      lengthCm: number;
+      breadthCm: number;
+      heightCm: number;
+      weightGm: number;
+      boxCount?: number;
+      ipkg_type?: "box" | "flyer";
+    },
+  ) =>
+    unwrapAxios(
+      "admin.delhiveryEstimate",
+      api.post(`/admin/orders/${orderId}/delhivery/estimate`, payload),
+      schemas.delhiveryEstimate,
+    ),
+  createDelhiveryShipment: (
+    orderId: string,
+    payload: {
+      shippingMode: "Surface" | "Express";
+      lengthCm: number;
+      breadthCm: number;
+      heightCm: number;
+      weightGm: number;
+      boxCount?: number;
+      ipkg_type?: "box" | "flyer";
+    },
+  ) =>
+    unwrapAxios(
+      "admin.delhiveryCreate",
+      api.post(`/admin/orders/${orderId}/delhivery/create-shipment`, payload),
+      schemas.adminOrderDetail,
+    ),
+  syncDelhiveryTracking: (orderId: string) =>
+    unwrapAxios(
+      "admin.delhiverySync",
+      api.post(`/admin/orders/${orderId}/delhivery/sync-tracking`),
+      schemas.adminDelhiveryTrackSync,
+    ),
+  /** JSON with S3 URL (e.g. integrations). Prefer downloadDelhiveryPackingSlipFile for browser. */
+  getDelhiveryPackingSlip: (orderId: string, params?: { pdf_size?: '4R' | 'A4' }) =>
+    unwrapAxios(
+      "admin.delhiveryPackingSlip",
+      api.get(`/admin/orders/${orderId}/delhivery/packing-slip`, {
+        params: params?.pdf_size ? { pdf_size: params.pdf_size } : {},
+        timeout: 120_000,
+      }),
+      schemas.delhiveryPackingSlip,
+    ),
+  /** Delhivery packing slip with pdf=false — JSON for custom layouts (Code 128, etc.). */
+  getDelhiveryPackingSlipJson: (orderId: string, params?: { pdf_size?: '4R' | 'A4' }) =>
+    unwrapAxios(
+      'admin.delhiveryPackingSlipJson',
+      api.get(`/admin/orders/${orderId}/delhivery/packing-slip/json`, {
+        params: params?.pdf_size ? { pdf_size: params.pdf_size } : {},
+        timeout: 120_000,
+      }),
+      schemas.delhiveryPackingSlipJson,
+    ),
+  /** Proxied PDF bytes — same file every time; no wrong tab / tracking link. */
+  downloadDelhiveryPackingSlipFile: async (
+    orderId: string,
+    params?: { pdf_size?: "4R" | "A4" },
+  ): Promise<Blob> => {
+    const res = await api.get(`/admin/orders/${orderId}/delhivery/packing-slip/file`, {
+      params: params?.pdf_size ? { pdf_size: params.pdf_size } : {},
+      responseType: "blob",
+      timeout: 120_000,
+    });
+    const blob = res.data as Blob;
+    if (blob.type.includes("application/json")) {
+      const text = await blob.text();
+      let msg = "Could not download label PDF.";
+      try {
+        const j = JSON.parse(text) as { message?: string };
+        if (j?.message) msg = j.message;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
+    return blob;
+  },
 };
 
 export const blogApi = {
