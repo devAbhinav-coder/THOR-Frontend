@@ -57,6 +57,7 @@ function HeroSection({ initialSlides }: Props) {
             src={s.image}
             alt={s.title}
             fill
+            unoptimized
             priority={i === 0}
             fetchPriority={i === 0 ? "high" : "low"}
             sizes='100vw'

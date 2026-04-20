@@ -255,7 +255,14 @@ export default function ImageUploader({
               )}
               style={{ aspectRatio: aspectCss }}
             >
-              <Image src={url} alt={`Image ${i + 1}`} fill sizes="200px" className="object-contain" />
+              <Image
+                src={url}
+                alt={`Image ${i + 1}`}
+                fill
+                sizes="200px"
+                className="object-contain"
+                unoptimized
+              />
               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
                 {onRemoveExisting ? (
                   <button
@@ -283,7 +290,14 @@ export default function ImageUploader({
           {previews.map((p, i) => (
             <div key={p.id} className="relative rounded-xl overflow-hidden bg-[#f0ebe4] group"
               style={{ aspectRatio: aspectCss }}>
-              <Image src={p.url} alt={p.name} fill sizes="200px" className="object-contain" />
+              <Image
+                src={p.url}
+                alt={p.name}
+                fill
+                sizes="200px"
+                className="object-contain"
+                unoptimized
+              />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
                 <button type="button" onClick={(e) => { e.stopPropagation(); removePreview(p.id); }}
                   className="h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-colors">

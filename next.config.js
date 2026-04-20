@@ -12,7 +12,8 @@ const nextConfig = {
     // Explicit qualities required for Next.js 16+; must cover every `quality` prop + default (75).
     qualities: [58, 68, 72, 75, 88, 90, 92],
     remotePatterns: [
-      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      /** Explicit path so Next 15+ image matcher always allows Cloudinary delivery URLs. */
+      { protocol: 'https', hostname: 'res.cloudinary.com', pathname: '/**' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
