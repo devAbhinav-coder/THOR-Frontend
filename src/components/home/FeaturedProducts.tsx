@@ -81,7 +81,7 @@ export default function FeaturedProducts({
             href='/shop?isFeatured=true'
             className='inline-flex items-center gap-2 px-6 py-3 border-2 border-brand-600 text-brand-600 rounded-lg font-medium hover:bg-brand-50 transition-colors'
           >
-            View All Products <ArrowRight className='h-4 w-4' />
+            View All <ArrowRight className='h-4 w-4' />
           </Link>
         </div>
       </div>

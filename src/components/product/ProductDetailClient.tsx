@@ -79,7 +79,8 @@ async function compressReviewImageToWebp(file: File): Promise<File> {
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Your browser does not support image processing.");
+    if (!ctx)
+      throw new Error("Your browser does not support image processing.");
 
     const qualities = [0.88, 0.8, 0.72, 0.64, 0.56, 0.48];
     let smallestBlob: Blob | null = null;
@@ -585,7 +586,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           Product not found
         </h2>
         <Link href='/shop' className='text-sm text-brand-600 underline'>
-          Browse all products
+          Browse all sarees
         </Link>
       </div>
     );
@@ -745,7 +746,10 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
       const converted = await Promise.all(
         files.map((file) => compressReviewImageToWebp(file)),
       );
-      const newFiles = [...reviewImages, ...converted].slice(0, MAX_REVIEW_IMAGES);
+      const newFiles = [...reviewImages, ...converted].slice(
+        0,
+        MAX_REVIEW_IMAGES,
+      );
       setReviewImages(newFiles);
 
       reviewPreviews.forEach((url) => URL.revokeObjectURL(url));

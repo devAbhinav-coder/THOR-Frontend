@@ -298,7 +298,7 @@ export default function Navbar() {
                     href='/shop'
                     className='block px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-navy-800 rounded-lg transition-colors'
                   >
-                    All Products
+                    All Sarees
                   </Link>
                   {navCategories.map((cat) => (
                     <Link
@@ -526,7 +526,7 @@ export default function Navbar() {
                   <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
                     <Store className='w-4 h-4' />
                   </div>
-                  All Products
+                  All Sarees
                 </Link>
                 <Link
                   onClick={() => setIsMenuOpen(false)}

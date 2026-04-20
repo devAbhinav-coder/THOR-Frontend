@@ -1,4 +1,5 @@
 import type { HeroSlide } from "@/types";
+import { STOREFRONT_SETTINGS_CACHE_TAG } from "@/lib/cacheTags";
 import { fallbackHeroSlides } from "@/lib/heroSlidesFallback";
 import * as schemas from "@/lib/api-schemas";
 import { parseApiResponse } from "@/lib/parseApi";
@@ -14,7 +15,7 @@ export async function fetchStorefrontHeroSlides(): Promise<HeroSlide[]> {
 
   try {
     const res = await fetch(`${base}/storefront/settings`, {
-      next: { revalidate: 120 },
+      next: { revalidate: 120, tags: [STOREFRONT_SETTINGS_CACHE_TAG] },
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return fallbackHeroSlides;
@@ -44,7 +45,7 @@ export async function fetchStorefrontSettingsGifting(): Promise<schemas.Storefro
 
   try {
     const res = await fetch(`${base}/storefront/settings`, {
-      next: { revalidate: 120 },
+      next: { revalidate: 120, tags: [STOREFRONT_SETTINGS_CACHE_TAG] },
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return null;

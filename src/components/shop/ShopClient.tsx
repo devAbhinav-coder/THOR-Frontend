@@ -304,7 +304,7 @@ export default function ShopClient() {
     if (filters.rating) return `${filters.rating}★ & Above`;
     if (filters.minPrice || filters.maxPrice) return "Price Filter";
     if (filters.isFeatured) return "Featured Products";
-    return "All Products";
+    return "All Sarees";
   }, [
     filters.search,
     filters.category,

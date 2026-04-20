@@ -11,6 +11,7 @@ import {
   StorefrontSettings,
 } from '@/types';
 import ImageUploader from '@/components/ui/ImageUploader';
+import { revalidateStorefrontCache } from '@/actions/revalidateStorefrontCache';
 import toast from 'react-hot-toast';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 const inputCls =
@@ -107,7 +108,11 @@ export default function AdminStorefrontPage() {
       Object.entries(homeGiftCardFiles).forEach(([index, file]) => {
         if (file) fd.append(`homeGiftCardImage_${index}`, file);
       });
-      await adminApi.updateStorefrontSettings(fd);
+      const saved = await adminApi.updateStorefrontSettings(fd);
+      if (saved.data?.settings) {
+        setSettings(saved.data.settings as StorefrontSettings);
+      }
+      await revalidateStorefrontCache();
       setHeroImageFiles({});
       setPromoBgFile(null);
       setBlogMainFile(null);
