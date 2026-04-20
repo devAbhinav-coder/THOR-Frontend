@@ -509,5 +509,3 @@ export const giftingApi = {
   updateRequest: (id: string, data: Record<string, unknown>) => 
     unwrapAxios("gifting.updateRequest", api.patch(`/gifting/requests/${id}`, data), schemas.giftingRequestSingle),
 };
-
-export default api;

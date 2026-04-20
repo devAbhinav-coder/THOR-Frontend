@@ -17,6 +17,9 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 const inputCls =
   'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all';
 
+/** Narrow updates to `blogBanner` without `as any` (spread keeps optional image fields in sync). */
+type BlogBannerFields = StorefrontSettings['blogBanner'];
+
 const emptySlide: HeroSlide = {
   title: '',
   subtitle: '',
@@ -662,7 +665,7 @@ export default function AdminStorefrontPage() {
                           ...p.blogBanner,
                           mainImage: "",
                           mainImagePublicId: undefined,
-                        } as any,
+                        } as BlogBannerFields,
                       }
                     : p
                 )
@@ -703,7 +706,7 @@ export default function AdminStorefrontPage() {
                           ...p.blogBanner,
                           sideImage: "",
                           sideImagePublicId: undefined,
-                        } as any,
+                        } as BlogBannerFields,
                       }
                     : p
                 )
@@ -717,10 +720,10 @@ export default function AdminStorefrontPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-        <input className={inputCls} value={settings.blogBanner?.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, eyebrow: e.target.value } as any } : p)} placeholder="Eyebrow text" />
-        <input className={inputCls} value={settings.blogBanner?.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, title: e.target.value } as any } : p)} placeholder="Title" />
-        <input className={inputCls} value={settings.blogBanner?.buttonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonText: e.target.value } as any } : p)} placeholder="Button text" />
-        <input className={inputCls} value={settings.blogBanner?.buttonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonLink: e.target.value } as any } : p)} placeholder="Button link" />
+        <input className={inputCls} value={settings.blogBanner?.eyebrow || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, eyebrow: e.target.value } as BlogBannerFields } : p)} placeholder="Eyebrow text" />
+        <input className={inputCls} value={settings.blogBanner?.title || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, title: e.target.value } as BlogBannerFields } : p)} placeholder="Title" />
+        <input className={inputCls} value={settings.blogBanner?.buttonText || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonText: e.target.value } as BlogBannerFields } : p)} placeholder="Button text" />
+        <input className={inputCls} value={settings.blogBanner?.buttonLink || ''} onChange={(e) => setSettings((p) => p ? { ...p, blogBanner: { ...p.blogBanner, buttonLink: e.target.value } as BlogBannerFields } : p)} placeholder="Button link" />
       </div>
 
       <textarea
@@ -735,7 +738,7 @@ export default function AdminStorefrontPage() {
                   blogBanner: {
                     ...p.blogBanner,
                     description: e.target.value,
-                  } as any,
+                  } as BlogBannerFields,
                 }
               : p
           )
