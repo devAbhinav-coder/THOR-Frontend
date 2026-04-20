@@ -81,10 +81,13 @@ export default function CategorySection({
       .getStats()
       .then((res) =>
         setCategories(
-          (((res.data as { categories: Category[] }).categories || []).filter(
+          ((res.data as { categories: Category[] }).categories || []).filter(
             (c): c is Category =>
-              !!c && typeof c === "object" && typeof c.name === "string" && c.name.trim().length > 0,
-          )),
+              !!c &&
+              typeof c === "object" &&
+              typeof c.name === "string" &&
+              c.name.trim().length > 0,
+          ),
         ),
       )
       .catch(() => {})
@@ -282,12 +285,12 @@ export default function CategorySection({
                         <h3 className='text-white font-serif font-semibold text-sm sm:text-base leading-snug'>
                           {cat.name}
                         </h3>
-                        {cat.productCount > 0 && (
+                        {/* {cat.productCount > 0 && (
                           <p className='text-white/70 text-xs mt-0.5'>
                             {cat.productCount}{" "}
                             {cat.productCount === 1 ? "product" : "products"}
                           </p>
-                        )}
+                        )} */}
                         {cat.productCount === 0 && (
                           <p className='text-white/50 text-xs mt-0.5'>
                             Coming soon

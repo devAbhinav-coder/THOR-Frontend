@@ -177,8 +177,8 @@ export default function OrderPlacementSuccessOverlay({
           )}
         >
           {phase === "ready" ?
-            "Taking you to your order details…"
-          : "Packing and securing your items on the conveyor..."}
+            "Redirecting to your order details..."
+          : "Please wait while we process your order..."}
         </p>
 
         {phase === "packing" && (
@@ -211,7 +211,7 @@ export default function OrderPlacementSuccessOverlay({
               />
             </div>
             <p className='mt-2 text-xs font-semibold text-emerald-700'>
-              Bag packed successfully
+              Order confirmed successfully.
             </p>
           </div>
         )}
