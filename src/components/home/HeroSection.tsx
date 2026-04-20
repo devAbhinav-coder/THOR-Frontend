@@ -14,7 +14,8 @@ type Props = {
 };
 
 function HeroSection({ initialSlides }: Props) {
-  const [slides] = useState<HeroSlide[]>(initialSlides);
+  /** Must track prop updates — `useState(initialSlides)` only used the first SSR payload. */
+  const slides = initialSlides;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 

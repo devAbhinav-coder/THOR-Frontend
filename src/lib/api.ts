@@ -1,4 +1,9 @@
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosHeaders,
+  AxiosInstance,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
 import { refreshAccessToken } from "@/lib/authRefresh";
 import { env } from "@/lib/env";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
@@ -15,6 +20,21 @@ const api: AxiosInstance = axios.create({
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
   timeout: 15000,
+});
+
+/**
+ * Instance default is `application/json`, so axios `transformRequest` would run
+ * `JSON.stringify(formDataToJSON(data))` on FormData and drop binary parts — uploads
+ * (storefront hero, products, etc.) never reach multer. Clear Content-Type so the
+ * browser/XHR layer sets multipart with a proper boundary.
+ */
+api.interceptors.request.use((config) => {
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    const headers = AxiosHeaders.from(config.headers);
+    headers.delete("Content-Type");
+    config.headers = headers;
+  }
+  return config;
 });
 
 api.interceptors.response.use(

@@ -345,7 +345,17 @@ export default function AdminStorefrontPage() {
               Slide {index + 1}
             </p>
             <button
-              onClick={() =>
+              onClick={() => {
+                setHeroImageFiles((prev) => {
+                  const next: Record<number, File | null> = {};
+                  for (const [k, file] of Object.entries(prev)) {
+                    const i = Number(k);
+                    if (Number.isNaN(i)) continue;
+                    if (i < index) next[i] = file;
+                    else if (i > index) next[i - 1] = file;
+                  }
+                  return next;
+                });
                 setSettings((prev) =>
                   prev
                     ? {
@@ -355,8 +365,8 @@ export default function AdminStorefrontPage() {
                         ),
                       }
                     : prev
-                )
-              }
+                );
+              }}
               className="text-red-500"
             >
               <Trash2 className="h-4 w-4" />
