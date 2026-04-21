@@ -9,6 +9,10 @@ const nextConfig = {
     optimizePackageImports: ["lucide-react"],
   },
   images: {
+    // Product/media URLs are served from Cloudinary (already resized/optimized).
+    // Vercel's `/_next/image` optimizer can return 402 Payment Required when Image Optimization
+    // billing/quota disagrees with the dashboard — bypass avoids double-optimization and that error.
+    unoptimized: true,
     // Explicit qualities required for Next.js 16+; must cover every `quality` prop + default (75).
     qualities: [58, 68, 72, 75, 88, 90, 92],
     remotePatterns: [
