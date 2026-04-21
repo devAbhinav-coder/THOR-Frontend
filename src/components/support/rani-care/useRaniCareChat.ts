@@ -267,11 +267,12 @@ export function useRaniCareChat() {
         );
         return;
       }
-      const actions: QuickAction[] = RETURN_REASON_OPTIONS.map((label, idx) => ({
-        label:
-          label.length > 28 ? `${label.slice(0, 26)}…` : label,
-        value: `return_reason:${orderId}:${idx}`,
-      }));
+      const actions: QuickAction[] = RETURN_REASON_OPTIONS.map(
+        (label, idx) => ({
+          label: label.length > 28 ? `${label.slice(0, 26)}…` : label,
+          value: `return_reason:${orderId}:${idx}`,
+        }),
+      );
       actions.push({ label: "Never mind", value: "return_abort" });
       pushBot(
         `**Step 1 of 2** — Order **${full.orderNumber}**\nWhy are you returning?`,
@@ -288,7 +289,10 @@ export function useRaniCareChat() {
     }
   };
 
-  const submitReturnReasonFromChat = async (orderId: string, reasonIdx: number) => {
+  const submitReturnReasonFromChat = async (
+    orderId: string,
+    reasonIdx: number,
+  ) => {
     const reason = getReturnReasonByIndex(reasonIdx);
     if (!reason) return;
     setLoadingOrders(true);
@@ -296,14 +300,19 @@ export function useRaniCareChat() {
       const ob = await orderApi.getById(orderId);
       const full = ob.data?.order as Order | undefined;
       if (!full || !isOrderReturnEligible(full)) {
-        pushBot(
-          "This order is no longer eligible for a return.",
-          [{ label: "My orders", value: "action:recent_orders" }],
-        );
+        pushBot("This order is no longer eligible for a return.", [
+          { label: "My orders", value: "action:recent_orders" },
+        ]);
         return;
       }
       if (full.paymentMethod === "razorpay") {
-        await orderApi.requestReturn(full._id, reason, "", undefined, undefined);
+        await orderApi.requestReturn(
+          full._id,
+          reason,
+          "",
+          undefined,
+          undefined,
+        );
         await fetchRecentOrders();
         pushBot(
           `Return submitted for **${full.orderNumber}**. Refund will go to your **original payment method** (usually 5–7 business days).`,

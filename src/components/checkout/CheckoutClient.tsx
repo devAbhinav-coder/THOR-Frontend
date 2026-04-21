@@ -178,7 +178,9 @@ export default function CheckoutClient() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     // Close any pre-checkout launch modal once checkout page is mounted.
-    const launchFxNodes = document.querySelectorAll("[data-checkout-launch-fx='1']");
+    const launchFxNodes = document.querySelectorAll(
+      "[data-checkout-launch-fx='1']",
+    );
     launchFxNodes.forEach((node) => {
       const timerRaw = (node as HTMLElement).getAttribute("data-stale-timer");
       if (timerRaw) {

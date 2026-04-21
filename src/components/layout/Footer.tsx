@@ -63,6 +63,7 @@ export default function Footer() {
         { label: "Gifting", href: "/gifting" },
         { label: "New Arrivals", href: "/shop?sort=-createdAt" },
         { label: "Featured", href: "/shop?isFeatured=true" },
+        { label: "Returns", href: "/returns" },
         { label: "Cart", href: "/cart" },
       ];
   const categoryLimit = footer?.categoryLimit || 7;
@@ -212,7 +213,7 @@ export default function Footer() {
           <p>
             © {new Date().getFullYear()} The House of Rani. All rights reserved.
           </p>
-          <div className='flex flex-wrap justify-center gap-4'>
+          <div className='flex flex-wrap justify-center gap-x-4 gap-y-2'>
             <Link
               href='/faq'
               className='text-white/85 hover:text-brand-300 transition-colors'
@@ -223,19 +224,25 @@ export default function Footer() {
               href='/privacy'
               className='text-white/85 hover:text-brand-300 transition-colors'
             >
-              Privacy Policy
+              Privacy
             </Link>
             <Link
               href='/terms'
               className='text-white/85 hover:text-brand-300 transition-colors'
             >
-              Terms of Service
+              Terms
+            </Link>
+            <Link
+              href='/returns'
+              className='text-white/85 hover:text-brand-300 transition-colors'
+            >
+              Returns
             </Link>
             <Link
               href='/shipping'
               className='text-white/85 hover:text-brand-300 transition-colors'
             >
-              Shipping Policy
+              Shipping
             </Link>
           </div>
         </div>

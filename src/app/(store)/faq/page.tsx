@@ -107,16 +107,20 @@ export default function FaqPage() {
       >
         <h2>Common questions</h2>
         {faqItems.map((item) => (
-          <div key={item.q} className='rounded-2xl border border-gray-100 bg-white/80 px-4 py-3.5 mb-3'>
-            <h3 className='text-gray-900 font-extrabold tracking-tight'>{item.q}</h3>
+          <div
+            key={item.q}
+            className='rounded-2xl border border-gray-100 bg-white/80 px-4 py-3.5 mb-3'
+          >
+            <h3 className='text-gray-900 font-extrabold tracking-tight'>
+              {item.q}
+            </h3>
             <p className='text-gray-700 mt-1.5'>{item.a}</p>
           </div>
         ))}
 
         <h2>Need more help?</h2>
         <p>
-          Explore policy pages for detailed information:
-          {" "}
+          Explore policy pages for detailed information:{" "}
           <Link href='/shipping' className='text-brand-600 hover:underline'>
             Shipping Policy
           </Link>
@@ -127,6 +131,10 @@ export default function FaqPage() {
           {" · "}
           <Link href='/privacy' className='text-brand-600 hover:underline'>
             Privacy Policy
+          </Link>
+          {" · "}
+          <Link href='/returns' className='text-brand-600 hover:underline'>
+            Returns
           </Link>
           {" · "}
           <Link href='/gifting' className='text-brand-600 hover:underline'>
