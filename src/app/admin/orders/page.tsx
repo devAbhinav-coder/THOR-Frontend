@@ -17,6 +17,15 @@ import AdminErrorState from '@/components/admin/AdminErrorState';
 import { OrdersInsightsPanel } from '@/components/admin/OrdersInsightsPanel';
 
 const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+const NEXT_STATUS_MAP: Record<OrderStatus, OrderStatus[]> = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['processing', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped: ['delivered', 'cancelled', 'refunded'],
+  delivered: ['refunded'],
+  cancelled: ['refunded'],
+  refunded: [],
+};
 
 const STATUS_META: Record<string, { icon: React.ReactNode; label: string; bg: string; text: string }> = {
   pending:    { icon: <Clock className="h-4 w-4" />,       label: 'Pending',    bg: 'bg-yellow-50',  text: 'text-yellow-700' },
@@ -29,6 +38,8 @@ const STATUS_META: Record<string, { icon: React.ReactNode; label: string; bg: st
 };
 
 export default function AdminOrdersPage() {
+  const getNextStatuses = (status: OrderStatus) => NEXT_STATUS_MAP[status] || [];
+
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -414,7 +425,7 @@ export default function AdminOrdersPage() {
                         )}
                       </Button>
                       <div className="absolute right-0 top-full mt-1 bg-white shadow-xl rounded-xl py-1.5 min-w-[140px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 border border-gray-100">
-                        {ORDER_STATUSES.filter((s) => s !== order.status).map((status) => (
+                        {getNextStatuses(order.status).map((status) => (
                           <button
                             key={status}
                             onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
@@ -500,7 +511,7 @@ export default function AdminOrdersPage() {
                 <div className="mt-4 pt-3 border-t border-gray-100">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Change status</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {ORDER_STATUSES.filter((s) => s !== order.status).map((status) => (
+                    {getNextStatuses(order.status).map((status) => (
                       <button
                         key={status}
                         onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
@@ -591,7 +602,7 @@ export default function AdminOrdersPage() {
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Change Status</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {ORDER_STATUSES.filter((s) => s !== order.status).map((status) => (
+                    {getNextStatuses(order.status).map((status) => (
                       <button
                         key={status}
                         onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
