@@ -22,6 +22,14 @@ const api: AxiosInstance = axios.create({
   timeout: 15000,
 });
 
+const STOREFRONT_SETTINGS_CLIENT_CACHE_MS = 45_000;
+type StorefrontSettingsResponse = schemas.StorefrontSettingsApiEnvelope;
+let storefrontSettingsInFlight: Promise<StorefrontSettingsResponse> | null = null;
+let storefrontSettingsCache: {
+  expiresAt: number;
+  value: StorefrontSettingsResponse;
+} | null = null;
+
 /**
  * Instance default is `application/json`, so axios `transformRequest` would run
  * `JSON.stringify(formDataToJSON(data))` on FormData and drop binary parts — uploads
@@ -257,7 +265,31 @@ export const categoryApi = {
 };
 
 export const storefrontApi = {
-  getSettings: () => unwrapAxios("storefront.settings", api.get("/storefront/settings"), schemas.storefrontSettings),
+  getSettings: async () => {
+    const now = Date.now();
+    if (storefrontSettingsCache && now < storefrontSettingsCache.expiresAt) {
+      return storefrontSettingsCache.value;
+    }
+    if (storefrontSettingsInFlight) {
+      return storefrontSettingsInFlight;
+    }
+    storefrontSettingsInFlight = unwrapAxios(
+      "storefront.settings",
+      api.get("/storefront/settings"),
+      schemas.storefrontSettings,
+    )
+      .then((body) => {
+        storefrontSettingsCache = {
+          value: body,
+          expiresAt: Date.now() + STOREFRONT_SETTINGS_CLIENT_CACHE_MS,
+        };
+        return body;
+      })
+      .finally(() => {
+        storefrontSettingsInFlight = null;
+      });
+    return storefrontSettingsInFlight;
+  },
 };
 
 export const adminApi = {

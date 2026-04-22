@@ -37,6 +37,7 @@ import {
   useStoreNavActive,
   type StoreNavActive,
 } from "@/hooks/useStoreNavActive";
+import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 
 type MobileBottomItem = {
   id: string;
@@ -56,7 +57,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, isLoading, hasSessionChecked, logout } =
+    useAuthStore();
   const { itemCount } = useCartStore();
   const { products: wishlistProducts } = useWishlistStore();
 
@@ -76,7 +78,8 @@ export default function Navbar() {
   const { data: storefrontSettings } = useQuery({
     queryKey: queryKeys.storefrontSettings,
     queryFn: async () => {
-      const body = await storefrontApi.getSettings();
+      const body: StorefrontSettingsApiEnvelope =
+        await storefrontApi.getSettings();
       return (body.data.settings ?? null) as StorefrontSettings | null;
     },
     staleTime: 5 * 60 * 1000,
@@ -173,8 +176,10 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isSearchOpen, focusStoreSearch]);
 
+  const isAuthedStable = hasSessionChecked && !isLoading && isAuthenticated;
+
   const ordersHref =
-    isAuthenticated ? "/dashboard/orders" : (
+    isAuthedStable ? "/dashboard/orders" : (
       "/auth/login?redirect=/dashboard/orders"
     );
 
@@ -216,11 +221,11 @@ export default function Navbar() {
         id: "profile",
         label: "Profile",
         Icon: User,
-        href: isAuthenticated ? "/dashboard" : "/auth/login",
+        href: isAuthedStable ? "/dashboard" : "/auth/login",
         activeKey: "userHub",
       },
     ],
-    [ordersHref, isAuthenticated],
+    [ordersHref, isAuthedStable],
   );
 
   return (
@@ -343,7 +348,7 @@ export default function Navbar() {
 
             {/* Right actions — mobile: search on right; cart in header only on desktop (mobile: bottom nav) */}
             <div className='flex items-center justify-end gap-0.5 sm:gap-1 shrink-0'>
-              {isAuthenticated && (
+              {isAuthedStable && (
                 <Link
                   href='/dashboard/wishlist'
                   className='relative p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
@@ -381,9 +386,9 @@ export default function Navbar() {
                 <Search className='h-5 w-5' />
               </button>
 
-              {isAuthenticated && <NotificationBell />}
+              {isAuthedStable && <NotificationBell />}
 
-              {isAuthenticated ?
+              {isAuthedStable ?
                 <div className='hidden lg:block relative'>
                   <button
                     type='button'
@@ -596,7 +601,7 @@ export default function Navbar() {
                 <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>
                   Your Account
                 </p>
-                {isAuthenticated ?
+                {isAuthedStable ?
                   <div className='space-y-1 bg-navy-900/50 p-2 rounded-3xl border border-navy-800/50'>
                     <Link
                       onClick={() => setIsMenuOpen(false)}

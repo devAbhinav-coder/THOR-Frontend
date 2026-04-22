@@ -26,11 +26,17 @@ export async function refreshAccessToken(): Promise<boolean> {
           user: body.data.user,
           isAuthenticated: true,
           token: null,
+          hasSessionChecked: true,
         });
         return true;
       } catch {
         const { useAuthStore: clearStore } = await import("@/store/useAuthStore");
-        clearStore.setState({ user: null, token: null, isAuthenticated: false });
+        clearStore.setState({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          hasSessionChecked: true,
+        });
         return false;
       } finally {
         refreshPromise = null;

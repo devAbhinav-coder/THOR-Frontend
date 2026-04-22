@@ -19,6 +19,7 @@ export default function AuthGuestOnly({
   const searchParams = useSearchParams();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const hasSessionChecked = useAuthStore((s) => s.hasSessionChecked);
 
   const target = useMemo(() => {
     const r = safeRedirectPath(searchParams.get("redirect"));
@@ -26,11 +27,11 @@ export default function AuthGuestOnly({
   }, [searchParams]);
 
   useEffect(() => {
-    if (!hasHydrated || !isAuthenticated) return;
+    if (!hasHydrated || !hasSessionChecked || !isAuthenticated) return;
     router.replace(target);
-  }, [hasHydrated, isAuthenticated, router, target]);
+  }, [hasHydrated, hasSessionChecked, isAuthenticated, router, target]);
 
-  if (!hasHydrated) {
+  if (!hasHydrated || !hasSessionChecked) {
     return (
       <div className='flex-1 flex items-center justify-center px-4 pb-12'>
         <div

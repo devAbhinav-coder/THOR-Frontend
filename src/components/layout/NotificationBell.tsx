@@ -67,13 +67,14 @@ export default function NotificationBell({
   const panelRef = useRef<HTMLDivElement>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, isLoading, hasSessionChecked } = useAuthStore();
+  const isAuthedStable = hasSessionChecked && !isLoading && isAuthenticated;
   const queryClient = useQueryClient();
   const {
     notificationPermission,
     ensurePushSubscription,
     requestBrowserPermission,
-  } = useNotificationBrowserPush(user);
+  } = useNotificationBrowserPush(isAuthedStable ? user : null);
 
   const updatePanelPosition = useCallback(() => {
     const btn = triggerRef.current?.querySelector("button");
@@ -106,7 +107,7 @@ export default function NotificationBell({
   const { data } = useQuery({
     queryKey: queryKeys.notifications,
     queryFn: () => notificationApi.getAll({ limit: 50 }),
-    enabled: !!user,
+    enabled: isAuthedStable && !!user,
     refetchInterval: user?.role === "admin" ? 15000 : 30000,
   });
 
@@ -209,11 +210,11 @@ export default function NotificationBell({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthedStable || !user) return;
     void ensurePushSubscription();
-  }, [user, notifications.length, ensurePushSubscription]);
+  }, [isAuthedStable, user?._id, ensurePushSubscription]);
 
-  if (!user) return null;
+  if (!isAuthedStable || !user) return null;
 
   const dropdown = isOpen &&
     panelPos &&

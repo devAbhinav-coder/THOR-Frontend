@@ -235,6 +235,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
+  const reviewEligibilityRequestKeyRef = useRef<string | null>(null);
 
   const needsCustomization = useMemo(
     () => (product ? productNeedsCustomization(product) : false),
@@ -479,10 +480,19 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
   /* Review eligibility (only when authenticated & product loaded) */
   useEffect(() => {
-    if (!isAuthenticated || !product) return;
+    const productId = product?._id;
+    if (!isAuthenticated || !productId) {
+      reviewEligibilityRequestKeyRef.current = null;
+      return;
+    }
+    const requestKey = `${productId}:authed`;
+    if (reviewEligibilityRequestKeyRef.current === requestKey) return;
+    reviewEligibilityRequestKeyRef.current = requestKey;
+    let cancelled = false;
     reviewApi
-      .canReview(product._id)
+      .canReview(productId)
       .then((body) =>
+        !cancelled &&
         setReviewEligibility({
           canReview: body.data.canReview,
           hasPurchased: body.data.hasPurchased ?? false,
@@ -491,7 +501,10 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
         }),
       )
       .catch(() => {});
-  }, [isAuthenticated, product]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, product?._id]);
 
   /* Analytics: one counted view per product per browser session */
   useEffect(() => {

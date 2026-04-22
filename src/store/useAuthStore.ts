@@ -12,6 +12,8 @@ interface AuthState {
   token: null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** True after the initial cookie-based session probe completes once. */
+  hasSessionChecked: boolean;
   /** After zustand persist finishes reading localStorage — avoids admin redirect race on full page load */
   _hasHydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -34,13 +36,19 @@ export const useAuthStore = create<AuthState>()(
         token: null,
         isAuthenticated: false,
         isLoading: false,
+        hasSessionChecked: false,
         _hasHydrated: false,
 
         login: async (email, password) => {
           set({ isLoading: true });
           try {
             const body = await authApi.login({ email, password });
-            set({ user: body.data.user, token: null, isAuthenticated: true });
+            set({
+              user: body.data.user,
+              token: null,
+              isAuthenticated: true,
+              hasSessionChecked: true,
+            });
           } finally {
             set({ isLoading: false });
           }
@@ -59,7 +67,12 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           try {
             const body = await authApi.verifyOtpSignup({ email, otp });
-            set({ user: body.data.user, token: null, isAuthenticated: true });
+            set({
+              user: body.data.user,
+              token: null,
+              isAuthenticated: true,
+              hasSessionChecked: true,
+            });
           } finally {
             set({ isLoading: false });
           }
@@ -69,7 +82,12 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           try {
             const body = await authApi.google({ credential });
-            set({ user: body.data.user, token: null, isAuthenticated: true });
+            set({
+              user: body.data.user,
+              token: null,
+              isAuthenticated: true,
+              hasSessionChecked: true,
+            });
           } finally {
             set({ isLoading: false });
           }
@@ -79,7 +97,12 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           try {
             const body = await authApi.verifyOtpLogin({ email, otp });
-            set({ user: body.data.user, token: null, isAuthenticated: true });
+            set({
+              user: body.data.user,
+              token: null,
+              isAuthenticated: true,
+              hasSessionChecked: true,
+            });
           } finally {
             set({ isLoading: false });
           }
@@ -91,14 +114,25 @@ export const useAuthStore = create<AuthState>()(
           } catch {
             /* ignore */
           } finally {
-            set({ user: null, token: null, isAuthenticated: false });
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              hasSessionChecked: true,
+            });
           }
         },
 
         fetchUser: async () => {
+          set({ isLoading: true });
           const tryMe = async () => {
             const body = await authApi.getMe();
-            set({ user: body.data.user, isAuthenticated: true, token: null });
+            set({
+              user: body.data.user,
+              isAuthenticated: true,
+              token: null,
+              hasSessionChecked: true,
+            });
           };
           try {
             await tryMe();
@@ -106,14 +140,26 @@ export const useAuthStore = create<AuthState>()(
             const { refreshAccessToken } = await import('@/lib/authRefresh');
             const ok = await refreshAccessToken();
             if (!ok) {
-              set({ user: null, token: null, isAuthenticated: false });
+              set({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                hasSessionChecked: true,
+              });
               return;
             }
             try {
               await tryMe();
             } catch {
-              set({ user: null, token: null, isAuthenticated: false });
+              set({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                hasSessionChecked: true,
+              });
             }
+          } finally {
+            set({ isLoading: false, hasSessionChecked: true });
           }
         },
 

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import type { HeroSlide } from "@/types";
 import { cn } from "@/lib/utils";
 
+let hasPlayedHeroTextEntrance = false;
+
 type Props = {
   /** From server fetch — LCP image must not wait on client /settings request */
   initialSlides: HeroSlide[];
@@ -18,6 +20,16 @@ function HeroSection({ initialSlides }: Props) {
   const slides = initialSlides;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [playEntrance, setPlayEntrance] = useState(false);
+
+  useEffect(() => {
+    if (hasPlayedHeroTextEntrance) return;
+    const id = window.requestAnimationFrame(() => {
+      setPlayEntrance(true);
+      hasPlayedHeroTextEntrance = true;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     if (slides.length === 0) return;
@@ -69,7 +81,12 @@ function HeroSection({ initialSlides }: Props) {
       ))}
 
       <div className='relative h-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center pt-3 '>
-        <div className='max-w-xl animate-fadeIn'>
+        <div
+          className={cn(
+            "max-w-xl",
+            playEntrance && "motion-safe:animate-hero-text-in",
+          )}
+        >
           {slide.badge && (
             <span className='inline-flex items-center gap-1.5 bg-brand-600/90 text-white text-[9px] sm:text-xs font-semibold px-2 sm:px-3 py-1 sm:py-1.5 rounded-full mb-1.5 sm:mb-5 uppercase tracking-widest shadow-lg'>
               <span className='w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse' />

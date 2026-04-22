@@ -6,8 +6,50 @@ import { notificationApi } from "@/lib/api";
 import { urlBase64ToUint8Array } from "@/lib/webPush";
 
 const AUTO_PROMPT_SESSION_KEY = "hor_notif_auto_prompt_v1";
+const PUSH_PUBLIC_KEY_CACHE_MS = 5 * 60 * 1000;
 
 type UserLike = { _id?: string } | null | undefined;
+
+let pushPublicKeyCache:
+  | { enabled: boolean; publicKey: string; expiresAt: number }
+  | null = null;
+let pushPublicKeyInFlight:
+  | Promise<{ enabled: boolean; publicKey: string }>
+  | null = null;
+const pushSubscribedUsers = new Set<string>();
+const pushSubscribeInFlightByUser = new Map<string, Promise<void>>();
+const syncedEndpointKeys = new Set<string>();
+
+async function getPushPublicConfig(): Promise<{
+  enabled: boolean;
+  publicKey: string;
+}> {
+  const now = Date.now();
+  if (pushPublicKeyCache && now < pushPublicKeyCache.expiresAt) {
+    return {
+      enabled: pushPublicKeyCache.enabled,
+      publicKey: pushPublicKeyCache.publicKey,
+    };
+  }
+  if (!pushPublicKeyInFlight) {
+    pushPublicKeyInFlight = notificationApi
+      .getPushPublicKey()
+      .then((res) => {
+        const enabled = res.data?.enabled === true;
+        const publicKey = (res.data?.publicKey || "").trim();
+        pushPublicKeyCache = {
+          enabled,
+          publicKey,
+          expiresAt: Date.now() + PUSH_PUBLIC_KEY_CACHE_MS,
+        };
+        return { enabled, publicKey };
+      })
+      .finally(() => {
+        pushPublicKeyInFlight = null;
+      });
+  }
+  return pushPublicKeyInFlight;
+}
 
 async function subscribeWithVapid(user: NonNullable<UserLike>): Promise<void> {
   if (
@@ -18,11 +60,12 @@ async function subscribeWithVapid(user: NonNullable<UserLike>): Promise<void> {
   )
     return;
   if (Notification.permission !== "granted") return;
+  const userId = String(user?._id || "");
+  if (!userId) return;
 
   const registration = await navigator.serviceWorker.register("/sw.js");
-  const keyRes = await notificationApi.getPushPublicKey();
-  const vapidPublicKey = keyRes.data?.publicKey;
-  if (keyRes.data?.enabled === false || !vapidPublicKey) return;
+  const { enabled, publicKey } = await getPushPublicConfig();
+  if (!enabled || !publicKey) return;
 
   const existing = await registration.pushManager.getSubscription();
   const subscription =
@@ -30,10 +73,36 @@ async function subscribeWithVapid(user: NonNullable<UserLike>): Promise<void> {
     (await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(
-        vapidPublicKey,
+        publicKey,
       ) as unknown as BufferSource,
     }));
+  const endpoint = subscription.endpoint || "";
+  const endpointKey = `${userId}::${endpoint}`;
+  if (endpoint && syncedEndpointKeys.has(endpointKey)) return;
   await notificationApi.subscribePush(subscription.toJSON());
+  if (endpoint) syncedEndpointKeys.add(endpointKey);
+}
+
+async function ensureUserPushSubscription(
+  user: NonNullable<UserLike>,
+): Promise<void> {
+  const userId = String(user?._id || "");
+  if (!userId) return;
+  if (pushSubscribedUsers.has(userId)) return;
+  const existing = pushSubscribeInFlightByUser.get(userId);
+  if (existing) {
+    await existing;
+    return;
+  }
+  const run = subscribeWithVapid(user)
+    .then(() => {
+      pushSubscribedUsers.add(userId);
+    })
+    .finally(() => {
+      pushSubscribeInFlightByUser.delete(userId);
+    });
+  pushSubscribeInFlightByUser.set(userId, run);
+  await run;
 }
 
 /**
@@ -74,7 +143,7 @@ export function useNotificationBrowserPush(
     if (Notification.permission !== "granted") return;
     if (pushSubscribedRef.current) return;
     try {
-      await subscribeWithVapid(user);
+      await ensureUserPushSubscription(user);
       pushSubscribedRef.current = true;
     } catch {
       // silent fail: in-app notifications still work
@@ -90,13 +159,13 @@ export function useNotificationBrowserPush(
           toast.error(
             "Browser notifications are not supported on this device/browser.",
           );
-        return;
+        return "unsupported" as const;
       }
       try {
         const result = await Notification.requestPermission();
         setNotificationPermission(result);
         if (result === "granted") {
-          await subscribeWithVapid(user);
+          await ensureUserPushSubscription(user);
           pushSubscribedRef.current = true;
           if (!silent) toast.success("Browser notifications enabled.");
         } else if (result === "denied") {
@@ -105,6 +174,12 @@ export function useNotificationBrowserPush(
               const reg = await navigator.serviceWorker.ready;
               const sub = await reg.pushManager.getSubscription();
               if (sub) await notificationApi.unsubscribePush(sub.endpoint);
+              if (sub?.endpoint) {
+                syncedEndpointKeys.forEach((key) => {
+                  if (key.endsWith(`::${sub.endpoint}`))
+                    syncedEndpointKeys.delete(key);
+                });
+              }
             }
           } catch {
             /* ignore */
@@ -114,9 +189,11 @@ export function useNotificationBrowserPush(
               "Browser notifications blocked. Enable from browser site settings.",
             );
         }
+        return result;
       } catch {
         if (!silent)
           toast.error("Could not request notification permission.");
+        return null;
       }
     },
     [user],
@@ -129,12 +206,10 @@ export function useNotificationBrowserPush(
       return;
     }
     let cancelled = false;
-    notificationApi
-      .getPushPublicKey()
+    getPushPublicConfig()
       .then((res) => {
         if (cancelled) return;
-        const ok =
-          res.data?.enabled === true && Boolean(res.data?.publicKey?.trim());
+        const ok = res.enabled === true && Boolean(res.publicKey);
         setPushConfigured(ok);
       })
       .catch(() => {
@@ -151,16 +226,24 @@ export function useNotificationBrowserPush(
   /** One automatic permission ask per browser session when push is configured (best-effort; many browsers still require a tap). */
   useEffect(() => {
     if (!options?.autoRequestPermissionOnce) return;
-    if (!user || pushConfigured !== true) return;
+    const userId = String(user?._id || "");
+    if (!userId || pushConfigured !== true) return;
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission !== "default") return;
     if (autoPromptStartedRef.current) return;
-    if (sessionStorage.getItem(AUTO_PROMPT_SESSION_KEY)) return;
+    const sessionKey = `${AUTO_PROMPT_SESSION_KEY}:${userId}`;
+    if (sessionStorage.getItem(sessionKey)) return;
 
     autoPromptStartedRef.current = true;
-    sessionStorage.setItem(AUTO_PROMPT_SESSION_KEY, "1");
-
-    void requestPermissionRef.current({ silent: true });
+    void requestPermissionRef.current({ silent: true }).then((result) => {
+      if (result === "granted" || result === "denied") {
+        sessionStorage.setItem(sessionKey, "1");
+        return;
+      }
+      // If browser ignored non-gesture auto prompt and stayed "default",
+      // allow a later retry instead of blocking the full session.
+      autoPromptStartedRef.current = false;
+    });
   }, [user, pushConfigured, options?.autoRequestPermissionOnce]);
 
   return {

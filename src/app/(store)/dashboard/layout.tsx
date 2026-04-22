@@ -35,18 +35,24 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading, user, _hasHydrated } = useAuthStore();
+  const {
+    isAuthenticated,
+    isLoading,
+    user,
+    _hasHydrated,
+    hasSessionChecked,
+  } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!_hasHydrated) return;
+    if (!_hasHydrated || !hasSessionChecked) return;
     if (!isLoading && !isAuthenticated) {
       router.replace(loginUrlWithRedirect("/dashboard"));
     }
-  }, [isAuthenticated, isLoading, router, _hasHydrated]);
+  }, [isAuthenticated, isLoading, router, _hasHydrated, hasSessionChecked]);
 
-  if (!_hasHydrated || isLoading || !isAuthenticated) {
+  if (!_hasHydrated || !hasSessionChecked || isLoading || !isAuthenticated) {
     return (
       <div className='min-h-[50vh] flex items-center justify-center bg-[#faf9f7]'>
         <div
