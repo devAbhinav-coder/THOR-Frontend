@@ -43,26 +43,49 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const image = blog?.images?.[0]?.url;
 
     return {
-      title,
+      title: `${title} | The House of Rani Journal`,
       description:
         description || "Read this story from The House of Rani Journal.",
+      keywords: [
+        blog?.title,
+        "The House of Rani",
+        "saree styling",
+        "Indian ethnic wear",
+        "bridal fashion India",
+        "gifting ideas",
+      ]
+        .filter(Boolean)
+        .join(", "),
       alternates: {
         canonical: `/blog/${safeSlug}`,
       },
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          "max-image-preview": "large" as const,
+        },
+      },
       openGraph: {
-        title,
+        title: `${title} | The House of Rani Journal`,
         description:
           description || "Read this story from The House of Rani Journal.",
         url: `${appUrl}/blog/${safeSlug}`,
-        images: image ? [{ url: image, alt: title }] : undefined,
+        images: image ?
+          [{ url: image, alt: title, width: 1200, height: 630 }]
+        : [{ url: `${appUrl}/ogimage.png`, alt: title, width: 1200, height: 630 }],
         type: "article",
+        siteName: "The House of Rani",
+        locale: "en_IN",
       },
       twitter: {
         card: "summary_large_image",
-        title,
+        title: `${title} | The House of Rani Journal`,
         description:
           description || "Read this story from The House of Rani Journal.",
-        images: image ? [image] : undefined,
+        images: image ? [image] : [`${appUrl}/ogimage.png`],
       },
     };
   } catch {

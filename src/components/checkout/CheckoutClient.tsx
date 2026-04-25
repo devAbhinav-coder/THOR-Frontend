@@ -60,6 +60,8 @@ import type { CartItem } from "@/types";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import OrderPlacementSuccessOverlay from "@/components/checkout/OrderPlacementSuccessOverlay";
+import { trackPurchase, trackInitiateCheckout } from "@/lib/metaPixel";
+import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
 
 function normalizeIndianMobileDigits(val: string): string {
   let d = val.replace(/\D/g, "");
@@ -416,6 +418,21 @@ export default function CheckoutClient() {
     appliedCouponCode,
     checkoutPaymentMethod,
   ]);
+
+  /* Meta Pixel & GA4: Track InitiateCheckout / begin_checkout */
+  const hasTrackedCheckout = useRef(false);
+  useEffect(() => {
+    if (hasTrackedCheckout.current || total <= 0) return;
+    const numItems = existingOrder ? existingOrder.items?.length || 1 : buyNowItem ? 1 : cart?.items?.length || 1;
+    const trackingItems = existingOrder ? existingOrder.items : buyNowItem ? [buyNowItem] : cart?.items || [];
+    
+    trackInitiateCheckout(total, numItems);
+    if (trackingItems.length > 0) {
+      trackGaBeginCheckout(total, trackingItems);
+    }
+    
+    hasTrackedCheckout.current = true;
+  }, [total, existingOrder, buyNowItem, cart?.items]);
 
   const showMobileCheckoutWizard = isCheckoutNarrow && !existingOrder;
 
@@ -782,6 +799,10 @@ export default function CheckoutClient() {
                       razorpayPaymentId: response.razorpay_payment_id,
                       razorpaySignature: response.razorpay_signature,
                     });
+                    
+                    trackPurchase(verifyRes.data.order);
+                    trackGaPurchase(verifyRes.data.order);
+
                     if (buyNowItem) {
                       if (typeof window !== "undefined") {
                         sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
@@ -831,6 +852,10 @@ export default function CheckoutClient() {
             openRazorpay();
           } else {
             const { order } = res.data;
+            
+            trackPurchase(order);
+            trackGaPurchase(order);
+
             if (buyNowItem) {
               if (typeof window !== "undefined") {
                 sessionStorage.removeItem(BUY_NOW_SESSION_KEY);

@@ -19,10 +19,12 @@ import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { trackSearch } from "@/lib/metaPixel";
+import { trackGaSearch } from "@/lib/googleAnalytics";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 const SORT_OPTIONS = [
-  { label: "Newest First", value: "-createdAt" },
+  { label: "Recommended", value: "-createdAt" },
   { label: "Price: Low to High", value: "price" },
   { label: "Price: High to Low", value: "-price" },
   { label: "Top Rated", value: "-ratings.average" },
@@ -52,8 +54,6 @@ export default function ShopClient() {
     useState<StorefrontSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  /** FIFO: each debounced value we pushed with router.replace; skip draft reset when URL catches up (handles out-of-order navigations while typing). */
-  const searchCommitQueue = useRef<string[]>([]);
 
   const [filters, setFilters] = useState({
     category: searchParams.get("category") || "",
@@ -62,15 +62,9 @@ export default function ShopClient() {
     maxPrice: searchParams.get("maxPrice") || "",
     rating: searchParams.get("rating") || "",
     sort: searchParams.get("sort") || "-createdAt",
-    search: searchParams.get("search") || "",
+    search: (searchParams.get("search") || "").slice(0, SEARCH_MAX_LEN),
     isFeatured: searchParams.get("isFeatured") || "",
   });
-
-  const [searchDraft, setSearchDraft] = useState(() =>
-    (searchParams.get("search") || "").slice(0, SEARCH_MAX_LEN),
-  );
-  const debouncedSearch = useDebouncedValue(searchDraft.trim(), 380);
-  const searchPending = searchDraft.trim() !== debouncedSearch;
 
   const searchParamsKey = searchParams.toString();
 
@@ -87,34 +81,15 @@ export default function ShopClient() {
     });
   }, [searchParamsKey, searchParams]);
 
+  /* Meta Pixel & GA4: Track Search */
+  const lastTrackedSearch = useRef("");
   useEffect(() => {
-    const urlQ = (searchParams.get("search") || "").trim();
-    const q = searchCommitQueue.current;
-    if (q.length > 0 && q[0] === urlQ) {
-      q.shift();
-      return;
+    if (filters.search && filters.search !== lastTrackedSearch.current) {
+      trackSearch(filters.search);
+      trackGaSearch(filters.search);
+      lastTrackedSearch.current = filters.search;
     }
-    searchCommitQueue.current = [];
-    setSearchDraft((searchParams.get("search") || "").slice(0, SEARCH_MAX_LEN));
-  }, [searchParamsKey, searchParams]);
-
-  useEffect(() => {
-    const urlQ = (searchParams.get("search") || "")
-      .trim()
-      .slice(0, SEARCH_MAX_LEN);
-    if (debouncedSearch === urlQ) return;
-    /* Clear-all: field is empty and URL has no search, but debounce still holds old query — do not re-apply it */
-    if (searchDraft.trim() === "" && urlQ === "" && debouncedSearch !== "") {
-      return;
-    }
-    searchCommitQueue.current.push(debouncedSearch);
-    const params = new URLSearchParams(searchParams.toString());
-    if (debouncedSearch)
-      params.set("search", debouncedSearch.slice(0, SEARCH_MAX_LEN));
-    else params.delete("search");
-    const qs = params.toString();
-    router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
-  }, [debouncedSearch, router, searchParams, searchDraft]);
+  }, [filters.search]);
 
   const queryKey = useMemo(
     () =>
@@ -161,9 +136,30 @@ export default function ShopClient() {
   } = useInfiniteQuery({
     queryKey: ["shop-products", queryKey],
     queryFn: async ({ pageParam }) => {
+      const pg = pageParam as number;
+
+      // Default view (no filters/search) + page 1 → $sample for randomness.
+      // Any filter active or page 2+ → normal sort pagination.
+      const isDefaultView =
+        !filters.category &&
+        !filters.fabric &&
+        !filters.minPrice &&
+        !filters.maxPrice &&
+        !filters.rating &&
+        !filters.search &&
+        !filters.isFeatured;
+
+      if (pg === 1 && isDefaultView) {
+        return productApi.getAll({
+          page: 1,
+          limit: SHOP_PAGE_LIMIT,
+          isRandom: "true",
+        });
+      }
+
       const params: Record<string, string | number> = {
         sort: filters.sort,
-        page: pageParam,
+        page: pg,
         limit: SHOP_PAGE_LIMIT,
       };
       if (filters.category) params.category = filters.category;
@@ -192,18 +188,21 @@ export default function ShopClient() {
       }
       return undefined;
     },
-    staleTime: 45_000,
-    /** Avoid empty grid flash when search/filters update (e.g. landing from home navbar). */
-    placeholderData: (previousData) => previousData,
+    // 5-min cache keeps random page-1 stable within a tab; new visit = new $sample
+    staleTime: 5 * 60 * 1000,
   });
 
-  const products = useMemo(
-    () =>
-      (data?.pages ?? []).flatMap(
-        (pg) => (pg.data?.products || []) as Product[],
-      ),
-    [data?.pages],
-  );
+  // Deduplicate by _id — $sample page 1 can overlap with -createdAt pages 2+
+  const products = useMemo(() => {
+    const seen = new Set<string>();
+    return (data?.pages ?? [])
+      .flatMap((pg) => (pg.data?.products || []) as Product[])
+      .filter((p) => {
+        if (seen.has(p._id)) return false;
+        seen.add(p._id);
+        return true;
+      });
+  }, [data?.pages]);
 
   const pagination = useMemo(() => {
     const first = data?.pages?.[0];
@@ -253,8 +252,6 @@ export default function ShopClient() {
   };
 
   const clearFilters = () => {
-    searchCommitQueue.current = [];
-    setSearchDraft("");
     setFilters({
       category: "",
       fabric: "",
@@ -624,13 +621,13 @@ export default function ShopClient() {
           )}
 
           <div className='w-full min-w-0 lg:flex-1 lg:min-h-[70vh] lg:-mt-1'>
-            {isLoading ?
+            {isPending ?
               <div className={productGridClass}>
                 {[...Array(9)].map((_, i) => (
                   <ProductCardSkeleton key={i} />
                 ))}
               </div>
-            : !isLoading && (isError || products.length === 0) ?
+            : !isPending && (isError || products.length === 0) ?
               <div className='w-full'>
                 <div className='w-full rounded-2xl border border-gray-100 bg-white min-h-[420px] sm:min-h-[460px] flex flex-col items-start justify-start text-left px-6 pt-10'>
                   <p className='text-gray-700 text-lg mb-4'>

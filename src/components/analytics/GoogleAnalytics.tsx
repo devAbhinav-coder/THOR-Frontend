@@ -16,7 +16,7 @@ export default function GoogleAnalytics() {
   return (
     <Script
       src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`}
-      strategy='lazyOnload'
+      strategy='afterInteractive'
       onLoad={() => {
         const w = window as Window & { gtag?: (...args: unknown[]) => void };
         if (typeof w.gtag === "function") {

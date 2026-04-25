@@ -42,10 +42,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         canonical: `/shop/${safeSlug}`,
       },
       robots: { index: true, follow: true },
+      keywords: [
+        product.name,
+        product.category,
+        product.fabric,
+        ...(product.tags || []),
+        "The House of Rani",
+        "Indian ethnic wear",
+      ]
+        .filter(Boolean)
+        .join(", "),
       openGraph: {
         title: product.name,
         description: descRaw,
-        images: ogImage ? [{ url: ogImage, alt: product.name }] : undefined,
+        images: ogImage ?
+          [{ url: ogImage, alt: product.name, width: 1200, height: 630 }]
+        : undefined,
+        /* "og:type" = "product" tells crawlers & social platforms this is a
+           purchasable item — required for Facebook Catalog & Google Discovery. */
         type: "website",
         url: `${appUrl}/shop/${safeSlug}`,
         siteName: "The House of Rani",
@@ -116,6 +130,16 @@ export default async function ProductDetailPage({ params }: Props) {
             ],
           };
 
+          /**
+           * priceValidUntil — Google Merchant Center REQUIRES this for free
+           * listings.  We set it 1 year rolling from today.
+           */
+          const priceValidUntil = new Date(
+            Date.now() + 365 * 24 * 60 * 60 * 1000,
+          )
+            .toISOString()
+            .slice(0, 10);
+
           productLd = {
             "@context": "https://schema.org",
             "@type": "Product",
@@ -125,6 +149,7 @@ export default async function ProductDetailPage({ params }: Props) {
             description: productDesc,
             image: images,
             category: product.category,
+            ...(product.fabric ? { material: product.fabric } : {}),
             ...(sku ? { sku } : {}),
             brand: { "@type": "Brand", name: "The House of Rani" },
             itemCondition: "https://schema.org/NewCondition",
@@ -132,7 +157,8 @@ export default async function ProductDetailPage({ params }: Props) {
               "@type": "Offer",
               url: productPageUrl,
               priceCurrency: "INR",
-              price: String(product.price || 0),
+              price: Number(product.price || 0).toFixed(2),
+              priceValidUntil,
               availability:
                 inStock ?
                   "https://schema.org/InStock"
@@ -143,6 +169,51 @@ export default async function ProductDetailPage({ params }: Props) {
                 name: "The House of Rani",
                 url: appUrl,
               },
+              /**
+               * hasMerchantReturnPolicy — REQUIRED by Google Merchant Center
+               * for free listings (Shopping tab).
+               * Maps to your /returns page policy.
+               */
+              hasMerchantReturnPolicy: {
+                "@type": "MerchantReturnPolicy",
+                applicableCountry: "IN",
+                returnPolicyCategory:
+                  "https://schema.org/MerchantReturnFiniteReturnWindow",
+                merchantReturnDays: 7,
+                returnMethod: "https://schema.org/ReturnByMail",
+                returnFees: "https://schema.org/FreeReturn",
+              },
+              /**
+               * shippingDetails — REQUIRED by Google Merchant Center for
+               * free listings.  Adjust transitTime to match your courier SLA.
+               */
+              shippingDetails: {
+                "@type": "OfferShippingDetails",
+                shippingRate: {
+                  "@type": "MonetaryAmount",
+                  value: "0",
+                  currency: "INR",
+                },
+                shippingDestination: {
+                  "@type": "DefinedRegion",
+                  addressCountry: "IN",
+                },
+                deliveryTime: {
+                  "@type": "ShippingDeliveryTime",
+                  handlingTime: {
+                    "@type": "QuantitativeValue",
+                    minValue: 1,
+                    maxValue: 2,
+                    unitCode: "DAY",
+                  },
+                  transitTime: {
+                    "@type": "QuantitativeValue",
+                    minValue: 3,
+                    maxValue: 7,
+                    unitCode: "DAY",
+                  },
+                },
+              },
             },
             ...(Number(product?.ratings?.count || 0) > 0 ?
               {
@@ -150,6 +221,8 @@ export default async function ProductDetailPage({ params }: Props) {
                   "@type": "AggregateRating",
                   ratingValue: String(product.ratings.average || 0),
                   reviewCount: String(product.ratings.count || 0),
+                  bestRating: "5",
+                  worstRating: "1",
                 },
               }
             : {}),

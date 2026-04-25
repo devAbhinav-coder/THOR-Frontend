@@ -38,6 +38,8 @@ import RichTextContent from "@/components/ui/RichTextContent";
 import { isLowInStockVariant } from "@/lib/inventoryConstants";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { trackViewContent, trackAddToCart, trackAddToWishlist } from "@/lib/metaPixel";
+import { trackGaViewItem, trackGaAddToCart, trackGaAddToWishlist } from "@/lib/googleAnalytics";
 import {
   type ReviewEligibility,
   type ReviewFormState,
@@ -521,6 +523,14 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
     productApi.recordView(product.slug).catch(() => {});
   }, [product?.slug]);
 
+  /* Analytics & Meta Pixel: Track ViewContent / view_item */
+  useEffect(() => {
+    if (product && product._id) {
+      trackViewContent(product);
+      trackGaViewItem(product);
+    }
+  }, [product?._id]);
+
   /* Derived */
   const inWishlist = product ? isInWishlist(product._id) : false;
   const discountPct = useMemo(
@@ -645,6 +655,8 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
         answersArray.length > 0 ? answersArray : undefined,
         product,
       );
+      trackAddToCart(product, quantity, selectedVariant.price);
+      trackGaAddToCart(product, quantity, selectedVariant.price);
     } catch {
       /* handled */
     } finally {
@@ -706,6 +718,10 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   const handleWishlist = async () => {
     if (!isAuthenticated) return requireAuth("Sign in to save to wishlist");
     await toggleWishlist(product._id, product);
+    if (!inWishlist) {
+      trackAddToWishlist(product);
+      trackGaAddToWishlist(product);
+    }
   };
 
   const handleShare = async () => {

@@ -16,8 +16,6 @@ import { formatPrice, formatDate } from "@/lib/utils";
 import ImageUploader from "@/components/ui/ImageUploader";
 import toast from "react-hot-toast";
 import type { Product } from "@/types";
-import { bulkTextFromPairs, pairsFromBulkInput } from "@/lib/productDetailsBulk";
-import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const STATUS_OPTIONS = ["new", "price_quoted", "approved_by_user", "rejected_by_user", "cancelled"] as const;
@@ -80,29 +78,26 @@ function GiftProductFormModal({
 }: {
   product: GiftProduct | null;
   onClose: () => void;
-  onSave: (savedProduct?: GiftProduct) => void;
+  onSave: () => void;
 }) {
-  const normalizeOccasion = (value: string) => String(value || "").trim().toLowerCase();
   const { data: categoriesRes } = useQuery({
     queryKey: ["admin-gift-categories-for-occasions"],
     queryFn: () => adminApi.getCategories({ active: false }),
     staleTime: 120_000,
   });
-  const [selectedCategory, setSelectedCategory] = useState("");
+
   const [isSaving, setIsSaving] = useState(false);
   const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [existingImageSlots, setExistingImageSlots] = useState<Product["images"]>(() =>
-    product?.images?.length ? product.images.map((i) => ({ ...i })) : [],
-  );
   const [form, setForm] = useState({
     name: product?.name || "",
-    description: product?.description || product?.shortDescription || "",
+    description: product?.description || "",
     price: String(product?.price || ""),
     comparePrice: String(product?.comparePrice || ""),
     minOrderQty: String(product?.minOrderQty || 1),
     giftOccasions: (product?.giftOccasions || []) as string[],
     isActive: product?.isActive !== undefined ? product.isActive : true,
     isCustomizable: product?.isCustomizable || false,
+    stock: product?.totalStock !== undefined ? String(product.totalStock) : "",
   });
   const [customFields, setCustomFields] = useState<CustomField[]>(
     (product?.customFields || []).map((f) => ({
@@ -113,18 +108,20 @@ function GiftProductFormModal({
       isRequired: f.isRequired ?? true,
     }))
   );
-  const [detailsKeysText, setDetailsKeysText] = useState("");
-  const [detailsValuesText, setDetailsValuesText] = useState("");
+  const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
+    product?.productDetails || []
+  );
   useEffect(() => {
     setForm({
       name: product?.name || "",
-      description: product?.description || product?.shortDescription || "",
+      description: product?.description || "",
       price: String(product?.price || ""),
       comparePrice: String(product?.comparePrice || ""),
       minOrderQty: String(product?.minOrderQty || 1),
       giftOccasions: (product?.giftOccasions || []) as string[],
       isActive: product?.isActive !== undefined ? product.isActive : true,
       isCustomizable: product?.isCustomizable || false,
+      stock: product?.totalStock !== undefined ? String(product.totalStock) : "",
     });
     setCustomFields(
       (product?.customFields || []).map((f) => ({
@@ -135,11 +132,8 @@ function GiftProductFormModal({
         isRequired: f.isRequired ?? true,
       }))
     );
-    const { keysText, valuesText } = bulkTextFromPairs(product?.productDetails || []);
-    setDetailsKeysText(keysText);
-    setDetailsValuesText(valuesText);
+    setProductDetails(product?.productDetails || []);
     setNewFiles([]);
-    setExistingImageSlots(product?.images?.length ? product.images.map((i) => ({ ...i })) : []);
   }, [product]);
   const dynamicOccasions = Array.from(
     new Set(
@@ -157,46 +151,15 @@ function GiftProductFormModal({
   const toggleOccasion = (occ: string) => {
     setForm((p) => ({
       ...p,
-      giftOccasions: p.giftOccasions.some((o) => normalizeOccasion(o) === normalizeOccasion(occ))
-        ? p.giftOccasions.filter((o) => normalizeOccasion(o) !== normalizeOccasion(occ))
+      giftOccasions: p.giftOccasions.includes(occ)
+        ? p.giftOccasions.filter((o) => o !== occ)
         : [...p.giftOccasions, occ],
     }));
-  };
-
-  const handleRemoveExistingImage = async (index: number) => {
-    if (!product?._id) return;
-    if (existingImageSlots.length <= 1) {
-      toast.error("At least one product image is required.");
-      return;
-    }
-    const pub = existingImageSlots[index]?.publicId;
-    if (!pub) {
-      toast.error("Cannot remove this image.");
-      return;
-    }
-    try {
-      const res = await productApi.deleteImage(product._id, pub);
-      const next = (res.data?.product as GiftProduct | undefined)?.images;
-      if (next?.length) setExistingImageSlots(next);
-      else setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
-      toast.success("Image removed");
-    } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || "Failed to remove image");
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product && newFiles.length === 0) return toast.error("Upload at least one image");
-    if (product && existingImageSlots.length === 0 && newFiles.length === 0) {
-      return toast.error("Upload at least one image");
-    }
-    if (product && existingImageSlots.length + newFiles.length > 7) {
-      return toast.error("Maximum 7 images per product (remove some or upload fewer).");
-    }
-
-    const detailsParsed = pairsFromBulkInput(detailsKeysText, detailsValuesText);
-    if (!detailsParsed.ok) return toast.error(detailsParsed.error);
 
     setIsSaving(true);
     try {
@@ -208,20 +171,10 @@ function GiftProductFormModal({
       fd.append("category", "Gifting");
       fd.append("isActive", String(form.isActive));
       fd.append("isGiftable", "true");
+      if(form.stock) fd.append("stock", String(form.stock));
       fd.append("isCustomizable", String(form.isCustomizable));
       fd.append("minOrderQty", form.minOrderQty || "1");
-      fd.append(
-        "giftOccasions",
-        JSON.stringify(
-          Array.from(
-            new Set(
-              form.giftOccasions
-                .map((o) => o.trim())
-                .filter(Boolean)
-            )
-          )
-        )
-      );
+      fd.append("giftOccasions", JSON.stringify(form.giftOccasions));
       fd.append(
         "customFields",
         JSON.stringify(
@@ -237,33 +190,33 @@ function GiftProductFormModal({
       fd.append(
         "productDetails",
         JSON.stringify(
-          detailsParsed.pairs.map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
+          productDetails
+            .filter((d) => d.key.trim() && d.value.trim())
+            .map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
         )
       );
+      const existingSku = product?.variants?.[0]?.sku || `GIFT-${Date.now()}`;
       fd.append(
         "variants",
-        JSON.stringify([{ sku: `GIFT-${Date.now()}`, stock: 999, size: "", color: "" }])
+        JSON.stringify([{ sku: existingSku, size: "", color: "", stock: Number(form.stock) || 0 }])
       );
       newFiles.forEach((f) => fd.append("images", f));
 
-      let saved: GiftProduct | undefined;
       if (product) {
-        const res = await productApi.update(product._id, fd);
-        saved = (res.data?.product || undefined) as GiftProduct | undefined;
+        await productApi.update(product._id, fd);
         toast.success("Gift product updated");
       } else {
-        const res = await productApi.create(fd);
-        saved = (res.data?.product || undefined) as GiftProduct | undefined;
+        await productApi.create(fd);
         toast.success("Gift product created");
       }
-      onSave(saved);
+      onSave();
     } catch (err: unknown) {
       toast.error((err as { message?: string })?.message || "Failed to save");
     } finally {
       setIsSaving(false);
     }
   };
-
+//add stock field in gift product
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-6 px-4">
       <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl">
@@ -295,10 +248,7 @@ function GiftProductFormModal({
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Description *</label>
-                  <textarea className={`${inputCls} resize-none`} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={6} placeholder={"Paste rich text with line breaks/bullets, e.g.\n- Includes premium gift box\n- Personalized message card\n- Ready to ship"} required />
-                  <p className="mt-1 text-[11px] text-gray-400">
-                    Tip: Multi-line and bullet-point content is supported and displayed cleanly on storefront.
-                  </p>
+                  <textarea className={`${inputCls} resize-none`} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} placeholder="Describe the gift set, what's included, packaging..." required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -315,12 +265,6 @@ function GiftProductFormModal({
               <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Gifting Settings</h3>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">
-                    Min Order Qty <span className="text-gray-400 font-normal normal-case">(e.g. 5 for corporate)</span>
-                  </label>
-                  <input type="number" min="1" className={inputCls} value={form.minOrderQty} onChange={(e) => setForm((p) => ({ ...p, minOrderQty: e.target.value }))} />
-                </div>
-                <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Gift Occasions</label>
                   {dynamicOccasions.length === 0 ? (
                     <p className="text-xs text-gray-400">No gift occasions found. Mark gift categories and set gift type in Categories.</p>
@@ -329,15 +273,25 @@ function GiftProductFormModal({
                       {dynamicOccasions.map((occ) => (
                         <button key={occ} type="button" onClick={() => toggleOccasion(occ)}
                           className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                            form.giftOccasions.some((o) => normalizeOccasion(o) === normalizeOccasion(occ))
-                              ? "bg-gold-500 text-white border-gold-500"
-                              : "bg-white text-gray-600 border-gray-200 hover:border-gold-400"
+                            form.giftOccasions.includes(occ) ? "bg-gold-500 text-white border-gold-500" : "bg-white text-gray-600 border-gray-200 hover:border-gold-400"
                           )}>
                           {occ}
                         </button>
                       ))}
                     </div>
                   )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">
+                      Min Order Qty <span className="text-gray-400 font-normal normal-case">(e.g. 5)</span>
+                    </label>
+                    <input type="number" min="1" className={inputCls} value={form.minOrderQty} onChange={(e) => setForm((p) => ({ ...p, minOrderQty: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Stock Quantity</label>
+                    <input type="number" min="0" className={inputCls} value={form.stock || ""} onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))} placeholder="0" />
+                  </div>
                 </div>
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <button type="button" onClick={() => setForm((p) => ({ ...p, isActive: !p.isActive }))}
@@ -367,6 +321,7 @@ function GiftProductFormModal({
                     <Plus className="h-3 w-3" /> Add Field
                   </button>
                 </div>
+
                 <p className="text-xs text-gray-400">These appear in the user's gift customization form — e.g. "Recipient Name", "Gift Message".</p>
                 {customFields.length === 0 && <p className="text-xs text-gray-400 italic">No fields yet.</p>}
                 <div className="space-y-3">
@@ -414,39 +369,34 @@ function GiftProductFormModal({
               </div>
 
               <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                  Product detail table (keys & values)
-                </h3>
-                <p className="text-xs text-gray-400">
-                  Same as main product form — specs table on the gift product page.
-                </p>
-                <ProductDetailsBulkFields
-                  keysText={detailsKeysText}
-                  valuesText={detailsValuesText}
-                  onKeysChange={setDetailsKeysText}
-                  onValuesChange={setDetailsValuesText}
-                  textareaCls={`${inputCls} resize-y min-h-[140px] font-mono text-[13px] leading-relaxed`}
-                />
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Detail Pairs</h3>
+                  <button type="button" onClick={() => setProductDetails((p) => [...p, { key: "", value: "" }])}
+                    className="flex items-center gap-1 text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-full transition-colors">
+                    <Plus className="h-3 w-3" /> Add Detail
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {productDetails.map((d, i) => (
+                    <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 bg-white rounded-xl p-3 border border-gray-100">
+                      <input className={inputCls} value={d.key} onChange={(e) => setProductDetails((p) => p.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} placeholder="Key" />
+                      <input className={inputCls} value={d.value} onChange={(e) => setProductDetails((p) => p.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="Value" />
+                      <button type="button" onClick={() => setProductDetails((p) => p.filter((_, j) => j !== i))} className="h-10 w-10 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 grid place-items-center">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div>
               <div className="bg-gray-50 rounded-2xl p-5 sticky top-2">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Product Images</h3>
-                <ImageUploader
-                  key={product?._id ?? "new-gift-product"}
-                  maxFiles={7}
-                  aspectRatio="1:1"
-                  maxSizeMB={12}
-                  existingImages={existingImageSlots.map((i) => i.url)}
-                  onRemoveExisting={product ? handleRemoveExistingImage : undefined}
+                <ImageUploader maxFiles={5} aspectRatio="1:1" maxSizeMB={5}
+                  existingImages={product?.images?.map((i) => i.url) || []}
                   onChange={setNewFiles}
-                  hint={
-                    product
-                      ? "Up to 7 images total. Hover a photo and use ✕ to remove, or add new ones."
-                      : "First image becomes the cover (up to 7 images)."
-                  }
-                />
+                  hint={product ? "New uploads will be added." : "First image becomes the cover."} />
               </div>
             </div>
           </div>
@@ -755,7 +705,7 @@ function RequestExpandPanel({ req, updateMutation }: { req: GiftingRequest; upda
             {/* View linked order — appears once customer has approved */}
             {req.status === 'approved_by_user' && req.linkedOrderId && (
               <a
-                href={`/admin/orders/${encodeURIComponent(req.linkedOrderId)}`}
+                href={`/admin/orders/${req.linkedOrderId}`}
                 className="ml-auto inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
               >
                 <ShoppingBag className="h-3.5 w-3.5" /> View Linked Order →
@@ -777,6 +727,7 @@ export default function AdminGiftingPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
 
   // Deep-link support: ?tab=requests&req=<requestId> auto-opens the specific request
   useEffect(() => {
@@ -1033,35 +984,7 @@ export default function AdminGiftingPage() {
           key={editProduct?._id || "new-gift-product"}
           product={editProduct}
           onClose={() => { setIsModalOpen(false); setEditProduct(null); }}
-          onSave={(saved) => {
-            setIsModalOpen(false);
-            setEditProduct(null);
-            if (saved?._id) {
-              queryClient.setQueryData(
-                ["gifting-products-admin"],
-                (prev: { data?: { products?: GiftProduct[] }; status?: string; pagination?: unknown } | undefined) => {
-                  const list = prev?.data?.products || [];
-                  const idx = list.findIndex((p) => p._id === saved._id);
-                  const nextList =
-                    idx >= 0
-                      ? list.map((p, i) => (i === idx ? { ...p, ...saved } : p))
-                      : [saved, ...list];
-                  return {
-                    ...(prev || { status: "success" }),
-                    data: { ...(prev?.data || {}), products: nextList },
-                  };
-                },
-              );
-              // Do not refetch immediately: the list endpoint can lag behind create/update and
-              // overwrite this cache with stale data, so the new product “blinks” away.
-              void queryClient.invalidateQueries({
-                queryKey: ["gifting-products-admin"],
-                refetchType: "none",
-              });
-            } else {
-              void refetchProducts();
-            }
-          }}
+          onSave={() => { setIsModalOpen(false); setEditProduct(null); refetchProducts(); }}
         />
       )}
     </div>

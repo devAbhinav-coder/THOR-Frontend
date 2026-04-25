@@ -6,10 +6,19 @@ function readPublicApiUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL;
   if (raw) {
     const url = z.string().url().parse(raw);
-    /** TLS encrypts passwords, tokens, and JSON in transit — required outside localhost. */
+    /**
+     * TLS is required in production for any remote host.
+     * localhost / 127.0.0.1 are exempt — traffic never leaves the machine,
+     * so http:// is safe and useful for local `npm start` testing.
+     */
+    const isLocalhost =
+      url.toLowerCase().startsWith("http://localhost") ||
+      url.toLowerCase().startsWith("http://127.0.0.1");
+
     if (
       process.env.NODE_ENV === "production" &&
-      !url.toLowerCase().startsWith("https://")
+      !url.toLowerCase().startsWith("https://") &&
+      !isLocalhost
     ) {
       throw new Error(
         "NEXT_PUBLIC_API_URL must use https:// in production so login, signup, and API data are encrypted in transit (TLS).",

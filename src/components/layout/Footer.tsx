@@ -66,6 +66,13 @@ export default function Footer() {
         { label: "Returns", href: "/returns" },
         { label: "Cart", href: "/cart" },
       ];
+
+  const bottomBarSection  =[
+{ label: "Privacy Policy", href: "/privacy-policy" },
+{ label: "Return Policy", href: "/return-policy" },
+{ label: "Terms of Service", href: "/terms-of-service" },
+{ label: "Shipping Policy", href: "/shipping-policy" },
+  ]
   const categoryLimit = footer?.categoryLimit || 7;
   const contactAddress = footer?.contactAddress || "Noida Sector 76, India";
   const contactPhone = footer?.contactPhone || "8340311033";
@@ -139,8 +146,8 @@ export default function Footer() {
               ))}
             </ul>
           </div>
-
-          {/* Categories — dynamically show a few */}
+          {/* 
+          Categories — dynamically show a few */}
           <div>
             <h3 className='text-white font-semibold mb-4 tracking-wide'>
               Categories
@@ -214,36 +221,15 @@ export default function Footer() {
             © {new Date().getFullYear()} The House of Rani. All rights reserved.
           </p>
           <div className='flex flex-wrap justify-center gap-x-4 gap-y-2'>
-            <Link
-              href='/faq'
-              className='text-white/85 hover:text-brand-300 transition-colors'
-            >
-              FAQ
-            </Link>
-            <Link
-              href='/privacy'
-              className='text-white/85 hover:text-brand-300 transition-colors'
-            >
-              Privacy
-            </Link>
-            <Link
-              href='/terms'
-              className='text-white/85 hover:text-brand-300 transition-colors'
-            >
-              Terms
-            </Link>
-            <Link
-              href='/returns'
-              className='text-white/85 hover:text-brand-300 transition-colors'
-            >
-              Returns
-            </Link>
-            <Link
-              href='/shipping'
-              className='text-white/85 hover:text-brand-300 transition-colors'
-            >
-              Shipping
-            </Link>
+            {bottomBarSection.map(({ label, href }) => (
+              <Link
+                key={label}
+                href={normalizeHref(href)}
+                className='text-white/85 hover:text-brand-300 transition-colors'
+              >
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

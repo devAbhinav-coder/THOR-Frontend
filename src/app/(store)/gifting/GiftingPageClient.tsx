@@ -39,6 +39,8 @@ type PriceFilterKey =
   | "above_7000";
 const SEARCH_MAX_LEN = 80;
 
+// Seeded shuffle removed as we now use true backend randomness to avoid jumping.
+
 function parseGiftingQuery(search: string) {
   const q = new URLSearchParams(search);
   return {
@@ -61,25 +63,24 @@ function giftingQueriesMatch(a: string, b: string) {
 type GiftingProductsResponse = {
   data?: {
     products?: Product[];
-    page?: number;
-    limit?: number;
-    total?: number;
+  };
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    total: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
   };
 };
 
 export default function GiftingPageClient({
   initialStorefront,
   initialGiftingCategories,
-  initialGiftingProductsPage,
 }: {
   initialStorefront: StorefrontSettingsApiEnvelope | null;
   /** Server JSON for `giftingApi.getCategories()` — removes category-strip skeleton flash. */
   initialGiftingCategories?: Awaited<
     ReturnType<typeof giftingApi.getCategories>
-  > | null;
-  /** Server JSON for first page of `giftingApi.getProducts` — hydrates product grid. */
-  initialGiftingProductsPage?: Awaited<
-    ReturnType<typeof giftingApi.getProducts>
   > | null;
 }) {
   const router = useRouter();
@@ -88,9 +89,6 @@ export default function GiftingPageClient({
 
   const [activeOccasion, setActiveOccasion] = useState(
     () => searchParams.get("occasion")?.trim() || "all",
-  );
-  const [activeCategory, setActiveCategory] = useState(
-    () => searchParams.get("productCategory")?.trim() || "all",
   );
   const [search, setSearch] = useState(() =>
     (searchParams.get("search")?.trim() || "").slice(0, SEARCH_MAX_LEN),
@@ -132,37 +130,32 @@ export default function GiftingPageClient({
       queryKey: [
         "gifting-products",
         activeOccasion,
-        activeCategory,
         debouncedSearch,
+        sortBy, // changing sort changes backend fetch mode
       ],
-      queryFn: ({ pageParam }) =>
-        giftingApi.getProducts({
-          page: Number(pageParam || 1),
-          limit: 20,
+      queryFn: ({ pageParam }) => {
+        const { page, excludeIds } = (pageParam || { page: 1, excludeIds: "" }) as { page: number; excludeIds: string };
+        return giftingApi.getProducts({
+          limit: 12,
           ...(activeOccasion !== "all" && { giftOccasion: activeOccasion }),
-          ...(activeCategory !== "all" && { category: activeCategory }),
           ...(debouncedSearch && { search: debouncedSearch }),
-        }),
-      getNextPageParam: (lastPage) => {
-        const page = Number(lastPage?.data?.page || 1);
-        const limit = Number(lastPage?.data?.limit || 20);
-        const total = Number(lastPage?.data?.total || 0);
-        const loaded = page * limit;
-        return loaded < total ? page + 1 : undefined;
+          ...(sortBy === "relevance" 
+              ? { isRandom: "true", ...(excludeIds ? { excludeIds } : {}) }
+              : { page }
+          ),
+        });
       },
-      initialPageParam: 1,
+      getNextPageParam: (lastPage, allPages) => {
+        if (lastPage.pagination?.hasNextPage === false) return undefined;
+        if (!lastPage.pagination?.hasNextPage && lastPage.pagination?.totalPages === 1) return undefined;
+        
+        const page = (lastPage.pagination?.currentPage || 1) + 1;
+        const seenIds = allPages.flatMap(pg => pg.data?.products || []).map(p => p._id).join(",");
+        return { page, excludeIds: seenIds };
+      },
+      initialPageParam: { page: 1, excludeIds: "" },
       staleTime: 45_000,
       placeholderData: (previousData) => previousData,
-      initialData:
-        initialGiftingProductsPage &&
-        activeOccasion === "all" &&
-        activeCategory === "all" &&
-        !debouncedSearch
-          ? {
-              pages: [initialGiftingProductsPage],
-              pageParams: [1],
-            }
-          : undefined,
     });
 
   const giftCategories: Category[] = categoriesBody?.data?.categories || [];
@@ -176,23 +169,20 @@ export default function GiftingPageClient({
   const serializeGiftingQuery = useCallback(() => {
     const q = new URLSearchParams();
     if (activeOccasion !== "all") q.set("occasion", activeOccasion);
-    if (activeCategory !== "all") q.set("productCategory", activeCategory);
     if (debouncedSearch) q.set("search", debouncedSearch);
     return q.toString();
-  }, [activeOccasion, activeCategory, debouncedSearch]);
+  }, [activeOccasion, debouncedSearch]);
 
   const giftingUrlKey = searchParams.toString();
 
   useLayoutEffect(() => {
     const occ = searchParams.get("occasion")?.trim() || "all";
-    const pc = searchParams.get("productCategory")?.trim() || "all";
     const s = (searchParams.get("search")?.trim() || "").slice(
       0,
       SEARCH_MAX_LEN,
     );
     skipNextUrlPush.current = true;
     setActiveOccasion(occ);
-    setActiveCategory(pc);
     setSearch(s);
     // giftingUrlKey is searchParams.toString(); only re-sync when the URL query changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -236,6 +226,8 @@ export default function GiftingPageClient({
       if (priceFilter === "above_7000") return p.price > 7000;
       return true;
     });
+    // Relevance is now truly random from the backend. 
+    // We only client-sort for other filters.
     if (sortBy === "price_low") list.sort((a, b) => a.price - b.price);
     else if (sortBy === "price_high") list.sort((a, b) => b.price - a.price);
     else if (sortBy === "newest")
@@ -326,15 +318,15 @@ export default function GiftingPageClient({
                 alt='Gifting collection featured visuals at The House of Rani'
                 fill
                 sizes='100vw'
-                className='object-cover'
+                className='object-cover animate-in zoom-in-105 duration-[4000ms] ease-out'
                 priority
                 fetchPriority='high'
                 quality={58}
               />
-              <div className='absolute inset-0 bg-black/35' />
+              <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/10' />
               <div className='absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center'>
-                <div className='max-w-xl text-white'>
-                  <h1 className='text-xl sm:text-3xl lg:text-4xl font-serif font-bold leading-tight'>
+                <div className='max-w-xl text-white animate-in slide-in-from-bottom-8 fade-in duration-1000 ease-out'>
+                  <h1 className='text-3xl sm:text-4xl lg:text-5xl font-serif font-bold leading-tight drop-shadow-xl'>
                     {activeHero?.title || "Smart gifting made easy"}
                   </h1>
                   <p className='mt-2 text-xs sm:text-sm text-white/90'>
@@ -366,20 +358,19 @@ export default function GiftingPageClient({
         </div>
       </section>
       {/* Categories heading */}
-      <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2 pb-1'>
-        <p className='text-[11px] font-semibold uppercase tracking-wider text-brand-600'>
-          Gift categories
-        </p>
-        {/* <p className='text-xs sm:text-sm text-gray-500 mt-1'>
-          Pick a category to quickly find the right gifts.
-        </p> */}
-        <h2 className='text-xl sm:text-2xl font-serif font-bold text-gray-900'>
-          Crafted with love for every occasion.
-        </h2>
+      <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 pb-2'>
+        <div className='flex flex-col items-start'>
+          <p className='text-xs font-semibold uppercase tracking-widest text-brand-600 animate-in fade-in slide-in-from-bottom-2 duration-700'>
+            Gift Categories
+          </p>
+          <h2 className='text-2xl sm:text-3xl font-serif font-bold text-gray-900 mt-1.5 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100'>
+            Crafted with love for every occasion.
+          </h2>
+        </div>
       </section>
       {/* Admin categories image strip */}
       <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
-        <div className='flex items-start gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <div className='flex items-start gap-2.5 overflow-x-auto px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
           {categoriesLoading ?
             Array.from({ length: 8 }).map((_, i) => (
               <div
@@ -396,14 +387,19 @@ export default function GiftingPageClient({
                 type='button'
                 onClick={() => setActiveOccasion("all")}
                 className={cn(
-                  "flex flex-shrink-0 flex-col items-center w-[66px] sm:w-[92px]",
+                  "group flex flex-shrink-0 flex-col items-center w-[72px] sm:w-[96px] transition-all duration-300",
                   activeOccasion === "all" && "opacity-100",
                 )}
               >
-                <div className='h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-full border border-gray-200 bg-gray-100 grid place-items-center text-gray-500'>
-                  <Gift className='h-5 w-5' />
+                <div className={cn(
+                  "relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-full border bg-white grid place-items-center text-gray-500 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg",
+                  activeOccasion === "all" ?
+                    "border-brand-500 ring-4 ring-brand-100 shadow-xl scale-105 text-brand-600"
+                  : "border-gray-200 shadow-sm"
+                )}>
+                  <Gift className='h-6 w-6 sm:h-7 sm:w-7' />
                 </div>
-                <p className='mt-1.5 block min-h-[2.5rem] w-full px-0.5 text-center text-[11px] font-medium leading-tight text-gray-700 line-clamp-2'>
+                <p className='mt-2 block min-h-[2.5rem] w-full px-0.5 text-center text-[12px] font-medium leading-tight text-gray-700 line-clamp-2 group-hover:text-brand-600 transition-colors'>
                   All
                 </p>
               </button>
@@ -412,14 +408,14 @@ export default function GiftingPageClient({
                   key={cat._id}
                   type='button'
                   onClick={() => setActiveOccasion(cat.name)}
-                  className='flex flex-shrink-0 flex-col items-center w-[66px] sm:w-[92px]'
+                  className='group flex flex-shrink-0 flex-col items-center w-[72px] sm:w-[96px] transition-all duration-300'
                 >
                   <div
                     className={cn(
-                      "relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-full border bg-gray-100",
+                      "relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-full border bg-white transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg",
                       activeOccasion === cat.name ?
-                        "border-brand-500 ring-2 ring-brand-100"
-                      : "border-gray-200",
+                        "border-brand-500 ring-4 ring-brand-100 shadow-xl scale-105"
+                      : "border-gray-200 shadow-sm",
                     )}
                   >
                     {cat.image ?
@@ -435,7 +431,7 @@ export default function GiftingPageClient({
                       </div>
                     }
                   </div>
-                  <p className='mt-1.5 block min-h-[2.5rem] w-full px-0.5 text-center text-[11px] font-medium leading-tight text-gray-700 line-clamp-2'>
+                  <p className='mt-2 block min-h-[2.5rem] w-full px-0.5 text-center text-[12px] font-medium leading-tight text-gray-700 line-clamp-2 group-hover:text-brand-600 transition-colors'>
                     {cat.name}
                   </p>
                 </button>
@@ -486,7 +482,7 @@ export default function GiftingPageClient({
               .map((banner, idx) => (
                 <div
                   key={idx}
-                  className='relative h-[110px] sm:h-[140px] rounded-2xl overflow-hidden border border-gray-100'
+                  className='group relative h-[140px] sm:h-[180px] rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer'
                 >
                   <Image
                     src={banner.image || "/logo.png"}
@@ -497,11 +493,11 @@ export default function GiftingPageClient({
                     }
                     fill
                     sizes='(max-width: 640px) 100vw, 50vw'
-                    className='object-cover'
+                    className='object-cover transition-transform duration-[800ms] ease-out group-hover:scale-110'
                     loading={idx === 0 ? "eager" : "lazy"}
                     quality={72}
                   />
-                  <div className='absolute inset-0 bg-black/30' />
+                  <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-500' />
                   <div className='absolute inset-0 px-4 sm:px-6 flex items-center justify-between gap-3'>
                     <div className='text-white'>
                       <p className='text-[11px] uppercase tracking-wider text-white/85'>
@@ -537,9 +533,9 @@ export default function GiftingPageClient({
             <SlidersHorizontal className='h-4 w-4' />
           </button>
         </div>
-        <div className='mt-3'>
-          <div className='rounded-2xl border border-gray-200/80 bg-white p-2.5 sm:p-3 shadow-sm'>
-            <div className='flex flex-col sm:flex-row gap-2 sm:items-center sticky top-14 bg-white z-10'>
+        <div className='mt-4 sticky top-16 z-20'>
+          <div className='rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-xl p-3 sm:p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] transition-all duration-300'>
+            <div className='flex flex-col sm:flex-row gap-3 sm:items-center'>
               <div className='relative w-full sm:max-w-xl'>
                 <StoreSearchAutocomplete
                   scope='gifting'
@@ -586,10 +582,10 @@ export default function GiftingPageClient({
                 <option value='above_7000'>Above 7000</option>
               </select>
               <select
-                value={activeCategory}
-                onChange={(e) => setActiveCategory(e.target.value)}
+                value={activeOccasion}
+                onChange={(e) => setActiveOccasion(e.target.value)}
                 className='hidden sm:block h-10 rounded-xl border border-gray-200 bg-white px-3 text-xs sm:text-sm font-medium text-gray-700 min-w-[160px]'
-                aria-label='Filter by product category'
+                aria-label='Filter by product occasion'
               >
                 <option value='all'>All Occasions</option>
                 {giftCategories.map((cat) => (
@@ -670,8 +666,8 @@ export default function GiftingPageClient({
                 </label>
                 <select
                   aria-label='Gifting Occasions'
-                  value={activeCategory}
-                  onChange={(e) => setActiveCategory(e.target.value)}
+                  value={activeOccasion}
+                  onChange={(e) => setActiveOccasion(e.target.value)}
                   className='mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
                 >
                   <option value='all'>All Occasions</option>
@@ -710,7 +706,7 @@ export default function GiftingPageClient({
                   setSortBy("relevance");
                   setPriceFilter("all");
                   setMinRating(0);
-                  setActiveCategory("all");
+                  setActiveOccasion("all");
                 }}
                 className='h-10 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700'
               >
@@ -738,7 +734,7 @@ export default function GiftingPageClient({
         </h3>
         {isLoading ?
           <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5'>
-            {Array.from({ length: 12 }).map((_, i) => (
+            {Array.from({ length: 8 }).map((_, i) => (
               <GiftProductCardSkeleton key={i} />
             ))}
           </div>

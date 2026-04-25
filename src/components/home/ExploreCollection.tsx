@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -11,24 +11,18 @@ import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
 
 const EXPLORE_PAGE_LIMIT = 8;
 
-function exploreNextPageParam(
-  lastPage: Awaited<ReturnType<typeof productApi.getAll>>,
-) {
-  const p = lastPage.pagination;
-  const cur = p?.currentPage ?? 1;
-  const tp = Math.max(1, p?.totalPages ?? 1);
-  const total = p?.total ?? p?.totalProducts ?? 0;
-  const batch = (lastPage.data?.products || []) as Product[];
-  if (typeof p?.hasNextPage === "boolean") {
-    return p.hasNextPage ? cur + 1 : undefined;
-  }
-  if (cur < tp) return cur + 1;
-  if (batch.length === EXPLORE_PAGE_LIMIT && total > cur * EXPLORE_PAGE_LIMIT) {
-    return cur + 1;
-  }
-  return undefined;
-}
-
+/**
+ * ExploreCollection — truly random, no duplicates, infinite scroll.
+ *
+ * Strategy:
+ *  - Every page fetch calls $sample on the backend with `excludeIds` = all
+ *    product IDs already loaded.
+ *  - The `pageParam` carries the accumulated comma-separated exclude list so
+ *    React Query stores the state cleanly in its cache (no ref mutation inside
+ *    queryFn which is an anti-pattern).
+ *  - `hasNextPage` is driven by the backend's `remaining` count (total minus
+ *    excludeIds), so we stop fetching when the catalog is exhausted.
+ */
 export default function ExploreCollection() {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -43,21 +37,33 @@ export default function ExploreCollection() {
     queryKey: ["home-explore-collection"],
     queryFn: ({ pageParam }) =>
       productApi.getAll({
-        page: pageParam,
         limit: EXPLORE_PAGE_LIMIT,
-        sort: "-createdAt",
+        isRandom: "true",
+        // pageParam holds all IDs seen so far (empty string on first call)
+        ...(pageParam ? { excludeIds: pageParam as string } : {}),
       }),
-    initialPageParam: 1,
-    getNextPageParam: exploreNextPageParam,
-    staleTime: 60_000,
+    // First call: no excludeIds
+    initialPageParam: "",
+    getNextPageParam: (lastPage, allPages) => {
+      // Stop if backend says no next page
+      if (lastPage.pagination?.hasNextPage === false) return undefined;
+      if (!lastPage.pagination?.hasNextPage && lastPage.pagination?.totalPages === 1) {
+        return undefined;
+      }
+      // Build the full exclude list from all loaded products
+      const seenIds = allPages
+        .flatMap((pg) => (pg.data?.products || []) as Product[])
+        .map((p) => p._id)
+        .join(",");
+      return seenIds || undefined;
+    },
+    // 5-min cache keeps results stable within the same tab session
+    staleTime: 5 * 60 * 1000,
   });
 
-  const products = useMemo(
-    () =>
-      (data?.pages ?? []).flatMap(
-        (pg) => (pg.data?.products || []) as Product[],
-      ),
-    [data?.pages],
+  // Flatten all pages — no duplicates possible since backend uses excludeIds
+  const products = (data?.pages ?? []).flatMap(
+    (pg) => (pg.data?.products || []) as Product[],
   );
 
   useEffect(() => {
@@ -74,13 +80,7 @@ export default function ExploreCollection() {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isPending,
-    products.length,
-  ]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isPending, products.length]);
 
   if (!isLoading && products.length === 0) return null;
 

@@ -10,6 +10,7 @@ import SmoothScroll from "@/components/providers/SmoothScroll";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import CookieConsentBanner from "@/components/layout/CookieConsentBanner";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
+import MetaPixel from "@/components/analytics/MetaPixel";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -30,7 +31,13 @@ const SITE_URL = getSiteUrl();
 
 function preconnectHints(): { href: string; crossOrigin?: "" }[] {
   const hints: { href: string; crossOrigin?: "" }[] = [
+    // Google Fonts CDN — must preconnect for DM Sans + Playfair Display to load fast
+    { href: "https://fonts.gstatic.com", crossOrigin: "" },
+    { href: "https://fonts.googleapis.com" },
+    // Cloudinary CDN — all product images are served from here
     { href: "https://res.cloudinary.com", crossOrigin: "" },
+    // Google Analytics — preconnect so gtag.js loads faster
+    { href: "https://www.googletagmanager.com" },
   ];
   const api = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (api) {
@@ -49,47 +56,47 @@ export const metadata: Metadata = {
     template: "%s | The House of Rani",
   },
   description:
-    "At The House of Rani, finding your dream saree is effortless. Discover premium quality, exquisite designs, and great prices delivered to your doorstep, from bridal wear to thoughtful gifting.",
-  keywords: [
-    "sarees",
-    "bridal sarees",
-    "gifting sarees",
-    "handmade Gifts",
-    "handmade Love",
-    "corporate Gifts",
-    "corporate Gifting",
-    "corporate Gifting Ideas",
-    "corporate Gifting Solutions",
-    "Gift Hampers",
-    "Festive Gifts",
-    "Festive Gifting",
-    "Festive Gifting Ideas",
-    "Festive Gifting Solutions",
-    "Indian ethnic wear & gifting",
-    "lehengas",
-    "salwar suits",
-    "online saree shopping India",
-    "The House of Rani",
-  ],
+    "Discover premium sarees and handcrafted gifting at The House of Rani—where heritage craftsmanship meets modern elegance. Shop timeless styles delivered across India.",
+keywords: [
+  "sarees online India",
+  "buy sarees online",
+  "premium sarees",
+  "designer sarees India",
+  "festive sarees India",
+  "handcrafted gifts India",
+  "corporate gifting India",
+  "gift hampers India",
+  "The House of Rani"
+],
   authors: [{ name: "The House of Rani" }],
   creator: "The House of Rani",
   applicationName: "The House of Rani",
   category: "fashion",
-  openGraph: {
-    type: "website",
-    locale: "en_IN",
-    url: SITE_URL,
-    siteName: "The House of Rani",
-    title: "The House of Rani | Premium Indian Ethnic Wear & Gifting",
-    description:
-      "Premium sarees, bridal collections, and curated gifting styles for every special occasion.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "The House of Rani | Premium Indian Ethnic Wear & Gifting",
-    description:
-      "Shop premium sarees, bridal looks, and thoughtful gifting collections at The House of Rani.",
-  },
+openGraph: {
+  type: "website",
+  locale: "en_IN",
+  url: SITE_URL,
+  siteName: "The House of Rani",
+  title: "Premium Sarees & Handcrafted Gifts | The House of Rani",
+  description:
+    "Discover premium sarees and handcrafted gifting—where heritage meets modern luxury.",
+  images: [
+    {
+      url: `${SITE_URL}/ogimage.png`,
+      width: 1200,
+      height: 630,
+      alt: "Premium Sarees & Handcrafted Gifts – The House of Rani",
+
+    },
+  ],
+},
+ twitter: {
+  card: "summary_large_image",
+  title: "Premium Sarees & Handcrafted Gifts | The House of Rani",
+  description:
+    "Explore premium sarees and handcrafted gifting designed for elegance and timeless style.",
+  images: [`${SITE_URL}/ogimage.png`],
+},
   verification: {
     google: "c-mAKK6c-M5IbneZfLyOePUcU6LaG0a8H2QVX3vQz2M",
   },
@@ -121,10 +128,31 @@ export default async function RootLayout({
         url: appUrl,
         logo: {
           "@type": "ImageObject",
-          url: `${appUrl}/logo.png`,
+          url: `${appUrl}/logoNew.png`,
+          width: 512,
+          height: 512,
         },
-        description:
-          "Premium sarees, bridal collections, and thoughtful gifting for every special occasion.",
+        description:"Premium sarees and handcrafted gifting designed for elegance, tradition, and modern luxury.",
+        /**
+         * sameAs links the brand to its official social and directory profiles.
+         * Google uses these to build and verify the Knowledge Panel entry.
+         */
+        sameAs: [
+          "https://www.instagram.com/houseofrani",
+        "https://www.facebook.com/people/HouseofRani/61580570102572/",
+        ],
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "customer service",
+          availableLanguage: ["English", "Hindi"],
+          areaServed: "IN",
+          email:"support@thehouseofrani.com",
+          telephone:"+91-8340311033"
+        },
+        areaServed: {
+          "@type": "Country",
+          name: "India",
+        },
       },
       {
         "@type": "WebSite",
@@ -187,8 +215,63 @@ gtag('consent', 'default', {
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteGraphLd) }}
         />
+        {/* Google Tag Manager */}
+        <script
+          id="gtm-script"
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','GTM-WQ386HHK');
+            `,
+          }}
+        />
+        {/* Microsoft Clarity */}
+        {process.env.NEXT_PUBLIC_CLARITY_ID && (
+          <script
+            id="clarity-script"
+            nonce={nonce}
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", "${process.env.NEXT_PUBLIC_CLARITY_ID}");
+              `,
+            }}
+          />
+        )}
+        {/* PostHog for A/B Testing & Deep Analytics */}
+        {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
+          <script
+            id="posthog-script"
+            nonce={nonce}
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{
+              __html: `
+                !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+                posthog.init('${process.env.NEXT_PUBLIC_POSTHOG_KEY}', {api_host:'https://us.i.posthog.com', person_profiles: 'identified_only'});
+              `,
+            }}
+          />
+        )}
       </head>
       <body className='min-h-screen'>
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-WQ386HHK"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
         <AuthProvider>
           <Suspense fallback={null}>
             <NavigationProgress />
@@ -198,8 +281,12 @@ gtag('consent', 'default', {
           </QueryProvider>
           <AppToaster />
           <GoogleAnalytics />
+          <MetaPixel />
           <CookieConsentBanner />
         </AuthProvider>
+
+          <Analytics />
+  <SpeedInsights />
       </body>
     </html>
   );
