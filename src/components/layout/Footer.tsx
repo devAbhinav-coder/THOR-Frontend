@@ -136,6 +136,7 @@ export default function Footer() {
                       {label}
                     </a>
                   : <Link
+                      key={label}
                       href={normalizeHref(href)}
                       className='text-white/90 hover:text-brand-300 transition-colors'
                     >
