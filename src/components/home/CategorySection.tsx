@@ -8,6 +8,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperType } from "swiper";
 import { categoryApi } from "@/lib/api";
 import { isGiftCategory } from "@/lib/categoryFilters";
+import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { Category } from "@/types";
 
 import "swiper/css";
@@ -265,7 +266,7 @@ export default function CategorySection({
                   className='!w-[150px] sm:!w-[160px] lg:!w-[200px]'
                 >
                   <Link
-                    href={`/shop?category=${encodeURIComponent(cat.name)}`}
+                    href={buildShopCategoryHref(cat)}
                     className='group block w-full'
                   >
                     <div

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import ProductCard from "@/components/product/ProductCard";
+import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 import type { Product } from "@/types";
 
 export interface PdpRelatedProductRowsProps {
@@ -18,6 +19,7 @@ export function PdpRelatedProductRows({
   relatedProducts,
   moreProducts,
 }: PdpRelatedProductRowsProps) {
+  const categoryPath = `/shop/category/${encodeURIComponent(toShopCategorySlug(product.category))}`;
   return (
     <>
       {relatedProducts.length > 0 && (
@@ -37,7 +39,7 @@ export function PdpRelatedProductRows({
               <Link
                 href={
                   isGiftMarketingContext ? "/gifting" : (
-                    `/shop?category=${encodeURIComponent(product.category)}${product.fabric ? `&fabric=${encodeURIComponent(product.fabric)}` : ""}`
+                    `${categoryPath}${product.fabric ? `?fabric=${encodeURIComponent(product.fabric)}` : ""}`
                   )
                 }
                 className='text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors'

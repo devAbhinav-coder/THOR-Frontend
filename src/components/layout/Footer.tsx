@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Facebook, Instagram, Mail, Phone, MapPin } from "lucide-react";
 import { categoryApi, storefrontApi } from "@/lib/api";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
+import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { Category, StorefrontSettings } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -68,10 +69,10 @@ export default function Footer() {
       ];
 
   const bottomBarSection  =[
-{ label: "Privacy Policy", href: "/privacy" },
-{ label: "Return Policy", href: "/returns" },
-{ label: "Terms of Service", href: "/terms" },
-{ label: "Shipping Policy", href: "/shipping" },
+{ label: "Privacy Policy", href: "/privacy-policy" },
+{ label: "Return Policy", href: "/return-policy" },
+{ label: "Terms of Service", href: "/terms-of-service" },
+{ label: "Shipping Policy", href: "/shipping-policy" },
   ]
   const categoryLimit = footer?.categoryLimit || 7;
   const contactAddress = footer?.contactAddress || "Noida Sector 76, India";
@@ -102,7 +103,7 @@ export default function Footer() {
             </Link>
             <p className='text-sm leading-relaxed mb-5 text-white/85'>
               {footer?.description ||
-                "Your destination for exquisite Indian ethnic wear. Curated collections of sarees, lehengas, and more — crafted with love and tradition."}
+                "Your destination for exquisite Indian ethnic wear. Curated collections of sarees, lehengas, and more — crafted with love and tradition. "}
             </p>
             <div className='flex space-x-2'>
               {socialLinks.map(({ Icon, href, label }) => (
@@ -136,7 +137,6 @@ export default function Footer() {
                       {label}
                     </a>
                   : <Link
-                      key={label}
                       href={normalizeHref(href)}
                       className='text-white/90 hover:text-brand-300 transition-colors'
                     >
@@ -157,7 +157,7 @@ export default function Footer() {
               {categories.slice(0, categoryLimit).map((cat) => (
                 <li key={cat._id}>
                   <Link
-                    href={`/shop?category=${encodeURIComponent(cat.name)}`}
+                    href={buildShopCategoryHref(cat)}
                     className='text-white/90 hover:text-brand-300 transition-colors'
                   >
                     {cat.name}

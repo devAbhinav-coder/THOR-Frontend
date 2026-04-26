@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import ShopClient from "@/components/shop/ShopClient";
 import ShopLoading from "./loading";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import type { Product } from "@/types";
+import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 
 const SITE_URL = getSiteUrl();
 const baseTitle = "Shop | The House of Rani";
@@ -14,21 +16,8 @@ const baseDesc =
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function buildCanonicalPath(sp: Record<string, string | string[] | undefined>) {
-  const q = new URLSearchParams();
-  const set = (k: string) => {
-    const v = sp[k];
-    if (typeof v === "string" && v.trim()) q.set(k, v);
-  };
-  set("category");
-  set("fabric");
-  set("search");
-  set("sort");
-  set("minPrice");
-  set("maxPrice");
-  set("rating");
-  set("isFeatured");
-  const s = q.toString();
-  return s ? (`/shop?${s}` as const) : "/shop";
+  void sp;
+  return "/shop";
 }
 
 export async function generateMetadata({
@@ -49,6 +38,10 @@ export async function generateMetadata({
   const searchRaw = typeof sp.search === "string" ? dec(sp.search) : "";
   const search = searchRaw.slice(0, 48);
   const featured = sp.isFeatured === "true";
+  const hasAnyFilter = Object.values(sp).some((v) => {
+    if (typeof v === "string") return Boolean(v.trim());
+    return Array.isArray(v) ? v.length > 0 : false;
+  });
 
   let title = baseTitle;
   if (featured) title = `Featured Sarees & Ethnic Wear | The House of Rani`;
@@ -90,10 +83,10 @@ export async function generateMetadata({
       canonical: canonicalPath,
     },
     robots: {
-      index: true,
+      index: !hasAnyFilter,
       follow: true,
       googleBot: {
-        index: true,
+        index: !hasAnyFilter,
         follow: true,
         "max-image-preview": "large",
       },
@@ -146,6 +139,23 @@ export default async function ShopPage({
   searchParams: SearchParams;
 }) {
   const sp = await searchParams;
+  const categoryParam = typeof sp.category === "string" ? sp.category.trim() : "";
+  if (categoryParam) {
+    const categorySlug = toShopCategorySlug(categoryParam);
+    if (categorySlug) {
+      const q = new URLSearchParams();
+      for (const [key, value] of Object.entries(sp)) {
+        if (key === "category") continue;
+        if (typeof value === "string" && value.trim()) q.set(key, value);
+      }
+      const qs = q.toString();
+      permanentRedirect(
+        qs ?
+          `/shop/category/${encodeURIComponent(categorySlug)}?${qs}`
+        : `/shop/category/${encodeURIComponent(categorySlug)}`,
+      );
+    }
+  }
   const isFiltered = Object.values(sp).some((v) => v !== undefined);
 
   // Only inject rich JSON-LD on the unfiltered base /shop page —

@@ -29,6 +29,7 @@ import { categoryApi, storefrontApi } from "@/lib/api";
 import { Category, StorefrontSettings } from "@/types";
 import { cn } from "@/lib/utils";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
+import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
@@ -308,7 +309,7 @@ export default function Navbar() {
                   {navCategories.map((cat) => (
                     <Link
                       key={cat._id}
-                      href={`/shop?category=${encodeURIComponent(cat.name)}`}
+                      href={buildShopCategoryHref(cat)}
                       className='block px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-navy-800 rounded-lg transition-colors'
                     >
                       {cat.name}
@@ -586,7 +587,7 @@ export default function Navbar() {
                       <Link
                         key={cat._id}
                         onClick={() => setIsMenuOpen(false)}
-                        href={`/shop?category=${encodeURIComponent(cat.name)}`}
+                        href={buildShopCategoryHref(cat)}
                         className='block px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-navy-800/60 rounded-xl transition-colors'
                       >
                         {cat.name}

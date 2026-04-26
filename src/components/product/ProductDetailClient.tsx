@@ -38,6 +38,7 @@ import RichTextContent from "@/components/ui/RichTextContent";
 import { isLowInStockVariant } from "@/lib/inventoryConstants";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 import { trackViewContent, trackAddToCart, trackAddToWishlist } from "@/lib/metaPixel";
 import { trackGaViewItem, trackGaAddToCart, trackGaAddToWishlist } from "@/lib/googleAnalytics";
 import {
@@ -942,6 +943,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   /* Bottom padding for store mobile tab bar only (CTAs are inline, not fixed) */
   const mobileBottomReserve =
     "pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6";
+  const categoryPath = `/shop/category/${encodeURIComponent(toShopCategorySlug(product.category))}`;
 
   return (
     <div
@@ -963,7 +965,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           <ChevronRight className='h-3 w-3' />
 
           <Link
-            href={`/shop?category=${encodeURIComponent(product.category)}`}
+            href={categoryPath}
             className='hover:text-brand-600 transition-colors'
           >
             {product.category}

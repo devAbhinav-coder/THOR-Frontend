@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
+import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 
 type ProductLite = {
   slug?: string;
@@ -25,6 +26,23 @@ type GiftingProductLite = {
   updatedAt?: string;
   images?: { url?: string }[];
 };
+
+type CategoryLite = {
+  name?: string;
+  slug?: string;
+  isGiftCategory?: boolean;
+};
+
+function isShopCatalogCategoryLite(c: CategoryLite): boolean {
+  if (c.isGiftCategory) return false;
+  const name = String(c.name || "").toLowerCase();
+  const slug = String(c.slug || "").toLowerCase();
+  return !(
+    name.includes("gift") ||
+    name.includes("gifting") ||
+    slug.includes("gift")
+  );
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getSiteUrl();
@@ -91,7 +109,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!apiUrl) return baseRoutes;
 
   try {
-    const [productRes, blogRes, giftingRes] = await Promise.all([
+    const [productRes, blogRes, giftingRes, categoryRes] = await Promise.all([
       fetch(`${apiUrl}/products?limit=2000&page=1`, {
         next: { revalidate: 3600 },
       }),
@@ -103,16 +121,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       fetch(`${apiUrl}/gifting/products?limit=2000&page=1`, {
         next: { revalidate: 3600 },
       }),
+      fetch(`${apiUrl}/categories?active=true`, {
+        next: { revalidate: 3600 },
+      }),
     ]);
 
     const productJson = productRes.ok ? await productRes.json() : null;
     const blogJson = blogRes.ok ? await blogRes.json() : null;
     const giftingJson = giftingRes.ok ? await giftingRes.json() : null;
+    const categoryJson = categoryRes.ok ? await categoryRes.json() : null;
 
     const products: ProductLite[] = productJson?.data?.products || [];
     const blogs: BlogLite[] = blogJson?.data?.blogs || [];
     const giftingProducts: GiftingProductLite[] =
       giftingJson?.data?.products || [];
+    const categories: CategoryLite[] = categoryJson?.data?.categories || [];
 
     // Track slugs already emitted to avoid duplicates
     const emittedSlugs = new Set<string>();
@@ -171,7 +194,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ];
     });
 
-    return [...baseRoutes, ...productUrls, ...giftingProductUrls, ...blogUrls];
+    const emittedCategorySlugs = new Set<string>();
+    const categoryUrls: MetadataRoute.Sitemap = categories
+      .filter((c): c is CategoryLite => Boolean(c?.name))
+      .filter((c) => isShopCatalogCategoryLite(c))
+      .flatMap((c) => {
+        const slug = toShopCategorySlug(c.slug || c.name);
+        if (!slug || emittedCategorySlugs.has(slug)) return [];
+        emittedCategorySlugs.add(slug);
+        return [
+          {
+            url: `${appUrl}/shop/category/${encodeURIComponent(slug)}`,
+            lastModified: now,
+            changeFrequency: "daily" as const,
+            priority: 0.82,
+          },
+        ];
+      });
+
+    return [
+      ...baseRoutes,
+      ...categoryUrls,
+      ...productUrls,
+      ...giftingProductUrls,
+      ...blogUrls,
+    ];
   } catch {
     return baseRoutes;
   }

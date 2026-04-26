@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { trackSearch } from "@/lib/metaPixel";
 import { trackGaSearch } from "@/lib/googleAnalytics";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 
 const SORT_OPTIONS = [
   { label: "Recommended", value: "-createdAt" },
@@ -43,7 +44,11 @@ const defaultShopBanner = {
   isActive: true,
 };
 
-export default function ShopClient() {
+type ShopClientProps = {
+  categoryContext?: { name: string; slug: string } | null;
+};
+
+export default function ShopClient({ categoryContext = null }: ShopClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -55,8 +60,12 @@ export default function ShopClient() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
+  const routeBasePath = categoryContext ?
+      `/shop/category/${encodeURIComponent(categoryContext.slug)}`
+    : "/shop";
+  const categoryFromUrl = categoryContext?.name || searchParams.get("category") || "";
   const [filters, setFilters] = useState({
-    category: searchParams.get("category") || "",
+    category: categoryFromUrl,
     fabric: searchParams.get("fabric") || "",
     minPrice: searchParams.get("minPrice") || "",
     maxPrice: searchParams.get("maxPrice") || "",
@@ -70,7 +79,7 @@ export default function ShopClient() {
 
   useEffect(() => {
     setFilters({
-      category: searchParams.get("category") || "",
+      category: categoryContext?.name || searchParams.get("category") || "",
       fabric: searchParams.get("fabric") || "",
       minPrice: searchParams.get("minPrice") || "",
       maxPrice: searchParams.get("maxPrice") || "",
@@ -79,7 +88,7 @@ export default function ShopClient() {
       search: (searchParams.get("search") || "").slice(0, SEARCH_MAX_LEN),
       isFeatured: searchParams.get("isFeatured") || "",
     });
-  }, [searchParamsKey, searchParams]);
+  }, [searchParamsKey, searchParams, categoryContext?.name]);
 
   /* Meta Pixel & GA4: Track Search */
   const lastTrackedSearch = useRef("");
@@ -213,21 +222,42 @@ export default function ShopClient() {
     products.length,
   ]);
 
+  const buildQueryString = (next: typeof filters, omitCategory: boolean) => {
+    const params = new URLSearchParams();
+    Object.entries(next).forEach(([k, v]) => {
+      if (omitCategory && k === "category") return;
+      if (v && v !== "-createdAt" && v !== "1") params.set(k, String(v));
+    });
+    return params.toString();
+  };
+
   const updateFilter = (key: string, value: string | number) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters as typeof filters);
 
-    const params = new URLSearchParams();
-    Object.entries(newFilters).forEach(([k, v]) => {
-      if (v && v !== "-createdAt" && v !== "1") params.set(k, String(v));
-    });
-    const qs = params.toString();
-    router.push(qs ? `/shop?${qs}` : "/shop", { scroll: false });
+    if (key === "category") {
+      const nextCategory = String(value || "").trim();
+      const nextSlug = toShopCategorySlug(nextCategory);
+      const paramsForNext = { ...newFilters, category: "" };
+      const qs = buildQueryString(paramsForNext, true);
+      if (!nextCategory || !nextSlug) {
+        router.push(qs ? `/shop?${qs}` : "/shop", { scroll: false });
+        return;
+      }
+      router.push(
+        qs ? `/shop/category/${encodeURIComponent(nextSlug)}?${qs}` : `/shop/category/${encodeURIComponent(nextSlug)}`,
+        { scroll: false },
+      );
+      return;
+    }
+
+    const qs = buildQueryString(newFilters, Boolean(categoryContext));
+    router.push(qs ? `${routeBasePath}?${qs}` : routeBasePath, { scroll: false });
   };
 
   const clearFilters = () => {
     setFilters({
-      category: "",
+      category: categoryContext?.name || "",
       fabric: "",
       minPrice: "",
       maxPrice: "",
@@ -236,7 +266,7 @@ export default function ShopClient() {
       search: "",
       isFeatured: "",
     });
-    router.push("/shop");
+    router.push(routeBasePath);
   };
 
   const activeFilterCount = [
