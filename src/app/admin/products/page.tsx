@@ -552,6 +552,7 @@ export default function AdminProductsPage() {
           </div>
         )}
       </div>
+      )}
 
       {!loadError && pagination.totalPages > 1 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
@@ -583,7 +584,6 @@ export default function AdminProductsPage() {
             </Button>
           </div>
         </div>
-      )}
       )}
 
       {deleteConfirm && (
