@@ -170,6 +170,48 @@ export default async function ShopCategoryPage({
                         "https://schema.org/InStock"
                       : "https://schema.org/OutOfStock",
                     url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
+                    itemCondition: "https://schema.org/NewCondition",
+                    seller: {
+                      "@type": "Organization",
+                      name: "The House of Rani",
+                      url: SITE_URL,
+                    },
+                    hasMerchantReturnPolicy: {
+                      "@type": "MerchantReturnPolicy",
+                      applicableCountry: "IN",
+                      returnPolicyCategory:
+                        "https://schema.org/MerchantReturnFiniteReturnWindow",
+                      merchantReturnDays: 7,
+                      returnMethod: "https://schema.org/ReturnByMail",
+                      returnFees: "https://schema.org/FreeReturn",
+                    },
+                    shippingDetails: {
+                      "@type": "OfferShippingDetails",
+                      shippingRate: {
+                        "@type": "MonetaryAmount",
+                        value: "0",
+                        currency: "INR",
+                      },
+                      shippingDestination: {
+                        "@type": "DefinedRegion",
+                        addressCountry: "IN",
+                      },
+                      deliveryTime: {
+                        "@type": "ShippingDeliveryTime",
+                        handlingTime: {
+                          "@type": "QuantitativeValue",
+                          minValue: 1,
+                          maxValue: 2,
+                          unitCode: "DAY",
+                        },
+                        transitTime: {
+                          "@type": "QuantitativeValue",
+                          minValue: 3,
+                          maxValue: 7,
+                          unitCode: "DAY",
+                        },
+                      },
+                    },
                   },
                 },
               })),

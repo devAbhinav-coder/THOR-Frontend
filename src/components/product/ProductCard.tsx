@@ -246,6 +246,65 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           itemProp='url'
           href={`/shop/${encodeURIComponent(product.slug)}`}
         />
+        <div
+          itemProp='hasMerchantReturnPolicy'
+          itemScope
+          itemType='https://schema.org/MerchantReturnPolicy'
+        >
+          <meta itemProp='applicableCountry' content='IN' />
+          <link
+            itemProp='returnPolicyCategory'
+            href='https://schema.org/MerchantReturnFiniteReturnWindow'
+          />
+          <meta itemProp='merchantReturnDays' content='7' />
+          <link itemProp='returnMethod' href='https://schema.org/ReturnByMail' />
+          <link itemProp='returnFees' href='https://schema.org/FreeReturn' />
+        </div>
+        <div
+          itemProp='shippingDetails'
+          itemScope
+          itemType='https://schema.org/OfferShippingDetails'
+        >
+          <div
+            itemProp='shippingRate'
+            itemScope
+            itemType='https://schema.org/MonetaryAmount'
+          >
+            <meta itemProp='value' content='0' />
+            <meta itemProp='currency' content='INR' />
+          </div>
+          <div
+            itemProp='shippingDestination'
+            itemScope
+            itemType='https://schema.org/DefinedRegion'
+          >
+            <meta itemProp='addressCountry' content='IN' />
+          </div>
+          <div
+            itemProp='deliveryTime'
+            itemScope
+            itemType='https://schema.org/ShippingDeliveryTime'
+          >
+            <div
+              itemProp='handlingTime'
+              itemScope
+              itemType='https://schema.org/QuantitativeValue'
+            >
+              <meta itemProp='minValue' content='1' />
+              <meta itemProp='maxValue' content='2' />
+              <meta itemProp='unitCode' content='DAY' />
+            </div>
+            <div
+              itemProp='transitTime'
+              itemScope
+              itemType='https://schema.org/QuantitativeValue'
+            >
+              <meta itemProp='minValue' content='3' />
+              <meta itemProp='maxValue' content='7' />
+              <meta itemProp='unitCode' content='DAY' />
+            </div>
+          </div>
+        </div>
         {product.comparePrice && product.comparePrice > product.price && (
           <meta
             itemProp='highPrice'
