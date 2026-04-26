@@ -138,25 +138,6 @@ export default function ShopClient() {
     queryFn: async ({ pageParam }) => {
       const pg = pageParam as number;
 
-      // Default view (no filters/search) + page 1 → $sample for randomness.
-      // Any filter active or page 2+ → normal sort pagination.
-      const isDefaultView =
-        !filters.category &&
-        !filters.fabric &&
-        !filters.minPrice &&
-        !filters.maxPrice &&
-        !filters.rating &&
-        !filters.search &&
-        !filters.isFeatured;
-
-      if (pg === 1 && isDefaultView) {
-        return productApi.getAll({
-          page: 1,
-          limit: SHOP_PAGE_LIMIT,
-          isRandom: "true",
-        });
-      }
-
       const params: Record<string, string | number> = {
         sort: filters.sort,
         page: pg,
@@ -192,16 +173,9 @@ export default function ShopClient() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Deduplicate by _id — $sample page 1 can overlap with -createdAt pages 2+
+  // Flatten pages in deterministic order.
   const products = useMemo(() => {
-    const seen = new Set<string>();
-    return (data?.pages ?? [])
-      .flatMap((pg) => (pg.data?.products || []) as Product[])
-      .filter((p) => {
-        if (seen.has(p._id)) return false;
-        seen.add(p._id);
-        return true;
-      });
+    return (data?.pages ?? []).flatMap((pg) => (pg.data?.products || []) as Product[]);
   }, [data?.pages]);
 
   const pagination = useMemo(() => {

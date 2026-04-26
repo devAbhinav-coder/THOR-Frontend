@@ -19,6 +19,7 @@ import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminErrorState from '@/components/admin/AdminErrorState';
 
 export default function AdminProductsPage() {
+  const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -30,14 +31,17 @@ export default function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalProducts: 0 });
+  const [pageSize, setPageSize] = useState<number>(20);
   const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const canPrevPage = pagination.currentPage > 1;
+  const canNextPage = pagination.currentPage < pagination.totalPages;
 
-  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt') => {
+  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt', limit = pageSize) => {
     setIsLoading(true);
     setLoadError(false);
     try {
-      const params: Record<string, string | number> = { page, limit: 20, sort };
+      const params: Record<string, string | number> = { page, limit, sort };
       if (query) params.search = query;
       const res = await productApi.getAll(params);
       setProducts(res.data.products);
@@ -55,11 +59,17 @@ export default function AdminProductsPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [pageSize]);
 
   useEffect(() => {
     fetchProducts(1, debouncedSearch, sortBy);
-  }, [debouncedSearch, sortBy, fetchProducts]);
+  }, [debouncedSearch, sortBy, pageSize, fetchProducts]);
+
+  const goToPage = (page: number) => {
+    const safePage = Math.min(Math.max(1, page), Math.max(1, pagination.totalPages));
+    if (safePage === pagination.currentPage) return;
+    void fetchProducts(safePage, debouncedSearch, sortBy);
+  };
 
   const filtered = products.filter((p) => {
     if (quickFilter === 'featured') return !!p.isFeatured;
@@ -119,7 +129,7 @@ export default function AdminProductsPage() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    void fetchProducts(1, debouncedSearch, sortBy);
+    void fetchProducts(pagination.currentPage, debouncedSearch, sortBy);
   };
 
   return (
@@ -161,7 +171,7 @@ export default function AdminProductsPage() {
         <AdminErrorState
           title="Couldn’t load products"
           message="Verify the API is reachable and you are signed in as admin."
-          onRetry={() => fetchProducts(1, debouncedSearch, sortBy)}
+          onRetry={() => fetchProducts(pagination.currentPage, debouncedSearch, sortBy)}
         />
       )}
 
@@ -189,6 +199,21 @@ export default function AdminProductsPage() {
                 <option value="soldCount">Least Sold</option>
                 <option value="-viewCount">Most Viewed</option>
                 <option value="viewCount">Least Viewed</option>
+              </select>
+              <select
+                value={String(pageSize)}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setPageSize(next);
+                }}
+                className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                aria-label="Products per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}/page
+                  </option>
+                ))}
               </select>
 
               <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white mr-1">
@@ -401,70 +426,122 @@ export default function AdminProductsPage() {
           </div>
         )}
 
-        {/* Mobile + small tablet cards */}
-        <div className="md:hidden divide-y divide-gray-100">
-          {isLoading ? (
-            [...Array(6)].map((_, i) => (
-              <div key={i} className="p-4">
-                <div className="h-4 bg-gray-100 rounded animate-pulse" />
-              </div>
-            ))
-          ) : (
-            filtered.map((product) => {
-              const sm = stockMeta(product);
-              return (
-              <div key={product._id} className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="relative w-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '3/4' }}>
-                    <Image
-                      src={product.images[0]?.url || '/placeholder.jpg'}
-                      alt={product.name}
-                      fill
-                      sizes="64px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {product.category}{product.fabric ? ` · ${product.fabric}` : ''}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 flex-wrap">
-                      {product.isFeatured && <Badge variant="brand" className="text-[11px]">Featured</Badge>}
-                      <Badge variant={product.isActive ? 'success' : 'error'} className="text-[11px]">
-                        {product.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                      <span className="text-xs font-semibold text-gray-900">{formatPrice(product.price)}</span>
-                      <span className={`text-xs font-semibold ${stockClass(sm.total)}`}>
-                        {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}
-                        {sm.breakdown && (
-                          <span className="block font-normal text-gray-400 text-[10px]">Variants: {sm.breakdown}</span>
-                        )}
-                      </span>
+        {/* Mobile cards - respect selected list/grid mode */}
+        {viewMode === 'table' && (
+          <div className="md:hidden divide-y divide-gray-100">
+            {isLoading ? (
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="p-4">
+                  <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                </div>
+              ))
+            ) : (
+              filtered.map((product) => {
+                const sm = stockMeta(product);
+                return (
+                <div key={product._id} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="relative w-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '3/4' }}>
+                      <Image
+                        src={product.images[0]?.url || '/placeholder.jpg'}
+                        alt={product.name}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {product.category}{product.fabric ? ` · ${product.fabric}` : ''}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        {product.isFeatured && <Badge variant="brand" className="text-[11px]">Featured</Badge>}
+                        <Badge variant={product.isActive ? 'success' : 'error'} className="text-[11px]">
+                          {product.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                        <span className="text-xs font-semibold text-gray-900">{formatPrice(product.price)}</span>
+                        <span className={`text-xs font-semibold ${stockClass(sm.total)}`}>
+                          {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}
+                          {sm.breakdown && (
+                            <span className="block font-normal text-gray-400 text-[10px]">Variants: {sm.breakdown}</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setEditProduct(product); setIsModalOpen(true); }}
+                        className="h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-brand-50 hover:border-brand-200 text-gray-600 hover:text-brand-700 transition-colors grid place-items-center"
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(product._id)}
+                        className="h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-600 hover:text-red-700 transition-colors grid place-items-center"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => { setEditProduct(product); setIsModalOpen(true); }}
-                      className="h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-brand-50 hover:border-brand-200 text-gray-600 hover:text-brand-700 transition-colors grid place-items-center"
-                      title="Edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(product._id)}
-                      className="h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-600 hover:text-red-700 transition-colors grid place-items-center"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
                 </div>
-              </div>
-            );
-            })
-          )}
-        </div>
+              );
+              })
+            )}
+          </div>
+        )}
+
+        {viewMode === 'grid' && (
+          <div className="md:hidden grid grid-cols-2 gap-3 p-3">
+            {isLoading ? (
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="h-64 rounded-2xl bg-gray-100 animate-pulse" />
+              ))
+            ) : (
+              filtered.map((product) => {
+                const sm = stockMeta(product);
+                return (
+                  <div key={product._id} className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
+                    <div className="relative w-full bg-gray-100" style={{ aspectRatio: '3/4' }}>
+                      <Image src={product.images[0]?.url || '/placeholder.jpg'} alt={product.name} fill sizes="180px" className="object-cover" />
+                    </div>
+                    <div className="p-2.5">
+                      <p className="text-xs font-semibold text-gray-900 line-clamp-2">{product.name}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">{product.category}</p>
+                      <div className="mt-1.5 flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-gray-900">{formatPrice(product.price)}</span>
+                        <Badge variant={product.isActive ? 'success' : 'error'} className="text-[10px]">
+                          {product.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <p className={`mt-1 text-[10px] font-semibold ${stockClass(sm.total)}`}>
+                        {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}
+                      </p>
+                      <div className="mt-2 flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => { setEditProduct(product); setIsModalOpen(true); }}
+                          className="h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-600 grid place-items-center"
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(product._id)}
+                          className="h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-600 grid place-items-center"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
 
         {!isLoading && filtered.length === 0 && !loadError && (
           <div className="py-12 text-center text-gray-500 text-sm px-4">
@@ -475,6 +552,38 @@ export default function AdminProductsPage() {
           </div>
         )}
       </div>
+
+      {!loadError && pagination.totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
+          <p className="text-xs sm:text-sm text-gray-600">
+            Page <span className="font-semibold text-gray-900">{pagination.currentPage}</span> of{" "}
+            <span className="font-semibold text-gray-900">{pagination.totalPages}</span> (
+            {pagination.totalProducts.toLocaleString()} products)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => goToPage(pagination.currentPage - 1)}
+              disabled={!canPrevPage || isLoading}
+            >
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => goToPage(pagination.currentPage + 1)}
+              disabled={!canNextPage || isLoading}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
       )}
 
       {deleteConfirm && (
