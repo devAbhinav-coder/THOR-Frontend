@@ -8,6 +8,14 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+type ProductReviewLite = {
+  rating?: number;
+  title?: string;
+  comment?: string;
+  createdAt?: string;
+  user?: { name?: string };
+};
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const safeSlug = encodeURIComponent(slug);
@@ -104,6 +112,50 @@ export default async function ProductDetailPage({ params }: Props) {
             .filter(Boolean);
           const sku = product?.variants?.[0]?.sku;
           const inStock = Number(product.totalStock || 0) > 0;
+          let reviewEntries: Array<Record<string, unknown>> = [];
+
+          try {
+            const reviewsRes = await fetch(
+              `${apiUrl}/reviews/product/${encodeURIComponent(product._id)}?limit=3&page=1`,
+              { next: { revalidate: 1800 } },
+            );
+            if (reviewsRes.ok) {
+              const reviewsJson = (await reviewsRes.json()) as {
+                data?: { reviews?: ProductReviewLite[] };
+              };
+              const reviews = Array.isArray(reviewsJson?.data?.reviews)
+                ? reviewsJson.data.reviews
+                : [];
+              reviewEntries = reviews
+                .filter(
+                  (r) =>
+                    Number(r?.rating || 0) > 0 &&
+                    (String(r?.comment || "").trim() ||
+                      String(r?.title || "").trim()),
+                )
+                .slice(0, 3)
+                .map((r) => ({
+                  "@type": "Review",
+                  reviewRating: {
+                    "@type": "Rating",
+                    ratingValue: String(Number(r.rating || 0)),
+                    bestRating: "5",
+                    worstRating: "1",
+                  },
+                  author: {
+                    "@type": "Person",
+                    name: String(r.user?.name || "Verified Buyer"),
+                  },
+                  ...(String(r.title || "").trim()
+                    ? { name: String(r.title).trim() }
+                    : {}),
+                  reviewBody: String(r.comment || r.title || "").trim(),
+                  ...(r.createdAt ? { datePublished: r.createdAt } : {}),
+                }));
+            }
+          } catch {
+            reviewEntries = [];
+          }
 
           breadcrumbLd = {
             "@context": "https://schema.org",
@@ -226,6 +278,7 @@ export default async function ProductDetailPage({ params }: Props) {
                 },
               }
             : {}),
+            ...(reviewEntries.length > 0 ? { review: reviewEntries } : {}),
           };
         }
       }
