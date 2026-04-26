@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Facebook, Instagram, Mail, Phone, MapPin } from "lucide-react";
 import { categoryApi, storefrontApi } from "@/lib/api";
@@ -30,6 +31,7 @@ function normalizeHref(href: string): string {
 }
 /** Footer — same React Query cache as Navbar: full list, then filter non-gift for shop links. */
 export default function Footer() {
+  const router = useRouter();
   const { data: categoriesRaw = [] } = useQuery({
     queryKey: queryKeys.categories,
     queryFn: async () => {
@@ -43,6 +45,15 @@ export default function Footer() {
     () => categoriesRaw.filter(isShopCatalogCategory),
     [categoriesRaw],
   );
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      categories.slice(0, 8).forEach((cat) => {
+        router.prefetch(buildShopCategoryHref(cat));
+      });
+    }, 350);
+    return () => window.clearTimeout(id);
+  }, [categories, router]);
 
   const { data: settings = null } = useQuery({
     queryKey: queryKeys.storefrontSettings,

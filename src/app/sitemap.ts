@@ -199,7 +199,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((c): c is CategoryLite => Boolean(c?.name))
       .filter((c) => isShopCatalogCategoryLite(c))
       .flatMap((c) => {
-        const slug = toShopCategorySlug(c.slug || c.name);
+        const slugSource = c.slug ?? c.name ?? "";
+        const slug = toShopCategorySlug(slugSource);
         if (!slug || emittedCategorySlugs.has(slug)) return [];
         emittedCategorySlugs.add(slug);
         return [

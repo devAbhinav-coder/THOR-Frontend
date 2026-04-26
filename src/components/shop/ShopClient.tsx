@@ -17,6 +17,7 @@ import { Product, FilterOptions, StorefrontSettings } from "@/types";
 import ProductCard from "@/components/product/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
 import { Button } from "@/components/ui/button";
+import ShopPageSkeleton from "@/components/shop/ShopPageSkeleton";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { trackSearch } from "@/lib/metaPixel";
@@ -134,6 +135,18 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!filterOptions?.categories?.length) return;
+    const id = window.setTimeout(() => {
+      filterOptions.categories.forEach((cat) => {
+        const slug = toShopCategorySlug(cat);
+        if (!slug) return;
+        router.prefetch(`/shop/category/${encodeURIComponent(slug)}`);
+      });
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [filterOptions?.categories, router]);
+
   const {
     data,
     isLoading,
@@ -186,6 +199,11 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
   const products = useMemo(() => {
     return (data?.pages ?? []).flatMap((pg) => (pg.data?.products || []) as Product[]);
   }, [data?.pages]);
+
+  const hasLoadedOnceRef = useRef(false);
+  useEffect(() => {
+    if (products.length > 0) hasLoadedOnceRef.current = true;
+  }, [products.length]);
 
   const pagination = useMemo(() => {
     const first = data?.pages?.[0];
@@ -257,7 +275,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
 
   const clearFilters = () => {
     setFilters({
-      category: categoryContext?.name || "",
+      category: "",
       fabric: "",
       minPrice: "",
       maxPrice: "",
@@ -266,7 +284,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
       search: "",
       isFeatured: "",
     });
-    router.push(routeBasePath);
+    router.push("/shop");
   };
 
   const activeFilterCount = [
@@ -321,6 +339,11 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
 
   const showShopBanner = shopBanner.isActive;
   const ListHeadingTag = showShopBanner ? "h2" : "h1";
+
+  // First paint: keep skeleton consistent with route `loading.tsx`.
+  if (isPending && !hasLoadedOnceRef.current) {
+    return <ShopPageSkeleton />;
+  }
 
   return (
     <div>

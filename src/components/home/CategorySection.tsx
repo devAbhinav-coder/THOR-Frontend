@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Tag, ArrowRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperType } from "swiper";
@@ -61,6 +62,7 @@ type CategorySectionProps = {
 export default function CategorySection({
   initialCategories,
 }: CategorySectionProps = {}) {
+  const router = useRouter();
   const [categories, setCategories] = useState<
     (Category & { productCount: number })[]
   >(() => (Array.isArray(initialCategories) ? initialCategories : []));
@@ -100,6 +102,15 @@ export default function CategorySection({
     list.sort(sortSareeFirst);
     return list;
   }, [categories]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      filteredCategories.slice(0, 10).forEach((cat) => {
+        router.prefetch(buildShopCategoryHref(cat));
+      });
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [filteredCategories, router]);
 
   const clearSchedule = useCallback(() => {
     if (timeoutRef.current) {

@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import ShopClient from "@/components/shop/ShopClient";
 import ShopLoading from "../../loading";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
@@ -13,6 +12,17 @@ const SITE_URL = getSiteUrl();
 
 type ParamsInput = Promise<{ categorySlug: string }>;
 type SearchParamsInput = Promise<Record<string, string | string[] | undefined>>;
+
+function humanizeCategorySlug(input: string): string {
+  const decoded = decodeURIComponent(String(input || "").trim());
+  if (!decoded) return "Shop Category";
+  return decoded
+    .replace(/[-_]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 async function fetchCategories(): Promise<Category[]> {
   const apiBase = await getBuildSafeApiBase();
@@ -61,8 +71,17 @@ export async function generateMetadata({
   searchParams: SearchParamsInput;
 }): Promise<Metadata> {
   const [p, sp, categories] = await Promise.all([params, searchParams, fetchCategories()]);
-  const category = resolveCategoryBySlug(categories, p.categorySlug);
-  if (!category) return {};
+  const resolved = resolveCategoryBySlug(categories, p.categorySlug);
+  const fallbackName = humanizeCategorySlug(p.categorySlug);
+  const category = resolved || {
+    _id: "fallback",
+    name: fallbackName,
+    slug: toShopCategorySlug(p.categorySlug),
+    isActive: true,
+    subcategories: [],
+    productCount: 0,
+    createdAt: new Date().toISOString(),
+  };
 
   const canonicalSlug =
     toShopCategorySlug(category.slug || category.name) ||
@@ -112,8 +131,17 @@ export default async function ShopCategoryPage({
   searchParams: SearchParamsInput;
 }) {
   const [p, sp, categories] = await Promise.all([params, searchParams, fetchCategories()]);
-  const category = resolveCategoryBySlug(categories, p.categorySlug);
-  if (!category) notFound();
+  const resolved = resolveCategoryBySlug(categories, p.categorySlug);
+  const fallbackName = humanizeCategorySlug(p.categorySlug);
+  const category = resolved || {
+    _id: "fallback",
+    name: fallbackName,
+    slug: toShopCategorySlug(p.categorySlug),
+    isActive: true,
+    subcategories: [],
+    productCount: 0,
+    createdAt: new Date().toISOString(),
+  };
   const canonicalSlug =
     toShopCategorySlug(category.slug || category.name) ||
     toShopCategorySlug(p.categorySlug);
@@ -227,17 +255,6 @@ export default async function ShopCategoryPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryLd) }}
         />
       )}
-      <section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-2'>
-        <h1 className='sr-only'>{`${category.name} Sarees & Ethnic Wear`}</h1>
-        <div className='rounded-2xl border border-gray-100 bg-white/95 px-4 py-4 sm:px-6'>
-          <p className='text-xs font-semibold uppercase tracking-wider text-brand-600'>
-            Shop Category
-          </p>
-          <p className='mt-2 text-sm leading-relaxed text-gray-700 sm:text-[15px]'>
-            {categoryIntro}
-          </p>
-        </div>
-      </section>
       <Suspense fallback={<ShopLoading />}>
         <ShopClient categoryContext={{ name: category.name, slug: canonicalSlug }} />
       </Suspense>

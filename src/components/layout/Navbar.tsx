@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   ShoppingBag,
@@ -57,6 +57,7 @@ export default function Navbar() {
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const { user, isAuthenticated, isLoading, hasSessionChecked, logout } =
     useAuthStore();
@@ -75,6 +76,15 @@ export default function Navbar() {
     () => categoriesData.filter(isShopCatalogCategory).slice(0, 7),
     [categoriesData],
   );
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      navCategories.forEach((cat) => {
+        router.prefetch(buildShopCategoryHref(cat));
+      });
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [navCategories, router]);
 
   const { data: storefrontSettings } = useQuery({
     queryKey: queryKeys.storefrontSettings,
