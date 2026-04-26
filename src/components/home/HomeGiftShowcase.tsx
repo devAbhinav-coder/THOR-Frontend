@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Facebook, Instagram, Youtube } from "lucide-react";
 import { storefrontApi } from "@/lib/api";
 import type { HomeGiftShowcaseCard, StorefrontSettings } from "@/types";
 import { cn } from "@/lib/utils";
@@ -14,24 +13,6 @@ const ACCENT_BG: Record<string, string> = {
   amber: "bg-gradient-to-b from-amber-100 via-orange-50 to-amber-200",
   sage: "bg-gradient-to-b from-emerald-100 via-teal-50 to-emerald-200",
 };
-
-function XSocialIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox='0 0 24 24'
-      className={className}
-      fill='currentColor'
-      aria-hidden
-    >
-      <path d='M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z' />
-    </svg>
-  );
-}
-
-function isRealSocialUrl(url?: string) {
-  if (!url || !url.trim()) return false;
-  return !/^#+$/.test(url.trim()) && url.trim() !== "#";
-}
 
 export default function HomeGiftShowcase() {
   const [settings, setSettings] = useState<StorefrontSettings | null>(null);
@@ -44,7 +25,6 @@ export default function HomeGiftShowcase() {
   }, []);
 
   const section = settings?.homeGiftShowcase;
-  const footer = settings?.footer;
   const rawCards = section?.cards || [];
   const cards = rawCards.filter(
     (c: HomeGiftShowcaseCard) =>

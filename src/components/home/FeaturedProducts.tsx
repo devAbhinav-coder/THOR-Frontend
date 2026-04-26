@@ -68,7 +68,7 @@ export default function FeaturedProducts({
           : products.slice(0, 4).map((product) => (
               <div
                 key={product._id}
-                className='min-w-[130px] max-w-[130px] sm:min-w-[240px] sm:max-w-[240px] lg:min-w-[260px] lg:max-w-[260px] flex-shrink-0'
+                className='min-w-[180px] max-w-[180px] sm:min-w-[240px] sm:max-w-[240px] lg:min-w-[260px] lg:max-w-[260px] flex-shrink-0'
               >
                 <ProductCard product={product} className='w-full' />
               </div>

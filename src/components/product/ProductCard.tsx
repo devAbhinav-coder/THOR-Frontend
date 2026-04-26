@@ -126,8 +126,9 @@ function ProductCardInner({ product, className }: ProductCardProps) {
   }, [product.name, product.category, product.fabric, uniqueColors]);
 
   /** Schema.org availability URL — read by Googlebot from microdata. */
-  const schemaAvailability = isOutOfStock
-    ? "https://schema.org/OutOfStock"
+  const schemaAvailability =
+    isOutOfStock ?
+      "https://schema.org/OutOfStock"
     : "https://schema.org/InStock";
 
   const requireAuth = useCallback(
@@ -204,7 +205,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
      */
     <article
       itemScope
-      itemType="https://schema.org/Product"
+      itemType='https://schema.org/Product'
       className={cn(
         "group relative flex h-full min-w-0 flex-col justify-start",
         "min-h-0 sm:min-h-[460px]",
@@ -213,38 +214,41 @@ function ProductCardInner({ product, className }: ProductCardProps) {
       aria-label={product.name}
     >
       {/* ── Hidden microdata fields (not visible, read by crawlers) ── */}
-      <meta itemProp="name" content={product.name} />
-      <meta itemProp="description" content={
-        product.shortDescription ||
-        String(product.description || "").slice(0, 200)
-      } />
-      {primaryUrl && <link itemProp="image" href={primaryUrl} />}
-      <meta itemProp="sku" content={product.variants?.[0]?.sku || product._id} />
-      <meta itemProp="brand" content="The House of Rani" />
-      <meta itemProp="category" content={product.category} />
+      <meta itemProp='name' content={product.name} />
+      <meta
+        itemProp='description'
+        content={
+          product.shortDescription ||
+          String(product.description || "").slice(0, 200)
+        }
+      />
+      {primaryUrl && <link itemProp='image' href={primaryUrl} />}
+      <meta
+        itemProp='sku'
+        content={product.variants?.[0]?.sku || product._id}
+      />
+      <meta itemProp='brand' content='The House of Rani' />
+      <meta itemProp='category' content={product.category} />
 
       {/* Offer microdata — price, currency, availability */}
       <div
-        itemProp="offers"
+        itemProp='offers'
         itemScope
-        itemType="https://schema.org/Offer"
-        className="hidden"
-        aria-hidden="true"
+        itemType='https://schema.org/Offer'
+        className='hidden'
+        aria-hidden='true'
       >
-        <meta itemProp="priceCurrency" content="INR" />
-        <meta itemProp="price" content={toMerchantPrice(product.price)} />
-        <link itemProp="availability" href={schemaAvailability} />
+        <meta itemProp='priceCurrency' content='INR' />
+        <meta itemProp='price' content={toMerchantPrice(product.price)} />
+        <link itemProp='availability' href={schemaAvailability} />
+        <link itemProp='itemCondition' href='https://schema.org/NewCondition' />
         <link
-          itemProp="itemCondition"
-          href="https://schema.org/NewCondition"
-        />
-        <link
-          itemProp="url"
+          itemProp='url'
           href={`/shop/${encodeURIComponent(product.slug)}`}
         />
         {product.comparePrice && product.comparePrice > product.price && (
           <meta
-            itemProp="highPrice"
+            itemProp='highPrice'
             content={toMerchantPrice(product.comparePrice)}
           />
         )}
@@ -253,22 +257,22 @@ function ProductCardInner({ product, className }: ProductCardProps) {
       {/* AggregateRating microdata */}
       {product.ratings.count > 0 && (
         <div
-          itemProp="aggregateRating"
+          itemProp='aggregateRating'
           itemScope
-          itemType="https://schema.org/AggregateRating"
-          className="hidden"
-          aria-hidden="true"
+          itemType='https://schema.org/AggregateRating'
+          className='hidden'
+          aria-hidden='true'
         >
           <meta
-            itemProp="ratingValue"
+            itemProp='ratingValue'
             content={String(product.ratings.average)}
           />
           <meta
-            itemProp="reviewCount"
+            itemProp='reviewCount'
             content={String(product.ratings.count)}
           />
-          <meta itemProp="bestRating" content="5" />
-          <meta itemProp="worstRating" content="1" />
+          <meta itemProp='bestRating' content='5' />
+          <meta itemProp='worstRating' content='1' />
         </div>
       )}
 
@@ -284,7 +288,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           onMouseLeave={handleMouseLeave}
         >
           {/* ─── PRIMARY image — always rendered, fades out on hover ─── */}
-          {primaryUrl ? (
+          {primaryUrl ?
             <Image
               src={primaryUrl}
               alt={primaryAlt}
@@ -296,11 +300,10 @@ function ProductCardInner({ product, className }: ProductCardProps) {
                 showSecondary ? "opacity-0" : "opacity-100",
               )}
             />
-          ) : (
-            <div className='absolute inset-0 flex items-center justify-center bg-gray-100'>
+          : <div className='absolute inset-0 flex items-center justify-center bg-gray-100'>
               <ShoppingBag className='w-12 h-12 text-gray-300' />
             </div>
-          )}
+          }
 
           {/* ─── SECONDARY image ─────────────────────────────────────────
                Only mounted after the first hover (hasHoveredOnce) so the
@@ -324,38 +327,25 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             />
           )}
 
-          {/* Badges — top left */}
-          <div className='absolute top-2.5 left-2.5 z-10 flex max-w-[calc(100%-4.5rem)] flex-col items-start gap-1.5'>
-            {product.isFeatured && (
-              <span
-                className='flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-800 text-white shadow-md ring-1 ring-amber-900/20'
-                title='Featured'
-                aria-label='Featured product'
-              >
-                <Star className='h-3.5 w-3.5 fill-white text-white' aria-hidden />
-              </span>
-            )}
-            {/* ── Discount badge ──
-                Visible to users AND crawlers — satisfies Google's requirement
-                that promotional pricing be clearly displayed on the page. */}
-            {discountPercent >= 5 && !isOutOfStock && (
-              <span
-                className='flex items-center gap-0.5 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md'
-                aria-label={`${discountPercent}% off`}
-              >
-                <Tag className='h-2.5 w-2.5' aria-hidden />
-                {discountPercent}% OFF
-              </span>
-            )}
-            {isOutOfStock && (
-              <span
-                className='max-w-full truncate rounded-full bg-gray-900/80 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm'
-                aria-label='Sold out'
-              >
-                Sold Out
-              </span>
-            )}
-          </div>
+          {/* ── Discount corner badge (reference style) ──
+              Visible to users and crawlers — keeps promo pricing clearly shown. */}
+          {discountPercent >= 5 && !isOutOfStock && (
+            <div className='absolute top-0 left-0 z-30 pointer-events-none'>
+              {/* Small tight ribbon */}
+              <div className='relative w-[50px] h-[50px]'>
+                {/* Corner triangle */}
+                <div
+                  className='absolute top-0 left-0 w-full h-full bg-red-600 
+        [clip-path:polygon(0_0,100%_0,0_100%)]'
+                ></div>
+
+                {/* Text */}
+                <span className='absolute top-[10px] left-[4px] -rotate-45 text-white text-[10px] font-bold'>
+                  {discountPercent}% OFF
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Wishlist — top right */}
           <button
@@ -366,7 +356,11 @@ function ProductCardInner({ product, className }: ProductCardProps) {
                 "bg-brand-600 text-white scale-110"
               : "bg-white/90 text-gray-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:text-brand-600 hover:bg-white",
             )}
-            aria-label={inWishlist ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+            aria-label={
+              inWishlist ?
+                `Remove ${product.name} from wishlist`
+              : `Add ${product.name} to wishlist`
+            }
             aria-pressed={inWishlist}
           >
             <Heart className={cn("h-4 w-4", inWishlist && "fill-current")} />
@@ -407,7 +401,10 @@ function ProductCardInner({ product, className }: ProductCardProps) {
                 )}
               >
                 {isAddingToCart ?
-                  <span className='h-3.5 w-3.5 rounded-full border-2 border-navy-300 border-t-navy-900 animate-spin' aria-hidden />
+                  <span
+                    className='h-3.5 w-3.5 rounded-full border-2 border-navy-300 border-t-navy-900 animate-spin'
+                    aria-hidden
+                  />
                 : needsCustomization ?
                   <Gift className='h-3.5 w-3.5' aria-hidden />
                 : <ShoppingBag className='h-3.5 w-3.5' aria-hidden />}
@@ -433,7 +430,10 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             </span>
             {product.fabric ?
               <>
-                <span className='shrink-0 text-[8px] sm:text-[10px] text-gray-500' aria-hidden>
+                <span
+                  className='shrink-0 text-[8px] sm:text-[10px] text-gray-500'
+                  aria-hidden
+                >
                   ·
                 </span>
                 <span
@@ -449,7 +449,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           {/* Title */}
           <h3
             className='line-clamp-2 min-h-8 text-xs sm:text-sm font-semibold leading-4 sm:leading-5 text-gray-900'
-            itemProp="name"
+            itemProp='name'
           >
             {product.name}
           </h3>
@@ -493,9 +493,9 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             <div
               className='flex min-w-0 max-w-full items-center gap-0.5'
               aria-label={
-                product.ratings.count > 0
-                  ? `Rated ${product.ratings.average.toFixed(1)} out of 5 from ${product.ratings.count} reviews`
-                  : "No reviews yet"
+                product.ratings.count > 0 ?
+                  `Rated ${product.ratings.average.toFixed(1)} out of 5 from ${product.ratings.count} reviews`
+                : "No reviews yet"
               }
             >
               {[...Array(5)].map((_, i) => (
@@ -531,8 +531,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             >
               {formatPrice(product.price)}
               {/* Machine-readable price for crawlers */}
-              <meta itemProp="price" content={toMerchantPrice(product.price)} />
-              <meta itemProp="priceCurrency" content="INR" />
+              <meta itemProp='price' content={toMerchantPrice(product.price)} />
+              <meta itemProp='priceCurrency' content='INR' />
             </span>
             {product.comparePrice && product.comparePrice > product.price && (
               <span
@@ -543,13 +543,11 @@ function ProductCardInner({ product, className }: ProductCardProps) {
               </span>
             )}
             {/* Availability label — visible to users */}
-            {isOutOfStock ? (
+            {isOutOfStock ?
               <span className='text-[10px] font-semibold text-red-500 ml-auto'>
                 Out of Stock
               </span>
-            ) : (
-              <span className='sr-only'>In Stock</span>
-            )}
+            : <span className='sr-only'>In Stock</span>}
           </div>
         </div>
       </Link>
@@ -568,7 +566,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           )}
           aria-label={
             isOutOfStock ? `${product.name} — Sold Out`
-            : isAddingToCart ? "Adding to cart…"
+            : isAddingToCart ?
+              "Adding to cart…"
             : `View ${product.name}`
           }
         >
