@@ -79,12 +79,12 @@ export default function Footer() {
         { label: "Cart", href: "/cart" },
       ];
 
-  const bottomBarSection  =[
-{ label: "Privacy Policy", href: "/privacy-policy" },
-{ label: "Return Policy", href: "/return-policy" },
-{ label: "Terms of Service", href: "/terms-of-service" },
-{ label: "Shipping Policy", href: "/shipping-policy" },
-  ]
+  const bottomBarSection = [
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Return Policy", href: "/returns" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Shipping Policy", href: "/shipping" },
+  ];
   const categoryLimit = footer?.categoryLimit || 7;
   const contactAddress = footer?.contactAddress || "Noida Sector 76, India";
   const contactPhone = footer?.contactPhone || "8340311033";

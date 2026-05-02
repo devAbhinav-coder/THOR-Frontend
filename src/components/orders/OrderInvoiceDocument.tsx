@@ -14,7 +14,7 @@ export default function OrderInvoiceDocument({ order }: Props) {
     address: "Amrapali Princely State Sector 76, Noida, Uttar Pradesh 201301",
     email: "support@thehouseofrani.com",
     phone: "+91 8340311033",
-    gstin: "09AAACCJ9379R1Z2", // Display placeholder GSTIN for compliance look
+    gstin: "10CCLPR1131E1Z6", // Display placeholder GSTIN for compliance look
     pan: "AAACCJ9379R", // Display placeholder PAN
   };
 
@@ -73,8 +73,10 @@ export default function OrderInvoiceDocument({ order }: Props) {
               </p>
               <p className='text-xs pt-1'>Email: {sellerDetails.email}</p>
               <p className='text-xs'>Ph: {sellerDetails.phone}</p>
-              {/* <p className="text-xs font-semibold pt-1">GSTIN: {sellerDetails.gstin}</p>
-            <p className="text-xs text-gray-600">PAN: {sellerDetails.pan}</p> */}
+              <p className='text-xs font-semibold pt-1'>
+                GSTIN: {sellerDetails.gstin}
+              </p>
+              {/* <p className="text-xs text-gray-600">PAN: {sellerDetails.pan}</p> */}
             </div>
           </div>
 
