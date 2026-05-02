@@ -128,6 +128,38 @@ export type OrderStatus =
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
+/** Admin POS / stall recording — POST /admin/orders/offline */
+export interface AdminCreateOfflineOrderBody {
+  customerName: string;
+  email: string;
+  phone: string;
+  orderSource: 'stall' | 'personal_contact';
+  fulfillment: 'delhivery' | 'offline_handover';
+  paymentMethod: 'offline_upi' | 'offline_cash';
+  shippingAddress?: {
+    name?: string;
+    phone?: string;
+    house?: string;
+    street: string;
+    landmark?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country?: string;
+  };
+  lineItems: Array<
+    | { type: 'catalog'; productId: string; variantSku: string; quantity: number; unitPrice?: number }
+    | {
+        type: 'manual';
+        categoryId?: string;
+        title?: string;
+        quantity: number;
+        unitPrice: number;
+      }
+  >;
+  notes?: string;
+}
+
 export interface Order {
   _id: string;
   orderNumber: string;
@@ -136,7 +168,12 @@ export interface Order {
   shippingAddress: Address;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  paymentMethod: 'razorpay' | 'cod';
+  paymentMethod: 'razorpay' | 'cod' | 'offline_upi' | 'offline_cash';
+  offlineMeta?: {
+    source: 'stall' | 'personal_contact';
+    fulfillment: 'delhivery' | 'offline_handover';
+    createdByAdmin?: string;
+  };
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   subtotal: number;

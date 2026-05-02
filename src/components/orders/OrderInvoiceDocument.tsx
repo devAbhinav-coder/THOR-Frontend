@@ -6,6 +6,9 @@ type Props = {
 };
 
 export default function OrderInvoiceDocument({ order }: Props) {
+  const inPersonOffline =
+    order.offlineMeta?.fulfillment === "offline_handover";
+
   // E-commerce Invoice format
   const invoiceNumber = `INV-${order.orderNumber}`;
   const invoiceDate = formatDate(order.invoice?.generatedAt || order.createdAt);
@@ -115,7 +118,13 @@ export default function OrderInvoiceDocument({ order }: Props) {
                 <span className='font-semibold inline-block w-28'>
                   Payment Method:
                 </span>{" "}
-                {order.paymentMethod === "cod" ? "Cash on Delivery" : "Online"}
+                {order.paymentMethod === "cod" ?
+                  "Cash on Delivery"
+                : order.paymentMethod === "offline_upi" ?
+                  "Offline — UPI"
+                : order.paymentMethod === "offline_cash" ?
+                  "Offline — cash"
+                : "Online"}
               </p>
               <p>
                 <span className='font-semibold inline-block w-28'>
@@ -144,52 +153,89 @@ export default function OrderInvoiceDocument({ order }: Props) {
                 {order.shippingAddress?.name || "Customer"}
               </p>
               <div className='text-xs text-gray-700 mt-0.5 leading-snug'>
-                {order.shippingAddress?.house && (
-                  <p>{order.shippingAddress.house}</p>
-                )}
-                <p>{order.shippingAddress?.street}</p>
-                {order.shippingAddress?.landmark && (
-                  <p>Landmark: {order.shippingAddress.landmark}</p>
-                )}
-                <p>
-                  {order.shippingAddress?.city}, {order.shippingAddress?.state}
-                </p>
-                <p>
-                  {order.shippingAddress?.country} -{" "}
-                  {order.shippingAddress?.pincode}
-                </p>
-                {order.shippingAddress?.phone && (
-                  <p>Phone: +91 {order.shippingAddress.phone}</p>
-                )}
+                {inPersonOffline ?
+                  <>
+                    <p className='font-medium text-gray-800'>
+                      In-person sale — no courier dispatch.
+                    </p>
+                    <p className='mt-1'>
+                      This invoice reflects goods handed over directly to the customer at
+                      the time of purchase.
+                    </p>
+                    {order.shippingAddress?.phone && (
+                      <p className='mt-2'>
+                        Phone: +91 {order.shippingAddress.phone}
+                      </p>
+                    )}
+                  </>
+                : <>
+                    {order.shippingAddress?.house && (
+                      <p>{order.shippingAddress.house}</p>
+                    )}
+                    <p>{order.shippingAddress?.street}</p>
+                    {order.shippingAddress?.landmark && (
+                      <p>Landmark: {order.shippingAddress.landmark}</p>
+                    )}
+                    <p>
+                      {order.shippingAddress?.city},{" "}
+                      {order.shippingAddress?.state}
+                    </p>
+                    <p>
+                      {order.shippingAddress?.country} -{" "}
+                      {order.shippingAddress?.pincode}
+                    </p>
+                    {order.shippingAddress?.phone && (
+                      <p>Phone: +91 {order.shippingAddress.phone}</p>
+                    )}
+                  </>
+                }
               </div>
             </div>
 
             {/* Shipping Info */}
             <div>
               <h2 className='text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 border-b border-gray-300 pb-0.5'>
-                Shipped To
+                {inPersonOffline ? "Fulfilment" : "Shipped To"}
               </h2>
               <p className='font-bold text-xs tracking-tight'>
                 {order.shippingAddress?.name || "Customer"}
               </p>
               <div className='text-xs text-gray-700 mt-0.5 leading-snug'>
-                {order.shippingAddress?.house && (
-                  <p>{order.shippingAddress.house}</p>
-                )}
-                <p>{order.shippingAddress?.street}</p>
-                {order.shippingAddress?.landmark && (
-                  <p>Landmark: {order.shippingAddress.landmark}</p>
-                )}
-                <p>
-                  {order.shippingAddress?.city}, {order.shippingAddress?.state}
-                </p>
-                <p>
-                  {order.shippingAddress?.country} -{" "}
-                  {order.shippingAddress?.pincode}
-                </p>
-                {order.shippingAddress?.phone && (
-                  <p>Phone: +91 {order.shippingAddress.phone}</p>
-                )}
+                {inPersonOffline ?
+                  <>
+                    <p className='font-medium text-gray-800'>
+                      Delivered in person (POS / walk-in).
+                    </p>
+                    <p className='mt-1'>
+                      Not applicable for courier AWB or dispatch address.
+                    </p>
+                    {order.shippingAddress?.phone && (
+                      <p className='mt-2'>
+                        Phone: +91 {order.shippingAddress.phone}
+                      </p>
+                    )}
+                  </>
+                : <>
+                    {order.shippingAddress?.house && (
+                      <p>{order.shippingAddress.house}</p>
+                    )}
+                    <p>{order.shippingAddress?.street}</p>
+                    {order.shippingAddress?.landmark && (
+                      <p>Landmark: {order.shippingAddress.landmark}</p>
+                    )}
+                    <p>
+                      {order.shippingAddress?.city},{" "}
+                      {order.shippingAddress?.state}
+                    </p>
+                    <p>
+                      {order.shippingAddress?.country} -{" "}
+                      {order.shippingAddress?.pincode}
+                    </p>
+                    {order.shippingAddress?.phone && (
+                      <p>Phone: +91 {order.shippingAddress.phone}</p>
+                    )}
+                  </>
+                }
               </div>
             </div>
           </div>

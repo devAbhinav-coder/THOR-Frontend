@@ -13,6 +13,7 @@ import {
   isAuthPublicRequest,
   isAuthMeRequest,
 } from "@/lib/authRequestPaths";
+import type { AdminCreateOfflineOrderBody } from "@/types";
 import { toastForNonAuthHttpError } from "@/lib/httpClientToast";
 
 const api: AxiosInstance = axios.create({
@@ -300,6 +301,8 @@ export const adminApi = {
     unwrapAxios("admin.orders", api.get("/admin/orders", { params }), schemas.adminOrdersList),
   getOrderDetails: (id: string) =>
     unwrapAxios("admin.orderDetail", api.get(`/admin/orders/${id}`), schemas.adminOrderDetail),
+  createOfflineOrder: (data: AdminCreateOfflineOrderBody) =>
+    unwrapAxios("admin.createOfflineOrder", api.post("/admin/orders/offline", data), schemas.adminOrderDetail),
   updateOrderStatus: (
     id: string,
     payload: {

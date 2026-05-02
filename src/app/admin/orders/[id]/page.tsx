@@ -38,6 +38,21 @@ import { formatDateTime, formatPrice, getOrderStatusColor, cn, getPaymentStatusC
 import { getMaxRefundableInr, getNonRefundableFeesInr } from '@/lib/orderRefundPolicy';
 import AdminOrderPackingSlip4R from '@/components/admin/AdminOrderPackingSlip4R';
 
+function adminPaymentMethodLabel(pm: Order['paymentMethod']): string {
+  switch (pm) {
+    case 'razorpay':
+      return 'Razorpay';
+    case 'cod':
+      return 'Cash on delivery';
+    case 'offline_upi':
+      return 'Offline · UPI';
+    case 'offline_cash':
+      return 'Offline · cash';
+    default:
+      return String(pm);
+  }
+}
+
 const ORDER_STATUSES: OrderStatus[] = [
   'pending',
   'confirmed',
@@ -1125,6 +1140,12 @@ export default function AdminOrderDetailsPage() {
               {order.paymentStatus}
             </span>
           </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 font-medium">Method:</span>
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700">
+              {adminPaymentMethodLabel(order.paymentMethod)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -1138,6 +1159,12 @@ export default function AdminOrderDetailsPage() {
               {order.productType === 'custom' && (
                 <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gold-100 text-gold-700 border border-gold-200 flex items-center gap-1">
                   <Gift className="h-2.5 w-2.5" /> Bespoke Gift
+                </span>
+              )}
+              {order.offlineMeta && (
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Offline · {order.offlineMeta.source === 'stall' ? 'Stall' : 'Personal contact'} ·{' '}
+                  {order.offlineMeta.fulfillment === 'delhivery' ? 'Courier' : 'Handover'}
                 </span>
               )}
             </div>
