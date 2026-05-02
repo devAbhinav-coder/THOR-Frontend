@@ -274,6 +274,32 @@ export const adminUsersList = z.object({
   data: z.object({ users: z.array(doc) }),
 });
 
+export const adminOfflineCustomersList = z.object({
+  status: z.string(),
+  pagination: z
+    .object({
+      currentPage: z.number(),
+      totalPages: z.number(),
+      total: z.number(),
+    })
+    .passthrough(),
+  data: z.object({
+    offlineCustomers: z.array(
+      z
+        .object({
+          email: z.string(),
+          phone: z.string(),
+          name: z.string(),
+          lastOfflineOrderAt: z.string().optional(),
+          offlineOrderCount: z.number().optional(),
+          createdAt: z.string().optional(),
+          updatedAt: z.string().optional(),
+        })
+        .passthrough(),
+    ),
+  }),
+});
+
 export const adminUserDirectoryStats = z.object({
   status: z.string(),
   data: z.object({

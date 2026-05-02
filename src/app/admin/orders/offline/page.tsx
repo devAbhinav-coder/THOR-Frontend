@@ -795,7 +795,7 @@ export default function AdminOfflineOrderPage() {
             >
               <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
                 <span className='text-xs font-bold uppercase tracking-wide text-gray-500'>
-                  Line {idx + 1}
+                  Product {idx + 1}
                 </span>
                 <div className='flex flex-wrap gap-2'>
                   <button

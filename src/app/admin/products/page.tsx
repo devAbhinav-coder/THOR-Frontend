@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye } from 'lucide-react';
-import { productApi } from '@/lib/api';
-import { Product } from '@/types';
+import { categoryApi, productApi } from '@/lib/api';
+import { Category, Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { sumVariantStock, variantStockSummary } from '@/lib/productStock';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 420);
   const [quickFilter, setQuickFilter] = useState<'all' | 'featured' | 'active' | 'inactive'>('all');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [catalogCategories, setCatalogCategories] = useState<Category[]>([]);
   const [sortBy, setSortBy] = useState<'-createdAt' | '-viewCount' | 'viewCount' | '-soldCount' | 'soldCount'>('-createdAt');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,6 +45,7 @@ export default function AdminProductsPage() {
     try {
       const params: Record<string, string | number> = { page, limit, sort };
       if (query) params.search = query;
+      if (categoryFilter) params.category = categoryFilter;
       const res = await productApi.getAll(params);
       setProducts(res.data.products);
       const p = res.pagination;
@@ -59,7 +62,19 @@ export default function AdminProductsPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [pageSize]);
+  }, [pageSize, categoryFilter]);
+
+  useEffect(() => {
+    categoryApi
+      .getAll()
+      .then((res) => setCatalogCategories(res.data.categories || []))
+      .catch(() => setCatalogCategories([]));
+  }, []);
+
+  const productCategoryOptions = catalogCategories
+    .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== 'gifting')
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   useEffect(() => {
     fetchProducts(1, debouncedSearch, sortBy);
@@ -136,7 +151,7 @@ export default function AdminProductsPage() {
     <div className="p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto space-y-6">
       <AdminPageHeader
         title="Products"
-        description="Search, filter by status, sort by views or sales — edits sync with the storefront when active."
+        description="Search, filter by category or status, sort by views or sales — edits sync with the storefront when active."
         badge={pagination.totalProducts ? `${pagination.totalProducts.toLocaleString()} in catalogue` : undefined}
         actions={
           <>
@@ -189,6 +204,19 @@ export default function AdminProductsPage() {
             />
 
             <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="h-9 min-w-[9.5rem] max-w-[14rem] px-3 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                aria-label="Filter by category"
+              >
+                <option value="">All categories</option>
+                {productCategoryOptions.map((c) => (
+                  <option key={c._id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}

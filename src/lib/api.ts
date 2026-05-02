@@ -321,6 +321,12 @@ export const adminApi = {
   ) => unwrapAxios("admin.processRefund", api.post(`/admin/orders/${id}/refund`, payload), schemas.adminOrderDetail),
   getUsers: (params?: object) =>
     unwrapAxios("admin.users", api.get("/admin/users", { params }), schemas.adminUsersList),
+  getOfflineCustomers: (params?: { page?: number; limit?: number }) =>
+    unwrapAxios(
+      "admin.offlineCustomers",
+      api.get("/admin/offline-customers", { params }),
+      schemas.adminOfflineCustomersList,
+    ),
   getUserDirectoryStats: () =>
     unwrapAxios("admin.userDirectoryStats", api.get("/admin/users/stats"), schemas.adminUserDirectoryStats),
   getUserInsights: (id: string) =>

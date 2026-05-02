@@ -12,6 +12,17 @@ export interface User {
   createdAt: string;
 }
 
+/** POS / offline-sale marketing row (deduped by email). Removed when the customer signs up or links Google. */
+export interface OfflineCustomerLead {
+  email: string;
+  phone: string;
+  name: string;
+  lastOfflineOrderAt?: string;
+  offlineOrderCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Address {
   _id?: string;
   name: string;
