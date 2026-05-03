@@ -80,6 +80,28 @@ export default function CartClient() {
     }
   }, [isCheckoutLaunching, router]);
 
+  const unavailableItemSkus = useMemo(() => {
+    const skus = new Set<string>();
+    if (!cart?.items?.length) return skus;
+    for (const item of cart.items) {
+      const product = item.product;
+      if (!product || product.isActive === false) {
+        skus.add(item.variant.sku);
+        continue;
+      }
+      const variant = (product.variants || []).find(
+        (v) => v.sku === item.variant.sku,
+      );
+      if (!variant || Number(variant.stock || 0) <= 0) {
+        skus.add(item.variant.sku);
+      } else if (item.quantity > Number(variant.stock || 0)) {
+        skus.add(item.variant.sku);
+      }
+    }
+    return skus;
+  }, [cart?.items]);
+  const hasUnavailableItems = unavailableItemSkus.size > 0;
+
   if (!isAuthenticated) {
     return (
       <div className='min-h-[min(70vh,calc(100dvh-14rem))] flex flex-col items-center justify-center px-4 py-10 sm:py-14 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-navy-100/90 via-indigo-50/50 to-white border border-navy-200/60 shadow-sm shadow-navy-900/5'>
@@ -137,26 +159,6 @@ export default function CartClient() {
   const estimatedTotal = cart.subtotal - cart.discount + shippingCharge;
   const freeShippingRemaining =
     SHIPPING_THRESHOLD - (cart.subtotal - cart.discount);
-  const unavailableItemSkus = useMemo(() => {
-    const skus = new Set<string>();
-    for (const item of cart.items) {
-      const product = item.product;
-      if (!product || product.isActive === false) {
-        skus.add(item.variant.sku);
-        continue;
-      }
-      const variant = (product.variants || []).find(
-        (v) => v.sku === item.variant.sku,
-      );
-      if (!variant || Number(variant.stock || 0) <= 0) {
-        skus.add(item.variant.sku);
-      } else if (item.quantity > Number(variant.stock || 0)) {
-        skus.add(item.variant.sku);
-      }
-    }
-    return skus;
-  }, [cart.items]);
-  const hasUnavailableItems = unavailableItemSkus.size > 0;
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;

@@ -434,7 +434,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="mt-2.5 flex items-center justify-between">
                 <p className="text-xs text-gray-600 truncate pr-2">
-                  {typeof order.user === 'object' ? order.user.name : '—'}
+                  {typeof order.user === 'object' && order.user != null ? order.user.name ?? '—' : '—'}
                 </p>
                 <p className="text-sm font-bold text-gray-900">{formatPrice(order.total)}</p>
               </div>
@@ -461,7 +461,7 @@ export default function AdminDashboardPage() {
                     </Link>
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-700">
-                    {typeof order.user === 'object' ? order.user.name : '—'}
+                    {typeof order.user === 'object' && order.user != null ? order.user.name ?? '—' : '—'}
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-500">{formatDate(order.createdAt)}</td>
                   <td className="px-5 py-3 text-sm font-semibold text-gray-900">{formatPrice(order.total)}</td>
