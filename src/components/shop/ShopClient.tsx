@@ -169,7 +169,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
       if (filters.fabric) params.fabric = filters.fabric;
       if (filters.minPrice) params["price[gte]"] = filters.minPrice;
       if (filters.maxPrice) params["price[lte]"] = filters.maxPrice;
-      if (filters.rating) params["ratings.average[gte]"] = filters.rating;
+      if (filters.rating) params.minRating = filters.rating;
       if (filters.search)
         params.search = filters.search.slice(0, SEARCH_MAX_LEN);
       if (filters.isFeatured) params.isFeatured = filters.isFeatured;
@@ -244,7 +244,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
     const params = new URLSearchParams();
     Object.entries(next).forEach(([k, v]) => {
       if (omitCategory && k === "category") return;
-      if (v && v !== "-createdAt" && v !== "1") params.set(k, String(v));
+      if (v && v !== "-createdAt") params.set(k, String(v));
     });
     return params.toString();
   };
