@@ -45,30 +45,28 @@ export default function FeaturedProducts({
   return (
     <section className='py-2 sm:py-6 bg-gray-50'>
       <div className='max-w-7xl mx-auto px-2 sm:px-6 lg:px-8'>
-        <div className='flex items-end justify-between mb-6 sm:mb-10'>
-          <div>
-            <p className='text-brand-600 font-medium uppercase tracking-wider text-xs sm:text-sm mb-1'>
-              Handpicked for You
-            </p>
-            <h2 className='text-2xl sm:text-4xl font-serif font-bold text-gray-900'>
+        <div className='mb-6 sm:mb-10'>
+          <div className='text-center'>
+            <div className='inline-flex items-center gap-3 text-brand-600'>
+              <span className='h-px w-12 bg-brand-200 sm:w-16' />
+              <p className='font-semibold uppercase tracking-[0.22em] text-[11px] sm:text-xs'>
+                Handpicked for You
+              </p>
+              <span className='h-px w-12 bg-brand-200 sm:w-16' />
+            </div>
+            <h2 className='mt-3 text-3xl sm:text-5xl font-serif text-navy-900'>
               Featured Products
             </h2>
           </div>
-          <Link
-            href='/shop?isFeatured=true'
-            className='hidden sm:flex items-center gap-1 text-brand-600 hover:text-brand-700 font-medium text-sm transition-colors'
-          >
-            View All <ArrowRight className='h-4 w-4' />
-          </Link>
         </div>
 
-        <div className='flex gap-4 overflow-x-auto pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <div className='grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 place-items-center'>
           {isLoading ?
             [...Array(4)].map((_, i) => <ProductCardSkeleton key={i} />)
           : products.slice(0, 4).map((product) => (
               <div
                 key={product._id}
-                className='min-w-[180px] max-w-[180px] sm:min-w-[240px] sm:max-w-[240px] lg:min-w-[260px] lg:max-w-[260px] flex-shrink-0'
+                className='w-full max-w-[210px] sm:max-w-[250px] lg:max-w-[280px]'
               >
                 <ProductCard product={product} className='w-full' />
               </div>
@@ -76,12 +74,12 @@ export default function FeaturedProducts({
           }
         </div>
 
-        <div className='mt-10 text-center sm:hidden'>
+        <div className='mt-10 text-center'>
           <Link
             href='/shop?isFeatured=true'
             className='inline-flex items-center gap-2 px-6 py-3 border-2 border-brand-600 text-brand-600 rounded-lg font-medium hover:bg-brand-50 transition-colors'
           >
-            View All <ArrowRight className='h-4 w-4' />
+            Explore Featured <ArrowRight className='h-4 w-4' />
           </Link>
         </div>
       </div>

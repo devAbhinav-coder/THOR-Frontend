@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Tag, ArrowRight } from "lucide-react";
+import { Tag } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperType } from "swiper";
+import { Autoplay } from "swiper/modules";
 import { categoryApi } from "@/lib/api";
 import { isGiftCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
@@ -15,8 +16,7 @@ import { Category } from "@/types";
 import "swiper/css";
 import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
 
-const PAUSE_MS = 1500;
-const TRANSITION_MS = 650;
+const TRANSITION_MS = 5200;
 
 const FALLBACK_IMAGES: Record<string, string> = {
   saree: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85",
@@ -70,9 +70,7 @@ export default function CategorySection({
     () => !Array.isArray(initialCategories),
   );
   const [swiperReady, setSwiperReady] = useState<SwiperType | null>(null);
-  const directionRef = useRef<1 | -1>(1);
-  const userPauseRef = useRef(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isSwiperLocked, setIsSwiperLocked] = useState(false);
 
   useEffect(() => {
     if (Array.isArray(initialCategories)) {
@@ -112,112 +110,47 @@ export default function CategorySection({
     return () => window.clearTimeout(id);
   }, [filteredCategories, router]);
 
-  const clearSchedule = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  }, []);
-
-  const schedulePingPong = useCallback(
-    (swiper: SwiperType, immediateDelay: number) => {
-      clearSchedule();
-      timeoutRef.current = setTimeout(() => {
-        timeoutRef.current = null;
-        const reduceMotion =
-          typeof window !== "undefined" &&
-          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (userPauseRef.current || reduceMotion) {
-          schedulePingPong(swiper, PAUSE_MS);
-          return;
-        }
-        if (swiper.destroyed || swiper.isLocked) return;
-
-        let dir = directionRef.current;
-        if (dir === 1 && swiper.isEnd) directionRef.current = -1;
-        else if (dir === -1 && swiper.isBeginning) directionRef.current = 1;
-        dir = directionRef.current;
-
-        if (dir === 1) swiper.slideNext(TRANSITION_MS);
-        else swiper.slidePrev(TRANSITION_MS);
-      }, immediateDelay);
-    },
-    [clearSchedule],
-  );
-
   const handleSwiperInit = useCallback((swiper: SwiperType) => {
     setSwiperReady(swiper);
+    setIsSwiperLocked(swiper.isLocked);
   }, []);
 
-  useEffect(() => {
-    const swiper = swiperReady;
-    if (!swiper || filteredCategories.length <= 1) return;
+  const handleSwiperLock = useCallback(() => {
+    setIsSwiperLocked(true);
+  }, []);
 
-    const reduceMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) return;
-
-    const onTransitionEnd = () => {
-      if (swiper.destroyed) return;
-      schedulePingPong(swiper, PAUSE_MS);
-    };
-
-    swiper.on("slideChangeTransitionEnd", onTransitionEnd);
-    directionRef.current = 1;
-
-    if (!swiper.isLocked) {
-      schedulePingPong(swiper, PAUSE_MS);
-    }
-
-    return () => {
-      swiper.off("slideChangeTransitionEnd", onTransitionEnd);
-      clearSchedule();
-    };
-  }, [swiperReady, filteredCategories.length, schedulePingPong, clearSchedule]);
-
-  useEffect(() => {
-    return () => {
-      clearSchedule();
-    };
-  }, [clearSchedule]);
+  const handleSwiperUnlock = useCallback(() => {
+    setIsSwiperLocked(false);
+  }, []);
 
   const pauseAuto = useCallback(() => {
-    userPauseRef.current = true;
-    clearSchedule();
-  }, [clearSchedule]);
+    if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
+      swiperReady.autoplay?.stop();
+    }
+  }, [swiperReady, isSwiperLocked]);
 
   const resumeAuto = useCallback(() => {
-    userPauseRef.current = false;
-    const s = swiperReady;
-    const reduceMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (
-      !s ||
-      s.destroyed ||
-      s.isLocked ||
-      reduceMotion ||
-      filteredCategories.length <= 1
-    )
-      return;
-    clearSchedule();
-    schedulePingPong(s, PAUSE_MS);
-  }, [swiperReady, clearSchedule, schedulePingPong, filteredCategories.length]);
+    if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
+      swiperReady.autoplay?.start();
+    }
+  }, [swiperReady, isSwiperLocked]);
 
   if (loading) return <CategorySectionSkeleton />;
 
   if (filteredCategories.length === 0) {
     return (
       <section className='py-16 bg-[#faf9f7]'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center'>
-          <p className='text-brand-600 font-semibold uppercase tracking-widest text-xs mb-2'>
-            Browse by Category
-          </p>
-          <h2 className='text-3xl sm:text-4xl font-serif font-bold text-navy-900 mb-6'>
-            Shop Our Collections
-          </h2>
-          <div className='flex flex-col items-center gap-3 py-12'>
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+          <div className='mb-6'>
+            <p className='text-brand-600 font-semibold uppercase tracking-[0.22em] text-[11px] sm:text-xs'>
+              Explore Collections
+            </p>
+            <div className='mt-2 mb-3 h-px w-24 bg-brand-200' />
+            <h2 className='text-3xl sm:text-4xl font-serif text-navy-900'>
+              Shop by <span className='italic text-brand-700'>Category</span>
+            </h2>
+          </div>
+          <div className='flex flex-col items-start gap-3 py-12'>
             <Tag className='w-12 h-12 text-gray-300' />
             <p className='text-sm text-gray-400'>
               Categories will appear here once added from the admin panel.
@@ -229,28 +162,27 @@ export default function CategorySection({
   }
 
   return (
-    <section className='py-6 sm:py-6 bg-[#faf9f7]'>
+    <section className='py-12 sm:py-14 bg-[#faf9f7]'>
       <div className='max-w-7xl mx-auto px-2 sm:px-6 lg:px-8'>
-        <div className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-8'>
-          <div>
-            <p className='text-brand-600 font-semibold uppercase tracking-widest text-xs sm:text-sm mb-1'>
-              Browse by Category
-            </p>
-            <h2 className='text-2xl sm:text-4xl font-serif font-bold text-navy-900'>
-              Shop Our Collections
+        <div className='mb-8 sm:mb-10'>
+          <div className='text-center'>
+            <div className='inline-flex items-center gap-3 text-brand-600'>
+              <span className='h-px w-12 bg-brand-200 sm:w-16' />
+              <p className='font-semibold uppercase tracking-[0.22em] text-[11px] sm:text-xs'>
+                Explore Collections
+              </p>
+              <span className='h-px w-12 bg-brand-200 sm:w-16' />
+            </div>
+            <h2 className='mt-3 text-3xl sm:text-5xl font-serif text-navy-900'>
+              Shop by <span className='text-brand-700'>Category</span>
             </h2>
           </div>
-          <Link
-            href='/shop'
-            className='inline-flex items-center gap-2 text-xs font-medium text-brand-600 hover:text-brand-700 transition-colors group'
-          >
-            View All
-            <ArrowRight className='h-4 w-4 group-hover:translate-x-1 transition-transform' />
-          </Link>
         </div>
 
         <div
-          className='relative'
+          className={`relative overflow-hidden rounded-[30px] px-2 py-3 sm:px-3 sm:py-4 ${
+            isSwiperLocked ? "[&_.swiper-wrapper]:justify-center" : ""
+          }`}
           onMouseEnter={pauseAuto}
           onMouseLeave={resumeAuto}
           onPointerDown={pauseAuto}
@@ -258,14 +190,27 @@ export default function CategorySection({
           onPointerCancel={resumeAuto}
         >
           <Swiper
+            modules={[Autoplay]}
             onSwiper={handleSwiperInit}
+            onLock={handleSwiperLock}
+            onUnlock={handleSwiperUnlock}
             slidesPerView='auto'
             spaceBetween={16}
             speed={TRANSITION_MS}
+            autoplay={
+              isSwiperLocked
+                ? false
+                : {
+                    delay: 0,
+                    disableOnInteraction: false,
+                    pauseOnMouseEnter: false,
+                  }
+            }
+            loop={!isSwiperLocked && filteredCategories.length > 1}
             resistanceRatio={0.65}
             watchOverflow
             grabCursor
-            className='category-collection-swiper !pb-1'
+            className='category-collection-swiper relative z-10 !pb-1'
             slidesOffsetBefore={4}
             slidesOffsetAfter={4}
           >
@@ -274,37 +219,40 @@ export default function CategorySection({
               return (
                 <SwiperSlide
                   key={cat._id}
-                  className='!w-[150px] sm:!w-[160px] lg:!w-[200px]'
+                  className='!w-[270px] sm:!w-[330px] lg:!w-[370px]'
                 >
                   <Link
                     href={buildShopCategoryHref(cat)}
                     className='group block w-full'
                   >
                     <div
-                      className='relative overflow-hidden rounded-xl'
+                      className={`relative overflow-hidden rounded-2xl transition-transform duration-500 ${
+                        index % 2 === 0
+                          ? "lg:rotate-[-0.6deg] group-hover:rotate-0"
+                          : "lg:rotate-[0.6deg] group-hover:rotate-0"
+                      }`}
                       style={{ aspectRatio: "3/4", background: "#f0ebe4" }}
                     >
                       <Image
                         src={imgSrc}
                         alt={cat.name}
                         fill
-                        sizes='(max-width: 640px) 150px, (max-width: 1024px) 160px, 200px'
-                        className='object-contain transition-transform duration-500 group-hover:scale-105'
+                        sizes='(max-width: 640px) 270px, (max-width: 1024px) 330px, 370px'
+                        className='object-contain transition-transform duration-700 group-hover:scale-102'
                         priority={index < 4}
                       />
-                      <div className='absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent' />
-                      <div className='absolute bottom-0 left-0 right-0 p-3 sm:p-4'>
-                        <h3 className='text-white font-serif font-semibold text-sm sm:text-base leading-snug'>
+                      <div className='absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/45 to-transparent' />
+                      <div className='absolute bottom-0 left-0 right-0 p-4 sm:p-5'>
+                        <h3 className='text-white font-serif font-medium text-2xl leading-tight'>
                           {cat.name}
                         </h3>
-                        {/* {cat.productCount > 0 && (
-                          <p className='text-white/70 text-xs mt-0.5'>
-                            {cat.productCount}{" "}
-                            {cat.productCount === 1 ? "product" : "products"}
+                        {cat.productCount > 0 && (
+                          <p className='text-white/80 text-[11px] mt-1 tracking-[0.14em] uppercase'>
+                            {cat.productCount}+ Designs
                           </p>
-                        )} */}
+                        )}
                         {cat.productCount === 0 && (
-                          <p className='text-white/50 text-xs mt-0.5'>
+                          <p className='text-white/55 text-xs mt-0.5 tracking-wide'>
                             Coming soon
                           </p>
                         )}

@@ -229,7 +229,7 @@
 
 /* Swiper overrides */
 .category-collection-swiper {
-  --swiper-wrapper-transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  --swiper-wrapper-transition-timing-function: linear;
 }
 .swiper-pagination-bullet-active {
   background-color: #c41230 !important;

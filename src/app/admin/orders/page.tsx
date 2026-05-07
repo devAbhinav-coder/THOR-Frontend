@@ -543,12 +543,12 @@ export default function AdminOrdersPage() {
                         <td className='px-4 py-3.5'>
                           <p className='text-sm font-medium text-gray-900'>
                             {typeof order.user === "object" ?
-                              order.user.name
+                              (order.user?.name ?? "—")
                             : "—"}
                           </p>
                           <p className='text-xs text-gray-400 mt-0.5'>
                             {typeof order.user === "object" ?
-                              order.user.email
+                              order.user?.email
                             : ""}
                           </p>
                         </td>
@@ -831,7 +831,7 @@ export default function AdminOrdersPage() {
                         </div>
                         <p className='text-xs text-gray-500 mt-0.5'>
                           {typeof order.user === "object" ?
-                            order.user.name
+                            order.user?.name
                           : "—"}
                         </p>
                         <div className='flex items-center justify-between mt-1'>

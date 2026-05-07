@@ -87,25 +87,21 @@ export default function ExploreCollection() {
   return (
     <section className='py-10 bg-white'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-        <div className='flex items-end justify-between mb-10'>
-          <div>
-            <p className='text-brand-600 font-medium uppercase tracking-wider text-sm mb-2'>
+        <div className='mb-10 text-center'>
+          <div className='inline-flex items-center gap-3 text-brand-600'>
+            <span className='h-px w-12 bg-brand-200 sm:w-16' />
+            <p className='font-semibold uppercase tracking-[0.22em] text-[11px] sm:text-xs'>
               Just Dropped
             </p>
-            <h2 className='text-3xl sm:text-4xl font-serif font-bold text-gray-900'>
-              Explore the Collection
-            </h2>
-            <p className='text-sm text-gray-500 mt-2 max-w-xl'>
-              Fresh picks across categories — curated to feel premium, minimal,
-              and easy to shop.
-            </p>
+            <span className='h-px w-12 bg-brand-200 sm:w-16' />
           </div>
-          <Link
-            href='/shop'
-            className='hidden sm:flex items-center gap-1 text-brand-600 hover:text-brand-700 font-medium text-sm transition-colors'
-          >
-            View All <ArrowRight className='h-4 w-4' />
-          </Link>
+          <h2 className='mt-3 text-3xl sm:text-5xl font-serif text-navy-900'>
+            Explore the Collection
+          </h2>
+          <p className='text-sm text-gray-500 mt-3 max-w-2xl mx-auto'>
+            Fresh picks across categories — curated to feel premium, minimal, and
+            easy to shop.
+          </p>
         </div>
 
         <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch [&>*]:h-full [&>*]:min-h-0'>
@@ -129,12 +125,12 @@ export default function ExploreCollection() {
           aria-hidden
         />
 
-        <div className='mt-10 text-center sm:hidden'>
+        <div className='mt-10 text-center'>
           <Link
             href='/shop'
             className='inline-flex items-center gap-2 px-6 py-3 border-2 border-brand-600 text-brand-600 rounded-lg font-medium hover:bg-brand-50 transition-colors'
           >
-            Explore the collection <ArrowRight className='h-4 w-4' />
+            Explore the Collection <ArrowRight className='h-4 w-4' />
           </Link>
         </div>
       </div>

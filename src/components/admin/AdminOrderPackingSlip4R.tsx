@@ -15,7 +15,7 @@ import toast from "react-hot-toast";
 import JsBarcode from "jsbarcode";
 import type { Order } from "@/types";
 import { formatDateTime } from "@/lib/utils";
-
+import delhiveryLogoSrc from "@/assets/delhivery-log.png";
 const SELLER_NAME = "The House of Rani";
 const SELLER_ADDRESS =
   "E-1006, Amrapali Princely Estate, Sector 76, Near Sector 76 Metro Station, Noida, Uttar Pradesh 201301";
@@ -660,16 +660,16 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
                     verticalAlign: "middle",
                   }}
                 >
-                  <span
+                  <img
+                    src={delhiveryLogoSrc.src}
+                    alt='delhivery logo'
                     style={{
-                      fontWeight: 900,
-                      fontSize: "11px",
-                      letterSpacing: "-0.04em",
+                      height: 18,
+                      width: "auto",
+                      objectFit: "contain",
+                      display: "block",
                     }}
-                  >
-                    <span style={{ color: "#000" }}>DELHI</span>
-                    <span style={{ color: "#c41230" }}>VERY</span>
-                  </span>
+                  />
                 </td>
               </tr>
 

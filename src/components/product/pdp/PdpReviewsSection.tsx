@@ -134,17 +134,17 @@ export function PdpReviewsSection({
 
   return (
     <>
-      <section id='reviews-section' className='py-8 sm:py-12 bg-[#faf9f7]'>
+      <section id='reviews-section' className='py-5 sm:py-8 bg-[#faf9f7]'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-10'>
+          <div className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6'>
             <div>
-              <p className='text-[11px] font-bold text-brand-600 uppercase tracking-[0.2em] mb-2'>
+              <p className='text-[10px] font-bold text-brand-600 uppercase tracking-[0.18em] mb-1'>
                 Customer Experience
               </p>
-              <h2 className='text-2xl sm:text-4xl font-serif font-black text-navy-900 flex items-center gap-2 sm:gap-3'>
+              <h2 className='text-xl sm:text-3xl font-serif font-black text-navy-900 flex items-center gap-2 sm:gap-2.5'>
                 Ratings & Reviews
                 {totalReviews > 0 && (
-                  <span className='inline-flex items-center justify-center bg-navy-50 text-navy-600 text-sm font-bold h-7 px-2.5 rounded-lg border border-navy-100'>
+                  <span className='inline-flex items-center justify-center bg-navy-50 text-navy-600 text-xs font-bold h-6 px-2 rounded-lg border border-navy-100'>
                     {totalReviews}
                   </span>
                 )}
@@ -156,7 +156,7 @@ export function PdpReviewsSection({
                 <button
                   type='button'
                   onClick={() => setShowReviewForm((v) => !v)}
-                  className='flex items-center gap-2.5 px-6 py-3 bg-navy-900 hover:bg-navy-800 text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-navy-100 active:scale-95'
+                  className='flex items-center gap-2 px-4 py-2.5 bg-navy-900 hover:bg-navy-800 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-navy-100 active:scale-95'
                 >
                   <MessageSquare className='h-4.5 w-4.5' />
                   Share Your Story
@@ -364,38 +364,38 @@ export function PdpReviewsSection({
           )}
 
           {reviews.length === 0 ?
-            <div className='text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm'>
-              <div className='inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-50 mb-6'>
-                <Star className='h-8 w-8 text-gray-200' />
+            <div className='text-center py-6 sm:py-7 bg-white rounded-xl border border-gray-100 shadow-sm'>
+              <div className='inline-flex items-center justify-center h-9 w-9 rounded-full bg-gray-50 mb-2.5'>
+                <Star className='h-4.5 w-4.5 text-gray-200' />
               </div>
-              <p className='text-gray-900 font-serif text-xl font-bold'>
+              <p className='text-gray-900 font-serif text-base sm:text-lg font-bold leading-tight'>
                 No reviews yet
               </p>
-              <p className='text-sm text-gray-500 mt-2 max-w-xs mx-auto'>
+              <p className='text-[11px] sm:text-xs text-gray-500 mt-1 max-w-[230px] mx-auto leading-relaxed'>
                 Be the first to share your thoughts and help our community.
               </p>
             </div>
-          : <div className='grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 sm:gap-10 xl:gap-16'>
-              <div className='bg-white rounded-3xl border border-gray-100 p-5 sm:p-6 h-fit shadow-xl shadow-gray-200/20 self-start z-10'>
-                <div className='text-center mb-8 pb-8 border-b border-gray-100'>
-                  <div className='flex justify-center items-center gap-3 mb-1'>
-                    <p className='text-7xl font-black text-navy-900 tracking-tighter'>
+          : <div className='grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 sm:gap-6 lg:gap-8'>
+              <div className='bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 h-fit shadow-md shadow-gray-200/20 self-start z-10'>
+                <div className='text-center mb-5 pb-5 border-b border-gray-100'>
+                  <div className='flex justify-center items-center gap-2.5 mb-1'>
+                    <p className='text-5xl sm:text-6xl font-black text-navy-900 tracking-tight'>
                       {displayAverageRating.toFixed(1)}
                     </p>
                     <div className='text-left'>
-                      <Star className='h-8 w-8 fill-gold-400 text-gold-400 mb-1' />
-                      <p className='text-[10px] font-bold text-gray-300 uppercase tracking-widest leading-none'>
+                      <Star className='h-6 w-6 sm:h-7 sm:w-7 fill-gold-400 text-gold-400 mb-1' />
+                      <p className='text-[9px] font-bold text-gray-300 uppercase tracking-widest leading-none'>
                         out of 5.0
                       </p>
                     </div>
                   </div>
-                  <p className='text-sm font-bold text-gray-400 mt-4 tracking-tight'>
+                  <p className='text-xs sm:text-sm font-bold text-gray-400 mt-2.5 tracking-tight'>
                     Verified ratings from {totalReviews} customers
                   </p>
                 </div>
 
-                <div className='space-y-4'>
-                  <div className='flex justify-between items-center mb-2 px-1'>
+                <div className='space-y-3'>
+                  <div className='flex justify-between items-center mb-1 px-1'>
                     <span className='text-[11px] font-black text-navy-900 uppercase tracking-wider'>
                       Rating Breakdown
                     </span>
@@ -419,16 +419,16 @@ export function PdpReviewsSection({
                 </div>
               </div>
 
-              <div className='space-y-6'>
+              <div className='space-y-4 sm:space-y-5'>
                 {visibleReviews.map((review) => (
                   <div
                     key={review._id}
-                    className='bg-white rounded-3xl border border-gray-100 p-4 sm:p-8 shadow-sm hover:shadow-md transition-shadow'
+                    className='bg-white rounded-2xl border border-gray-100 p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-shadow'
                   >
-                    <div className='flex items-start justify-between mb-6 gap-4'>
-                      <div className='flex items-center gap-4'>
+                    <div className='flex items-start justify-between mb-3 sm:mb-4 gap-3'>
+                      <div className='flex items-center gap-3'>
                         {review.user?.avatar ?
-                          <div className='relative h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-gray-200 flex-shrink-0 shadow-sm'>
+                          <div className='relative h-10 w-10 overflow-hidden rounded-xl ring-1 ring-gray-200 flex-shrink-0 shadow-sm'>
                             <Image
                               src={review.user.avatar}
                               alt={review.user?.name || "Customer"}
@@ -437,8 +437,8 @@ export function PdpReviewsSection({
                               className='object-cover'
                             />
                           </div>
-                        : <div className='h-12 w-12 rounded-2xl bg-gradient-to-br from-brand-600 to-navy-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-100/50 rotate-3'>
-                            <span className='text-white font-black text-lg'>
+                        : <div className='h-10 w-10 rounded-xl bg-gradient-to-br from-brand-600 to-navy-800 flex items-center justify-center flex-shrink-0 shadow-md shadow-brand-100/50 rotate-3'>
+                            <span className='text-white font-black text-base'>
                               {String(review.user?.name || "Customer")
                                 .charAt(0)
                                 .toUpperCase()}
@@ -446,10 +446,10 @@ export function PdpReviewsSection({
                           </div>
                         }
                         <div>
-                          <p className='text-[15px] font-bold text-gray-900 tracking-tight'>
+                          <p className='text-sm sm:text-[15px] font-bold text-gray-900 tracking-tight'>
                             {review.user?.name || "Customer"}
                           </p>
-                          <div className='flex items-center gap-2.5 mt-1'>
+                          <div className='flex items-center gap-2 mt-0.5'>
                             {review.isVerifiedPurchase && (
                               <span className='text-[10px] bg-green-50 text-green-700 font-bold px-2 py-0.5 rounded flex items-center gap-1 ring-1 ring-green-100'>
                                 <Check className='h-2.5 w-2.5' /> VERIFIED
@@ -461,7 +461,7 @@ export function PdpReviewsSection({
                           </div>
                         </div>
                       </div>
-                      <div className='flex items-center gap-1 shrink-0 bg-gray-50 px-2.5 py-1.5 rounded-xl border border-gray-100'>
+                      <div className='flex items-center gap-1 shrink-0 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100'>
                         <span className='text-xs font-black text-navy-900 mr-0.5'>
                           {review.rating}.0
                         </span>
@@ -471,11 +471,11 @@ export function PdpReviewsSection({
 
                     <div className='relative'>
                       {review.title && (
-                        <h4 className='font-bold text-gray-900 mb-2 text-lg tracking-tight font-serif italic'>
+                        <h4 className='font-bold text-gray-900 mb-1.5 text-base sm:text-lg tracking-tight font-serif italic'>
                           &ldquo;{review.title}&rdquo;
                         </h4>
                       )}
-                      <p className='text-[15px] text-gray-700 leading-relaxed break-words font-medium'>
+                      <p className='text-sm sm:text-[15px] text-gray-700 leading-relaxed break-words font-medium'>
                         {review.comment}
                       </p>
                     </div>
@@ -541,7 +541,7 @@ export function PdpReviewsSection({
                       </div>
                     )}
 
-                    <div className='mt-8 pt-6 border-t border-gray-50 flex items-center justify-between gap-3'>
+                    <div className='mt-4 pt-3 border-t border-gray-50 flex items-center justify-between gap-3'>
                       <button
                         type='button'
                         onClick={() => onHelpfulVote(review._id)}
@@ -568,7 +568,7 @@ export function PdpReviewsSection({
                     </div>
 
                     {review.adminReply?.text && (
-                      <div className='mt-6 ml-4 sm:ml-8 pl-6 border-l-4 border-brand-200 bg-brand-50/20 rounded-2xl p-5 relative overflow-hidden'>
+                      <div className='mt-4 ml-3 sm:ml-5 pl-4 border-l-4 border-brand-200 bg-brand-50/20 rounded-xl p-3.5 sm:p-4 relative overflow-hidden'>
                         <div className='absolute top-0 right-0 p-2 opacity-[0.03] scale-150 grayscale'>
                           <Package className='h-12 w-12' />
                         </div>
