@@ -180,14 +180,14 @@ export default function HomeGiftShowcase() {
           </div>
 
           {/* Left Side: Sticky Title */}
-          <div className='gift-title-container w-full md:w-5/12 flex flex-col justify-center text-center md:text-left z-10'>
+          <div className='gift-title-container w-full md:w-5/12 flex flex-col justify-center text-center md:text-left z-10 pt-10 md:pt-0'>
           {section.headlineLine1 && (
             <p className='text-lg font-bold tracking-tight text-rose-500 sm:text-xl md:text-2xl mb-2 sm:mb-4 uppercase tracking-widest'>
               {section.headlineLine1}
             </p>
           )}
           {section.headlineLine2 && (
-            <h2 className='font-sans text-4xl font-black leading-[1.1] tracking-tight text-gray-900 sm:text-5xl lg:text-7xl'>
+            <h2 className='font-sans text-4xl font-black leading-tight tracking-tight text-gray-900 sm:text-5xl lg:text-7xl'>
               {section.headlineLine2}
             </h2>
           )}
@@ -210,7 +210,7 @@ export default function HomeGiftShowcase() {
 
         {/* Right Side: Stacked Cards */}
         <div className='w-full md:w-6/12 relative md:h-[600px] flex flex-col md:block items-center md:perspective-[1200px] mt-2 md:mt-0'>
-          <div className='w-full max-w-[300px] sm:max-w-[340px] md:max-w-sm flex flex-col md:block gap-6 md:gap-0 relative md:h-[480px] mx-auto md:mx-0'>
+          <div className='w-full max-w-[300px] sm:max-w-[340px] md:max-w-sm flex flex-col md:block gap-6 md:gap-0 relative md:h-[480px] mx-auto md:ml-auto md:mr-0'>
             {cards.map((card, index) => {
               const accent =
                 card.accent && ACCENT_BG[card.accent] ? card.accent : "rose";

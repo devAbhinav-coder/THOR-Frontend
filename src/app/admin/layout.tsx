@@ -430,7 +430,7 @@ export default function AdminLayout({
           onMouseEnter={() => setSidebarHovered(true)}
           onMouseLeave={() => setSidebarHovered(false)}
           className={cn(
-            "relative z-20 hidden min-h-0 h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.07] bg-[#0c0f14] transition-[width,min-width,max-width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] lg:flex",
+            "relative z-20 hidden min-h-0 h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.07] bg-[#FAF9F6] transition-[width,min-width,max-width] duration-300 ease-in-out lg:flex",
             sidebarCollapsed ?
               "w-[76px] min-w-[76px] max-w-[76px]"
             : "w-[272px] min-w-[272px] max-w-[272px]",
