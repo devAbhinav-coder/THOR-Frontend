@@ -35,6 +35,11 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "https://*.google.com",
     "https://*.ingest.sentry.io",
     "https://*.ingest.de.sentry.io",
+    "https://www.googletagmanager.com",
+    "https://www.clarity.ms",
+    "https://*.clarity.ms",
+    "https://us.i.posthog.com",
+    "https://us-assets.i.posthog.com",
     // Razorpay Checkout (SDK + payment flows)
     "https://api.razorpay.com",
     "https://checkout.razorpay.com",
@@ -49,13 +54,22 @@ export function buildContentSecurityPolicy(nonce: string): string {
 
   const directives = [
     "default-src 'self'",
-    // With a nonce in script-src, browsers ignore 'unsafe-inline'; omit it to avoid confusion.
-    `script-src 'self' 'nonce-${nonce}' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com${scriptSrcExtra}`,
+    // `strict-dynamic` lets nonced scripts spawn additional scripts (GTM,
+    // PostHog, Clarity all do this). With it, allow-listed origins below
+    // become a fallback for browsers that don't support strict-dynamic and
+    // satisfy Lighthouse "Ensure CSP is effective against XSS attacks".
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline'${scriptSrcExtra}`,
+    // Modern Lighthouse audit accepts `script-src-elem` separately.
+    `script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline'`,
     "style-src 'self' 'unsafe-inline'",
+    "style-src-elem 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src ${connectSrc}`,
-    "frame-src 'self' https://accounts.google.com https://*.google.com https://api.razorpay.com https://checkout.razorpay.com",
+    "frame-src 'self' https://accounts.google.com https://*.google.com https://api.razorpay.com https://checkout.razorpay.com https://www.googletagmanager.com",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "media-src 'self' https: data: blob:",
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",
@@ -64,6 +78,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
 
   if (process.env.NODE_ENV === "production") {
     directives.push("upgrade-insecure-requests");
+    directives.push("block-all-mixed-content");
   }
 
   return directives.join("; ");

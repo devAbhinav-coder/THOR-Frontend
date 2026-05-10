@@ -96,12 +96,12 @@ export default function CookieConsentBanner() {
             <p id='cookie-consent-title' className='text-sm font-semibold'>
               Cookie preferences
             </p>
-            <p className='mt-1 text-xs text-white/70 sm:text-sm'>
+            <p className='mt-1 text-xs text-white/90 sm:text-sm'>
               We use essential cookies for secure login, cart, and checkout.
               Optional analytics and marketing cookies help us improve your
               experience — only if you accept.
             </p>
-            <p className='mt-1 text-[11px] text-white/55'>
+            <p className='mt-1 text-[11px] text-white/80'>
               Read our{" "}
               <Link
                 href='/privacy'

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { storefrontApi } from "@/lib/api";
 import { StorefrontSettings } from "@/types";
+import cloudinaryLoader from "@/lib/cloudinaryLoader";
 
 export default function HomeBanner() {
   const [settings, setSettings] = useState<StorefrontSettings | null>(null);
@@ -30,17 +31,19 @@ export default function HomeBanner() {
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='relative overflow-hidden rounded-3xl border border-gray-100 bg-gradient-to-br from-white via-white to-brand-50 shadow-sm'>
           {/* Soft image layer */}
-          <div className='absolute inset-0 opacity-[0.18]'>
+          <div className='absolute inset-0 opacity-[0.18]' aria-hidden='true'>
             <Image
               src={
                 promo?.backgroundImage ||
                 "https://images.unsplash.com/photo-1583391733958-d25e07fac0ec?w=1600&q=80&auto=format&fit=crop"
               }
-              alt='Fabric texture background'
+              alt=''
               fill
+              loader={cloudinaryLoader}
               sizes='(max-width: 1024px) 100vw, 1200px'
               className='object-cover'
-              priority={false}
+              loading='lazy'
+              quality={60}
             />
           </div>
 

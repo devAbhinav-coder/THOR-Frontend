@@ -12,6 +12,7 @@ import { categoryApi } from "@/lib/api";
 import { isGiftCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { Category } from "@/types";
+import cloudinaryLoader from "@/lib/cloudinaryLoader";
 
 import "swiper/css";
 import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
@@ -240,11 +241,18 @@ export default function CategorySection({
                     >
                       <Image
                         src={imgSrc}
-                        alt={cat.name}
+                        alt={`Shop ${cat.name} collection`}
                         fill
+                        loader={cloudinaryLoader}
                         sizes='(max-width: 640px) 270px, (max-width: 1024px) 330px, 370px'
                         className='object-contain transition-transform duration-700 group-hover:scale-102'
-                        priority={index < 4}
+                        // Only the very first card is above the fold; the
+                        // earlier `index < 4` value flagged 4 images as LCP
+                        // candidates and competed for bandwidth.
+                        priority={index === 0}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        quality={index === 0 ? 72 : 65}
+                        decoding={index === 0 ? "sync" : "async"}
                       />
                       <div className='absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/45 to-transparent' />
                       <div className='absolute bottom-0 left-0 right-0 p-4 sm:p-5'>

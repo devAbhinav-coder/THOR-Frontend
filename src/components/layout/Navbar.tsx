@@ -265,15 +265,18 @@ export default function Navbar() {
               <button
                 type='button'
                 onClick={() => setIsMenuOpen((o) => !o)}
-                className='lg:hidden p-1.5 -ml-1.5 text-white/75 hover:text-white rounded-md transition-colors'
-                aria-label='Open menu'
+                className='lg:hidden inline-flex items-center justify-center h-11 w-11 -ml-2 text-white/85 hover:text-white rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none'
+                aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={isMenuOpen}
+                aria-controls='mobile-nav-drawer'
               >
-                <Menu className='h-6 w-6' strokeWidth={1.5} />
+                <Menu className='h-6 w-6' strokeWidth={1.5} aria-hidden='true' />
               </button>
               {/* Logo — left on mobile, desktop flow */}
               <Link
                 href='/'
                 className='flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0'
+                aria-label='The House of Rani — Home'
               >
                 <Image
                   src='/logo.png'
@@ -282,6 +285,7 @@ export default function Navbar() {
                   height={58}
                   className='h-11 w-auto max-w-[168px] sm:max-w-none sm:h-[3.35rem] lg:h-[3.5rem] object-contain object-left'
                   priority
+                  fetchPriority='high'
                 />
               </Link>
             </div>
@@ -390,11 +394,12 @@ export default function Navbar() {
               <button
                 type='button'
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className='lg:hidden p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
-                aria-label='Search'
+                className='lg:hidden inline-flex items-center justify-center h-11 w-11 text-white/85 hover:text-white hover:bg-navy-800 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none'
+                aria-label={isSearchOpen ? "Close search" : "Open search"}
                 aria-expanded={isSearchOpen}
+                aria-controls='mobile-search-panel'
               >
-                <Search className='h-5 w-5' />
+                <Search className='h-5 w-5' aria-hidden='true' />
               </button>
 
               {isAuthedStable && <NotificationBell />}
@@ -411,12 +416,19 @@ export default function Navbar() {
                   >
                     <div className='h-8 w-8 rounded-full bg-navy-700 border-2 border-brand-600 flex items-center justify-center overflow-hidden'>
                       {user?.avatar ?
-                        <img
+                        <Image
                           src={user.avatar}
-                          alt={user.name}
+                          alt=''
+                          width={32}
+                          height={32}
+                          loading='lazy'
+                          unoptimized
                           className='h-full w-full object-cover'
                         />
-                      : <span className='text-white font-semibold text-sm'>
+                      : <span
+                          className='text-white font-semibold text-sm'
+                          aria-hidden='true'
+                        >
                           {String(user?.name || "U")
                             .charAt(0)
                             .toUpperCase()}
@@ -483,7 +495,10 @@ export default function Navbar() {
 
           {/* Mobile / tablet search */}
           {isSearchOpen && (
-            <div className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'>
+            <div
+              id='mobile-search-panel'
+              className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'
+            >
               <StoreSearchAutocomplete
                 scope={navActive.gifting ? "gifting" : "shop"}
                 variant='nav-mobile'
@@ -496,10 +511,17 @@ export default function Navbar() {
 
       {/* Mobile drawer — above bottom tab bar */}
       {isMenuOpen && (
-        <div className='fixed inset-0 z-[100] lg:hidden'>
+        <div
+          id='mobile-nav-drawer'
+          role='dialog'
+          aria-modal='true'
+          aria-label='Site navigation'
+          className='fixed inset-0 z-[100] lg:hidden'
+        >
           <div
             className='fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300'
             onClick={() => setIsMenuOpen(false)}
+            aria-hidden='true'
           />
           <div className='fixed left-0 top-0 h-full w-[min(21rem,88vw)] max-h-[100dvh] bg-navy-950 shadow-[20px_0_40px_rgba(0,0,0,0.5)] flex flex-col animate-in slide-in-from-left duration-300 ease-out'>
             {/* Drawer header */}
@@ -707,17 +729,27 @@ export default function Navbar() {
             ({ id, label, Icon, href, activeKey, showCartBadge }) => {
               const isOn = navActive[activeKey];
               const linkClass = cn(
-                "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation",
-                isOn ? "text-white" : "text-white/70 hover:text-white",
+                "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-md",
+                isOn ? "text-white" : "text-white/90 hover:text-white",
               );
               const iconClass = cn(
                 "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isOn ? "text-brand-400" : "text-white/75",
+                isOn ? "text-brand-400" : "text-white/90",
               );
+              const cartAriaSuffix =
+                showCartBadge && itemCount > 0
+                  ? `, ${itemCount} item${itemCount === 1 ? "" : "s"} in cart`
+                  : "";
               return (
-                <Link key={id} href={href} className={linkClass}>
+                <Link
+                  key={id}
+                  href={href}
+                  className={linkClass}
+                  aria-current={isOn ? "page" : undefined}
+                  aria-label={`${label}${cartAriaSuffix}`}
+                >
                   {showCartBadge ?
-                    <span className='relative inline-flex'>
+                    <span className='relative inline-flex' aria-hidden='true'>
                       <Icon
                         className={iconClass}
                         strokeWidth={isOn ? 2.5 : 2}
@@ -728,8 +760,13 @@ export default function Navbar() {
                         </span>
                       )}
                     </span>
-                  : <Icon className={iconClass} strokeWidth={isOn ? 2.5 : 2} />}
-                  {label}
+                  : <Icon
+                      className={iconClass}
+                      strokeWidth={isOn ? 2.5 : 2}
+                      aria-hidden='true'
+                    />
+                  }
+                  <span aria-hidden='true'>{label}</span>
                 </Link>
               );
             },

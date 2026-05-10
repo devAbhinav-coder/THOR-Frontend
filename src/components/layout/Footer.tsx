@@ -98,12 +98,16 @@ export default function Footer() {
   });
 
   return (
-    <footer className='bg-navy-900 text-white/80'>
+    <footer
+      className='bg-navy-900 text-white/95'
+      role='contentinfo'
+      aria-label='Site footer'
+    >
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14'>
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10'>
           {/* Brand column */}
           <div className='lg:col-span-1'>
-            <Link href='/'>
+            <Link href='/' aria-label='The House of Rani — Home'>
               <Image
                 src='/logo.png'
                 alt='The House of Rani'
@@ -228,7 +232,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className='mt-12 pt-6 border-t border-navy-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/70'>
+        <div className='mt-12 pt-6 border-t border-navy-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/85'>
           <p>
             © {new Date().getFullYear()} The House of Rani. All rights reserved.
           </p>

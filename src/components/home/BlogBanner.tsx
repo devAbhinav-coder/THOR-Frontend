@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen } from "lucide-react";
 import Image from "next/image";
 import { storefrontApi } from "@/lib/api";
 import { StorefrontSettings } from "@/types";
+import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -154,8 +155,14 @@ export default function BlogBanner() {
               <div className='blog-text-reveal relative w-full max-w-[280px] sm:max-w-sm aspect-[4/5] rounded-3xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.1)] transform rotate-2 hover:rotate-0 transition-transform duration-700 border-4 border-white group'>
                 <Image
                   src={blog?.mainImage || ""}
-                  alt='Journal Highlight'
+                  alt={
+                    blog?.title || "From The House of Rani journal"
+                  }
                   fill
+                  loader={cloudinaryLoader}
+                  sizes='(max-width: 640px) 280px, 384px'
+                  loading='lazy'
+                  quality={70}
                   className='object-cover transition-transform duration-700 group-hover:scale-110'
                 />
               </div>
@@ -165,11 +172,16 @@ export default function BlogBanner() {
                 <div
                   ref={imageRef}
                   className='absolute top-1/4 -left-4 sm:-left-8 lg:-left-12 w-32 sm:w-40 aspect-square rounded-2xl overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,0,0,0.15)] transform -rotate-6 border-[3px] border-white z-20 hidden sm:block bg-white'
+                  aria-hidden='true'
                 >
                   <Image
                     src={blog.sideImage}
-                    alt='Fabric details'
+                    alt=''
                     fill
+                    loader={cloudinaryLoader}
+                    sizes='160px'
+                    loading='lazy'
+                    quality={65}
                     className='object-cover'
                   />
                 </div>

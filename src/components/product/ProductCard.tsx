@@ -15,6 +15,7 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
+import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 
 interface ProductCardProps {
@@ -352,14 +353,20 @@ function ProductCardInner({ product, className }: ProductCardProps) {
               src={primaryUrl}
               alt={primaryAlt}
               fill
+              loader={cloudinaryLoader}
               sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
+              loading='lazy'
+              quality={70}
               className={cn(
                 "object-cover transition-all duration-500",
                 isHovered ? "scale-105" : "scale-100",
                 showSecondary ? "opacity-0" : "opacity-100",
               )}
             />
-          : <div className='absolute inset-0 flex items-center justify-center bg-gray-100'>
+          : <div
+              className='absolute inset-0 flex items-center justify-center bg-gray-100'
+              aria-hidden='true'
+            >
               <ShoppingBag className='w-12 h-12 text-gray-300' />
             </div>
           }
@@ -373,9 +380,13 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           {hasSecondary && hasHoveredOnce && (
             <Image
               src={secondaryUrl}
-              alt={`${product.name} — alternate view`}
+              alt=''
+              aria-hidden='true'
               fill
+              loader={cloudinaryLoader}
               sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
+              loading='lazy'
+              quality={70}
               className={cn(
                 "object-cover transition-all duration-500",
                 isHovered ? "scale-105" : "scale-100",

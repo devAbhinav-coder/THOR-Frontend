@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Suspense } from "react";
+import Script from "next/script";
 import { DM_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import AppToaster from "@/components/ui/AppToaster";
@@ -29,15 +30,20 @@ const playfair = Playfair_Display({
 
 const SITE_URL = getSiteUrl();
 
+/**
+ * Lighthouse warns when more than 4 `preconnect` hints exist — extra
+ * connections waste sockets and bandwidth. Keep the highest-impact origins
+ * (API + Cloudinary, since both are used during the LCP), preconnect the
+ * font CDN since `next/font` already requests from `fonts.gstatic.com`,
+ * and downgrade the analytics origin to a cheaper `dns-prefetch` (it isn't
+ * needed for the critical render).
+ */
 function preconnectHints(): { href: string; crossOrigin?: "" }[] {
   const hints: { href: string; crossOrigin?: "" }[] = [
-    // Google Fonts CDN — must preconnect for DM Sans + Playfair Display to load fast
-    { href: "https://fonts.gstatic.com", crossOrigin: "" },
-    { href: "https://fonts.googleapis.com" },
-    // Cloudinary CDN — all product images are served from here
+    // Cloudinary CDN — all product / hero / category images live here.
     { href: "https://res.cloudinary.com", crossOrigin: "" },
-    // Google Analytics — preconnect so gtag.js loads faster
-    { href: "https://www.googletagmanager.com" },
+    // Google Fonts binary CDN — DM Sans + Playfair Display.
+    { href: "https://fonts.gstatic.com", crossOrigin: "" },
   ];
   const api = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (api) {
@@ -49,6 +55,18 @@ function preconnectHints(): { href: string; crossOrigin?: "" }[] {
   }
   return hints;
 }
+
+/**
+ * Cheaper hint than preconnect — tells the browser to resolve DNS but not
+ * open a socket. Used for origins that load *after* hydration (analytics).
+ */
+const DNS_PREFETCH_HINTS = [
+  "https://www.googletagmanager.com",
+  "https://www.google-analytics.com",
+  "https://www.clarity.ms",
+  "https://us.i.posthog.com",
+  "https://connect.facebook.net",
+];
 
 export const metadata: Metadata = {
   title: {
@@ -202,6 +220,9 @@ gtag('consent', 'default', {
             crossOrigin={p.crossOrigin}
           />
         ))}
+        {DNS_PREFETCH_HINTS.map((href) => (
+          <link key={href} rel='dns-prefetch' href={href} />
+        ))}
         {/* Per-request CSP nonces can differ between SSR snapshot and client hydration in dev; suppressHydrationWarning is the supported escape hatch. */}
         <script
           id='consent-mode-default'
@@ -215,61 +236,16 @@ gtag('consent', 'default', {
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteGraphLd) }}
         />
-        {/* Google Tag Manager */}
-        <script
-          id="gtm-script"
-          nonce={nonce}
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','GTM-WQ386HHK');
-            `,
-          }}
-        />
-        {/* Microsoft Clarity */}
-        {process.env.NEXT_PUBLIC_CLARITY_ID && (
-          <script
-            id="clarity-script"
-            nonce={nonce}
-            suppressHydrationWarning
-            dangerouslySetInnerHTML={{
-              __html: `
-                (function(c,l,a,r,i,t,y){
-                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-                })(window, document, "clarity", "script", "${process.env.NEXT_PUBLIC_CLARITY_ID}");
-              `,
-            }}
-          />
-        )}
-        {/* PostHog for A/B Testing & Deep Analytics */}
-        {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
-          <script
-            id="posthog-script"
-            nonce={nonce}
-            suppressHydrationWarning
-            dangerouslySetInnerHTML={{
-              __html: `
-                !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-                posthog.init('${process.env.NEXT_PUBLIC_POSTHOG_KEY}', {api_host:'https://us.i.posthog.com', person_profiles: 'identified_only'});
-              `,
-            }}
-          />
-        )}
       </head>
       <body className='min-h-screen'>
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-WQ386HHK"
-            height="0"
-            width="0"
+            src='https://www.googletagmanager.com/ns.html?id=GTM-WQ386HHK'
+            height='0'
+            width='0'
             style={{ display: "none", visibility: "hidden" }}
+            title='Google Tag Manager'
           />
         </noscript>
         <AuthProvider>
@@ -285,8 +261,58 @@ gtag('consent', 'default', {
           <CookieConsentBanner />
         </AuthProvider>
 
-          <Analytics />
-  <SpeedInsights />
+        {/*
+         * 3rd-party analytics moved out of <head> and deferred so they don't
+         * compete with the LCP image / hydration. `afterInteractive` runs
+         * after page becomes interactive — Lighthouse no longer counts these
+         * as render-blocking, which lifts the Performance score.
+         */}
+        <Script
+          id='gtm-loader'
+          strategy='afterInteractive'
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','GTM-WQ386HHK');
+            `,
+          }}
+        />
+        {process.env.NEXT_PUBLIC_CLARITY_ID && (
+          <Script
+            id='clarity-loader'
+            strategy='lazyOnload'
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", "${process.env.NEXT_PUBLIC_CLARITY_ID}");
+              `,
+            }}
+          />
+        )}
+        {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
+          <Script
+            id='posthog-loader'
+            strategy='lazyOnload'
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: `
+                !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+                posthog.init('${process.env.NEXT_PUBLIC_POSTHOG_KEY}', {api_host:'https://us.i.posthog.com', person_profiles: 'identified_only'});
+              `,
+            }}
+          />
+        )}
+
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

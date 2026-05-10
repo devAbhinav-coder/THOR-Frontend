@@ -120,13 +120,25 @@ export default function WhyChooseUs() {
       });
     }, containerRef);
 
-    // Bulletproof GSAP fix for layout shifts
-    const resizeObserver = new ResizeObserver(() => {
-      ScrollTrigger.refresh();
-    });
+    /**
+     * GSAP layout shift fix — debounced. The previous version called
+     * `ScrollTrigger.refresh()` on EVERY observed change to <body>, which on
+     * a busy page (image load, font swap, lazy chunk) triggers a forced
+     * synchronous reflow each time and was the primary contributor to
+     * Lighthouse's "Forced reflow" insight.
+     */
+    let pending = 0;
+    const refresh = () => {
+      window.cancelAnimationFrame(pending);
+      pending = window.requestAnimationFrame(() => {
+        ScrollTrigger.refresh();
+      });
+    };
+    const resizeObserver = new ResizeObserver(refresh);
     resizeObserver.observe(document.body);
 
     return () => {
+      window.cancelAnimationFrame(pending);
       resizeObserver.disconnect();
       ctx.revert();
     };
@@ -157,13 +169,14 @@ export default function WhyChooseUs() {
           <div className='w-full md:w-4/12 lg:w-4/12 md:sticky md:top-16 flex flex-col items-center z-10'>
             {/* Standing Girl Image - Normal margin, scaled for 30% width */}
             <div className='relative w-full max-w-[280px] sm:max-w-[380px] md:max-w-[440px] aspect-[3/4] mx-auto'>
-              <Image 
-                src={whyChooseUsImg} 
-                alt='Woman in beautiful ethnic saree'
+              <Image
+                src={whyChooseUsImg}
+                alt='House of Rani model wearing a handwoven silk saree'
                 fill
-                sizes='(max-width: 768px) 100vw, 33vw'
+                sizes='(max-width: 768px) 280px, 33vw'
                 className='object-contain object-top transition-transform duration-1000 hover:scale-105 drop-shadow-2xl'
-                priority
+                loading='lazy'
+                quality={75}
               />
             </div>
           </div>

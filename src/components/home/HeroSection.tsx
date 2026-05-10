@@ -7,6 +7,7 @@ import { ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { HeroSlide } from "@/types";
 import { cn } from "@/lib/utils";
+import cloudinaryLoader from "@/lib/cloudinaryLoader";
 
 let hasPlayedHeroTextEntrance = false;
 
@@ -64,19 +65,27 @@ function HeroSection({ initialSlides }: Props) {
             "absolute inset-0 transition-opacity duration-1000",
             i === currentSlide ? "opacity-100" : "opacity-0",
           )}
+          aria-hidden={i === currentSlide ? "false" : "true"}
         >
           <Image
             src={s.image}
-            alt={s.title}
+            alt={s.title || "House of Rani — featured collection"}
             fill
-            unoptimized
+            // Custom loader rewrites Cloudinary URLs through `f_auto,q_auto,w_<n>`
+            // so the browser receives AVIF/WebP at the rendered width — fixes
+            // the 1.9 MB Lighthouse "Improve image delivery" finding.
+            loader={cloudinaryLoader}
             priority={i === 0}
             fetchPriority={i === 0 ? "high" : "low"}
+            // Only the first slide is decoded synchronously (it's the LCP);
+            // others can decode lazily so they don't fight the LCP for CPU.
+            decoding={i === 0 ? "sync" : "async"}
+            loading={i === 0 ? "eager" : "lazy"}
             sizes='100vw'
-            quality={i === 0 ? 68 : 72}
+            quality={i === 0 ? 65 : 60}
             className='object-cover object-[center_top]'
           />
-          <div className='absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10' />
+          <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/15' />
         </div>
       ))}
 
@@ -102,7 +111,7 @@ function HeroSection({ initialSlides }: Props) {
             {slide.title}
           </h1>
           {slide.description && (
-            <p className='hidden sm:block text-white/90 text-xs sm:text-lg mb-4 sm:mb-8 leading-relaxed line-clamp-2 sm:line-clamp-none'>
+            <p className='hidden sm:block text-white text-xs sm:text-lg mb-4 sm:mb-8 leading-relaxed line-clamp-2 sm:line-clamp-none drop-shadow'>
               {slide.description}
             </p>
           )}
@@ -151,22 +160,42 @@ function HeroSection({ initialSlides }: Props) {
         </div>
       </div>
 
-      <div className='absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-2'>
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            type='button'
-            onClick={() => goToSlide(i)}
-            className={cn(
-              "h-2 rounded-full transition-all duration-300",
-              i === currentSlide ? "w-8 bg-brand-500" : (
-                "w-2 bg-white/30 hover:bg-white/60"
-              ),
-            )}
-            aria-label={`Go to slide ${i + 1}`}
-          />
-        ))}
-      </div>
+      {slides.length > 1 && (
+        <div
+          className='absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-1'
+          role='tablist'
+          aria-label='Hero slides'
+        >
+          {slides.map((s, i) => {
+            const isActive = i === currentSlide;
+            return (
+              <button
+                key={i}
+                type='button'
+                role='tab'
+                aria-selected={isActive}
+                aria-current={isActive ? "true" : undefined}
+                aria-label={`Show slide ${i + 1} of ${slides.length}${s.title ? `: ${s.title}` : ""}`}
+                onClick={() => goToSlide(i)}
+                className={cn(
+                  "group relative inline-flex items-center justify-center",
+                  // 28×28 hit area (>= WCAG 24×24); the visible pill is centered inside.
+                  "h-7 w-7 sm:h-8 sm:w-8 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30",
+                )}
+              >
+                <span
+                  className={cn(
+                    "block h-2 rounded-full transition-all duration-300",
+                    isActive ? "w-8 bg-brand-500" : (
+                      "w-2 bg-white/60 group-hover:bg-white/90"
+                    ),
+                  )}
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

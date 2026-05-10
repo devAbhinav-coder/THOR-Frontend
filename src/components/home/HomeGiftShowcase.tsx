@@ -7,6 +7,7 @@ import { storefrontApi } from "@/lib/api";
 import type { HomeGiftShowcaseCard, StorefrontSettings } from "@/types";
 import { cn } from "@/lib/utils";
 import { resolveHomeGiftShopButton } from "@/lib/homeGiftShopLink";
+import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { Gift, Heart, Sparkles, Star } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -237,6 +238,9 @@ export default function HomeGiftShowcase() {
                         src={card.image}
                         alt={card.title || "Gift category"}
                         fill
+                        loader={cloudinaryLoader}
+                        loading='lazy'
+                        quality={70}
                         className='object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer'
                         sizes='(max-width: 640px) 100vw, 320px'
                       />
