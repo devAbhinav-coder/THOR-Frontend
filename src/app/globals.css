@@ -187,14 +187,16 @@
       opacity: 0.72;
     }
   }
+  /* Opacity + transform only — `filter: blur` can inflate paint cost and
+     contribute to jank / CLS on low-end devices during the hero entrance. */
   @keyframes hero-text-in {
     0% {
-      transform: translateY(8px);
-      filter: blur(1px);
+      transform: translateY(6px);
+      opacity: 0.88;
     }
     100% {
       transform: translateY(0);
-      filter: blur(0);
+      opacity: 1;
     }
   }
   .animate-hero-text-in {

@@ -9,10 +9,6 @@ import { cn } from "@/lib/utils";
 import { resolveHomeGiftShopButton } from "@/lib/homeGiftShopLink";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { Gift, Heart, Sparkles, Star } from "lucide-react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 const ACCENT_BG: Record<string, string> = {
   rose: "bg-gradient-to-b from-rose-200 via-rose-100 to-rose-300",
@@ -20,17 +16,31 @@ const ACCENT_BG: Record<string, string> = {
   sage: "bg-gradient-to-b from-emerald-100 via-teal-50 to-emerald-200",
 };
 
-export default function HomeGiftShowcase() {
-  const [settings, setSettings] = useState<StorefrontSettings | null>(null);
+type Props = {
+  /** SSR-prefetched storefront settings — eliminates the client-fetch + late mount that pushes 100vh+ of content into the layout (huge CLS). */
+  initialSettings?: StorefrontSettings | null;
+};
+
+export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
+  const [settings, setSettings] = useState<StorefrontSettings | null>(
+    () => initialSettings ?? null,
+  );
   const sectionRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (initialSettings) return;
+    let cancelled = false;
     storefrontApi
       .getSettings()
-      .then((res) => setSettings(res.data?.settings || null))
+      .then((res) => {
+        if (!cancelled) setSettings(res.data?.settings || null);
+      })
       .catch(() => {});
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [initialSettings]);
 
   const section = settings?.homeGiftShowcase;
   const rawCards = section?.cards || [];
@@ -43,9 +53,25 @@ export default function HomeGiftShowcase() {
 
   useLayoutEffect(() => {
     if (!section?.isActive || cards.length === 0) return;
+    if (typeof window === "undefined") return;
+    /** Skip the 100vh+ pinned scroll animation on phones (heavy paint, marginal benefit) and when the user prefers reduced motion. */
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(max-width: 767px)").matches) return;
 
-    const ctx = gsap.context(() => {
-      let mm = gsap.matchMedia();
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+
+    /** Lazy-load GSAP only when we're actually about to animate. Saves ~50kb on the initial JS for visitors who never reach this section. */
+    (async () => {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
+      if (cancelled) return;
+      gsap.registerPlugin(ScrollTrigger);
+
+      const ctx = gsap.context(() => {
+        const mm = gsap.matchMedia();
 
       mm.add("(min-width: 768px)", () => {
         const cardElements = gsap.utils.toArray<HTMLElement>(
@@ -142,10 +168,15 @@ export default function HomeGiftShowcase() {
           );
         });
       });
-    }, sectionRef);
+      }, sectionRef);
+
+      cleanup = () => ctx.revert();
+      if (cancelled) cleanup();
+    })();
 
     return () => {
-      ctx.revert();
+      cancelled = true;
+      cleanup?.();
     };
   }, [section?.isActive, cards.length]);
 

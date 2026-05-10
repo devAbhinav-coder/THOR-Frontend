@@ -22,6 +22,8 @@ function HeroSection({ initialSlides }: Props) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [playEntrance, setPlayEntrance] = useState(false);
+  /** Defer mounting non-LCP slides so the first <Image> isn't bandwidth-starved. */
+  const [revealAllSlides, setRevealAllSlides] = useState(false);
 
   useEffect(() => {
     if (hasPlayedHeroTextEntrance) return;
@@ -31,6 +33,27 @@ function HeroSection({ initialSlides }: Props) {
     });
     return () => window.cancelAnimationFrame(id);
   }, []);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    /** Wait for the LCP slide to load + a small idle window before mounting siblings. */
+    const reveal = () => setRevealAllSlides(true);
+    const win = window as Window & {
+      requestIdleCallback?: (
+        cb: () => void,
+        opts?: { timeout?: number },
+      ) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof win.requestIdleCallback === "function") {
+      const id = win.requestIdleCallback(reveal, { timeout: 2500 });
+      return () => {
+        win.cancelIdleCallback?.(id);
+      };
+    }
+    const timer = window.setTimeout(reveal, 1500);
+    return () => window.clearTimeout(timer);
+  }, [slides.length]);
 
   useEffect(() => {
     if (slides.length === 0) return;
@@ -58,36 +81,42 @@ function HeroSection({ initialSlides }: Props) {
 
   return (
     <section className='relative h-[min(42svh,320px)] sm:h-[min(80svh,700px)] overflow-hidden bg-navy-950'>
-      {slides.map((s, i) => (
-        <div
-          key={`${s.image}-${s.title}-${i}`}
-          className={cn(
-            "absolute inset-0 transition-opacity duration-1000",
-            i === currentSlide ? "opacity-100" : "opacity-0",
-          )}
-          aria-hidden={i === currentSlide ? "false" : "true"}
-        >
-          <Image
-            src={s.image}
-            alt={s.title || "House of Rani — featured collection"}
-            fill
-            // Custom loader rewrites Cloudinary URLs through `f_auto,q_auto,w_<n>`
-            // so the browser receives AVIF/WebP at the rendered width — fixes
-            // the 1.9 MB Lighthouse "Improve image delivery" finding.
-            loader={cloudinaryLoader}
-            priority={i === 0}
-            fetchPriority={i === 0 ? "high" : "low"}
-            // Only the first slide is decoded synchronously (it's the LCP);
-            // others can decode lazily so they don't fight the LCP for CPU.
-            decoding={i === 0 ? "sync" : "async"}
-            loading={i === 0 ? "eager" : "lazy"}
-            sizes='100vw'
-            quality={i === 0 ? 65 : 60}
-            className='object-cover object-[center_top]'
-          />
-          <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/15' />
-        </div>
-      ))}
+      {slides.map((s, i) => {
+        /** Only the LCP slide is mounted right away; others wait for `revealAllSlides`. */
+        const shouldMount = i === 0 || revealAllSlides || i === currentSlide;
+        return (
+          <div
+            key={`${s.image}-${s.title}-${i}`}
+            className={cn(
+              "absolute inset-0 transition-opacity duration-1000",
+              i === currentSlide ? "opacity-100" : "opacity-0",
+            )}
+            aria-hidden={i === currentSlide ? "false" : "true"}
+          >
+            {shouldMount ? (
+              <Image
+                src={s.image}
+                alt={s.title || "House of Rani — featured collection"}
+                fill
+                // Custom loader rewrites Cloudinary URLs through `f_auto,q_auto,w_<n>`
+                // so the browser receives AVIF/WebP at the rendered width — fixes
+                // the 1.9 MB Lighthouse "Improve image delivery" finding.
+                loader={cloudinaryLoader}
+                priority={i === 0}
+                fetchPriority={i === 0 ? "high" : "low"}
+                // Only the first slide is decoded synchronously (it's the LCP);
+                // others can decode lazily so they don't fight the LCP for CPU.
+                decoding={i === 0 ? "sync" : "async"}
+                loading={i === 0 ? "eager" : "lazy"}
+                sizes='100vw'
+                quality={i === 0 ? 65 : 60}
+                className='object-cover object-[center_top]'
+              />
+            ) : null}
+            <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/15' />
+          </div>
+        );
+      })}
 
       <div className='relative h-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center pt-3 '>
         <div

@@ -65,12 +65,55 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 w-48 bg-gray-200 rounded" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-gray-200 rounded-xl" />)}
+      <div className='min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white'>
+        <div className='p-4 sm:p-6 xl:p-8 space-y-8 max-w-[1600px] mx-auto'>
+          <div className='animate-pulse space-y-3'>
+            <div className='h-8 w-48 rounded-lg bg-gray-200' />
+            <div className='h-4 w-full max-w-xl rounded bg-gray-100' />
+            <div className='flex flex-wrap gap-2 pt-2'>
+              <div className='h-9 w-24 rounded-xl bg-gray-200' />
+              <div className='h-9 w-28 rounded-xl bg-gray-200' />
+              <div className='h-9 w-28 rounded-xl bg-gray-200' />
+            </div>
           </div>
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3'>
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className='h-[4.5rem] rounded-2xl border border-gray-100 bg-gray-100/80 sm:h-[4.75rem]'
+              />
+            ))}
+          </div>
+          <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className='h-40 rounded-2xl border border-gray-100 bg-gray-100/80 sm:h-44'
+              />
+            ))}
+          </div>
+          <div className='grid grid-cols-1 xl:grid-cols-5 gap-6'>
+            <div className='xl:col-span-3 h-[320px] rounded-2xl border border-gray-100 bg-gray-100/80' />
+            <div className='xl:col-span-2 h-[320px] rounded-2xl border border-gray-100 bg-gray-100/80' />
+          </div>
+          <div className='grid grid-cols-2 lg:grid-cols-5 gap-4'>
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className='h-24 rounded-2xl border border-gray-100 bg-gray-100/80 sm:h-28'
+              />
+            ))}
+          </div>
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+            <div className='min-h-[280px] rounded-xl border border-gray-100 bg-gray-100/80' />
+            <div className='min-h-[280px] rounded-xl border border-gray-100 bg-gray-100/80' />
+          </div>
+          <div className='min-h-[11rem] rounded-xl border border-gray-100 bg-gray-100/80' />
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+            <div className='min-h-[220px] rounded-xl border border-gray-100 bg-gray-100/80' />
+            <div className='min-h-[220px] rounded-xl border border-gray-100 bg-gray-100/80' />
+          </div>
+          <div className='min-h-[14rem] rounded-xl border border-gray-100 bg-gray-100/80' />
         </div>
       </div>
     );

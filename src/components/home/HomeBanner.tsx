@@ -8,15 +8,30 @@ import { storefrontApi } from "@/lib/api";
 import { StorefrontSettings } from "@/types";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 
-export default function HomeBanner() {
-  const [settings, setSettings] = useState<StorefrontSettings | null>(null);
+type Props = {
+  /** SSR-prefetched storefront settings — avoids a client fetch + late mount CLS. */
+  initialSettings?: StorefrontSettings | null;
+};
+
+export default function HomeBanner({ initialSettings }: Props = {}) {
+  const [settings, setSettings] = useState<StorefrontSettings | null>(
+    () => initialSettings ?? null,
+  );
 
   useEffect(() => {
+    /** Server payload is the source of truth — only refetch if SSR didn't provide one. */
+    if (initialSettings) return;
+    let cancelled = false;
     storefrontApi
       .getSettings()
-      .then((res) => setSettings(res.data?.settings || null))
+      .then((res) => {
+        if (!cancelled) setSettings(res.data?.settings || null);
+      })
       .catch(() => {});
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [initialSettings]);
 
   const promo = settings?.promoBanner;
 

@@ -1,4 +1,4 @@
-import type { HeroSlide } from "@/types";
+import type { HeroSlide, StorefrontSettings } from "@/types";
 import { STOREFRONT_SETTINGS_CACHE_TAG } from "@/lib/cacheTags";
 import { fallbackHeroSlides } from "@/lib/heroSlidesFallback";
 import * as schemas from "@/lib/api-schemas";
@@ -32,6 +32,30 @@ export async function fetchStorefrontHeroSlides(): Promise<HeroSlide[]> {
     return active.length > 0 ? active : fallbackHeroSlides;
   } catch {
     return fallbackHeroSlides;
+  }
+}
+
+/**
+ * Full storefront settings for the home page so promo / gift sections render
+ * with real height + content during SSR — eliminates the late-mount CLS that
+ * happens when these client components fetch on hydration.
+ */
+export async function fetchStorefrontSettingsHome(): Promise<StorefrontSettings | null> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  try {
+    const res = await fetch(`${base}/storefront/settings`, {
+      next: { revalidate: 120, tags: [STOREFRONT_SETTINGS_CACHE_TAG] },
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      data?: { settings?: StorefrontSettings };
+    };
+    const settings = json?.data?.settings;
+    return settings && typeof settings === "object" ? settings : null;
+  } catch {
+    return null;
   }
 }
 

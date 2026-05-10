@@ -19,6 +19,7 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
+  adjustFontFallback: true,
   weight: ["300", "400", "500", "600", "700"],
 });
 
@@ -26,6 +27,7 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
   display: "swap",
+  adjustFontFallback: true,
 });
 
 const SITE_URL = getSiteUrl();

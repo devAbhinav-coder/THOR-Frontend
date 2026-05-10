@@ -5,7 +5,10 @@ import {
   fetchHomeCategoryStats,
   fetchHomeFeaturedProducts,
 } from "@/lib/storePrefetch";
-import { fetchStorefrontHeroSlides } from "@/lib/storefrontServer";
+import {
+  fetchStorefrontHeroSlides,
+  fetchStorefrontSettingsHome,
+} from "@/lib/storefrontServer";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 const CategorySection = dynamic(() => import("@/components/home/CategorySection"));
@@ -83,11 +86,13 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [heroSlides, categoryStats, featuredProducts] = await Promise.all([
-    fetchStorefrontHeroSlides(),
-    fetchHomeCategoryStats(),
-    fetchHomeFeaturedProducts(),
-  ]);
+  const [heroSlides, categoryStats, featuredProducts, storefrontSettings] =
+    await Promise.all([
+      fetchStorefrontHeroSlides(),
+      fetchHomeCategoryStats(),
+      fetchHomeFeaturedProducts(),
+      fetchStorefrontSettingsHome(),
+    ]);
 
   /**
    * WebPage JSON-LD — references the Organization and WebSite nodes
@@ -287,9 +292,9 @@ export default async function HomePage() {
       <HeroSection initialSlides={heroSlides} />
       <CategorySection initialCategories={categoryStats} />
       <FeaturedProducts initialProducts={featuredProducts} />
-      <HomeBanner />
+      <HomeBanner initialSettings={storefrontSettings} />
       <ExploreCollection />
-      <HomeGiftShowcase />
+      <HomeGiftShowcase initialSettings={storefrontSettings} />
       <WhyChooseUs />
       <BlogBanner />
       <Testimonials />

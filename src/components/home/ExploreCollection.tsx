@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
@@ -131,28 +131,23 @@ export default function ExploreCollection() {
         <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch [&>*]:h-full [&>*]:min-h-0'>
           {isLoading && products.length === 0 ?
             [...Array(EXPLORE_PAGE_LIMIT)].map((_, i) => (
-              <ProductCardSkeleton key={i} />
+              <ProductCardSkeleton key={`first-${i}`} />
             ))
           : products.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))
           }
+          {/* Append-shimmer: same skeleton card as the initial grid so the section keeps a uniform array of cards while the next page is fetched (no centered "Loading more…" jump). */}
+          {isFetchingNextPage ?
+            [...Array(EXPLORE_PAGE_LIMIT)].map((_, i) => (
+              <ProductCardSkeleton key={`more-${products.length}-${i}`} />
+            ))
+          : null}
         </div>
-
-        {isFetchingNextPage ? (
-          <div
-            className='mt-4 flex min-h-[3rem] items-center justify-center gap-2 text-sm text-gray-500'
-            aria-busy
-            aria-live='polite'
-          >
-            <Loader2 className='h-4 w-4 shrink-0 animate-spin text-brand-600' />
-            <span>Loading more…</span>
-          </div>
-        ) : null}
 
         <div
           ref={sentinelRef}
-          className='h-8 w-full shrink-0 mt-1'
+          className='h-8 w-full shrink-0 mt-2'
           aria-hidden
         />
 
