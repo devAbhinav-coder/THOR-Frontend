@@ -132,33 +132,33 @@ function AdminSidebarNavLink({
       prefetch
       title={sidebarCollapsed ? label : undefined}
       className={cn(
-        "group relative h-10 rounded-xl text-[13px] transition-[color,background-color,padding] duration-300",
+        "group relative h-10 rounded-xl text-[13px] transition-all duration-300",
         sidebarCollapsed ?
           "flex w-full items-center justify-center px-1.5"
         : "flex w-full items-center gap-2 px-1.5",
         !sidebarCollapsed &&
           (active ?
-            "bg-gradient-to-r from-white/[0.09] to-white/[0.02] text-white shadow-[inset_3px_0_0_0_#c9a227,0_0_24px_-12px_rgba(212,168,83,0.15)]"
-          : "text-slate-300 hover:bg-white/[0.06] hover:text-white"),
+            "bg-white shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] text-navy-900 border border-gray-100"
+          : "text-slate-600 hover:bg-black/5 hover:text-navy-900"),
         sidebarCollapsed &&
           (active ?
-            "bg-white/[0.12] text-white shadow-[0_0_20px_-8px_rgba(212,168,83,0.35)]"
-          : "text-slate-300 hover:bg-white/[0.08] hover:text-white"),
+            "bg-white text-navy-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.1)] border border-gray-100"
+          : "text-slate-600 hover:bg-black/5 hover:text-navy-900"),
       )}
     >
       <span
         className={cn(
-          "flex items-center justify-center rounded-[10px] border transition-colors duration-200",
+          "flex items-center justify-center rounded-[10px] border transition-all duration-200",
           "h-9 w-9 shrink-0",
           active ?
-            "border-gold-400/40 bg-gold-500/15 text-gold-100 shadow-[0_0_16px_-4px_rgba(212,168,83,0.35)]"
-          : "border-white/[0.08] bg-white/[0.04] text-slate-300 group-hover:border-white/15 group-hover:bg-white/[0.08] group-hover:text-white",
+            "border-brand-200 bg-brand-50 text-brand-600 shadow-sm"
+          : "border-gray-100 bg-gray-50 text-slate-500 group-hover:border-gray-200 group-hover:bg-gray-100 group-hover:text-navy-900",
         )}
       >
-        <Icon className='h-[15px] w-[15px]' strokeWidth={2} />
+        <Icon className='h-[15px] w-[15px]' strokeWidth={2.25} />
       </span>
       {!sidebarCollapsed && (
-        <span className='flex min-h-9 min-w-0 flex-1 items-center truncate text-left text-[13px] leading-none tracking-tight'>
+        <span className='flex min-h-9 min-w-0 flex-1 items-center truncate text-left text-[13px] font-semibold leading-none tracking-tight'>
           {label}
         </span>
       )}
@@ -193,7 +193,7 @@ function AdminAvatar({
   if (avatarUrl) {
     return (
       <div
-        className={`relative ${sizeClass} shrink-0 overflow-hidden rounded-2xl bg-slate-800 ring-2 ring-gold-500/35 shadow-lg`}
+        className={`relative ${sizeClass} shrink-0 overflow-hidden rounded-2xl bg-gray-100 ring-2 ring-brand-200 shadow-sm`}
       >
         <Image
           src={avatarUrl}
@@ -207,7 +207,7 @@ function AdminAvatar({
   }
   return (
     <div
-      className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 ${initialsTextClass} font-bold tracking-tight text-gold-200 ring-2 ring-gold-500/30 shadow-lg`}
+      className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 ${initialsTextClass} font-bold tracking-tight text-slate-600 ring-2 ring-brand-200 shadow-sm`}
       aria-label={alt}
     >
       {initials}
@@ -275,7 +275,7 @@ export default function AdminLayout({
     <div className='flex flex-col h-dvh max-h-dvh bg-gray-50 overflow-hidden overscroll-none'>
       <BrowserNotificationPrompt />
       {/* Mobile top bar */}
-      <div className='lg:hidden shrink-0 z-40 border-b border-white/[0.08] bg-[#0c0f14] text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.55)] sticky top-0'>
+      <div className='lg:hidden shrink-0 z-40 border-b border-gray-100 bg-[#FAF9F6] text-navy-900 shadow-sm sticky top-0'>
         <div className='h-[3.25rem] px-3 flex items-center justify-between gap-2'>
           <div className='flex min-w-0 flex-1 items-center gap-2'>
             <Link
@@ -297,10 +297,10 @@ export default function AdminLayout({
               sizeClass='h-9 w-9'
             />
             <div className='min-w-0'>
-              <h1 className='font-serif text-sm font-bold leading-tight tracking-tight text-white'>
-                <span className='text-gold-400'>✦</span> Rani Admin
+              <h1 className='font-serif text-sm font-bold leading-tight tracking-tight text-navy-900'>
+                <span className='text-brand-600'>✦</span> Rani Admin
               </h1>
-              <p className='truncate text-[10px] text-slate-300'>
+              <p className='truncate text-[10px] text-slate-500'>
                 {user?.name}
               </p>
             </div>
@@ -309,11 +309,11 @@ export default function AdminLayout({
             <Link
               href='/'
               prefetch
-              className='flex h-9 w-9 items-center justify-center rounded-lg bg-gold-500/15 text-gold-100 ring-1 ring-gold-500/35 transition hover:bg-gold-500/25 hover:text-white'
+              className='flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 ring-1 ring-brand-200 transition hover:bg-brand-100 hover:text-brand-700'
               aria-label={SHOP_SITE_CTA}
               title={SHOP_SITE_CTA}
             >
-              <Store className='h-4 w-4' strokeWidth={2} />
+              <Store className='h-4 w-4' strokeWidth={2.25} />
             </Link>
             <div className='theme-dark text-white'>
               <NotificationBell />
@@ -334,16 +334,16 @@ export default function AdminLayout({
             {mobileQuickLinks.map((item) => {
               const active = navLinkActive(pathname, item.href);
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all",
-                    active ?
-                      "bg-gradient-to-r from-amber-600/95 to-gold-700/90 text-white shadow-[0_0_14px_-4px_rgba(212,168,83,0.45)]"
-                    : "bg-white/[0.06] text-slate-300 ring-1 ring-white/[0.06] hover:bg-white/[0.1] hover:text-white",
-                  )}
-                >
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all",
+                      active ?
+                        "bg-brand-600 text-white shadow-md"
+                      : "bg-white text-slate-600 ring-1 ring-gray-100 hover:bg-gray-50",
+                    )}
+                  >
                   {item.label}
                 </Link>
               );
@@ -353,22 +353,22 @@ export default function AdminLayout({
         {isMenuOpen && (
           <nav
             data-lenis-prevent
-            className='px-3 pb-3 border-t border-gray-800 max-h-[min(70vh,520px)] overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+            className='px-3 pb-3 border-t border-gray-100 bg-[#FAF9F6] max-h-[min(70vh,520px)] overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
           >
             <Link
               href='/'
               prefetch
               onClick={() => setIsMenuOpen(false)}
-              className='mb-3 flex items-center justify-center gap-2 rounded-xl border border-gold-400/35 bg-gradient-to-r from-gold-500/20 to-amber-600/15 py-2.5 text-sm font-semibold text-white shadow-[0_2px_12px_-4px_rgba(0,0,0,0.4)] transition hover:border-gold-300/45 hover:from-gold-500/30 hover:to-amber-600/25'
+              className='mb-3 flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 py-2.5 text-sm font-bold text-brand-700 shadow-sm transition-all hover:bg-brand-100 active:scale-95'
             >
               <Store
-                className='h-4 w-4 shrink-0 text-amber-100'
-                strokeWidth={2}
+                className='h-4 w-4 shrink-0 text-brand-600'
+                strokeWidth={2.25}
               />
               {SHOP_SITE_CTA}
               <ExternalLink
-                className='h-3.5 w-3.5 shrink-0 text-amber-100/90'
-                strokeWidth={2}
+                className='h-3.5 w-3.5 shrink-0 text-brand-400'
+                strokeWidth={2.25}
               />
             </Link>
             {navSections.map((section, sIdx) => (
@@ -393,21 +393,21 @@ export default function AdminLayout({
                         className={cn(
                           "flex items-center gap-3 rounded-xl py-2.5 pl-3 pr-3 text-[13px] transition-colors",
                           active ?
-                            "bg-white/[0.08] text-white shadow-[inset_3px_0_0_0_#d4a853]"
-                          : "text-slate-200 hover:bg-white/[0.06] hover:text-white",
+                            "bg-white text-navy-900 shadow-sm border border-gray-100"
+                          : "text-slate-600 hover:bg-black/5",
                         )}
                       >
                         <span
                           className={cn(
                             "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
                             active ?
-                              "border-gold-500/35 bg-gold-500/10 text-gold-100"
-                            : "border-white/10 bg-gray-800/90 text-slate-300",
+                              "border-brand-200 bg-brand-50 text-brand-600"
+                            : "border-gray-100 bg-gray-50 text-slate-500",
                           )}
                         >
-                          <Icon className='h-4 w-4' strokeWidth={2} />
+                          <Icon className='h-4 w-4' strokeWidth={2.25} />
                         </span>
-                        {label}
+                        <span className='font-semibold'>{label}</span>
                       </Link>
                     );
                   })}
@@ -438,19 +438,19 @@ export default function AdminLayout({
         >
           {/* Ambient depth — soft gold / rose glow */}
           <div
-            className='pointer-events-none absolute -right-20 -top-28 h-56 w-56 rounded-full bg-amber-400/[0.09] blur-3xl'
+            className='pointer-events-none absolute -right-20 -top-28 h-56 w-56 rounded-full bg-brand-400/[0.12] blur-3xl'
             aria-hidden
           />
           <div
-            className='pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-rose-500/[0.06] blur-3xl'
+            className='pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-rose-500/[0.08] blur-3xl'
             aria-hidden
           />
           <div
-            className='pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#d4a853]/[0.06] to-transparent'
+            className='pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-500/[0.04] to-transparent'
             aria-hidden
           />
           <div
-            className='pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-gold-500/15 to-transparent'
+            className='pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-brand-500/10 to-transparent'
             aria-hidden
           />
 
@@ -478,7 +478,7 @@ export default function AdminLayout({
                   </div>
                   <div className='min-w-0 flex-1 space-y-0.5'>
                     <div className='flex min-h-0 items-center gap-1'>
-                      <p className='min-w-0 truncate text-sm font-semibold leading-tight tracking-tight text-white'>
+                      <p className='min-w-0 truncate text-sm font-bold leading-tight tracking-tight text-navy-900'>
                         {user?.name}
                       </p>
                       <BadgeCheck
@@ -487,7 +487,7 @@ export default function AdminLayout({
                         aria-label='Admin account'
                       />
                     </div>
-                    <p className='truncate text-[10px] leading-snug text-slate-400'>
+                    <p className='truncate text-[10px] leading-snug text-slate-500'>
                       {user?.email}
                     </p>
                   </div>
@@ -499,15 +499,15 @@ export default function AdminLayout({
                 prefetch
                 title={SHOP_SITE_CTA}
                 className={cn(
-                  "mt-1.5 flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-400/30 bg-gradient-to-r from-amber-600/30 via-gold-600/20 to-amber-700/25 text-sm font-semibold text-white shadow-sm transition-colors hover:border-amber-300/45 hover:from-amber-500/40 hover:via-gold-500/30",
+                  "mt-1.5 flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 text-sm font-bold text-brand-700 shadow-sm transition-all hover:bg-brand-100 active:scale-95",
                   sidebarCollapsed ? "mx-auto w-9 p-0" : (
                     "w-full min-w-0 px-2.5"
                   ),
                 )}
               >
                 <Store
-                  className='h-3.5 w-3.5 shrink-0 text-amber-50'
-                  strokeWidth={2}
+                  className='h-3.5 w-3.5 shrink-0 text-brand-600'
+                  strokeWidth={2.25}
                 />
                 {!sidebarCollapsed && (
                   <>
@@ -515,8 +515,8 @@ export default function AdminLayout({
                       {SHOP_SITE_CTA}
                     </span>
                     <ExternalLink
-                      className='h-3 w-3 shrink-0 text-amber-100/90'
-                      strokeWidth={2}
+                      className='h-3 w-3 shrink-0 text-brand-400'
+                      strokeWidth={2.25}
                     />
                   </>
                 )}
@@ -577,13 +577,13 @@ export default function AdminLayout({
             }
           </nav>
 
-          <div className='relative z-[1] border-t border-white/[0.06] bg-gradient-to-t from-black/25 to-transparent px-2 py-2.5'>
+          <div className='relative z-[1] border-t border-gray-100 bg-white/40 px-2 py-2.5'>
             <button
               type='button'
               onClick={logout}
               title='Sign out'
               className={cn(
-                "rounded-xl border border-white/[0.1] bg-white/[0.04] font-medium text-slate-200 transition hover:border-rose-500/30 hover:bg-rose-950/40 hover:text-rose-100",
+                "rounded-xl border border-gray-100 bg-white font-medium text-slate-600 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 shadow-sm active:scale-95",
                 sidebarCollapsed ?
                   "mx-auto flex h-10 w-10 items-center justify-center p-0"
                 : "flex h-10 w-full items-center gap-2 px-1.5 text-left text-xs leading-none",
@@ -591,14 +591,14 @@ export default function AdminLayout({
             >
               {sidebarCollapsed ?
                 <>
-                  <LogOut className='h-4 w-4 shrink-0 opacity-90' aria-hidden />
+                  <LogOut className='h-4 w-4 shrink-0' aria-hidden />
                   <span className='sr-only'>Sign out</span>
                 </>
               : <>
-                  <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-transparent text-slate-300'>
-                    <LogOut className='h-4 w-4 opacity-90' aria-hidden />
+                  <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-transparent text-slate-400'>
+                    <LogOut className='h-4 w-4' aria-hidden />
                   </span>
-                  <span className='flex min-h-9 min-w-0 flex-1 items-center truncate'>
+                  <span className='flex min-h-9 min-w-0 flex-1 items-center truncate font-bold'>
                     Sign out
                   </span>
                 </>
