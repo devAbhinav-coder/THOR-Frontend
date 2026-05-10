@@ -765,7 +765,26 @@ export default function CheckoutClient() {
           );
 
           if ("razorpayOrder" in res.data) {
-            const { order, razorpayOrder } = res.data;
+            const { razorpayOrder } = res.data;
+            const checkoutIntentId =
+              "checkoutIntentId" in res.data &&
+              typeof (res.data as { checkoutIntentId?: unknown })
+                .checkoutIntentId === "string" ?
+                (res.data as { checkoutIntentId: string }).checkoutIntentId
+              : null;
+            const legacyOrder =
+              "order" in res.data &&
+              (res.data as { order?: { _id?: string; orderNumber?: string } })
+                .order ?
+                (res.data as { order: { _id: string; orderNumber?: string } })
+                  .order
+              : null;
+            const legacyOrderId = legacyOrder?._id ?? "";
+            if (!checkoutIntentId && !legacyOrderId) {
+              toast.error("Invalid payment session. Please try again.");
+              await fetchCart().catch(() => {});
+              return;
+            }
             const keyId = razorpayOrder.keyId;
             if (!keyId) {
               toast.error(
@@ -789,12 +808,17 @@ export default function CheckoutClient() {
                 currency: razorpayOrder.currency || "INR",
                 order_id: razorpayOrder.id,
                 name: "The House of Rani",
-                description: `Order ${order.orderNumber}`,
+                description:
+                  legacyOrder?.orderNumber ?
+                    `Order ${legacyOrder.orderNumber}`
+                  : "Secure checkout",
                 handler: async (response: RazorpaySuccessPayload) => {
                   setIsPlacingOrder(true);
                   try {
                     const verifyRes = await orderApi.verifyPayment({
-                      orderId: order._id,
+                      ...(checkoutIntentId ?
+                        { checkoutIntentId }
+                      : { orderId: legacyOrderId }),
                       razorpayOrderId: response.razorpay_order_id,
                       razorpayPaymentId: response.razorpay_payment_id,
                       razorpaySignature: response.razorpay_signature,
@@ -827,7 +851,9 @@ export default function CheckoutClient() {
                 modal: {
                   ondismiss: () => {
                     toast(
-                      "Payment window closed. You can complete payment from your order details.",
+                      checkoutIntentId ?
+                        "Payment was not completed. Your cart is unchanged — you can try again when ready."
+                      : "Payment window closed. You can complete payment from your order details.",
                       { duration: 5000 },
                     );
                   },

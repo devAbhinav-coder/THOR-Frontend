@@ -135,6 +135,22 @@ export const orderCreatedRazorpay = z
   })
   .passthrough();
 
+/** Online prepay: order row is created only after verify-payment (legacy clients may still receive { order, razorpayOrder }). */
+export const orderCreatedRazorpayIntent = z
+  .object({
+    status: z.string(),
+    data: z.object({
+      checkoutIntentId: z.string(),
+      razorpayOrder: z.object({
+        id: z.string(),
+        amount: z.number(),
+        currency: z.string(),
+        keyId: z.string().optional(),
+      }),
+    }),
+  })
+  .passthrough();
+
 export const orderCreatedCod = z.object({
   status: z.string(),
   data: z.object({ order: doc }),
@@ -499,7 +515,11 @@ export const categorySingle = z.object({
 
 export const categoryStats = z.object({ status: z.string(), data: z.unknown() });
 
-export const orderCreateResponse = z.union([orderCreatedRazorpay, orderCreatedCod]);
+export const orderCreateResponse = z.union([
+  orderCreatedRazorpayIntent,
+  orderCreatedRazorpay,
+  orderCreatedCod,
+]);
 
 // ------------------------------------------------------------------
 // NEW SCHEMAS FOR BLOG, NOTIFICATION, GIFTING
