@@ -47,7 +47,10 @@ export default function ExploreCollection() {
     getNextPageParam: (lastPage, allPages) => {
       // Stop if backend says no next page
       if (lastPage.pagination?.hasNextPage === false) return undefined;
-      if (!lastPage.pagination?.hasNextPage && lastPage.pagination?.totalPages === 1) {
+      if (
+        !lastPage.pagination?.hasNextPage &&
+        lastPage.pagination?.totalPages === 1
+      ) {
         return undefined;
       }
       // Build the full exclude list from all loaded products
@@ -80,12 +83,18 @@ export default function ExploreCollection() {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isPending, products.length]);
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    products.length,
+  ]);
 
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <section className='py-10 bg-white'>
+    <section className='py-10 bg-[#FAF9F6]'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='mb-10 text-center'>
           <div className='inline-flex items-center gap-3 text-brand-600'>
@@ -99,8 +108,8 @@ export default function ExploreCollection() {
             Explore the Collection
           </h2>
           <p className='text-sm text-gray-500 mt-3 max-w-2xl mx-auto'>
-            Fresh picks across categories — curated to feel premium, minimal, and
-            easy to shop.
+            Fresh picks across categories — curated to feel premium, minimal,
+            and easy to shop.
           </p>
         </div>
 

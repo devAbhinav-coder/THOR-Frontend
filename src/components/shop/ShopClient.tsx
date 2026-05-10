@@ -361,8 +361,10 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
               />
               <div className='absolute inset-0 bg-black/20' />
               <div className='absolute inset-0 flex flex-col items-center justify-center px-4 text-center'>
+              
                 <h1 className='font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight drop-shadow-md'>
-                  {shopBanner.title || "Shop Our Collection"}
+                  {shopBanner.title || "Shop Our Collection"} <br />
+                  {categoryContext?.name && <> of <span className="text-[#e94d63]">{categoryContext?.name}</span></>}
                 </h1>
                 <p className='mt-2 text-sm sm:text-lg text-white/95 max-w-2xl mx-auto drop-shadow'>
                   {shopBanner.subtitle ||

@@ -43,7 +43,7 @@ export default function FeaturedProducts({
   }, [initialProducts]);
 
   return (
-    <section className='py-2 sm:py-6 bg-gray-50'>
+    <section className='py-2 sm:py-6 bg-[#FAF9F6]'>
       <div className='max-w-7xl mx-auto px-2 sm:px-6 lg:px-8'>
         <div className='mb-6 sm:mb-10'>
           <div className='text-center'>

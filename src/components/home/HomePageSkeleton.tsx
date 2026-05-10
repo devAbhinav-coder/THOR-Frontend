@@ -12,18 +12,19 @@ function SectionHeaderSkeleton({
   withDescription?: boolean;
 }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4 sm:mb-10">
-      <div className="space-y-1 sm:space-y-2">
+    <div className="mb-6 sm:mb-10 text-center flex flex-col items-center">
+      <div className="inline-flex items-center gap-3">
+        <span className="h-px w-12 bg-gray-200 sm:w-16" />
         <Skeleton className={`h-3 rounded-full sm:h-3.5 ${eyebrowW}`} />
-        <Skeleton className={`h-8 rounded-lg sm:h-11 ${titleW}`} />
-        {withDescription && (
-          <>
-            <Skeleton className="mt-2 hidden h-4 max-w-xl rounded-md sm:block" />
-            <Skeleton className="mt-1 hidden h-4 max-w-lg rounded-md sm:block" />
-          </>
-        )}
+        <span className="h-px w-12 bg-gray-200 sm:w-16" />
       </div>
-      <Skeleton className="hidden h-4 w-20 shrink-0 rounded-md sm:block" />
+      <Skeleton className={`mt-4 h-8 rounded-lg sm:h-12 ${titleW}`} />
+      {withDescription && (
+        <div className="mt-3 flex flex-col items-center gap-2 w-full">
+          <Skeleton className="h-4 max-w-xl w-full rounded-md" />
+          <Skeleton className="hidden h-4 max-w-lg w-full rounded-md sm:block" />
+        </div>
+      )}
     </div>
   );
 }
@@ -58,27 +59,38 @@ function PromoBannerSkeleton() {
 
 function WhyChooseUsSkeleton() {
   return (
-    <section className="bg-navy-900 py-16 sm:py-20">
+    <section className="bg-[#FAF9F6] py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 text-center sm:mb-14">
-          <Skeleton className="mx-auto mb-3 h-3 w-36 rounded-full bg-navy-700" />
-          <Skeleton className="mx-auto h-9 w-72 max-w-full rounded-lg bg-navy-700 sm:h-11" />
-          <Skeleton className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-brand-600/50" />
+        
+        {/* Full-width Centered Header */}
+        <div className="mb-12 lg:mb-16 w-full text-center flex flex-col items-center">
+          <Skeleton className="mb-2 h-3 w-32 rounded-full sm:h-3.5 sm:w-48" />
+          <Skeleton className="h-10 w-64 rounded-lg sm:h-12 sm:w-96 lg:h-14 lg:w-[500px]" />
+          <Skeleton className="mt-5 h-1 w-20 rounded-full lg:mt-6 lg:w-28" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex gap-4 rounded-2xl border border-navy-700 bg-navy-800/80 p-5 sm:p-6"
-            >
-              <Skeleton className="h-12 w-12 shrink-0 rounded-xl bg-navy-700" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-4 w-3/5 rounded-md bg-navy-700" />
-                <Skeleton className="h-3 w-full rounded-md bg-navy-700/80" />
-                <Skeleton className="h-3 w-4/5 rounded-md bg-navy-700/80" />
+
+        <div className="flex flex-col items-start gap-10 md:flex-row lg:gap-16">
+          {/* Left Side: Sticky Image (30% width) */}
+          <div className="z-10 flex w-full flex-col items-center md:w-4/12 lg:w-4/12">
+            <Skeleton className="aspect-[3/4] w-full max-w-[280px] rounded-2xl sm:max-w-[340px] md:max-w-full" />
+          </div>
+
+          {/* Right Side: Scrolling Cards Grid (70% width) */}
+          <div className="mt-1 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:w-8/12 lg:w-8/12 lg:gap-4 lg:mt-0">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex w-full flex-row items-center gap-3 overflow-hidden rounded-2xl border border-white bg-white/80 p-4 shadow-sm lg:gap-4 lg:p-5"
+              >
+                <Skeleton className="z-10 h-12 w-12 shrink-0 rounded-xl lg:h-14 lg:w-14" />
+                <div className="z-10 flex min-w-0 flex-1 flex-col space-y-2">
+                  <Skeleton className="h-4 w-3/4 rounded-md lg:h-5" />
+                  <Skeleton className="h-3 w-full rounded-md" />
+                  <Skeleton className="h-3 w-5/6 rounded-md" />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -92,7 +104,7 @@ export default function HomePageSkeleton() {
       <HeroSectionSkeleton />
       <CategorySectionSkeleton />
 
-      <section className="bg-gray-50 py-2 sm:py-6">
+      <section className="bg-[#FAF9F6] py-2 sm:py-6">
         <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
           <SectionHeaderSkeleton eyebrowW="w-36 sm:w-44" titleW="w-56 sm:w-80" />
           <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -113,7 +125,7 @@ export default function HomePageSkeleton() {
 
       <PromoBannerSkeleton />
 
-      <section className="bg-white py-10">
+      <section className="bg-[#FAF9F6] py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeaderSkeleton
             eyebrowW="w-28"
@@ -133,52 +145,59 @@ export default function HomePageSkeleton() {
 
       <WhyChooseUsSkeleton />
 
-      <section className="bg-navy-950 py-16 sm:py-24">
+      {/* HomeGiftShowcase Skeleton */}
+      <section className="bg-[#FAF9F6] py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="overflow-hidden rounded-[2.5rem] border border-navy-700/50 bg-navy-900/40 p-8 sm:p-14">
-            <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-              <div className="space-y-4">
-                <Skeleton className="h-10 w-48 rounded-full bg-navy-700" />
-                <Skeleton className="h-12 w-full max-w-md rounded-xl bg-navy-700 sm:h-16" />
-                <Skeleton className="h-4 w-full max-w-lg rounded-md bg-navy-700/80" />
-                <Skeleton className="h-4 max-w-md rounded-md bg-navy-700/80" />
-                <Skeleton className="h-12 w-40 rounded-full bg-navy-700 sm:h-14 sm:w-48" />
-              </div>
-              <Skeleton className="aspect-[4/3] w-full rounded-2xl bg-navy-800 lg:aspect-square lg:max-h-[320px]" />
+          <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:gap-16">
+            
+            {/* Left Side: Sticky Title */}
+            <div className="w-full text-center md:w-5/12 md:text-left">
+              <Skeleton className="mx-auto mb-3 h-3 w-32 rounded-full md:mx-0 sm:h-4 sm:w-40" />
+              <Skeleton className="mx-auto mb-6 h-12 w-64 rounded-lg md:mx-0 sm:h-16 sm:w-80" />
+              <Skeleton className="mx-auto h-4 w-full max-w-md rounded-md md:mx-0" />
+              <Skeleton className="mx-auto mt-2 h-4 w-5/6 max-w-md rounded-md md:mx-0" />
             </div>
+
+            {/* Right Side: Stacked Cards */}
+            <div className="w-full md:w-6/12">
+              <div className="relative w-full pb-[150%] sm:pb-[100%] md:pb-[130%] lg:pb-[100%]">
+                <Skeleton className="absolute left-0 top-0 h-[380px] w-full rounded-[2.5rem] border border-white bg-white/60 shadow-sm" />
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      <section className="bg-navy-950 py-16 sm:py-20">
+      {/* Testimonials Skeleton */}
+      <section className="bg-[#FAF9F6] py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center sm:mb-14">
-            <Skeleton className="mx-auto mb-3 h-3 w-28 rounded-full bg-navy-700" />
-            <Skeleton className="mx-auto h-9 w-80 max-w-full rounded-lg bg-navy-700 sm:h-10" />
-            <Skeleton className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-brand-600/50" />
+            <Skeleton className="mx-auto mb-3 h-3 w-28 rounded-full" />
+            <Skeleton className="mx-auto h-9 w-80 max-w-full rounded-lg sm:h-12 sm:w-96" />
+            <Skeleton className="mx-auto mt-6 h-1 w-20 rounded-full" />
           </div>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-2xl border border-navy-700 bg-navy-900 p-6 sm:p-7"
+                className="flex flex-col rounded-[2rem] border border-white/80 bg-white/70 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
               >
-                <div className="mb-4 flex gap-1">
+                <div className="mb-6 flex gap-1">
                   {Array.from({ length: 5 }).map((_, j) => (
-                    <Skeleton
-                      key={j}
-                      className="h-3.5 w-3.5 rounded-sm bg-navy-700"
-                    />
+                    <Skeleton key={j} className="h-4 w-4 rounded-sm" />
                   ))}
                 </div>
-                <Skeleton className="mb-4 h-3 w-full rounded-md bg-navy-700/90" />
-                <Skeleton className="mb-3 h-3 w-full rounded-md bg-navy-700/90" />
-                <Skeleton className="mb-5 h-3 w-3/4 rounded-md bg-navy-700/80" />
-                <div className="flex items-center gap-3 border-t border-navy-700 pt-4">
-                  <Skeleton className="h-10 w-10 shrink-0 rounded-full bg-navy-700" />
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <Skeleton className="h-3 w-24 rounded-md bg-navy-700" />
-                    <Skeleton className="h-2.5 w-20 rounded-md bg-navy-700/80" />
+                <div className="mb-8 flex-grow space-y-2">
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-3/4 rounded-md" />
+                </div>
+                <div className="flex items-center gap-4 border-t border-gray-100/80 pt-6">
+                  <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-24 rounded-md" />
+                    <Skeleton className="h-3 w-32 rounded-md" />
                   </div>
                 </div>
               </div>

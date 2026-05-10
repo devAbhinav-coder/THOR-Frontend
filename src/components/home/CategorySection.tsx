@@ -162,7 +162,7 @@ export default function CategorySection({
   }
 
   return (
-    <section className='py-12 sm:py-14 bg-[#faf9f7]'>
+    <section className='py-12 sm:py-14 bg-[#FAF9F6]'>
       <div className='max-w-7xl mx-auto px-2 sm:px-6 lg:px-8'>
         <div className='mb-8 sm:mb-10'>
           <div className='text-center'>
@@ -180,7 +180,7 @@ export default function CategorySection({
         </div>
 
         <div
-          className={`relative overflow-hidden rounded-[30px] px-2 py-3 sm:px-3 sm:py-4 ${
+          className={`relative overflow-hidden rounded-[30px] px-2 py-3 sm:px-3 sm:py-4 min-h-[380px] sm:min-h-[460px] lg:min-h-[510px] ${
             isSwiperLocked ? "[&_.swiper-wrapper]:justify-center" : ""
           }`}
           onMouseEnter={pauseAuto}
@@ -246,11 +246,11 @@ export default function CategorySection({
                         <h3 className='text-white font-serif font-medium text-2xl leading-tight'>
                           {cat.name}
                         </h3>
-                        {cat.productCount > 0 && (
+                        {/* {cat.productCount > 0 && (
                           <p className='text-white/80 text-[11px] mt-1 tracking-[0.14em] uppercase'>
                             {cat.productCount}+ Designs
                           </p>
-                        )}
+                        )} */}
                         {cat.productCount === 0 && (
                           <p className='text-white/55 text-xs mt-0.5 tracking-wide'>
                             Coming soon
