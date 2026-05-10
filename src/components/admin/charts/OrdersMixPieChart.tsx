@@ -14,7 +14,7 @@ const STATUS_COLORS: Record<string, string> = {
   refunded: '#9ca3af',
 };
 
-const FALLBACK = ['#c41230', '#2f3d75', '#f59e0b', '#059669', '#7c3aed', '#ea580c'];
+const FALLBACK = ['#2563eb', '#0ea5e9', '#6366f1', '#059669', '#7c3aed', '#64748b'];
 
 type Row = { _id: string; count: number };
 

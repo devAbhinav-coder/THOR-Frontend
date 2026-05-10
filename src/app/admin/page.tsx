@@ -18,6 +18,7 @@ import {
   Store,
   RotateCcw,
   IndianRupee,
+  Calendar,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
@@ -243,16 +244,27 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Avg. order</p>
           <p className="text-lg font-bold text-gray-900 mt-1">{formatPrice(overview.avgOrderValue ?? 0)}</p>
           <p className="text-xs text-gray-400 mt-0.5">Paid + refunded</p>
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
-          <p className="text-[11px] text-gray-500 uppercase tracking-wide">Orders today</p>
+        <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm ring-1 ring-blue-100/80">
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-blue-600 shrink-0" aria-hidden />
+            Orders today
+          </p>
           <p className="text-lg font-bold text-gray-900 mt-1">{overview.ordersToday ?? 0}</p>
           <p className="text-xs text-gray-400 mt-0.5">Since midnight</p>
+        </div>
+        <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm ring-1 ring-blue-100/80">
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide flex items-center gap-1">
+            <IndianRupee className="h-3 w-3 text-blue-600 shrink-0" aria-hidden />
+            Revenue today
+          </p>
+          <p className="text-lg font-bold text-gray-900 mt-1">{formatPrice(overview.revenueToday ?? 0)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Gross · same window</p>
         </div>
         <div className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm">
           <p className="text-[11px] text-gray-500 uppercase tracking-wide">Fulfilment queue</p>

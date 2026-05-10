@@ -13,7 +13,16 @@ import {
 } from 'recharts';
 import { formatPrice, cn } from '@/lib/utils';
 
-const BAR_COLORS = ['#c41230', '#2f3d75', '#f59e0b', '#059669', '#7c3aed', '#ea580c', '#0891b2', '#be185d'];
+const BAR_COLORS = [
+  '#1d4ed8',
+  '#2563eb',
+  '#3b82f6',
+  '#0ea5e9',
+  '#0369a1',
+  '#1e40af',
+  '#60a5fa',
+  '#0284c7',
+];
 
 type Row = { _id: string; revenue: number; units: number };
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Calendar,
   ChevronDown,
   ChevronRight,
   Package,
@@ -180,7 +181,13 @@ export default function AdminOrdersPage() {
 
   const handleRefreshList = useCallback(() => {
     setIsRefreshing(true);
-    void fetchOrders(1, false).finally(() => setIsRefreshing(false));
+    void Promise.all([
+      fetchOrders(1, false),
+      adminApi
+        .getAnalytics()
+        .then((res) => setAnalytics(res.data))
+        .catch(() => {}),
+    ]).finally(() => setIsRefreshing(false));
   }, [fetchOrders]);
 
   useEffect(() => {
@@ -313,7 +320,7 @@ export default function AdminOrdersPage() {
     <div className='p-4 sm:p-6 xl:p-8 space-y-6 max-w-[1600px] mx-auto'>
       <AdminPageHeader
         title='Orders'
-        description='Fulfil, track, and update status — row click opens the full order. Revenue tiles use gross analytics (paid + refunded), with refunds shown separately.'
+        description='Fulfil, track, and update status — row click opens the full order. Pulse tile shows today’s volume (local midnight); daily trend lives under Analytics.'
         badge={
           pagination.total ?
             `${pagination.total.toLocaleString()} total`
@@ -351,10 +358,41 @@ export default function AdminOrdersPage() {
         }
       />
 
-      {/* Stats bar */}
-      <div className='grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3'>
-        {/* Revenue highlight */}
-        <div className='col-span-2 sm:col-span-4 xl:col-span-2 bg-gradient-to-br from-navy-900 to-navy-800 rounded-2xl p-5 text-white shadow-sm'>
+      {/* Stats: today pulse + month + pipeline */}
+      <div className='grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3'>
+        {/* Today — orders + gross revenue (same rules as analytics) */}
+        <div className='col-span-2 rounded-2xl border border-blue-200/90 bg-gradient-to-br from-blue-600 via-blue-700 to-slate-900 p-5 text-white shadow-md ring-1 ring-blue-500/20'>
+          <div className='flex items-center gap-2 mb-2'>
+            <Calendar className='h-5 w-5 text-blue-100' aria-hidden />
+            <span className='text-[10px] font-bold uppercase tracking-[0.2em] text-blue-100/90'>
+              Today
+            </span>
+          </div>
+          <div className='flex flex-wrap items-end gap-x-6 gap-y-2'>
+            <div>
+              <p className='text-[11px] font-semibold text-blue-100/80 uppercase tracking-wide'>
+                Orders placed
+              </p>
+              <p className='text-3xl font-bold tabular-nums leading-none mt-0.5'>
+                {analytics != null ? (analytics.overview.ordersToday ?? 0).toLocaleString() : '—'}
+              </p>
+            </div>
+            <div className='min-w-[7rem]'>
+              <p className='text-[11px] font-semibold text-blue-100/80 uppercase tracking-wide'>
+                Gross revenue
+              </p>
+              <p className='text-xl sm:text-2xl font-bold tabular-nums leading-none mt-0.5'>
+                {analytics != null ?
+                  formatPrice(analytics.overview.revenueToday ?? 0)
+                : '—'}
+              </p>
+              <p className='text-[10px] text-blue-100/70 mt-1'>Paid + refunded · since midnight</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Revenue highlight — month */}
+        <div className='col-span-2 sm:col-span-2 xl:col-span-2 bg-gradient-to-br from-navy-900 to-navy-800 rounded-2xl p-5 text-white shadow-sm'>
           <div className='flex items-center gap-2 mb-2'>
             <TrendingUp className='h-5 w-5 text-brand-300' />
             <span className='text-xs font-semibold text-navy-300 uppercase tracking-widest'>
@@ -372,8 +410,8 @@ export default function AdminOrdersPage() {
               className={cn(
                 "text-xs font-semibold mt-1",
                 analytics.overview.revenueGrowth >= 0 ?
-                  "text-green-400"
-                : "text-red-400",
+                  "text-emerald-300"
+                : "text-amber-200",
               )}
             >
               {analytics.overview.revenueGrowth >= 0 ? "▲" : "▼"}{" "}

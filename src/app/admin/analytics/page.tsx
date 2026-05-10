@@ -28,6 +28,7 @@ import {
   RevenueTrendAreaChart,
   CategoryRevenueBarChart,
   OrdersMixPieChart,
+  DailyOrdersRevenueChart,
 } from "@/components/admin/charts";
 
 export default function AnalyticsPage() {
@@ -130,8 +131,14 @@ export default function AnalyticsPage() {
     {
       label: "Orders today",
       value: String(overview.ordersToday ?? 0),
-      sub: "Since midnight",
+      sub: "Since midnight (server)",
       icon: Package,
+    },
+    {
+      label: "Revenue today",
+      value: formatPrice(overview.revenueToday ?? 0),
+      sub: "Gross · paid + refunded",
+      icon: IndianRupee,
     },
     {
       label: "Awaiting fulfilment",
@@ -209,7 +216,7 @@ export default function AnalyticsPage() {
           ))}
         </div>
 
-        <div className='grid grid-cols-2 xl:grid-cols-4 gap-4'>
+        <div className='grid grid-cols-2 xl:grid-cols-5 gap-4'>
           {secondaryKpis.map((item) => (
             <div
               key={item.label}
@@ -228,6 +235,22 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
+
+        {(analytics.revenueByDay?.length ?? 0) > 0 && (
+          <div className='rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.1)]'>
+            <DailyOrdersRevenueChart
+              data={analytics.revenueByDay}
+              height={340}
+              title='Daily orders & revenue'
+              subtitle='Last 30 days · Asia/Kolkata · gross order totals (paid + refunded) and order count'
+              titleRight={
+                <span className='text-xs text-slate-400 hidden sm:inline'>
+                  Hover for detail
+                </span>
+              }
+            />
+          </div>
+        )}
 
         <div className='rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]'>
           <RevenueTrendAreaChart

@@ -50,18 +50,44 @@ function LenisScrollToTopOnRoute() {
   return null;
 }
 
+/** Sync Lenis with GSAP Ticker for frame-perfect pinning and animations */
+function LenisGsapSync() {
+  const lenis = useLenis();
+
+  useEffect(() => {
+    const l = lenis;
+    if (l) {
+      // Import GSAP only on client
+      const gsapModule = require("gsap").default;
+      const ScrollTrigger = require("gsap/ScrollTrigger").ScrollTrigger;
+
+      const update = (time: number) => {
+        l.raf(time * 1000);
+      };
+
+      gsapModule.ticker.add(update);
+      l.on("scroll", ScrollTrigger.update);
+
+      return () => {
+        gsapModule.ticker.remove(update);
+        l.off("scroll", ScrollTrigger.update);
+      };
+    }
+  }, [lenis]);
+
+  return null;
+}
+
+
 export default function SmoothScroll({ children }: { children: ReactNode }) {
   const [lenisOn, setLenisOn] = useState(false);
 
   useEffect(() => {
-    /** Smooth scroll for all devices unless user prefers reduced motion. */
     const mqReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sync = () => setLenisOn(!mqReduce.matches);
     sync();
     mqReduce.addEventListener("change", sync);
-    return () => {
-      mqReduce.removeEventListener("change", sync);
-    };
+    return () => mqReduce.removeEventListener("change", sync);
   }, []);
 
   if (!lenisOn) {
@@ -77,13 +103,15 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     <ReactLenis
       root
       options={{
-        autoRaf: true,
-        lerp: 0.09,
+        autoRaf: false, // We'll use GSAP ticker instead
+        lerp: 0.06,    // Silkier, more premium feel
+        duration: 1.4, // Longer, more elegant scroll
         smoothWheel: true,
-        wheelMultiplier: 0.85,
-        touchMultiplier: 1.1,
+        wheelMultiplier: 1,
+        touchMultiplier: 1.4,
       }}
     >
+      <LenisGsapSync />
       <LenisScrollToTopOnRoute />
       {children}
     </ReactLenis>

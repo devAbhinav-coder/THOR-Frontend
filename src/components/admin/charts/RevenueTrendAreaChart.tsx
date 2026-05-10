@@ -46,7 +46,7 @@ function RevenueTooltip({ active, payload }: TooltipProps<number, string>) {
   return (
     <div className="rounded-xl border border-gray-200/90 bg-white px-3.5 py-2.5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.25)]">
       <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-        <span className="text-emerald-600" aria-hidden>
+        <span className="text-blue-600" aria-hidden>
           <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} />
         </span>
         <span>
@@ -108,7 +108,7 @@ export function RevenueTrendAreaChart({
   if (!mounted) {
     return (
       <div
-        className={cn('w-full rounded-2xl bg-gradient-to-br from-rose-50/80 to-gray-50 animate-pulse', className)}
+        className={cn('w-full rounded-2xl bg-gradient-to-br from-blue-50/80 to-slate-50 animate-pulse', className)}
         style={{ height }}
       />
     );
@@ -151,15 +151,15 @@ export function RevenueTrendAreaChart({
               <defs>
                 {/* Dark at top (near line) → light / clear at bottom */}
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#881337" stopOpacity={0.75} />
-                  <stop offset="24%" stopColor="#e11d48" stopOpacity={0.5} />
-                  <stop offset="50%" stopColor="#f472b6" stopOpacity={0.22} />
-                  <stop offset="78%" stopColor="#fce7f3" stopOpacity={0.07} />
+                  <stop offset="0%" stopColor="#1e3a8a" stopOpacity={0.72} />
+                  <stop offset="28%" stopColor="#2563eb" stopOpacity={0.45} />
+                  <stop offset="55%" stopColor="#60a5fa" stopOpacity={0.2} />
+                  <stop offset="82%" stopColor="#bfdbfe" stopOpacity={0.08} />
                   <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#be123c" />
-                  <stop offset="100%" stopColor="#fb7185" />
+                  <stop offset="0%" stopColor="#1d4ed8" />
+                  <stop offset="100%" stopColor="#38bdf8" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="2 6" stroke="#e7e5e4" vertical={false} strokeOpacity={0.95} />
@@ -191,7 +191,7 @@ export function RevenueTrendAreaChart({
               )}
               <Tooltip
                 content={<RevenueTooltip />}
-                cursor={{ stroke: '#e11d48', strokeWidth: 1, strokeDasharray: '4 4' }}
+                cursor={{ stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '4 4' }}
               />
               <Area
                 yAxisId="left"
@@ -202,7 +202,7 @@ export function RevenueTrendAreaChart({
                 strokeWidth={2}
                 fill={`url(#${gradId})`}
                 dot={false}
-                activeDot={{ r: 5, fill: '#be123c', stroke: '#fff', strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: '#1d4ed8', stroke: '#fff', strokeWidth: 2 }}
                 isAnimationActive
               />
               {showOrdersLine && (
@@ -224,7 +224,7 @@ export function RevenueTrendAreaChart({
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-stone-100/90 pt-3 text-[11px] text-stone-600">
           <span className="inline-flex items-center gap-2">
             <span
-              className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-rose-900 via-rose-500 to-white shadow-sm ring-1 ring-rose-200/60"
+              className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-blue-900 via-blue-500 to-white shadow-sm ring-1 ring-blue-200/60"
               aria-hidden
             />
             <span className="font-medium text-stone-700">Gross (paid + refunded)</span>

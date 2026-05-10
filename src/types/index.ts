@@ -351,6 +351,8 @@ export interface DashboardAnalytics {
     totalProducts: number;
     avgOrderValue: number;
     ordersToday: number;
+    /** Gross for orders created since local midnight (paid + refunded). Present when API is updated. */
+    revenueToday?: number;
     pendingFulfillmentCount: number;
     paidOrdersCount: number;
     totalReviews: number;
@@ -379,6 +381,8 @@ export interface DashboardAnalytics {
     conversionPercent: number;
   }[];
   revenueByCategory: { _id: string; revenue: number; units: number }[];
+  /** Last 30 calendar days (Asia/Kolkata), including zeros — from updated analytics API. */
+  revenueByDay?: { date: string; revenue: number; orders: number }[];
 }
 
 export interface StorefrontLink {
