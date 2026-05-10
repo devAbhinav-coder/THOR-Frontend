@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -140,8 +134,7 @@ function makeInitialMeta(): InvoiceMeta {
   };
 }
 
-const card =
-  "rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6";
+const card = "rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6";
 const sectionTitle =
   "flex items-center gap-2 text-sm font-semibold text-gray-900";
 const sectionBadge =
@@ -275,9 +268,7 @@ export default function NewSalesInvoicePage() {
 
   /* ── Line CRUD ────────────────────────────────────────────────────── */
   const patchLine = useCallback((id: string, patch: Partial<InvoiceLine>) => {
-    setLines((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, ...patch } : l)),
-    );
+    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   }, []);
 
   const addLine = useCallback(() => {
@@ -391,9 +382,7 @@ export default function NewSalesInvoicePage() {
   }, []);
 
   if (hydrating) {
-    return (
-      <div className='p-6 text-sm text-gray-500'>Loading invoice…</div>
-    );
+    return <div className='p-6 text-sm text-gray-500'>Loading invoice…</div>;
   }
 
   return (
@@ -410,7 +399,7 @@ export default function NewSalesInvoicePage() {
       <div className='print-hidden'>
         <AdminPageHeader
           title={persistedId ? "Edit B2B invoice" : "New B2B invoice"}
-          description='Offline wholesale billing: line items with unit, qty, and rate. CGST+SGST, IGST, or non-GST. The saved PDF draws a border around the bill. Browser URL/date in the outer margin only go away if you turn off Headers and footers in the print dialog (Chrome/Edge).'
+          description='Offline wholesale billing: line items with unit, qty, and rate. CGST+SGST, IGST, or non-GST.'
           badge='Admin billing'
           actions={
             <div className='flex flex-wrap gap-2'>
@@ -521,9 +510,7 @@ export default function NewSalesInvoicePage() {
                   <button
                     key={opt.v}
                     type='button'
-                    onClick={() =>
-                      setMeta((m) => ({ ...m, taxMode: opt.v }))
-                    }
+                    onClick={() => setMeta((m) => ({ ...m, taxMode: opt.v }))}
                     className={cn(
                       pill,
                       meta.taxMode === opt.v ? pillActive : pillIdle,
@@ -538,9 +525,7 @@ export default function NewSalesInvoicePage() {
             <div className='mt-5 flex flex-wrap gap-2'>
               <ToggleChip
                 active={meta.showHsn}
-                onClick={() =>
-                  setMeta((m) => ({ ...m, showHsn: !m.showHsn }))
-                }
+                onClick={() => setMeta((m) => ({ ...m, showHsn: !m.showHsn }))}
                 label='HSN/SAC column'
               />
               <ToggleChip
@@ -905,7 +890,7 @@ export default function NewSalesInvoicePage() {
                 </>
               }
             </Button>
-            {previewOpenMobile ? (
+            {previewOpenMobile ?
               <div ref={previewRef} className='mt-4 space-y-3'>
                 <div className='rounded-2xl border border-gray-200 bg-gray-50 p-3'>
                   <ScaledPreview>
@@ -920,7 +905,7 @@ export default function NewSalesInvoicePage() {
                 </div>
                 <SummaryStrip totals={totals} taxMode={meta.taxMode} />
               </div>
-            ) : null}
+            : null}
           </div>
         </aside>
       </div>
@@ -1185,7 +1170,7 @@ function ItemRow({
             placeholder='e.g. Banarasi silk saree — wholesale lot'
           />
         </label>
-        {showHsn ? (
+        {showHsn ?
           <label className='block space-y-1 sm:col-span-5'>
             <span className={fieldLabel}>HSN / SAC</span>
             <input
@@ -1195,15 +1180,13 @@ function ItemRow({
               placeholder='e.g. 5407'
             />
           </label>
-        ) : null}
+        : null}
 
         <label className='block space-y-1 sm:col-span-3'>
           <span className={fieldLabel}>Unit</span>
           <select
             value={line.unit}
-            onChange={(e) =>
-              onPatch({ unit: e.target.value as UnitValue })
-            }
+            onChange={(e) => onPatch({ unit: e.target.value as UnitValue })}
             className={inputBase}
           >
             {UNIT_OPTIONS.map((u) => (
@@ -1213,7 +1196,7 @@ function ItemRow({
             ))}
           </select>
         </label>
-        {line.unit === "custom" ? (
+        {line.unit === "custom" ?
           <label className='block space-y-1 sm:col-span-3'>
             <span className={fieldLabel}>Custom unit</span>
             <input
@@ -1223,7 +1206,7 @@ function ItemRow({
               placeholder='e.g. roll, bundle'
             />
           </label>
-        ) : null}
+        : null}
         <label className='block space-y-1 sm:col-span-2'>
           <span className={fieldLabel}>Qty</span>
           <input
@@ -1231,9 +1214,7 @@ function ItemRow({
             min={0}
             step={0.01}
             value={line.qty}
-            onChange={(e) =>
-              onPatch({ qty: Number(e.target.value) })
-            }
+            onChange={(e) => onPatch({ qty: Number(e.target.value) })}
             className={inputBase}
           />
         </label>
@@ -1249,15 +1230,13 @@ function ItemRow({
             min={0}
             step={0.01}
             value={line.rate}
-            onChange={(e) =>
-              onPatch({ rate: Number(e.target.value) })
-            }
+            onChange={(e) => onPatch({ rate: Number(e.target.value) })}
             className={inputBase}
             placeholder='0.00'
           />
         </label>
 
-        {showDiscount ? (
+        {showDiscount ?
           <label className='block space-y-1 sm:col-span-3'>
             <span className={fieldLabel}>Discount %</span>
             <input
@@ -1266,16 +1245,14 @@ function ItemRow({
               max={100}
               step={0.5}
               value={line.discountPct}
-              onChange={(e) =>
-                onPatch({ discountPct: Number(e.target.value) })
-              }
+              onChange={(e) => onPatch({ discountPct: Number(e.target.value) })}
               className={inputBase}
               placeholder='0'
             />
           </label>
-        ) : null}
+        : null}
 
-        {showGst ? (
+        {showGst ?
           <div className='space-y-1 sm:col-span-9'>
             <span className={fieldLabel}>GST %</span>
             <div className='flex flex-wrap items-center gap-2'>
@@ -1302,15 +1279,13 @@ function ItemRow({
                   max={100}
                   step={0.5}
                   value={line.gstPct}
-                  onChange={(e) =>
-                    onPatch({ gstPct: Number(e.target.value) })
-                  }
+                  onChange={(e) => onPatch({ gstPct: Number(e.target.value) })}
                   className='h-9 w-20 rounded-lg border border-gray-200 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300'
                 />
               </div>
             </div>
           </div>
-        ) : null}
+        : null}
       </div>
 
       {/* Per-row computed peek */}
@@ -1321,14 +1296,14 @@ function ItemRow({
             {formatINRMoney(c.taxable)}
           </span>
         </span>
-        {showGst ? (
+        {showGst ?
           <span>
             GST ({line.gstPct || 0}%):{" "}
             <span className='font-semibold tabular-nums text-gray-900'>
               {formatINRMoney(c.gstAmt)}
             </span>
           </span>
-        ) : null}
+        : null}
         <span>
           Line total:{" "}
           <span className='font-bold tabular-nums text-blue-700'>
