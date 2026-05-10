@@ -239,7 +239,7 @@ export default function AnalyticsPage() {
         {(analytics.revenueByDay?.length ?? 0) > 0 && (
           <div className='rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.1)]'>
             <DailyOrdersRevenueChart
-              data={analytics.revenueByDay}
+              data={analytics.revenueByDay ?? []}
               height={340}
               title='Daily orders & revenue'
               subtitle='Last 30 days · Asia/Kolkata · gross order totals (paid + refunded) and order count'

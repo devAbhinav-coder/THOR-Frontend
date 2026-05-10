@@ -12,6 +12,12 @@ export class ApiValidationError extends Error {
 }
 
 export function parseApiResponse<T>(label: string, data: unknown, schema: z.ZodType<T>): T {
+  const s = schema as unknown as { safeParse?: (d: unknown) => { success: boolean } };
+  if (schema === undefined || schema === null || typeof s.safeParse !== "function") {
+    throw new Error(
+      `parseApiResponse: invalid schema for "${label}" (got ${typeof schema}).`,
+    );
+  }
   const r = schema.safeParse(data);
   if (!r.success) {
     throw new ApiValidationError(label, r.error);

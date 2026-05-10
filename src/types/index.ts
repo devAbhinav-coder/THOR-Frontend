@@ -171,6 +171,92 @@ export interface AdminCreateOfflineOrderBody {
   notes?: string;
 }
 
+/* ── Admin sales invoices (B2B / bulk-order tax invoices) ─────────── */
+
+export type AdminSalesInvoiceUnit =
+  | "pcs"
+  | "mtr"
+  | "kg"
+  | "gm"
+  | "ltr"
+  | "set"
+  | "box"
+  | "pkt"
+  | "dozen"
+  | "hr"
+  | "day"
+  | "custom";
+
+export type AdminSalesInvoiceTaxMode = "cgst_sgst" | "igst" | "none";
+
+export interface AdminSalesInvoiceLine {
+  description: string;
+  hsn?: string;
+  unit: AdminSalesInvoiceUnit;
+  customUnit?: string;
+  qty: number;
+  rate: number;
+  discountPct: number;
+  gstPct: number;
+}
+
+export interface AdminSalesInvoiceSeller {
+  name: string;
+  address: string;
+  email?: string;
+  phone?: string;
+  gstin?: string;
+  pan?: string;
+  state?: string;
+}
+
+export interface AdminSalesInvoiceBuyer {
+  name?: string;
+  companyName?: string;
+  gstin?: string;
+  pan?: string;
+  address?: string;
+  state?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface AdminSalesInvoiceMeta {
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate?: string;
+  poNumber?: string;
+  notes?: string;
+  terms?: string;
+  taxMode: AdminSalesInvoiceTaxMode;
+  showHsn: boolean;
+  showDiscount: boolean;
+  showGstColumn: boolean;
+}
+
+/** POST /admin/invoices and PUT /admin/invoices/:id payload. */
+export interface AdminSalesInvoiceWriteBody {
+  seller: AdminSalesInvoiceSeller;
+  buyer: AdminSalesInvoiceBuyer;
+  meta: AdminSalesInvoiceMeta;
+  lines: AdminSalesInvoiceLine[];
+}
+
+/** Server response shape (returned by GET / POST / PUT). */
+export interface AdminSalesInvoice extends AdminSalesInvoiceWriteBody {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  taxMode: AdminSalesInvoiceTaxMode;
+  itemCount: number;
+  grandTotal: number;
+  subTotal: number;
+  totalDiscount: number;
+  totalGst: number;
+}
+
 export interface Order {
   _id: string;
   orderNumber: string;

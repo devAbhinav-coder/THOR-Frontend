@@ -13,10 +13,17 @@ import {
   isAuthPublicRequest,
   isAuthMeRequest,
 } from "@/lib/authRequestPaths";
-import type { AdminCreateOfflineOrderBody } from "@/types";
+import type {
+  AdminCreateOfflineOrderBody,
+  AdminSalesInvoiceWriteBody,
+} from "@/types";
 import { toastForNonAuthHttpError } from "@/lib/httpClientToast";
 
-const api: AxiosInstance = axios.create({
+/** Shared axios instance (interceptors, base URL). Exported so thin modules
+ *  like `invoiceStore` can call endpoints without depending on the full
+ *  `adminApi` object graph (avoids rare bundler/HMR cases where nested methods
+ *  are missing at runtime). */
+export const api: AxiosInstance = axios.create({
   baseURL: env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
@@ -379,6 +386,37 @@ export const adminApi = {
       schemas.categorySingle,
     ),
   deleteCategory: (id: string) => del204("admin.categories.delete", api.delete(`/admin/categories/${id}`)),
+  /* ── Sales invoices (B2B / bulk-order tax invoices) ── */
+  listSalesInvoices: (params?: { page?: number; limit?: number; search?: string }) =>
+    unwrapAxios(
+      "admin.invoices.list",
+      api.get("/admin/invoices", { params }),
+      schemas.adminSalesInvoiceList,
+    ),
+  getSalesInvoice: (id: string) =>
+    unwrapAxios(
+      "admin.invoices.get",
+      api.get(`/admin/invoices/${id}`),
+      schemas.adminSalesInvoiceSingle,
+    ),
+  createSalesInvoice: (payload: AdminSalesInvoiceWriteBody) =>
+    unwrapAxios(
+      "admin.invoices.create",
+      api.post("/admin/invoices", payload),
+      schemas.adminSalesInvoiceSingle,
+    ),
+  updateSalesInvoice: (id: string, payload: AdminSalesInvoiceWriteBody) =>
+    unwrapAxios(
+      "admin.invoices.update",
+      api.put(`/admin/invoices/${id}`, payload),
+      schemas.adminSalesInvoiceSingle,
+    ),
+  deleteSalesInvoice: (id: string) =>
+    unwrapAxios(
+      "admin.invoices.delete",
+      api.delete(`/admin/invoices/${id}`),
+      schemas.successMessageData,
+    ),
   getReturns: (params?: object) =>
     unwrapAxios("admin.returns", api.get("/admin/returns", { params }), schemas.adminOrdersList),
   getReturnsInsights: () =>

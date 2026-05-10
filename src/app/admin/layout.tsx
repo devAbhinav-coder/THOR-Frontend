@@ -27,6 +27,7 @@ import {
   ExternalLink,
   BadgeCheck,
   HandIcon,
+  Receipt,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,11 @@ const navSections: NavSection[] = [
         label: "Offline order",
         href: "/admin/orders/offline",
         icon: HandIcon,
+      },
+      {
+        label: "B2B tax invoices",
+        href: "/admin/invoices",
+        icon: Receipt,
       },
       { label: "Returns", href: "/admin/returns", icon: RotateCcw },
       { label: "Coupons", href: "/admin/coupons", icon: Tag },

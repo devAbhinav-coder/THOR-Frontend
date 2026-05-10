@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
@@ -25,6 +25,14 @@ const EXPLORE_PAGE_LIMIT = 8;
  */
 export default function ExploreCollection() {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  /** Latest query flags for the observer without tearing down / reconnecting IO on every new page (was causing scroll jank with Lenis). */
+  const ioStateRef = useRef({
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isPending: true,
+  });
+  /** Prevents double `fetchNextPage` in the same frame before React flips `isFetchingNextPage`. */
+  const fetchLockRef = useRef(false);
 
   const {
     data,
@@ -69,32 +77,39 @@ export default function ExploreCollection() {
     (pg) => (pg.data?.products || []) as Product[],
   );
 
+  ioStateRef.current = {
+    hasNextPage: Boolean(hasNextPage),
+    isFetchingNextPage,
+    isPending,
+  };
+
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
+
     const io = new IntersectionObserver(
       (entries) => {
-        const hit = entries[0]?.isIntersecting;
-        if (hit && hasNextPage && !isFetchingNextPage && !isPending) {
-          void fetchNextPage();
-        }
+        if (!entries[0]?.isIntersecting) return;
+        const s = ioStateRef.current;
+        if (!s.hasNextPage || s.isFetchingNextPage || s.isPending) return;
+        if (fetchLockRef.current) return;
+        fetchLockRef.current = true;
+        void fetchNextPage().finally(() => {
+          fetchLockRef.current = false;
+        });
       },
-      { root: null, rootMargin: "480px 0px", threshold: 0.01 },
+      /** Tighter margin = fewer premature loads while still prefetching — less layout churn during Lenis scroll. */
+      { root: null, rootMargin: "220px 0px", threshold: 0 },
     );
+
     io.observe(el);
     return () => io.disconnect();
-  }, [
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isPending,
-    products.length,
-  ]);
+  }, [fetchNextPage]);
 
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <section className='py-10 bg-[#FAF9F6]'>
+    <section className='py-10 bg-[#FAF9F6]' style={{ contain: "layout" }}>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='mb-10 text-center'>
           <div className='inline-flex items-center gap-3 text-brand-600'>
@@ -122,15 +137,22 @@ export default function ExploreCollection() {
               <ProductCard key={product._id} product={product} />
             ))
           }
-          {isFetchingNextPage &&
-            [...Array(4)].map((_, i) => (
-              <ProductCardSkeleton key={`more-${i}`} />
-            ))}
         </div>
+
+        {isFetchingNextPage ? (
+          <div
+            className='mt-4 flex min-h-[3rem] items-center justify-center gap-2 text-sm text-gray-500'
+            aria-busy
+            aria-live='polite'
+          >
+            <Loader2 className='h-4 w-4 shrink-0 animate-spin text-brand-600' />
+            <span>Loading more…</span>
+          </div>
+        ) : null}
 
         <div
           ref={sentinelRef}
-          className='h-10 w-full shrink-0 mt-2'
+          className='h-8 w-full shrink-0 mt-1'
           aria-hidden
         />
 

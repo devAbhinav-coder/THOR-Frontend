@@ -394,6 +394,8 @@ export const adminOrderDetail = z.object({
   data: z.object({ order: doc }),
 });
 
+export { adminSalesInvoiceList, adminSalesInvoiceSingle } from "./invoiceApiSchemas";
+
 /** POST .../delhivery/sync-tracking — includes human summary + parsed tracking */
 export const adminDelhiveryTrackSync = z.object({
   status: z.string(),
