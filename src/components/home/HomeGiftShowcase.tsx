@@ -177,6 +177,12 @@ export default function HomeGiftShowcase() {
             <Heart className='bg-decor-10 absolute right-[15%] top-[60%] h-8 w-8 text-rose-400 opacity-40' />
             <Gift className='bg-decor-11 absolute left-[40%] top-[70%] h-6 w-6 text-emerald-400 opacity-60' />
             <Star className='bg-decor-12 absolute right-[45%] top-[40%] h-9 w-9 text-rose-200 opacity-50' />
+            
+
+            <Sparkles className='bg-decor-13 absolute left-[10%] bottom-[30%] h-7 w-7 text-amber-300 opacity-50' />
+            <Heart className='bg-decor-14 absolute right-[15%] top-[60%] h-8 w-8 text-rose-400 opacity-40' />
+            <Gift className='bg-decor-15 absolute left-[10%] top-[80%] h-6 w-6 text-emerald-400 opacity-60' />
+            <Star className='bg-decor-16 absolute right-[35%] top-[70%] h-9 w-9 text-rose-200 opacity-50' />
           </div>
 
           {/* Left Side: Sticky Title */}

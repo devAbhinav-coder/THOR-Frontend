@@ -189,6 +189,11 @@ export default function CategorySection({
           onPointerUp={resumeAuto}
           onPointerCancel={resumeAuto}
         >
+          <style jsx global>{`
+            .category-collection-swiper .swiper-wrapper {
+              transition-timing-function: linear !important;
+            }
+          `}</style>
           <Swiper
             modules={[Autoplay]}
             onSwiper={handleSwiperInit}
@@ -196,7 +201,7 @@ export default function CategorySection({
             onUnlock={handleSwiperUnlock}
             slidesPerView='auto'
             spaceBetween={16}
-            speed={TRANSITION_MS}
+            speed={8000}
             autoplay={
               isSwiperLocked
                 ? false
@@ -207,7 +212,7 @@ export default function CategorySection({
                   }
             }
             loop={!isSwiperLocked && filteredCategories.length > 1}
-            resistanceRatio={0.65}
+            resistanceRatio={0}
             watchOverflow
             grabCursor
             className='category-collection-swiper relative z-10 !pb-1'
