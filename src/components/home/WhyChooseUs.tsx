@@ -59,33 +59,64 @@ export default function WhyChooseUs() {
     if (!containerRef.current) return;
 
     const ctx = gsap.context(() => {
-      // Fade in and slide up cards as they enter the viewport
-      gsap.utils.toArray(".feature-card-wrapper").forEach((item: any, i) => {
-        const card = item.querySelector(".feature-card");
+      let mm = gsap.matchMedia();
+
+      // Desktop: Pin the section and stagger reveal cards
+      mm.add("(min-width: 768px)", () => {
+        const cards = gsap.utils.toArray(".feature-card-wrapper");
         
-        if (card) {
-          gsap.fromTo(
-            card,
-            {
-              opacity: 0,
-              y: 50,
-              scale: 0.95,
-            },
-            {
-              opacity: 1,
-              y: 0,
-              scale: 1,
-              duration: 0.8,
-              ease: "power3.out",
-              scrollTrigger: {
-                trigger: item,
-                start: "top 95%", // Starts animating just as it enters the viewport
-                end: "top 75%",   // Finishes animating when it reaches 75% of the viewport height
-                scrub: 1,         // Smooth true scroll-based scrubbing
+        // Hide cards initially for the timeline
+        gsap.set(cards, { opacity: 0, y: 50, scale: 0.95 });
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top 20px", // Pin with a slight 20px breathing room from the top
+            end: "+=1200", // Pin for 1200px of scrolling
+            pin: true,
+            scrub: 1, // Smooth scrolling
+          }
+        });
+
+        // Reveal cards one by one rhythmically
+        tl.to(cards, {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 1,
+          stagger: 0.4,
+          ease: "power2.out",
+        });
+      });
+
+      // Mobile: Standard individual scroll triggers (no pinning to prevent cutoff)
+      mm.add("(max-width: 767px)", () => {
+        gsap.utils.toArray(".feature-card-wrapper").forEach((item: any) => {
+          const card = item.querySelector(".feature-card");
+          if (card) {
+            gsap.fromTo(
+              card,
+              {
+                opacity: 0,
+                y: 50,
+                scale: 0.95,
               },
-            }
-          );
-        }
+              {
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.8,
+                ease: "power3.out",
+                scrollTrigger: {
+                  trigger: item,
+                  start: "top 100%", 
+                  end: "top 85%",   
+                  scrub: 1,         
+                },
+              }
+            );
+          }
+        });
       });
     }, containerRef);
 
@@ -102,11 +133,12 @@ export default function WhyChooseUs() {
   }, []);
 
   return (
-    <section
-      ref={containerRef}
-      className='bg-[#FAF9F6] relative overflow-hidden py-16 md:py-24'
-    >
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+    <div className="w-full">
+      <section
+        ref={containerRef}
+        className='bg-[#FAF9F6] relative overflow-hidden py-10 md:py-16'
+      >
+        <div className='max-w-7xl mx-auto px-2 sm:px-2 lg:px-4'>
         
         {/* Full-width Centered Header */}
         <div className='text-center w-full'>
@@ -168,7 +200,8 @@ export default function WhyChooseUs() {
           </div>
 
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </div>
   );
 }

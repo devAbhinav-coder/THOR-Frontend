@@ -93,10 +93,11 @@ export default function Testimonials() {
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
         <div className='text-center mb-16'>
           <p className='text-rose-500 font-bold uppercase tracking-widest text-sm mb-3'>
-            Customer Love
+             <del>Customers</del> Family Love
           </p>
+          {/* cut in customer and family */}
           <h2 className='text-4xl sm:text-5xl font-serif font-bold text-gray-900'>
-            What Our Customers Say
+            Real Stories, Real Smiles
           </h2>
           <div className='mt-6 mx-auto w-20 h-1 bg-gradient-to-r from-rose-400 to-amber-300 rounded-full' />
         </div>
