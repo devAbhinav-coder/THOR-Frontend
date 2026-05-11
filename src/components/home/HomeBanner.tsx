@@ -17,6 +17,11 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
   const [settings, setSettings] = useState<StorefrontSettings | null>(
     () => initialSettings ?? null,
   );
+  const perkSubtitle = [
+    "Soft textures and rich weaves chosen for comfort and elegance.",
+    "Thoughtfully selected shades inspired by timeless Indian traditions.",
+    "Thoughtfully crafted styles inspired by timeless Indian traditions.",
+  ];
 
   useEffect(() => {
     /** Server payload is the source of truth — only refetch if SSR didn't provide one. */
@@ -100,15 +105,13 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
 
             {/* Tiny perks row */}
             <div className='mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-600'>
-              {perks.map((perk) => (
+              {perks.map((perk, index: number) => (
                 <div
                   key={perk}
                   className='rounded-2xl bg-white/70 border border-gray-100 px-4 py-3'
                 >
                   <p className='font-semibold text-gray-900'>{perk}</p>
-                  <p className='mt-0.5 text-gray-600'>
-                    Designed for a better shopping experience
-                  </p>
+                  <p className='mt-0.5 text-gray-600'>{perkSubtitle[index]}</p>
                 </div>
               ))}
             </div>

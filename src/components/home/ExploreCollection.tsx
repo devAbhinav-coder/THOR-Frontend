@@ -123,8 +123,8 @@ export default function ExploreCollection() {
             Explore the Collection
           </h2>
           <p className='text-sm text-gray-500 mt-3 max-w-2xl mx-auto'>
-            Fresh picks across categories — curated to feel premium, minimal,
-            and easy to shop.
+            Discover sarees that beautifully blend tradition with modern
+            elegance.
           </p>
         </div>
 
