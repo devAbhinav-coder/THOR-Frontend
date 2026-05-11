@@ -20,7 +20,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
   const perkSubtitle = [
     "Soft textures and rich weaves chosen for comfort and elegance.",
     "Thoughtfully selected shades inspired by timeless Indian traditions.",
-    "Thoughtfully crafted styles inspired by timeless Indian traditions.",
+    "Crafted to bring together timeless tradition and graceful elegance.",
   ];
 
   useEffect(() => {

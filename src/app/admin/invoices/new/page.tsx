@@ -48,7 +48,6 @@ const DEFAULT_SELLER: SellerDetails = {
   email: "support@thehouseofrani.com",
   phone: "+91 8340311033",
   gstin: "10CCLPR1131E1Z6",
-  pan: "AAACCJ9379R",
   state: "Uttar Pradesh",
 };
 
@@ -803,7 +802,7 @@ export default function NewSalesInvoicePage() {
                   maxLength={15}
                 />
               </label>
-              <label className='block space-y-1.5'>
+              {/* <label className='block space-y-1.5'>
                 <span className={fieldLabel}>PAN</span>
                 <input
                   value={seller.pan}
@@ -816,7 +815,7 @@ export default function NewSalesInvoicePage() {
                   className={cn(inputBase, "tracking-wider")}
                   maxLength={10}
                 />
-              </label>
+              </label> */}
               <label className='block space-y-1.5'>
                 <span className={fieldLabel}>Email</span>
                 <input

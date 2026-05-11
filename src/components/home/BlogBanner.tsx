@@ -45,7 +45,7 @@ export default function BlogBanner() {
             start: "top 80%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       // Stagger in the text content inside the card
@@ -63,7 +63,7 @@ export default function BlogBanner() {
             start: "top 85%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       // Add subtle parallax to the floating side image
@@ -93,7 +93,7 @@ export default function BlogBanner() {
     >
       {/* Decorative background gradients */}
       <div className='absolute top-0 right-0 -mr-20 -mt-20 w-[30rem] h-[30rem] bg-rose-200/40 rounded-full blur-[100px] pointer-events-none' />
-      <div className='absolute bottom-0 left-0 -ml-20 -mb-20 w-[30rem] h-[30rem] bg-amber-200/30 rounded-full blur-[100px] pointer-events-none' />
+      <div className='absolute bottom-0 left-0 -ml-20 -mb-20 w-[30rem] h-[30rem] bg-blue-200/40 rounded-full blur-[100px] pointer-events-none' />
 
       <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
         {/* Apple-like Glass Card */}
@@ -155,9 +155,7 @@ export default function BlogBanner() {
               <div className='blog-text-reveal relative w-full max-w-[280px] sm:max-w-sm aspect-[4/5] rounded-3xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.1)] transform rotate-2 hover:rotate-0 transition-transform duration-700 border-4 border-white group'>
                 <Image
                   src={blog?.mainImage || ""}
-                  alt={
-                    blog?.title || "From The House of Rani journal"
-                  }
+                  alt={blog?.title || "From The House of Rani journal"}
                   fill
                   loader={cloudinaryLoader}
                   sizes='(max-width: 640px) 280px, 384px'

@@ -177,7 +177,7 @@ function CatalogLineEditor({
           </button>
         : null}
       </div>
-      <div className='relative z-[80]'>
+      <div className='relative z-[8]'>
         <SearchField
           value={line.productSearch}
           onChange={(v) => {
@@ -646,29 +646,34 @@ export default function AdminOfflineOrderPage() {
   };
 
   return (
-    <div className='mx-auto max-w-4xl space-y-6 p-4 pb-28 sm:p-6 xl:p-8'>
-      <div className='flex flex-wrap items-center gap-3'>
-        <Link
-          href='/admin/orders'
-          className='inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-brand-700'
-        >
-          <ArrowLeft className='h-4 w-4' /> Orders
-        </Link>
-      </div>
-
-      <AdminPageHeader
-        title='Offline order'
-        description='Record stall or personal-contact sales.'
-        badge='POS'
-        actions={
+    <div className='mx-auto max-w-4xl space-y-5 p-4 pb-32 sm:p-6 xl:p-8' style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Premium header */}
+      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#14192f] to-slate-800 p-5 shadow-xl'>
+        <div className='pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-brand-500/10 blur-3xl' />
+        <div className='relative flex flex-wrap items-center justify-between gap-3'>
+          <div>
+            <div className='flex items-center gap-2 mb-1'>
+              <Link href='/admin/orders' className='inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors'>
+                <ArrowLeft className='h-3.5 w-3.5' /> Orders
+              </Link>
+            </div>
+            <div className='flex items-center gap-2.5'>
+              <span className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/10'>
+                <HandIcon className='h-4 w-4 text-white' />
+              </span>
+              <h1 className='text-xl font-serif font-bold text-white'>Offline Order</h1>
+              <span className='rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/70'>POS</span>
+            </div>
+            <p className='text-sm text-slate-400 mt-1'>Record stall or personal-contact sales — confirmed &amp; paid instantly.</p>
+          </div>
           <Link
             href='/admin/orders'
-            className='inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 transition-colors hover:border-brand-300 hover:bg-brand-50/50'
+            className='shrink-0 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:bg-white/20'
           >
             All orders
           </Link>
-        }
-      />
+        </div>
+      </div>
 
       {/* Customer */}
       <section className='space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6'>
@@ -1024,20 +1029,21 @@ export default function AdminOfflineOrderPage() {
         </label>
       </section>
 
-      <div className='fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md sm:px-8'>
-        <div className='mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3'>
-          <p className='text-xs text-gray-500'>
-            Multiple lines are summed like checkout. In-person handover is
-            delivered + paid with no shipping.
+      {/* Sticky submit — safe-area aware for iOS/Android notch & nav bar */}
+      <div className='fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/98 backdrop-blur-md'
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)' }}>
+        <div className='mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8'>
+          <p className='hidden sm:block text-xs text-gray-500'>
+            Multiple lines summed like checkout. Handover = delivered + paid, no shipping.
           </p>
           <Button
             type='button'
             variant='brand'
-            className='min-w-[160px] rounded-xl'
+            className='w-full sm:w-auto min-w-[160px] rounded-xl h-12 text-base font-bold shadow-lg'
             loading={submitting}
             onClick={() => void handleSubmit()}
           >
-            Create order
+            ✓ Create Order
           </Button>
         </div>
       </div>

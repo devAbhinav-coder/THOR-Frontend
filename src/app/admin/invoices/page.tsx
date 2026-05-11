@@ -140,24 +140,28 @@ export default function AdminInvoicesListPage() {
   );
 
   return (
-    <div className='mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6 xl:p-8'>
-      <AdminPageHeader
-        title='B2B tax invoices'
-        description='Admin-only GST bills for offline wholesale (e.g. fabric by meter). Not tied to the shop or customer carts — create, save, and reprint from any device.'
-        badge='Billing'
-        actions={
-          <Button
-            asChild
-            variant='brand'
-            size='sm'
-            className='rounded-xl bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-400'
+    <div className='mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6 xl:p-8'>
+      {/* Premium header */}
+      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-5 sm:p-6 shadow-xl'>
+        <div className='pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-blue-500/15 blur-3xl' />
+        <div className='pointer-events-none absolute -bottom-8 left-8 h-28 w-28 rounded-full bg-indigo-400/10 blur-2xl' />
+        <div className='relative flex flex-wrap items-center justify-between gap-4'>
+          <div>
+            <p className='text-[10px] font-bold uppercase tracking-widest text-blue-300/80 mb-1'>Admin — Billing</p>
+            <div className='flex items-center gap-3'>
+              <h1 className='text-2xl font-serif font-bold text-white tracking-tight'>B2B Tax Invoices</h1>
+              <span className='rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/60 ring-1 ring-white/15'>GST</span>
+            </div>
+            <p className='text-sm text-slate-400 mt-1 hidden sm:block'>Admin-only GST bills for offline wholesale — fabric by meter, kg, pcs, etc.</p>
+          </div>
+          <Link
+            href='/admin/invoices/new'
+            className='shrink-0 inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/40 transition'
           >
-            <Link href='/admin/invoices/new'>
-              <Plus className='mr-1.5 h-4 w-4' /> New B2B invoice
-            </Link>
-          </Button>
-        }
-      />
+            <Plus className='h-4 w-4' /> New Invoice
+          </Link>
+        </div>
+      </div>
 
       {/* Hero metrics */}
       <div className='grid gap-3 sm:grid-cols-3'>
@@ -221,7 +225,7 @@ export default function AdminInvoicesListPage() {
             {filtered.map((inv) => (
               <li
                 key={inv.id}
-                className='group flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5 hover:bg-blue-50/40 transition-colors'
+                className='group flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5 hover:bg-blue-50/40 transition-colors border-b border-gray-100 last:border-0'
               >
                 <button
                   type='button'
@@ -276,12 +280,12 @@ export default function AdminInvoicesListPage() {
                     <p className='text-[11px] text-gray-500'>Grand total</p>
                   </div>
                 </button>
-                <div className='flex shrink-0 items-center gap-2 pl-14 sm:pl-0'>
+              <div className='flex shrink-0 items-center gap-2 self-end sm:self-auto sm:pl-0'>
                   <Button
                     asChild
                     variant='outline'
                     size='sm'
-                    className='rounded-lg'
+                    className='rounded-lg border-blue-200 text-blue-700 hover:bg-blue-50'
                   >
                     <Link
                       href={`/admin/invoices/new?id=${encodeURIComponent(inv.id)}`}
@@ -294,7 +298,7 @@ export default function AdminInvoicesListPage() {
                     onClick={() =>
                       handleDelete(inv.id, inv.meta.invoiceNumber)
                     }
-                    className='rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600'
+                    className='rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors'
                     aria-label={`Delete ${inv.meta.invoiceNumber}`}
                   >
                     <Trash2 className='h-4 w-4' />

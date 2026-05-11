@@ -14,7 +14,6 @@ export type SellerDetails = {
   email: string;
   phone: string;
   gstin: string;
-  pan: string;
   state: string;
 };
 
@@ -200,9 +199,9 @@ export default function SalesInvoiceDocument({
                     GSTIN: {seller.gstin}
                   </p>
                 : null}
-                {seller.pan ? (
+                {/* {seller.pan ? (
                   <p className='text-[11px] text-gray-600'>PAN: {seller.pan}</p>
-                ) : null}
+                ) : null} */}
                 {seller.state ? (
                   <p className='text-[11px] text-gray-600'>
                     State: {seller.state}

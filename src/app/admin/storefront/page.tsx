@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Megaphone, ImageIcon, Percent, BookOpen, ShoppingBag, Gift, Star, Settings2, LayoutGrid, Save, Loader2, ExternalLink } from 'lucide-react';
 import { adminApi, categoryApi, giftingApi } from '@/lib/api';
 import {
   Category,
@@ -13,9 +13,15 @@ import {
 import ImageUploader from '@/components/ui/ImageUploader';
 import { revalidateStorefrontCache } from '@/actions/revalidateStorefrontCache';
 import toast from 'react-hot-toast';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+
 const inputCls =
-  'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all';
+  'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400/60 focus:border-brand-300 border-transparent shadow-[inset_0_0_0_1px_theme(colors.gray.200)] transition-all placeholder:text-gray-400';
+
+const labelCls = 'block text-xs font-semibold text-gray-600 mb-1.5 tracking-wide uppercase';
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <p className={labelCls}>{children}</p>;
+}
 
 /** Narrow updates to `blogBanner` without `as any` (spread keeps optional image fields in sync). */
 type BlogBannerFields = StorefrontSettings['blogBanner'];
@@ -135,7 +141,12 @@ export default function AdminStorefrontPage() {
   };
 
   if (isLoading || !settings) {
-    return <div className="p-8 text-sm text-gray-500">Loading storefront settings...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
+        <div className="h-10 w-10 rounded-full border-2 border-brand-200 border-t-brand-600 animate-spin" />
+        <p className="text-sm font-medium text-gray-500">Loading storefront settings…</p>
+      </div>
+    );
   }
 
   const applyPresetLink = (
@@ -191,37 +202,45 @@ export default function AdminStorefrontPage() {
   });
 
   return (
-    <div className="p-6 xl:p-8 space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-serif font-bold text-gray-900">Storefront Control</h1>
-          <p className="text-sm text-gray-500 mt-1">Control home hero, promo banner, footer and announcement strip.</p>
+    <div className="p-6 xl:p-8 space-y-5">
+      {/* Page header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#14192f] to-brand-900 p-6 shadow-xl">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-10 left-10 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand-300/80 mb-1">Admin Panel</p>
+            <h1 className="text-2xl font-serif font-bold text-white tracking-tight">Storefront Control</h1>
+            <p className="text-sm text-slate-400 mt-1">Manage hero slides, banners, gifting showcase, and footer content.</p>
+          </div>
+          <button
+            onClick={save}
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white text-sm font-bold shadow-lg shadow-brand-900/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isSaving ? 'Saving…' : 'Save Changes'}
+          </button>
         </div>
-        <button
-          onClick={save}
-          disabled={isSaving}
-          className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold disabled:opacity-60"
-        >
-          {isSaving ? 'Saving...' : 'Save Settings'}
-        </button>
       </div>
 
-  <section className="bg-white rounded-2xl border border-gray-100">
-
-  {/* HEADER */}
+  <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "announcement" ? null : "announcement")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "announcement" ? null : "announcement")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "announcement" ? "bg-amber-50 border-b border-amber-100" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">
-      Top Announcement Messages
-    </h2>
-    <span>{activeSection === "announcement" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+        <Megaphone className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Announcement Strip</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Rotating messages shown at the top of every page</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "announcement" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
-  {/* ✅ CONTENT (IMPORTANT CHANGE) */}
   {activeSection === "announcement" && (
     <div className="px-5 pb-5 space-y-3">
 
@@ -299,17 +318,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
- <section className="bg-white rounded-2xl border border-gray-100">
-
-  {/* HEADER */}
+ <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "hero" ? null : "hero")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "hero" ? null : "hero")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "hero" ? "bg-brand-50 border-b border-brand-100" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">Hero Slides</h2>
-    <span>{activeSection === "hero" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
+        <ImageIcon className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Hero Slides</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Full-screen hero carousel on the homepage — {settings.heroSlides.length} slide{settings.heroSlides.length !== 1 ? 's' : ''}</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "hero" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {/* CONTENT */}
@@ -465,19 +488,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
-<section className="bg-white rounded-2xl border border-gray-100">
-
-  {/* HEADER */}
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "promo" ? null : "promo")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "promo" ? null : "promo")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "promo" ? "bg-rose-50 border-b border-rose-100" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">
-      Mid Home Promo Banner
-    </h2>
-    <span>{activeSection === "promo" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+        <Percent className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Mid-Page Promo Banner</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Full-width promotional banner shown in the middle of the homepage</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "promo" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {/* CONTENT */}
@@ -614,19 +639,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
- <section className="bg-white rounded-2xl border border-gray-100">
-
-  {/* HEADER */}
+ <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "blog" ? null : "blog")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "blog" ? null : "blog")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "blog" ? "bg-sky-50 border-b border-sky-100" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">
-      Blog Banner
-    </h2>
-    <span>{activeSection === "blog" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
+        <BookOpen className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Blog Banner</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Images and text for the blog section banner on the homepage</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "blog" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {/* CONTENT */}
@@ -750,15 +777,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
-<section className="bg-white rounded-2xl border border-gray-100">
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "shopBanner" ? null : "shopBanner")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "shopBanner" ? null : "shopBanner")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "shopBanner" ? "bg-violet-50 border-b border-violet-100" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">Shop Page Banner</h2>
-    <span>{activeSection === "shopBanner" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+        <ShoppingBag className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Shop Page Banner</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Hero banner displayed at the top of the /shop page — supports 1 full-width or 2 side images</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "shopBanner" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {activeSection === "shopBanner" && (
@@ -963,22 +996,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
-<section className="bg-white rounded-2xl border border-gray-100">
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "homeGift" ? null : "homeGift")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "homeGift" ? null : "homeGift")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "homeGift" ? "bg-pink-50 border-b border-pink-100" : "hover:bg-gray-50/80"}`}
   >
-    <div>
-      <h2 className="font-semibold text-gray-900">Home — Gifting showcase</h2>
-      <p className="text-xs text-gray-500 mt-0.5">
-        Three cards above &quot;Why Choose Us&quot; (white background). Each card: shop link + gifting link.
-      </p>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-100 text-pink-600">
+        <Gift className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Homepage Gifting Showcase</h2>
+        <p className="text-xs text-gray-500 mt-0.5">3 gift cards above &quot;Why Choose Us&quot; — each has a shop link + gifting link</p>
+      </div>
     </div>
-    <span>
-      {activeSection === "homeGift" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-    </span>
+    <span className="shrink-0 text-gray-400">{activeSection === "homeGift" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {activeSection === "homeGift" && settings && (
@@ -1410,19 +1442,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
-<section className="bg-white rounded-2xl border border-gray-100">
-
-  {/* HEADER */}
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "gifting1" ? null : "gifting1")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "gifting1" ? null : "gifting1")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "gifting1" ? "bg-fuchsia-50 border-b border-fuchsia-100" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">
-      Gifting Banner 1 (Slider)
-    </h2>
-    <span>{activeSection === "gifting1" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-fuchsia-100 text-fuchsia-600">
+        <LayoutGrid className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Gifting Hero Slider</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Rotating hero banners at the top of the /gifting page — add 4–5 slides</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "gifting1" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {/* CONTENT */}
@@ -1603,19 +1637,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
-<section className="bg-white rounded-2xl border border-gray-100">
-
-  {/* HEADER */}
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "gifting2" ? null : "gifting2")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "gifting2" ? null : "gifting2")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "gifting2" ? "bg-orange-50 border-b border-orange-100" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">
-      Gifting Banner 2 (Cards)
-    </h2>
-    <span>{activeSection === "gifting2" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+        <Star className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Gifting Secondary Cards</h2>
+        <p className="text-xs text-gray-500 mt-0.5">1–2 featured gift category cards below the hero slider on /gifting</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "gifting2" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {/* CONTENT */}
@@ -1802,19 +1838,21 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
-    <section className="bg-white rounded-2xl border border-gray-100">
-
-  {/* HEADER */}
+    <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
   <div
-    onClick={() =>
-      setActiveSection(activeSection === "footer" ? null : "footer")
-    }
-    className="cursor-pointer p-5 flex justify-between items-center"
+    onClick={() => setActiveSection(activeSection === "footer" ? null : "footer")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "footer" ? "bg-slate-50 border-b border-slate-200" : "hover:bg-gray-50/80"}`}
   >
-    <h2 className="font-semibold text-gray-900">
-      Footer Settings
-    </h2>
-    <span>{activeSection === "footer" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+        <Settings2 className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Footer Settings</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Contact info, social media links, and footer description</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "footer" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
   </div>
 
   {/* CONTENT */}

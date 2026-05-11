@@ -87,7 +87,7 @@ export default function Testimonials() {
   return (
     <section ref={sectionRef} className='py-24 bg-[#FAF9F6] relative overflow-hidden'>
       {/* Background Decor */}
-      <div className='pointer-events-none absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-200/30 rounded-full blur-[100px]' />
+      <div className='pointer-events-none absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-200/30 rounded-full blur-[100px]' />
       <div className='pointer-events-none absolute right-0 bottom-0 translate-x-1/2 translate-y-1/2 w-[600px] h-[600px]   bg-rose-200/30 rounded-full blur-[120px]' />
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>

@@ -317,46 +317,50 @@ export default function AdminOrdersPage() {
   });
 
   return (
-    <div className='p-4 sm:p-6 xl:p-8 space-y-6 max-w-[1600px] mx-auto'>
-      <AdminPageHeader
-        title='Orders'
-        description='Fulfil, track, and update status — row click opens the full order. Pulse tile shows today’s volume (local midnight); daily trend lives under Analytics.'
-        badge={
-          pagination.total ?
-            `${pagination.total.toLocaleString()} total`
-          : undefined
-        }
-        actions={
-          <>
-            <Button
+    <div className='p-4 sm:p-6 xl:p-8 space-y-5 max-w-[1600px] mx-auto'>
+      {/* Premium page header */}
+      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#14192f] to-indigo-950 p-5 sm:p-6 shadow-xl'>
+        <div className='pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl' />
+        <div className='pointer-events-none absolute -bottom-10 left-10 h-32 w-32 rounded-full bg-brand-400/10 blur-2xl' />
+        <div className='relative flex flex-wrap items-center justify-between gap-4'>
+          <div>
+            <p className='text-[10px] font-bold uppercase tracking-widest text-indigo-300/80 mb-1'>Admin Panel</p>
+            <div className='flex items-center gap-3'>
+              <h1 className='text-2xl font-serif font-bold text-white tracking-tight'>Orders</h1>
+              {pagination.total > 0 && (
+                <span className='inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-bold text-white/80 ring-1 ring-white/20'>
+                  {pagination.total.toLocaleString()} total
+                </span>
+              )}
+            </div>
+            <p className='text-sm text-slate-400 mt-1 hidden sm:block'>Fulfil, track, and update status — click any row for the full order.</p>
+          </div>
+          <div className='flex items-center gap-2 flex-wrap'>
+            <button
               type='button'
-              variant='outline'
-              size='sm'
-              className='rounded-xl border-gray-200'
               onClick={handleRefreshList}
               disabled={isRefreshing || isLoading}
+              className='inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:bg-white/20 disabled:opacity-50'
             >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
-            </Button>
+            </button>
             <Link
               href='/admin/orders/offline'
-              className='inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors gap-2'
+              className='inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:bg-white/20'
             >
-              <HandIcon className='h-4 w-4 text-brand-600' />
+              <HandIcon className='h-4 w-4' />
               Offline order
             </Link>
             <Link
               href='/admin/returns'
-              className='inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors'
+              className='inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-500 px-3.5 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-900/40 transition'
             >
               Returns
             </Link>
-          </>
-        }
-      />
+          </div>
+        </div>
+      </div>
 
       {/* Stats: today pulse + month + pipeline */}
       <div className='grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3'>
@@ -392,7 +396,7 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Revenue highlight — month */}
-        <div className='col-span-2 sm:col-span-2 xl:col-span-2 bg-gradient-to-br from-navy-900 to-navy-800 rounded-2xl p-5 text-white shadow-sm'>
+        <div className='col-span-1 sm:col-span-1 xl:col-span-1 bg-gradient-to-br from-navy-900 to-navy-800 rounded-2xl p-5 text-white shadow-sm'>
           <div className='flex items-center gap-2 mb-2'>
             <TrendingUp className='h-5 w-5 text-brand-300' />
             <span className='text-xs font-semibold text-navy-300 uppercase tracking-widest'>
@@ -440,7 +444,7 @@ export default function AdminOrdersPage() {
                 setStatusFilter(statusFilter === status ? "" : status)
               }
               className={cn(
-                "rounded-2xl p-4 border transition-all text-left",
+                "rounded-2xl p-2 border transition-all text-center items-center",
                 statusFilter === status ?
                   "border-brand-400 shadow-sm ring-1 ring-brand-300"
                 : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm",
@@ -449,7 +453,7 @@ export default function AdminOrdersPage() {
             >
               <div
                 className={cn(
-                  "h-9 w-9 rounded-xl flex items-center justify-center mb-2",
+                  "h-9 w-9 rounded-xl flex items-center justify-center mb-2 mx-auto",
                   meta.bg,
                 )}
               >
@@ -483,12 +487,12 @@ export default function AdminOrdersPage() {
 
       {/* Filters + list */}
       {!ordersLoadError && (
-        <div className='bg-white rounded-2xl border border-gray-100 shadow-sm'>
-          <div className='p-4 border-b border-gray-100 flex flex-wrap gap-3'>
+        <div className='bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'>
+          <div className='px-4 py-3 border-b border-gray-100 flex flex-wrap items-center gap-2.5 bg-gray-50/60'>
             <SearchField
               value={search}
               onChange={setSearch}
-              placeholder='Order #, customer name, or email…'
+              placeholder='Search order #, name or email…'
               isLoading={search.trim() !== debouncedSearch}
               className='flex-1 min-w-[200px]'
               aria-label='Search orders'
@@ -496,62 +500,50 @@ export default function AdminOrdersPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className='px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 bg-white transition-all'
+              className='h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 font-medium text-gray-700'
             >
               <option value=''>All Statuses</option>
               {ORDER_STATUSES.map((s) => (
-                <option key={s} value={s} className='capitalize'>
-                  {s}
-                </option>
+                <option key={s} value={s} className='capitalize'>{s}</option>
               ))}
             </select>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className='px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 bg-white transition-all'
+              className='h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 font-medium text-gray-700'
             >
               <option value='newest'>Newest first</option>
               <option value='oldest'>Oldest first</option>
-              <option value='value_high'>Order value: high to low</option>
-              <option value='value_low'>Order value: low to high</option>
+              <option value='value_high'>High → Low value</option>
+              <option value='value_low'>Low → High value</option>
             </select>
-            <div className='flex items-center rounded-xl bg-gray-50 px-3 text-xs font-semibold text-gray-600 border border-gray-200'>
-              Showing {visibleOrders.length} of {orders.length} loaded
-            </div>
-            <div className='ml-auto flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white'>
-              <button
-                type='button'
-                onClick={() => setViewMode("table")}
-                className={`h-10 px-3 grid place-items-center ${viewMode === "table" ? "bg-navy-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
-                title='Table view'
-              >
-                <List className='h-4 w-4' />
-              </button>
-              <button
-                type='button'
-                onClick={() => setViewMode("grid")}
-                className={`h-10 px-3 grid place-items-center ${viewMode === "grid" ? "bg-navy-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
-                title='Grid view'
-              >
-                <LayoutGrid className='h-4 w-4' />
-              </button>
+            <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
+              {visibleOrders.length} / {orders.length} shown
+            </span>
+            <div className='ml-auto flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm'>
+              <button type='button' onClick={() => setViewMode('table')}
+                className={`h-9 w-9 grid place-items-center transition-colors ${viewMode === 'table' ? 'bg-navy-900 text-white' : 'text-gray-400 hover:bg-gray-50'}`}
+                title='Table view'><List className='h-4 w-4' /></button>
+              <button type='button' onClick={() => setViewMode('grid')}
+                className={`h-9 w-9 grid place-items-center transition-colors ${viewMode === 'grid' ? 'bg-navy-900 text-white' : 'text-gray-400 hover:bg-gray-50'}`}
+                title='Grid view'><LayoutGrid className='h-4 w-4' /></button>
             </div>
           </div>
 
           {/* Tablet / desktop table */}
-          {viewMode === "table" && (
+          {viewMode === 'table' && (
             <div className='hidden md:block'>
               <table className='w-full table-fixed'>
                 <thead>
-                  <tr className='bg-gray-50 text-[11px] text-gray-500 uppercase tracking-wider'>
-                    <th className='text-left px-5 py-3.5'>Order</th>
-                    <th className='text-left px-4 py-3.5'>Customer</th>
-                    <th className='text-left px-4 py-3.5'>Date</th>
-                    <th className='text-left px-4 py-3.5'>Items</th>
-                    <th className='text-left px-4 py-3.5'>Total</th>
-                    <th className='text-left px-4 py-3.5'>Payment</th>
-                    <th className='text-left px-4 py-3.5'>Status</th>
-                    <th className='text-left px-4 py-3.5'>Action</th>
+                  <tr className='bg-gradient-to-r from-gray-50 to-gray-50/80 text-[10px] font-bold text-gray-400 uppercase tracking-[0.12em] border-b border-gray-100'>
+                    <th className='text-left px-5 py-3'>Order #</th>
+                    <th className='text-left px-4 py-3'>Customer</th>
+                    <th className='text-left px-4 py-3'>Date</th>
+                    <th className='text-left px-4 py-3'>Items</th>
+                    <th className='text-left px-4 py-3'>Total</th>
+                    <th className='text-left px-4 py-3'>Payment</th>
+                    <th className='text-left px-4 py-3'>Status</th>
+                    <th className='text-left px-4 py-3'>Action</th>
                   </tr>
                 </thead>
                 <tbody className='divide-y divide-gray-50'>
@@ -566,94 +558,55 @@ export default function AdminOrdersPage() {
                   : visibleOrders.map((order) => (
                       <tr
                         key={order._id}
-                        className='hover:bg-gray-50/80 transition-colors cursor-pointer'
-                        onClick={() =>
-                          router.push(
-                            `/admin/orders/${encodeURIComponent(order._id)}`,
-                          )
-                        }
+                        className='group hover:bg-brand-50/30 transition-colors cursor-pointer border-b border-gray-50 last:border-0'
+                        onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)}
                       >
                         <td className='px-5 py-3.5'>
-                          <p className='text-sm font-semibold text-brand-600'>
-                            {order.orderNumber}
-                          </p>
+                          <p className='text-sm font-bold text-brand-600 group-hover:text-brand-700'>{order.orderNumber}</p>
                         </td>
                         <td className='px-4 py-3.5'>
-                          <p className='text-sm font-medium text-gray-900'>
-                            {typeof order.user === "object" ?
-                              (order.user?.name ?? "—")
-                            : "—"}
+                          <p className='text-sm font-semibold text-gray-900 leading-tight'>
+                            {typeof order.user === 'object' ? (order.user?.name ?? '—') : '—'}
                           </p>
-                          <p className='text-xs text-gray-400 mt-0.5'>
-                            {typeof order.user === "object" ?
-                              order.user?.email
-                            : ""}
+                          <p className='text-[11px] text-gray-400 mt-0.5 truncate max-w-[160px]'>
+                            {typeof order.user === 'object' ? order.user?.email : ''}
                           </p>
                         </td>
-                        <td className='px-4 py-3.5 text-sm text-gray-500'>
-                          {formatDate(order.createdAt)}
-                        </td>
-                        <td className='px-4 py-3.5 text-sm text-gray-600'>
-                          {(order.items ?? []).length}
-                        </td>
-                        <td className='px-4 py-3.5 text-sm font-bold text-gray-900'>
-                          {formatPrice(order.total)}
-                        </td>
+                        <td className='px-4 py-3.5 text-sm text-gray-500 whitespace-nowrap'>{formatDate(order.createdAt)}</td>
                         <td className='px-4 py-3.5'>
-                          <span
-                            className={cn(
-                              "text-xs font-semibold px-2.5 py-1 rounded-full capitalize",
-                              order.paymentStatus === "paid" ?
-                                "bg-green-100 text-green-700"
-                              : order.paymentStatus === "failed" ?
-                                "bg-red-100 text-red-700"
-                              : "bg-yellow-100 text-yellow-700",
-                            )}
-                          >
-                            {order.paymentStatus}
+                          <span className='inline-flex items-center justify-center h-6 min-w-[1.5rem] rounded-lg bg-gray-100 text-xs font-bold text-gray-600 px-2'>
+                            {(order.items ?? []).length}
+                          </span>
+                        </td>
+                        <td className='px-4 py-3.5 text-sm font-bold text-gray-900'>{formatPrice(order.total)}</td>
+                        <td className='px-4 py-3.5'>
+                          <span className={cn('inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize ring-1 ring-inset',
+                            order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                            : order.paymentStatus === 'failed' ? 'bg-red-50 text-red-700 ring-red-200'
+                            : 'bg-amber-50 text-amber-700 ring-amber-200')}>
+                            {order.paymentStatus === 'paid' ? '✓' : order.paymentStatus === 'failed' ? '✕' : '○'} {order.paymentStatus}
                           </span>
                         </td>
                         <td className='px-4 py-3.5'>
-                          <span
-                            className={cn(
-                              "text-xs font-semibold px-2.5 py-1 rounded-full capitalize",
-                              getOrderStatusColor(order.status),
-                            )}
-                          >
+                          <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize', getOrderStatusColor(order.status))}>
+                            {STATUS_META[order.status]?.icon}
                             {order.status}
                           </span>
                         </td>
-                        <td className='px-4 py-3.5'>
-                          <div className='relative group inline-block'>
-                            <Button
-                              variant='outline'
-                              size='sm'
-                              disabled={updatingOrder === order._id}
-                              className='text-xs h-8 px-3 rounded-lg'
-                            >
-                              {updatingOrder === order._id ?
-                                <span className='h-3 w-3 rounded-full border-2 border-gray-400 border-t-gray-800 animate-spin' />
-                              : <>
-                                  Update{" "}
-                                  <ChevronDown className='h-3 w-3 ml-1' />
-                                </>
-                              }
+                        <td className='px-4 py-3.5' onClick={(e) => e.stopPropagation()}>
+                          <div className='relative group/btn inline-block'>
+                            <Button variant='outline' size='sm' disabled={updatingOrder === order._id}
+                              className='text-xs h-8 px-3 rounded-lg border-gray-200 hover:border-brand-300 hover:bg-brand-50'>
+                              {updatingOrder === order._id
+                                ? <span className='h-3 w-3 rounded-full border-2 border-gray-400 border-t-gray-800 animate-spin' />
+                                : <><span>Update</span><ChevronDown className='h-3 w-3 ml-1' /></>}
                             </Button>
-                            <div className='absolute right-0 top-full mt-1 bg-white shadow-xl rounded-xl py-1.5 min-w-[140px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 border border-gray-100'>
+                            <div className='absolute right-0 top-full mt-1 bg-white shadow-2xl rounded-xl py-1.5 min-w-[150px] opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all z-20 border border-gray-100'>
                               {getNextStatuses(order.status).map((status) => (
-                                <button
-                                  key={status}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateStatus(order._id, status);
-                                  }}
-                                  className={cn(
-                                    "flex items-center gap-2 w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize transition-colors",
-                                    STATUS_META[status]?.text,
-                                  )}
-                                >
-                                  {STATUS_META[status]?.icon}
-                                  {status}
+                                <button key={status}
+                                  onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
+                                  className={cn('flex items-center gap-2 w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize transition-colors rounded-lg mx-1 w-[calc(100%-8px)]', STATUS_META[status]?.text)}>
+                                  {STATUS_META[status]?.icon}{status}
                                 </button>
                               ))}
                             </div>
@@ -956,32 +909,37 @@ export default function AdminOrdersPage() {
           </div>
 
           {!isLoading && visibleOrders.length === 0 && (
-            <div className='py-12 text-center text-gray-400 text-sm'>
-              No orders match your filters.
+            <div className='py-16 flex flex-col items-center gap-3 text-center'>
+              <div className='h-14 w-14 rounded-2xl bg-gray-100 flex items-center justify-center'>
+                <Package className='h-7 w-7 text-gray-300' />
+              </div>
+              <p className='text-sm font-semibold text-gray-500'>No orders match your filters</p>
+              <p className='text-xs text-gray-400'>Try adjusting the status filter or search query</p>
+              {statusFilter && (
+                <button onClick={() => setStatusFilter('')} className='mt-1 text-xs font-bold text-brand-600 hover:underline'>Clear filter</button>
+              )}
             </div>
           )}
           <div ref={loadMoreRef} className='h-px' aria-hidden />
         </div>
       )}
 
-      {/* Tracking modal (when marking shipped) */}
+      {/* Tracking modal */}
       {trackingOpenFor && (
-        <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60'>
-          <div
-            className='absolute inset-0'
-            onClick={() => setTrackingOpenFor(null)}
-          />
-          <div className='relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden'>
-            <div className='p-4 sm:p-5 border-b border-gray-100'>
-              <p className='text-xs uppercase tracking-widest text-gray-400 font-semibold'>
-                Shipping
-              </p>
-              <h3 className='text-lg font-bold text-gray-900'>
-                Add tracking details
-              </h3>
-              <p className='text-xs text-gray-500 mt-1'>
-                Required — users will see this in their order details.
-              </p>
+        <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm'>
+          <div className='absolute inset-0' onClick={() => setTrackingOpenFor(null)} />
+          <div className='relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden'>
+            <div className='bg-gradient-to-br from-indigo-600 to-indigo-800 p-5 sm:p-6'>
+              <div className='flex items-center gap-3'>
+                <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15'>
+                  <Truck className='h-5 w-5 text-white' />
+                </div>
+                <div>
+                  <p className='text-[10px] font-bold uppercase tracking-widest text-indigo-200'>Shipping</p>
+                  <h3 className='text-lg font-bold text-white leading-tight'>Add tracking details</h3>
+                </div>
+              </div>
+              <p className='text-xs text-indigo-200 mt-2 ml-[52px]'>Customers will see this in their order details page.</p>
             </div>
             <div className='p-4 sm:p-5 space-y-3'>
               <div>
