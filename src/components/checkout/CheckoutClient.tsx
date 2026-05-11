@@ -97,6 +97,26 @@ const addressSchema = z.object({
 
 type AddressForm = z.infer<typeof addressSchema>;
 
+/** Matches backend Mongo ObjectId validation for order / checkout intent ids */
+const MONGO_OBJECT_ID_HEX = /^[a-fA-F0-9]{24}$/;
+
+function normalizeCheckoutMongoId(value: unknown): string | null {
+  if (typeof value === "string") {
+    const t = value.trim();
+    return MONGO_OBJECT_ID_HEX.test(t) ? t : null;
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    "$oid" in value &&
+    typeof (value as { $oid: unknown }).$oid === "string"
+  ) {
+    const s = (value as { $oid: string }).$oid.trim();
+    return MONGO_OBJECT_ID_HEX.test(s) ? s : null;
+  }
+  return null;
+}
+
 const SHIPPING_THRESHOLD = 1099;
 const SHIPPING_CHARGE = 99;
 /** Must match backend `COD_HANDLING_FEE` — added when paying cash on delivery */
@@ -694,12 +714,19 @@ export default function CheckoutClient() {
         if (existingOrder) {
           const prepRes = await orderApi.preparePayment(existingOrder._id);
           const { razorpayOrder } = prepRes.data;
+          const resumeKeyId = razorpayOrder.keyId;
+          if (!resumeKeyId) {
+            toast.error(
+              "Payment gateway is not configured. Try COD or contact support.",
+            );
+            return;
+          }
 
           const scriptLoaded = await loadRazorpayScript();
           if (!scriptLoaded) throw new Error("Razorpay SDK failed to load");
 
           const options = {
-            key: razorpayOrder.keyId,
+            key: resumeKeyId,
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
             name: "The House of Rani",
@@ -766,12 +793,11 @@ export default function CheckoutClient() {
 
           if ("razorpayOrder" in res.data) {
             const { razorpayOrder } = res.data;
-            const checkoutIntentId =
-              "checkoutIntentId" in res.data &&
-              typeof (res.data as { checkoutIntentId?: unknown })
-                .checkoutIntentId === "string" ?
-                (res.data as { checkoutIntentId: string }).checkoutIntentId
-              : null;
+            const checkoutIntentId = normalizeCheckoutMongoId(
+              "checkoutIntentId" in res.data ?
+                (res.data as { checkoutIntentId?: unknown }).checkoutIntentId
+              : undefined,
+            );
             const legacyOrder =
               "order" in res.data &&
               (res.data as { order?: { _id?: string; orderNumber?: string } })
@@ -779,9 +805,21 @@ export default function CheckoutClient() {
                 (res.data as { order: { _id: string; orderNumber?: string } })
                   .order
               : null;
-            const legacyOrderId = legacyOrder?._id ?? "";
+            const legacyOrderId =
+              normalizeCheckoutMongoId(
+                legacyOrder &&
+                  typeof legacyOrder === "object" &&
+                  legacyOrder !== null ?
+                  (
+                    legacyOrder as { _id?: unknown; id?: unknown }
+                  )._id ??
+                    (legacyOrder as { _id?: unknown; id?: unknown }).id
+                : undefined,
+              ) ?? "";
             if (!checkoutIntentId && !legacyOrderId) {
-              toast.error("Invalid payment session. Please try again.");
+              toast.error(
+                "Invalid payment session (missing checkout or order id). Please try again.",
+              );
               await fetchCart().catch(() => {});
               return;
             }
@@ -850,9 +888,10 @@ export default function CheckoutClient() {
                 },
                 modal: {
                   ondismiss: () => {
+                    void fetchCart().catch(() => {});
                     toast(
                       checkoutIntentId ?
-                        "Payment was not completed. Your cart is unchanged — you can try again when ready."
+                        "Payment was not completed. You can try again when ready."
                       : "Payment window closed. You can complete payment from your order details.",
                       { duration: 5000 },
                     );

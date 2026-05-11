@@ -76,7 +76,9 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       const refreshed = await refreshAccessToken();
       if (refreshed) {
-        delete originalRequest.headers.Authorization;
+        if (originalRequest.headers) {
+          delete originalRequest.headers.Authorization;
+        }
         return api(originalRequest);
       }
       const path = `${window.location.pathname}${window.location.search || ""}`;
@@ -218,7 +220,12 @@ export const orderApi = {
   getMyOrders: (params?: object) =>
     unwrapAxios("orders.myOrders", api.get("/orders/my-orders", { params }), schemas.ordersMyList),
   getById: (id: string) => unwrapAxios("orders.getById", api.get(`/orders/${id}`), schemas.orderSingle),
-  preparePayment: (orderId: string) => api.post(`/orders/${orderId}/prepare-payment`).then(res => res.data),
+  preparePayment: (orderId: string) =>
+    unwrapAxios(
+      "orders.preparePayment",
+      api.post(`/orders/${orderId}/prepare-payment`),
+      schemas.orderPreparePayment,
+    ),
   cancel: (id: string, reason?: string) =>
     unwrapAxios("orders.cancel", api.patch(`/orders/${id}/cancel`, { reason }), schemas.orderSingle),
   requestReturn: (id: string, reason: string, note?: string, refundMethod?: string, userBankDetails?: Record<string, string>) =>

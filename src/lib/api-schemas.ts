@@ -120,33 +120,68 @@ export const cartApplyCoupon = z.object({
   }),
 });
 
+/** Online prepay: order row is created only after verify-payment (legacy clients may still receive { order, razorpayOrder }). */
+const mongoObjectIdString = z.string().regex(/^[a-fA-F0-9]{24}$/);
+
+/** Razorpay often returns `amount` as a string; coerce so the intent union branch matches reliably. */
+const razorpayOrderPayload = z.object({
+  id: z.string(),
+  amount: z.coerce.number(),
+  currency: z.string(),
+  keyId: z.string().optional(),
+});
+
+function dataHasResolvableOrderMongoId(data: { order?: unknown }): boolean {
+  const order = data.order;
+  if (!order || typeof order !== "object") return false;
+  const o = order as Record<string, unknown>;
+  const candidates = [o._id, o.id];
+  for (const c of candidates) {
+    if (typeof c === "string" && /^[a-fA-F0-9]{24}$/.test(c.trim())) {
+      return true;
+    }
+    if (
+      c &&
+      typeof c === "object" &&
+      "$oid" in c &&
+      typeof (c as { $oid: string }).$oid === "string" &&
+      /^[a-fA-F0-9]{24}$/.test((c as { $oid: string }).$oid)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export const orderCreatedRazorpay = z
   .object({
     status: z.string(),
-    data: z.object({
-      order: doc,
-      razorpayOrder: z.object({
-        id: z.string(),
-        amount: z.number(),
-        currency: z.string(),
-        keyId: z.string().optional(),
+    data: z
+      .object({
+        order: doc,
+        razorpayOrder: razorpayOrderPayload,
+      })
+      .superRefine((d, ctx) => {
+        if (!dataHasResolvableOrderMongoId(d)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Legacy razorpay create response must include order._id (or id)",
+            path: ["order"],
+          });
+        }
       }),
-    }),
   })
   .passthrough();
 
-/** Online prepay: order row is created only after verify-payment (legacy clients may still receive { order, razorpayOrder }). */
 export const orderCreatedRazorpayIntent = z
   .object({
     status: z.string(),
     data: z.object({
-      checkoutIntentId: z.string(),
-      razorpayOrder: z.object({
-        id: z.string(),
-        amount: z.number(),
-        currency: z.string(),
-        keyId: z.string().optional(),
-      }),
+      checkoutIntentId: z.preprocess(
+        (v) => (typeof v === "string" ? v.trim() : v),
+        mongoObjectIdString,
+      ),
+      razorpayOrder: razorpayOrderPayload,
     }),
   })
   .passthrough();
@@ -155,6 +190,16 @@ export const orderCreatedCod = z.object({
   status: z.string(),
   data: z.object({ order: doc }),
 });
+
+export const orderPreparePayment = z
+  .object({
+    status: z.string(),
+    data: z.object({
+      order: doc,
+      razorpayOrder: razorpayOrderPayload,
+    }),
+  })
+  .passthrough();
 
 export const orderSingle = z.object({
   status: z.string(),
