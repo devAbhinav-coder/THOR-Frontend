@@ -23,17 +23,6 @@ const FALLBACK_IMAGES: Record<string, string> = {
   saree: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85",
   leheng:
     "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=85",
-  salwar:
-    "https://images.unsplash.com/photo-1600950207944-0d63e8edbc3f?w=600&q=85",
-  suit: "https://images.unsplash.com/photo-1600950207944-0d63e8edbc3f?w=600&q=85",
-  kurti:
-    "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=600&q=85",
-  dupatta:
-    "https://images.unsplash.com/photo-1571513722275-4b41940f54b8?w=600&q=85",
-  blouse:
-    "https://images.unsplash.com/photo-1603217039863-aa0c865404f7?w=600&q=85",
-  accessor:
-    "https://images.unsplash.com/photo-1535632787350-4e68ef0ac584?w=600&q=85",
 };
 
 function getImageForCategory(cat: Category): string {
@@ -154,7 +143,7 @@ export default function CategorySection({
           <div className='flex flex-col items-start gap-3 py-12'>
             <Tag className='w-12 h-12 text-gray-300' />
             <p className='text-sm text-gray-400'>
-              Categories will appear here once added from the admin panel.
+              No categories available yet.
             </p>
           </div>
         </div>
@@ -204,13 +193,13 @@ export default function CategorySection({
             spaceBetween={16}
             speed={8000}
             autoplay={
-              isSwiperLocked
-                ? false
-                : {
-                    delay: 0,
-                    disableOnInteraction: false,
-                    pauseOnMouseEnter: false,
-                  }
+              isSwiperLocked ? false : (
+                {
+                  delay: 0,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: false,
+                }
+              )
             }
             loop={!isSwiperLocked && filteredCategories.length > 1}
             resistanceRatio={0}
@@ -233,9 +222,9 @@ export default function CategorySection({
                   >
                     <div
                       className={`relative overflow-hidden rounded-2xl transition-transform duration-500 ${
-                        index % 2 === 0
-                          ? "lg:rotate-[-0.6deg] group-hover:rotate-0"
-                          : "lg:rotate-[0.6deg] group-hover:rotate-0"
+                        index % 2 === 0 ?
+                          "lg:rotate-[-0.6deg] group-hover:rotate-0"
+                        : "lg:rotate-[0.6deg] group-hover:rotate-0"
                       }`}
                       style={{ aspectRatio: "3/4", background: "#f0ebe4" }}
                     >
@@ -264,11 +253,11 @@ export default function CategorySection({
                             {cat.productCount}+ Designs
                           </p>
                         )} */}
-                        {cat.productCount === 0 && (
+                        {/* {cat.productCount === 0 && (
                           <p className='text-white/55 text-xs mt-0.5 tracking-wide'>
                             Coming soon
                           </p>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </Link>
