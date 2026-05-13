@@ -91,6 +91,7 @@ function GiftProductFormModal({
   const [form, setForm] = useState({
     name: product?.name || "",
     description: product?.description || "",
+    hsnCode: product?.hsnCode || "",
     price: String(product?.price || ""),
     comparePrice: String(product?.comparePrice || ""),
     minOrderQty: String(product?.minOrderQty || 1),
@@ -98,6 +99,7 @@ function GiftProductFormModal({
     isActive: product?.isActive !== undefined ? product.isActive : true,
     isCustomizable: product?.isCustomizable || false,
     stock: product?.totalStock !== undefined ? String(product.totalStock) : "",
+    costPrice: product?.variants?.[0]?.costPrice ? String(product.variants[0].costPrice) : "",
   });
   const [customFields, setCustomFields] = useState<CustomField[]>(
     (product?.customFields || []).map((f) => ({
@@ -111,10 +113,12 @@ function GiftProductFormModal({
   const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
     product?.productDetails || []
   );
+
   useEffect(() => {
     setForm({
       name: product?.name || "",
       description: product?.description || "",
+      hsnCode: product?.hsnCode || "",
       price: String(product?.price || ""),
       comparePrice: String(product?.comparePrice || ""),
       minOrderQty: String(product?.minOrderQty || 1),
@@ -122,6 +126,7 @@ function GiftProductFormModal({
       isActive: product?.isActive !== undefined ? product.isActive : true,
       isCustomizable: product?.isCustomizable || false,
       stock: product?.totalStock !== undefined ? String(product.totalStock) : "",
+      costPrice: product?.variants?.[0]?.costPrice ? String(product.variants[0].costPrice) : "",
     });
     setCustomFields(
       (product?.customFields || []).map((f) => ({
@@ -135,6 +140,7 @@ function GiftProductFormModal({
     setProductDetails(product?.productDetails || []);
     setNewFiles([]);
   }, [product]);
+
   const dynamicOccasions = Array.from(
     new Set(
       ((categoriesRes?.data?.categories || []) as GiftCategory[])
@@ -166,6 +172,7 @@ function GiftProductFormModal({
       const fd = new FormData();
       fd.append("name", form.name);
       fd.append("description", form.description);
+      if (form.hsnCode) fd.append("hsnCode", form.hsnCode);
       fd.append("price", form.price);
       if (form.comparePrice) fd.append("comparePrice", form.comparePrice);
       fd.append("category", "Gifting");
@@ -198,7 +205,13 @@ function GiftProductFormModal({
       const existingSku = product?.variants?.[0]?.sku || `GIFT-${Date.now()}`;
       fd.append(
         "variants",
-        JSON.stringify([{ sku: existingSku, size: "", color: "", stock: Number(form.stock) || 0 }])
+        JSON.stringify([{ 
+          sku: existingSku, 
+          size: "", 
+          color: "", 
+          stock: Number(form.stock) || 0,
+          costPrice: Number(form.costPrice) || 0
+        }])
       );
       newFiles.forEach((f) => fd.append("images", f));
 
@@ -216,7 +229,7 @@ function GiftProductFormModal({
       setIsSaving(false);
     }
   };
-//add stock field in gift product
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-6 px-4">
       <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl">
@@ -260,6 +273,23 @@ function GiftProductFormModal({
                     <input type="number" min="0" step="0.01" className={inputCls} value={form.comparePrice} onChange={(e) => setForm((p) => ({ ...p, comparePrice: e.target.value }))} placeholder="2999" />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Cost Price (₹)</label>
+                    <input type="number" min="0" step="0.01" className={inputCls} value={form.costPrice} onChange={(e) => setForm((p) => ({ ...p, costPrice: e.target.value }))} placeholder="1200" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">HSN Code</label>
+                    <input className={inputCls} value={form.hsnCode} onChange={(e) => setForm((p) => ({ ...p, hsnCode: e.target.value }))} placeholder="e.g. 6204" />
+                  </div>
+                </div>
+                {Number(form.costPrice) > 0 && Number(form.price) > 0 && (
+                  <p className={`text-[11px] font-semibold mt-1 ${
+                    ((Number(form.price) - Number(form.costPrice)) / Number(form.price)) >= 0 ? "text-emerald-600" : "text-red-500"
+                  }`}>
+                    Margin: {Math.round(((Number(form.price) - Number(form.costPrice)) / Number(form.price)) * 100)}%
+                  </p>
+                )}
               </div>
 
               <div className="bg-gray-50 rounded-2xl p-5 space-y-4">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { Clock } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { DashboardAnalytics } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
@@ -193,7 +194,7 @@ export default function AnalyticsPage() {
           }
         />
 
-        <div className='grid grid-cols-2 xl:grid-cols-4 gap-4'>
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {primaryKpis.map((item) => (
             <div
               key={item.label}
@@ -214,6 +215,59 @@ export default function AnalyticsPage() {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* ── NEW: Channel Split & Customer Health ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Order Source Mix</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100">
+                <div>
+                  <p className="text-xs font-semibold text-blue-900">Online Store</p>
+                  <p className="text-lg font-bold text-blue-950">{formatPrice(overview.onlineRevenue || 0)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-blue-700 font-bold">{overview.onlineCount || 0} orders</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100">
+                <div>
+                  <p className="text-xs font-semibold text-amber-900">Offline (Stall/Direct)</p>
+                  <p className="text-lg font-bold text-amber-950">{formatPrice(overview.offlineRevenue || 0)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-amber-700 font-bold">{overview.offlineCount || 0} orders</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-8 rounded-2xl border border-gray-100 bg-navy-900 p-6 shadow-xl text-white">
+            <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4">Customer Health & Retention</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              <div>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest">Repeat Rate</p>
+                <p className="text-2xl font-bold text-emerald-400">{overview.repeatRate || 0}%</p>
+                <p className="text-[10px] text-white/40 mt-1">{overview.repeatCustomers || 0} repeat buyers</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest">Avg. LTV</p>
+                <p className="text-2xl font-bold text-gold-400">{formatPrice(overview.avgLtv || 0)}</p>
+                <p className="text-[10px] text-white/40 mt-1">Per paying customer</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest">Cancelled</p>
+                <p className="text-2xl font-bold text-red-400">{overview.cancellationRate || 0}%</p>
+                <p className="text-[10px] text-white/40 mt-1">{overview.cancellationCount || 0} orders</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest">Total Buyers</p>
+                <p className="text-2xl font-bold text-white">{overview.totalCustomersWithOrders || 0}</p>
+                <p className="text-[10px] text-white/40 mt-1">Unique customer base</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className='grid grid-cols-2 xl:grid-cols-5 gap-4'>
@@ -352,6 +406,61 @@ export default function AnalyticsPage() {
               title='Revenue by category'
               subtitle='Paid orders · bar length = relative revenue'
             />
+            
+            <div className="mt-8 pt-8 border-t border-gray-50">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Top Sizes Sold (Units)</h3>
+              <div className="space-y-3">
+                {(analytics.topVariantSizes || []).map((v) => {
+                  const maxUnits = Math.max(...(analytics.topVariantSizes || []).map(x => x.units), 1);
+                  const pct = (v.units / maxUnits) * 100;
+                  return (
+                    <div key={v._id} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-gray-800">Size: {v._id}</span>
+                        <span className="text-gray-500">{v.units} units · {formatPrice(v.revenue)}</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-50 rounded-full overflow-hidden border border-gray-100">
+                        <div className="h-full bg-brand-500 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── NEW: Order Heatmap ── */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="mb-6">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-brand-600" />
+              Peak Order Times (24h)
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Order velocity throughout the day (Asia/Kolkata). Identify when your customers are most active.</p>
+          </div>
+          
+          <div className="grid grid-cols-6 sm:grid-cols-12 md:grid-cols-24 gap-1.5 h-32 items-end">
+            {(analytics.ordersByHour || []).map((h) => {
+              const maxOrders = Math.max(...(analytics.ordersByHour || []).map(x => x.orders), 1);
+              const pct = (h.orders / maxOrders) * 100;
+              return (
+                <div key={h.hour} className="group relative flex flex-col items-center gap-2 h-full justify-end">
+                  <div 
+                    className="w-full bg-brand-100 hover:bg-brand-500 rounded-t-sm transition-all cursor-help"
+                    style={{ height: `${Math.max(pct, 5)}%` }}
+                  />
+                  <span className="text-[9px] text-gray-400">{h.hour}h</span>
+                  
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 w-24 p-2 bg-navy-900 text-white text-[10px] rounded-lg shadow-xl pointer-events-none">
+                    <p className="font-bold border-b border-white/10 pb-1 mb-1">{h.hour}:00 IST</p>
+                    <p>{h.orders} orders</p>
+                    <p>{formatPrice(h.revenue)}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

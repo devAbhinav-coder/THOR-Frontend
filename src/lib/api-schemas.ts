@@ -623,3 +623,52 @@ export const giftingRequestSingle = z.object({
   status: z.string(),
   data: z.object({ request: doc }).passthrough().optional(),
 }).passthrough();
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+const paginationShape = z.object({
+  currentPage: z.number(),
+  totalPages: z.number(),
+  total: z.number(),
+}).passthrough();
+
+export const adminInventoryOverview = z.object({
+  status: z.string(),
+  pagination: paginationShape,
+  data: z.object({
+    products: z.array(doc),
+    summary: z.any(),
+  }),
+}).passthrough();
+
+export const adminStockLedger = z.object({
+  status: z.string(),
+  pagination: paginationShape,
+  data: z.object({ entries: z.array(doc) }),
+}).passthrough();
+
+export const adminInventoryValuation = z.object({
+  status: z.string(),
+  data: z.object({ overall: z.any(), byCategory: z.array(z.any()) }),
+}).passthrough();
+
+export const adminPurchaseInvoiceList = z.object({
+  status: z.string(),
+  pagination: paginationShape,
+  data: z.object({ invoices: z.array(doc) }),
+}).passthrough();
+
+export const adminPurchaseInvoiceSingle = z.object({
+  status: z.string(),
+  data: z.object({ invoice: doc }),
+}).passthrough();
+
+export const adminGstSummary = z.object({
+  status: z.string(),
+  data: z.object({
+    bySupplier: z.array(z.any()),
+    monthly: z.array(z.any()),
+    totals: z.any(),
+    year: z.number(),
+  }),
+}).passthrough();

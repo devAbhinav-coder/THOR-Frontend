@@ -47,6 +47,7 @@ export interface ProductVariant {
   stock: number;
   sku: string;
   price?: number;
+  costPrice?: number;
 }
 
 export interface ProductImage {
@@ -93,6 +94,7 @@ export interface Product {
   soldCount?: number;
   seoTitle?: string;
   seoDescription?: string;
+  hsnCode?: string;
   createdAt: string;
 }
 
@@ -437,7 +439,6 @@ export interface DashboardAnalytics {
     totalProducts: number;
     avgOrderValue: number;
     ordersToday: number;
-    /** Gross for orders created since local midnight (paid + refunded). Present when API is updated. */
     revenueToday?: number;
     pendingFulfillmentCount: number;
     paidOrdersCount: number;
@@ -445,8 +446,24 @@ export interface DashboardAnalytics {
     reviewsThisMonth: number;
     refundedAmount: number;
     refundedOrdersCount: number;
-    /** Sum of shipping + COD fees kept on refunded orders (matches refund policy) */
     nonRefundableFeesRetained?: number;
+    // ── Entrepreneur-level metrics ──────────────────────────────────────────
+    cancellationCount?: number;
+    cancellationRate?: number;
+    couponDiscountTotal?: number;
+    couponDiscountMTD?: number;
+    couponOrdersTotal?: number;
+    shippingCollected?: number;
+    codFeeCollected?: number;
+    taxCollected?: number;
+    onlineRevenue?: number;
+    offlineRevenue?: number;
+    onlineCount?: number;
+    offlineCount?: number;
+    repeatCustomers?: number;
+    totalCustomersWithOrders?: number;
+    repeatRate?: number;
+    avgLtv?: number;
   };
   refundsByReason: { _id: string; count: number }[];
   lowStockProducts: { _id: string; name: string; totalStock: number; category: string }[];
@@ -467,9 +484,12 @@ export interface DashboardAnalytics {
     conversionPercent: number;
   }[];
   revenueByCategory: { _id: string; revenue: number; units: number }[];
-  /** Last 30 calendar days (Asia/Kolkata), including zeros — from updated analytics API. */
   revenueByDay?: { date: string; revenue: number; orders: number }[];
+  paymentMethodMix?: { _id: string; revenue: number; count: number }[];
+  ordersByHour?: { hour: number; orders: number; revenue: number }[];
+  topVariantSizes?: { _id: string; units: number; revenue: number }[];
 }
+
 
 export interface StorefrontLink {
   label: string;

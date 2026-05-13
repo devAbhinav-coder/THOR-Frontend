@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { adminApi } from '@/lib/api';
+import { adminApi, inventoryApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
 import { formatPrice, cn } from '@/lib/utils';
 import {
@@ -25,6 +25,7 @@ import { RevenueTrendAreaChart } from '@/components/admin/charts/RevenueTrendAre
 
 export default function AdminRevenuePage() {
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+  const [invValuation, setInvValuation] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -36,8 +37,12 @@ export default function AdminRevenuePage() {
       setLoadError(false);
     }
     try {
-      const res = await adminApi.getAnalytics();
+      const [res, invRes] = await Promise.all([
+        adminApi.getAnalytics(),
+        inventoryApi.getValuation()
+      ]);
       setAnalytics(res.data);
+      setInvValuation(invRes.data);
       setLoadError(false);
     } catch {
       if (!silent) {
@@ -330,6 +335,99 @@ export default function AdminRevenuePage() {
           smooth
           titleRight={<span className="text-xs text-gray-400">Hover points for month-wise detail</span>}
         />
+
+        {/* ── NEW: Revenue Breakdown & Channel Intelligence ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Revenue breakdown
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Coupon Discounts</p>
+                  <p className="text-lg font-bold text-red-600">{formatPrice(overview.couponDiscountTotal || 0)}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">{overview.couponOrdersTotal || 0} orders used coupons</p>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Shipping Collected</p>
+                  <p className="text-lg font-bold text-gray-800">{formatPrice(overview.shippingCollected || 0)}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Gross shipping income</p>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">COD Fees</p>
+                  <p className="text-lg font-bold text-gray-800">{formatPrice(overview.codFeeCollected || 0)}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Extra fees for cash collection</p>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Output GST (Paid)</p>
+                  <p className="text-lg font-bold text-emerald-600">{formatPrice(overview.taxCollected || 0)}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Tax collected on paid orders</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-700">Payment method mix (by revenue)</p>
+                <div className="space-y-2">
+                  {(analytics.paymentMethodMix || []).map((pm) => {
+                    const pct = gross > 0 ? (pm.revenue / gross) * 100 : 0;
+                    return (
+                      <div key={pm._id} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-gray-600 capitalize">{pm._id.replace(/_/g, ' ')}</span>
+                          <span className="font-bold text-gray-900">{formatPrice(pm.revenue)} ({pct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-navy-600 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Inventory intelligence
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-navy-950 p-6 shadow-xl text-white space-y-6">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-gold-200">Profitability Forecast</h3>
+                <p className="text-xs text-white/50 mt-1">Based on current stock and listing prices.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Inventory at Cost</p>
+                  <p className="text-2xl font-bold text-white">{formatPrice(invValuation?.overall?.totalCostValue || 0)}</p>
+                  <p className="text-[10px] text-white/40">Total investment in stock</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Potential Margin</p>
+                  <p className="text-2xl font-bold text-gold-400">{invValuation?.overall?.potentialMargin || 0}%</p>
+                  <p className="text-[10px] text-white/40">Expected gross markup</p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/60">Estimated Sale Value</span>
+                  <span className="font-bold">{formatPrice(invValuation?.overall?.totalSaleValue || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs border-t border-white/10 pt-3">
+                  <span className="text-white/60">Expected Gross Profit</span>
+                  <span className="font-bold text-emerald-400">{formatPrice((invValuation?.overall?.totalSaleValue || 0) - (invValuation?.overall?.totalCostValue || 0))}</span>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-white/30 italic">
+                Note: This is a forecast on remaining stock. Realized profit depends on actual selling price, discounts, and returns.
+              </p>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

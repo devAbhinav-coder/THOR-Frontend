@@ -28,6 +28,7 @@ import {
   BadgeCheck,
   HandIcon,
   Receipt,
+  Warehouse,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Categories", href: "/admin/categories", icon: LayoutGrid },
       { label: "Products", href: "/admin/products", icon: Package },
+      { label: "Inventory", href: "/admin/inventory", icon: Warehouse },
       { label: "Gifting", href: "/admin/gifting", icon: Gift },
       { label: "Storefront", href: "/admin/storefront", icon: Store },
     ],

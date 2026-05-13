@@ -532,6 +532,29 @@ export const adminApi = {
   },
 };
 
+export const inventoryApi = {
+  getOverview: (params?: Record<string, string | number>) =>
+    unwrapAxios('inventory.overview', api.get('/admin/inventory', { params }), schemas.adminInventoryOverview),
+  adjustStock: (productId: string, sku: string, payload: { delta: number; reason: string; note?: string; costPrice?: number; price?: number }) =>
+    unwrapAxios('inventory.adjustStock', api.patch(`/admin/inventory/products/${productId}/variants/${encodeURIComponent(sku)}/stock`, payload), schemas.successMessageData),
+  getLedger: (params?: Record<string, string | number>) =>
+    unwrapAxios('inventory.ledger', api.get('/admin/inventory/ledger', { params }), schemas.adminStockLedger),
+  getValuation: () =>
+    unwrapAxios('inventory.valuation', api.get('/admin/inventory/valuation'), schemas.adminInventoryValuation),
+  listPurchaseInvoices: (params?: Record<string, string | number>) =>
+    unwrapAxios('inventory.purchaseInvoices', api.get('/admin/inventory/purchase-invoices', { params }), schemas.adminPurchaseInvoiceList),
+  getPurchaseInvoice: (id: string) =>
+    unwrapAxios('inventory.purchaseInvoice', api.get(`/admin/inventory/purchase-invoices/${id}`), schemas.adminPurchaseInvoiceSingle),
+  createPurchaseInvoice: (payload: Record<string, unknown>) =>
+    unwrapAxios('inventory.createPurchaseInvoice', api.post('/admin/inventory/purchase-invoices', payload), schemas.adminPurchaseInvoiceSingle),
+  updatePurchaseInvoice: (id: string, payload: Record<string, unknown>) =>
+    unwrapAxios('inventory.updatePurchaseInvoice', api.put(`/admin/inventory/purchase-invoices/${id}`, payload), schemas.adminPurchaseInvoiceSingle),
+  deletePurchaseInvoice: (id: string) =>
+    unwrapAxios('inventory.deletePurchaseInvoice', api.delete(`/admin/inventory/purchase-invoices/${id}`), schemas.successMessageData),
+  getGstSummary: (params?: { year?: number; month?: string; quarter?: string }) =>
+    unwrapAxios('inventory.gstSummary', api.get('/admin/inventory/gst-summary', { params }), schemas.adminGstSummary),
+};
+
 export const blogApi = {
   getAll: (params?: Record<string, string | number | boolean>) => 
     unwrapAxios("blogs.getAll", api.get("/blogs", { params }), schemas.blogsPaginated),

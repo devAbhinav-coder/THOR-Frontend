@@ -47,7 +47,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const initialVariants: Product['variants'] =
     product?.variants.length ?
       [...product.variants]
-    : [{ size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}` }];
+    : [{ size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}`, costPrice: undefined }];
 
   const [variants, setVariants] = useState(initialVariants);
   const [variantColorKinds, setVariantColorKinds] = useState<Array<'solid' | 'multicolor'>>(() =>
@@ -72,6 +72,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     isActive: product?.isActive !== undefined ? product.isActive : true,
     seoTitle: product?.seoTitle || '',
     seoDescription: product?.seoDescription || '',
+    hsnCode: product?.hsnCode || '',
   });
 
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const addVariant = () => {
-    setVariants((v) => [...v, { size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}` }]);
+    setVariants((v) => [...v, { size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}`, costPrice: undefined }]);
     setVariantColorKinds((k) => [...k, 'solid']);
   };
 
@@ -192,6 +193,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       fd.append('isActive', String(form.isActive));
       if (form.seoTitle) fd.append('seoTitle', form.seoTitle);
       if (form.seoDescription) fd.append('seoDescription', form.seoDescription);
+      if (form.hsnCode) fd.append('hsnCode', form.hsnCode);
       fd.append(
         'variants',
         JSON.stringify(
@@ -207,6 +209,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               : row.colorCode,
             stock: row.stock,
             ...(row.price != null && row.price > 0 ? { price: row.price } : {}),
+            ...(row.costPrice != null && row.costPrice > 0 ? { costPrice: row.costPrice } : {}),
           })),
         ),
       );
@@ -297,6 +300,14 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                     value={form.shortDescription}
                     onChange={(e) => set('shortDescription', e.target.value)}
                     placeholder="One-line summary shown in product listings"
+                  />
+                </Field>
+                <Field label="HSN Code">
+                  <input
+                    className={inputCls}
+                    value={form.hsnCode}
+                    onChange={(e) => set('hsnCode', e.target.value)}
+                    placeholder="e.g. 6204"
                   />
                 </Field>
               </div>
@@ -453,7 +464,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                           <Field label="SKU" required>
                             <input
                               placeholder="e.g. SKU-RED-FREE"
@@ -481,6 +492,27 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                               className={inputCls}
                             />
                           </Field>
+                          <div>
+                            <Field label="Cost Price ₹ (optional)">
+                              <input
+                                type="number"
+                                placeholder="0"
+                                min={0}
+                                step="0.01"
+                                value={v.costPrice ?? ''}
+                                onChange={(e) => updateVariant(i, 'costPrice', parseFloat(e.target.value) || 0)}
+                                className={inputCls}
+                              />
+                            </Field>
+                            {v.costPrice && v.costPrice > 0 && (v.price ?? (form.price ? Number(form.price) : 0)) > 0 && (
+                              <p className={`text-[11px] font-semibold mt-1 ${
+                                ((v.price ?? Number(form.price)) - v.costPrice) / (v.price ?? Number(form.price)) >= 0
+                                  ? 'text-emerald-600' : 'text-red-500'
+                              }`}>
+                                {Math.round(((v.price ?? Number(form.price)) - v.costPrice) / (v.price ?? Number(form.price)) * 100)}% margin
+                              </p>
+                            )}
+                          </div>
                         </div>
 
                         <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-3">

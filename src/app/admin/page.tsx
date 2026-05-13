@@ -19,8 +19,9 @@ import {
   RotateCcw,
   IndianRupee,
   Calendar,
+  Warehouse,
 } from 'lucide-react';
-import { adminApi } from '@/lib/api';
+import { adminApi, inventoryApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
 import { formatPrice, formatDate, getOrderStatusColor, cn } from '@/lib/utils';
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
@@ -35,6 +36,9 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [invValuation, setInvValuation] = useState<{
+    totalUnits: number; totalValue: number; totalSaleValue: number; potentialMargin: number;
+  } | null>(null);
 
   const loadAnalytics = useCallback(async (silent = false) => {
     if (silent) setIsRefreshing(true);
@@ -43,16 +47,23 @@ export default function AdminDashboardPage() {
       setLoadError(false);
     }
     try {
-      const res = await adminApi.getAnalytics();
-      setAnalytics(res.data);
-      setLoadError(false);
-    } catch {
-      if (!silent) {
-        setAnalytics(null);
-        setLoadError(true);
+      const [res, valRes] = await Promise.allSettled([
+        adminApi.getAnalytics(),
+        inventoryApi.getValuation(),
+      ]);
+      if (res.status === 'fulfilled') {
+        setAnalytics(res.value.data);
+        setLoadError(false);
       } else {
-        toast.error('Could not refresh dashboard data.');
+        if (!silent) { setAnalytics(null); setLoadError(true); }
+        else toast.error('Could not refresh dashboard data.');
       }
+      if (valRes.status === 'fulfilled') {
+        setInvValuation((valRes.value.data as any).overall ?? null);
+      }
+    } catch {
+      if (!silent) { setAnalytics(null); setLoadError(true); }
+      else toast.error('Could not refresh dashboard data.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -143,6 +154,7 @@ export default function AdminDashboardPage() {
     { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
     { label: 'Returns', href: '/admin/returns', icon: RotateCcw },
     { label: 'Products', href: '/admin/products', icon: Package },
+    { label: 'Inventory', href: '/admin/inventory', icon: Warehouse },
     { label: 'Coupons', href: '/admin/coupons', icon: Tag },
     { label: 'Revenue', href: '/admin/revenue', icon: IndianRupee },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
@@ -266,6 +278,95 @@ export default function AdminDashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Business Pulse Intelligence ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-5 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Repeat Customers</p>
+              <p className="text-xl font-bold text-blue-900">{overview.repeatRate || 0}%</p>
+              <p className="text-[11px] text-blue-600/70 font-medium">{overview.repeatCustomers || 0} buyers came back</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-purple-100 bg-purple-50/30 p-5 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+              <Tag className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Coupon Impact</p>
+              <p className="text-xl font-bold text-purple-900">{formatPrice(overview.couponDiscountTotal || 0)}</p>
+              <p className="text-[11px] text-purple-600/70 font-medium">{overview.couponOrdersTotal || 0} orders used codes</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-red-100 bg-red-50/30 p-5 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Order Friction</p>
+              <p className="text-xl font-bold text-red-900">{overview.cancellationRate || 0}%</p>
+              <p className="text-[11px] text-red-600/70 font-medium">{overview.cancellationCount || 0} orders cancelled</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Inventory Snapshot */}
+        {invValuation && (
+          <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <Warehouse className="h-4 w-4 text-brand-600" />
+                  Inventory Snapshot
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">Live stock valuation at cost price</p>
+              </div>
+              <Link
+                href="/admin/inventory"
+                className="text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+              >
+                Manage →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                {
+                  label: 'Total Units',
+                  value: invValuation.totalUnits.toLocaleString(),
+                  sub: 'In stock across all variants',
+                  color: 'text-blue-700',
+                },
+                {
+                  label: 'Inventory Cost',
+                  value: formatPrice(invValuation.totalValue),
+                  sub: 'At purchase cost price',
+                  color: 'text-gray-900',
+                },
+                {
+                  label: 'Sale Value',
+                  value: formatPrice(invValuation.totalSaleValue),
+                  sub: 'At current selling price',
+                  color: 'text-emerald-700',
+                },
+                {
+                  label: 'Potential Margin',
+                  value: `${invValuation.potentialMargin}%`,
+                  sub: 'If all stock sold at current price',
+                  color: invValuation.potentialMargin >= 0 ? 'text-emerald-700' : 'text-red-600',
+                },
+              ].map(c => (
+                <div key={c.label} className="bg-gray-50/80 rounded-xl p-3 border border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">{c.label}</p>
+                  <p className={`text-lg font-bold mt-1 ${c.color}`}>{c.value}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{c.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
           <div className="xl:col-span-3 rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]">
