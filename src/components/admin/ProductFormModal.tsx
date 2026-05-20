@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Plus, Trash2, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
 import { Product, Category, ProductImage } from '@/types';
-import { productApi, categoryApi } from '@/lib/api';
+import { productApi, categoryApi, adminApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImageUploader from '@/components/ui/ImageUploader';
@@ -34,61 +34,143 @@ const Field = ({ label, children, required }: { label: string; children: React.R
 
 const inputCls = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all placeholder:text-gray-300';
 
+const emptyVariant = (): Product['variants'][0] => ({
+  size: '',
+  color: '',
+  colorCode: '',
+  stock: 0,
+  sku: `SKU-${Date.now()}`,
+  costPrice: undefined,
+});
+
 export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [loadingProduct, setLoadingProduct] = useState(!!product?._id);
+  const [loadedProduct, setLoadedProduct] = useState<Product | null>(null);
+  const editingProduct = loadedProduct ?? product;
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [existingImageSlots, setExistingImageSlots] = useState<ProductImage[]>(() =>
-    product?.images?.length ? product.images.map((i) => ({ ...i })) : [],
-  );
+  const [existingImageSlots, setExistingImageSlots] = useState<ProductImage[]>([]);
   const [showSeo, setShowSeo] = useState(false);
   const [detailsKeysText, setDetailsKeysText] = useState('');
   const [detailsValuesText, setDetailsValuesText] = useState('');
-  const initialVariants: Product['variants'] =
-    product?.variants.length ?
-      [...product.variants]
-    : [{ size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}`, costPrice: undefined }];
-
-  const [variants, setVariants] = useState(initialVariants);
-  const [variantColorKinds, setVariantColorKinds] = useState<Array<'solid' | 'multicolor'>>(() =>
-    initialVariants.map((v) =>
-      (v.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER || isMulticolorLabel(v.color) ?
-        'multicolor'
-      : 'solid',
-    ),
-  );
+  const [variants, setVariants] = useState<Product['variants']>([emptyVariant()]);
+  const [variantColorKinds, setVariantColorKinds] = useState<Array<'solid' | 'multicolor'>>(['solid']);
 
   const [form, setForm] = useState({
-    name: product?.name || '',
-    description: product?.description || '',
-    shortDescription: product?.shortDescription || '',
-    price: product?.price?.toString() || '',
-    comparePrice: product?.comparePrice?.toString() || '',
-    category: product?.category || '',
-    subcategory: product?.subcategory || '',
-    fabric: product?.fabric || '',
-    tags: product?.tags.join(', ') || '',
-    isFeatured: product?.isFeatured ?? false,
-    isActive: product?.isActive !== undefined ? product.isActive : true,
-    seoTitle: product?.seoTitle || '',
-    seoDescription: product?.seoDescription || '',
-    hsnCode: product?.hsnCode || '',
+    name: '',
+    description: '',
+    shortDescription: '',
+    price: '',
+    comparePrice: '',
+    category: '',
+    subcategory: '',
+    fabric: '',
+    tags: '',
+    isFeatured: false,
+    isActive: true,
+    seoTitle: '',
+    seoDescription: '',
+    hsnCode: '',
   });
+
+  const hydrateFromProduct = useCallback((p: Product | null) => {
+    if (!p) {
+      const v = [emptyVariant()];
+      setForm({
+        name: '',
+        description: '',
+        shortDescription: '',
+        price: '',
+        comparePrice: '',
+        category: '',
+        subcategory: '',
+        fabric: '',
+        tags: '',
+        isFeatured: false,
+        isActive: true,
+        seoTitle: '',
+        seoDescription: '',
+        hsnCode: '',
+      });
+      setVariants(v);
+      setVariantColorKinds(['solid']);
+      setExistingImageSlots([]);
+      setNewFiles([]);
+      setDetailsKeysText('');
+      setDetailsValuesText('');
+      return;
+    }
+    const v =
+      p.variants?.length ? [...p.variants] : [emptyVariant()];
+    setForm({
+      name: p.name || '',
+      description: p.description || '',
+      shortDescription: p.shortDescription || '',
+      price: p.price != null ? String(p.price) : '',
+      comparePrice: p.comparePrice != null ? String(p.comparePrice) : '',
+      category: p.category || '',
+      subcategory: p.subcategory || '',
+      fabric: p.fabric || '',
+      tags: (p.tags || []).join(', '),
+      isFeatured: p.isFeatured ?? false,
+      isActive: p.isActive !== undefined ? p.isActive : true,
+      seoTitle: p.seoTitle || '',
+      seoDescription: p.seoDescription || '',
+      hsnCode: p.hsnCode || '',
+    });
+    setVariants(v);
+    setVariantColorKinds(
+      v.map((row) =>
+        (row.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER || isMulticolorLabel(row.color) ?
+          'multicolor'
+        : 'solid',
+      ),
+    );
+    setExistingImageSlots(p.images?.length ? p.images.map((i) => ({ ...i })) : []);
+    setNewFiles([]);
+    const { keysText, valuesText } = bulkTextFromPairs(p.productDetails || []);
+    setDetailsKeysText(keysText);
+    setDetailsValuesText(valuesText);
+  }, []);
 
   useEffect(() => {
     categoryApi.getAll().then((res) => setCategories(res.data.categories || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
-    setExistingImageSlots(product?.images?.length ? product.images.map((i) => ({ ...i })) : []);
-    setNewFiles([]);
-  }, [product?._id]);
-
-  useEffect(() => {
-    const { keysText, valuesText } = bulkTextFromPairs(product?.productDetails || []);
-    setDetailsKeysText(keysText);
-    setDetailsValuesText(valuesText);
-  }, [product?._id]);
+    if (!product?._id) {
+      setLoadedProduct(null);
+      setLoadingProduct(false);
+      hydrateFromProduct(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingProduct(true);
+    setLoadedProduct(null);
+    adminApi
+      .getProductById(product._id)
+      .then((res) => {
+        if (cancelled) return;
+        const full = (res.data?.product || product) as Product;
+        setLoadedProduct(full);
+        hydrateFromProduct(full);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toast.error('Could not load full product — showing partial data');
+        setLoadedProduct(product);
+        hydrateFromProduct(product);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingProduct(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product?._id, hydrateFromProduct]);
 
   const selectedCategory = categories.find((c) => c.name === form.category);
   const subcategories = selectedCategory?.subcategories || [];
@@ -142,7 +224,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     setVariants((v) => v.map((item, idx) => (idx === i ? { ...item, [field]: value } : item)));
 
   const handleRemoveExistingImage = async (index: number) => {
-    if (!product?._id) return;
+    if (!editingProduct?._id) return;
     if (existingImageSlots.length <= 1) {
       toast.error('At least one product image is required.');
       return;
@@ -153,10 +235,14 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       return;
     }
     try {
-      const res = await productApi.deleteImage(product._id, pub);
-      const next = (res.data?.product as Product | undefined)?.images;
-      if (next?.length) setExistingImageSlots(next);
-      else setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
+      const res = await productApi.deleteImage(editingProduct._id, pub);
+      const updated = res.data?.product as Product | undefined;
+      if (updated?.images?.length) {
+        setExistingImageSlots(updated.images);
+        setLoadedProduct(updated);
+      } else {
+        setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
+      }
       toast.success('Image removed');
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Failed to remove image');
@@ -165,11 +251,11 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product && newFiles.length === 0) return toast.error('Upload at least one product image');
-    if (product && existingImageSlots.length === 0 && newFiles.length === 0) {
+    if (!editingProduct && newFiles.length === 0) return toast.error('Upload at least one product image');
+    if (editingProduct && existingImageSlots.length === 0 && newFiles.length === 0) {
       return toast.error('Upload at least one product image');
     }
-    if (product && existingImageSlots.length + newFiles.length > 7) {
+    if (editingProduct && existingImageSlots.length + newFiles.length > 7) {
       return toast.error('Maximum 7 images per product (remove some or upload fewer).');
     }
     if (!form.category) return toast.error('Please select a category');
@@ -179,6 +265,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     if (!detailsParsed.ok) return toast.error(detailsParsed.error);
 
     setIsSaving(true);
+    setUploadProgress(newFiles.length > 0 ? 0 : null);
     try {
       const fd = new FormData();
       fd.append('name', form.name);
@@ -224,15 +311,20 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       newFiles.forEach((f) => fd.append('images', f));
 
       let saved: Product | undefined;
-      if (product) {
-        if (product.updatedAt) {
-          fd.append('updatedAt', product.updatedAt);
+      if (editingProduct?._id) {
+        if (editingProduct.updatedAt) {
+          fd.append('updatedAt', editingProduct.updatedAt);
         }
-        const res = await productApi.update(product._id, fd);
+        const res = await productApi.update(editingProduct._id, fd, {
+          onUploadProgress: (p) => setUploadProgress(p),
+        });
         saved = (res.data?.product || undefined) as Product | undefined;
+        if (saved) setLoadedProduct(saved);
         toast.success('Product updated');
       } else {
-        const res = await productApi.create(fd);
+        const res = await productApi.create(fd, {
+          onUploadProgress: (p) => setUploadProgress(p),
+        });
         saved = (res.data?.product || undefined) as Product | undefined;
         toast.success('Product created');
       }
@@ -241,6 +333,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       toast.error((err as { message?: string }).message || 'Failed to save product');
     } finally {
       setIsSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -252,10 +345,10 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
           <div>
             <h2 className="text-xl font-serif font-bold text-gray-900">
-              {product ? 'Edit Product' : 'Add New Product'}
+              {editingProduct ? 'Edit Product' : 'Add New Product'}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {product ? `Editing: ${product.name}` : 'Fill in product details below'}
+              {editingProduct ? `Editing: ${editingProduct.name}` : 'Fill in product details below'}
             </p>
           </div>
           <button
@@ -267,7 +360,13 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] gap-8 max-h-[78vh] overflow-y-auto overflow-x-hidden min-w-0">
+          <div className="relative p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] gap-8 max-h-[78vh] overflow-y-auto overflow-x-hidden min-w-0">
+            {loadingProduct && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-b-3xl bg-white/85 backdrop-blur-sm">
+                <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
+                <p className="text-sm font-medium text-gray-600">Loading product…</p>
+              </div>
+            )}
 
             {/* ── LEFT: Details ── */}
             <div className="space-y-6 min-w-0">
@@ -654,17 +753,19 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 </p>
 
                 <ImageUploader
-                  key={product?._id ?? 'new-product'}
+                  key={editingProduct?._id ?? 'new-product'}
                   maxFiles={7}
                   aspectRatio="3:4"
                   maxSizeMB={5}
                   existingImages={existingImageSlots.map((i) => i.url)}
-                  onRemoveExisting={product ? handleRemoveExistingImage : undefined}
+                  onRemoveExisting={editingProduct?._id ? handleRemoveExistingImage : undefined}
                   onChange={setNewFiles}
+                  isUploading={isSaving && newFiles.length > 0}
+                  uploadProgress={uploadProgress}
                   hint={
-                    product
-                      ? 'Up to 7 images total. Hover a photo and use ✕ to remove it, or add new ones.'
-                      : 'First image becomes the cover photo (up to 7 images).'
+                    editingProduct
+                      ? 'Up to 7 images total. Select multiple at once (within remaining slots). Hover ✕ to remove.'
+                      : 'First image is the cover. Select up to 7 images in one go.'
                   }
                 />
 
@@ -689,14 +790,14 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
           {/* ── Footer ── */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 sm:px-8 py-5 border-t border-gray-100 bg-gray-50 rounded-b-3xl">
             <p className="text-xs text-gray-400">
-              {product ? 'Changes will be saved immediately.' : '* Required fields'}
+              {editingProduct ? 'Changes will be saved immediately.' : '* Required fields'}
             </p>
             <div className="flex gap-3">
               <Button type="button" variant="outline" onClick={onClose} className="rounded-xl">
                 Cancel
               </Button>
-              <Button type="submit" variant="brand" loading={isSaving} className="rounded-xl px-8">
-                {isSaving ? 'Saving…' : product ? 'Save Changes' : 'Create Product'}
+              <Button type="submit" variant="brand" loading={isSaving} disabled={loadingProduct} className="rounded-xl px-8">
+                {isSaving ? 'Saving…' : editingProduct ? 'Save Changes' : 'Create Product'}
               </Button>
             </div>
           </div>

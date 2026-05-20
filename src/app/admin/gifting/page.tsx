@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { formatPrice, formatDate } from "@/lib/utils";
 import ImageUploader from "@/components/ui/ImageUploader";
 import toast from "react-hot-toast";
-import type { Product } from "@/types";
+import type { Product, ProductImage } from "@/types";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const STATUS_OPTIONS = ["new", "price_quoted", "approved_by_user", "rejected_by_user", "cancelled"] as const;
@@ -78,7 +78,7 @@ function GiftProductFormModal({
 }: {
   product: GiftProduct | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (saved?: GiftProduct) => void;
 }) {
   const { data: categoriesRes } = useQuery({
     queryKey: ["admin-gift-categories-for-occasions"],
@@ -87,59 +87,138 @@ function GiftProductFormModal({
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [form, setForm] = useState({
-    name: product?.name || "",
-    description: product?.description || "",
-    hsnCode: product?.hsnCode || "",
-    price: String(product?.price || ""),
-    comparePrice: String(product?.comparePrice || ""),
-    minOrderQty: String(product?.minOrderQty || 1),
-    giftOccasions: (product?.giftOccasions || []) as string[],
-    isActive: product?.isActive !== undefined ? product.isActive : true,
-    isCustomizable: product?.isCustomizable || false,
-    stock: product?.totalStock !== undefined ? String(product.totalStock) : "",
-    costPrice: product?.variants?.[0]?.costPrice ? String(product.variants[0].costPrice) : "",
-  });
-  const [customFields, setCustomFields] = useState<CustomField[]>(
-    (product?.customFields || []).map((f) => ({
-      label: f.label,
-      placeholder: f.placeholder || "",
-      fieldType: f.fieldType || "text",
-      options: (f.options || []).join(", "),
-      isRequired: f.isRequired ?? true,
-    }))
-  );
-  const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>(
-    product?.productDetails || []
-  );
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [loadingProduct, setLoadingProduct] = useState(!!product?._id);
+  const [loadedProduct, setLoadedProduct] = useState<GiftProduct | null>(null);
+  const editingProduct = loadedProduct ?? product;
 
-  useEffect(() => {
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [existingImageSlots, setExistingImageSlots] = useState<ProductImage[]>([]);
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    hsnCode: "",
+    price: "",
+    comparePrice: "",
+    minOrderQty: "1",
+    giftOccasions: [] as string[],
+    isActive: true,
+    isCustomizable: false,
+    stock: "",
+    costPrice: "",
+  });
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [productDetails, setProductDetails] = useState<{ key: string; value: string }[]>([]);
+
+  const hydrateFromProduct = (p: GiftProduct | null) => {
+    if (!p) {
+      setForm({
+        name: "",
+        description: "",
+        hsnCode: "",
+        price: "",
+        comparePrice: "",
+        minOrderQty: "1",
+        giftOccasions: [],
+        isActive: true,
+        isCustomizable: false,
+        stock: "",
+        costPrice: "",
+      });
+      setCustomFields([]);
+      setProductDetails([]);
+      setExistingImageSlots([]);
+      setNewFiles([]);
+      return;
+    }
+    const stockVal = p.variants?.[0]?.stock ?? p.totalStock ?? 0;
     setForm({
-      name: product?.name || "",
-      description: product?.description || "",
-      hsnCode: product?.hsnCode || "",
-      price: String(product?.price || ""),
-      comparePrice: String(product?.comparePrice || ""),
-      minOrderQty: String(product?.minOrderQty || 1),
-      giftOccasions: (product?.giftOccasions || []) as string[],
-      isActive: product?.isActive !== undefined ? product.isActive : true,
-      isCustomizable: product?.isCustomizable || false,
-      stock: product?.totalStock !== undefined ? String(product.totalStock) : "",
-      costPrice: product?.variants?.[0]?.costPrice ? String(product.variants[0].costPrice) : "",
+      name: p.name || "",
+      description: p.description || "",
+      hsnCode: p.hsnCode || "",
+      price: String(p.price ?? ""),
+      comparePrice: p.comparePrice != null ? String(p.comparePrice) : "",
+      minOrderQty: String(p.minOrderQty ?? 1),
+      giftOccasions: (p.giftOccasions || []) as string[],
+      isActive: p.isActive !== undefined ? p.isActive : true,
+      isCustomizable: p.isCustomizable || false,
+      stock: String(stockVal),
+      costPrice:
+        p.variants?.[0]?.costPrice != null && p.variants[0].costPrice > 0 ?
+          String(p.variants[0].costPrice)
+        : "",
     });
     setCustomFields(
-      (product?.customFields || []).map((f) => ({
+      (p.customFields || []).map((f) => ({
         label: f.label,
         placeholder: f.placeholder || "",
         fieldType: f.fieldType || "text",
         options: (f.options || []).join(", "),
         isRequired: f.isRequired ?? true,
-      }))
+      })),
     );
-    setProductDetails(product?.productDetails || []);
+    setProductDetails(p.productDetails?.length ? [...p.productDetails] : []);
+    setExistingImageSlots(p.images?.length ? p.images.map((i) => ({ ...i })) : []);
     setNewFiles([]);
-  }, [product]);
+  };
+
+  useEffect(() => {
+    if (!product?._id) {
+      setLoadedProduct(null);
+      setLoadingProduct(false);
+      hydrateFromProduct(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingProduct(true);
+    setLoadedProduct(null);
+    adminApi
+      .getProductById(product._id)
+      .then((res) => {
+        if (cancelled) return;
+        const full = (res.data?.product || product) as GiftProduct;
+        setLoadedProduct(full);
+        hydrateFromProduct(full);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toast.error("Could not load full product — showing partial data");
+        setLoadedProduct(product);
+        hydrateFromProduct(product);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingProduct(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product?._id]);
+
+  const handleRemoveExistingImage = async (index: number) => {
+    if (!editingProduct?._id) return;
+    if (existingImageSlots.length <= 1) {
+      toast.error("At least one product image is required.");
+      return;
+    }
+    const pub = existingImageSlots[index]?.publicId;
+    if (!pub) {
+      toast.error("Cannot remove this image.");
+      return;
+    }
+    try {
+      const res = await productApi.deleteImage(editingProduct._id, pub);
+      const updated = res.data?.product as Product | undefined;
+      if (updated?.images?.length) {
+        setExistingImageSlots(updated.images);
+        setLoadedProduct(updated as GiftProduct);
+      } else {
+        setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
+      }
+      toast.success("Image removed");
+    } catch (err: unknown) {
+      toast.error((err as { message?: string }).message || "Failed to remove image");
+    }
+  };
 
   const dynamicOccasions = Array.from(
     new Set(
@@ -165,9 +244,16 @@ function GiftProductFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product && newFiles.length === 0) return toast.error("Upload at least one image");
+    if (!editingProduct && newFiles.length === 0) return toast.error("Upload at least one image");
+    if (editingProduct && existingImageSlots.length === 0 && newFiles.length === 0) {
+      return toast.error("Upload at least one image");
+    }
+    if (existingImageSlots.length + newFiles.length > 7) {
+      return toast.error("Maximum 7 images per product (remove some or upload fewer).");
+    }
 
     setIsSaving(true);
+    setUploadProgress(newFiles.length > 0 ? 0 : null);
     try {
       const fd = new FormData();
       fd.append("name", form.name);
@@ -178,7 +264,6 @@ function GiftProductFormModal({
       fd.append("category", "Gifting");
       fd.append("isActive", String(form.isActive));
       fd.append("isGiftable", "true");
-      if(form.stock) fd.append("stock", String(form.stock));
       fd.append("isCustomizable", String(form.isCustomizable));
       fd.append("minOrderQty", form.minOrderQty || "1");
       fd.append("giftOccasions", JSON.stringify(form.giftOccasions));
@@ -202,7 +287,7 @@ function GiftProductFormModal({
             .map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
         )
       );
-      const existingSku = product?.variants?.[0]?.sku || `GIFT-${Date.now()}`;
+      const existingSku = editingProduct?.variants?.[0]?.sku || `GIFT-${Date.now()}`;
       fd.append(
         "variants",
         JSON.stringify([{ 
@@ -215,18 +300,24 @@ function GiftProductFormModal({
       );
       newFiles.forEach((f) => fd.append("images", f));
 
-      if (product) {
-        await productApi.update(product._id, fd);
+      const uploadOpts = { onUploadProgress: (p: number) => setUploadProgress(p) };
+      let saved: GiftProduct | undefined;
+      if (editingProduct?._id) {
+        if (editingProduct.updatedAt) fd.append("updatedAt", editingProduct.updatedAt);
+        const res = await productApi.update(editingProduct._id, fd, uploadOpts);
+        saved = (res.data?.product || undefined) as GiftProduct | undefined;
         toast.success("Gift product updated");
       } else {
-        await productApi.create(fd);
+        const res = await productApi.create(fd, uploadOpts);
+        saved = (res.data?.product || undefined) as GiftProduct | undefined;
         toast.success("Gift product created");
       }
-      onSave();
+      onSave(saved);
     } catch (err: unknown) {
       toast.error((err as { message?: string })?.message || "Failed to save");
     } finally {
       setIsSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -240,7 +331,7 @@ function GiftProductFormModal({
             </div>
             <div>
               <h2 className="text-lg font-serif font-bold text-gray-900">
-                {product ? "Edit Gift Product" : "Add Gift Product"}
+                {editingProduct ? "Edit Gift Product" : "Add Gift Product"}
               </h2>
               <p className="text-xs text-gray-400">Gift-specific product — no fabric/size/colour variants</p>
             </div>
@@ -251,7 +342,13 @@ function GiftProductFormModal({
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="p-7 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-7 max-h-[78vh] overflow-y-auto">
+          <div className="relative p-7 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-7 max-h-[78vh] overflow-y-auto">
+            {loadingProduct && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm rounded-b-3xl">
+                <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
+                <p className="text-sm font-medium text-gray-600">Loading product…</p>
+              </div>
+            )}
             <div className="space-y-5">
               <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Basic Info</h3>
@@ -423,10 +520,22 @@ function GiftProductFormModal({
             <div>
               <div className="bg-gray-50 rounded-2xl p-5 sticky top-2">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Product Images</h3>
-                <ImageUploader maxFiles={5} aspectRatio="1:1" maxSizeMB={5}
-                  existingImages={product?.images?.map((i) => i.url) || []}
+                <ImageUploader
+                  key={editingProduct?._id ?? "new-gift-product"}
+                  maxFiles={7}
+                  aspectRatio="1:1"
+                  maxSizeMB={5}
+                  existingImages={existingImageSlots.map((i) => i.url)}
+                  onRemoveExisting={editingProduct?._id ? handleRemoveExistingImage : undefined}
                   onChange={setNewFiles}
-                  hint={product ? "New uploads will be added." : "First image becomes the cover."} />
+                  isUploading={isSaving && newFiles.length > 0}
+                  uploadProgress={uploadProgress}
+                  hint={
+                    editingProduct
+                      ? "Up to 7 images. Select multiple at once. Hover ✕ to remove existing."
+                      : "First image is the cover. Select up to 7 images in one go."
+                  }
+                />
               </div>
             </div>
           </div>
@@ -435,8 +544,8 @@ function GiftProductFormModal({
             <p className="text-xs text-gray-400">* Required fields</p>
             <div className="flex gap-3">
               <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">Cancel</button>
-              <button type="submit" disabled={isSaving} className="px-6 py-2.5 rounded-xl bg-navy-900 text-white text-sm font-semibold hover:bg-navy-800 disabled:opacity-60 transition-colors flex items-center gap-2">
-                {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : product ? "Save Changes" : "Create Gift Product"}
+              <button type="submit" disabled={isSaving || loadingProduct} className="px-6 py-2.5 rounded-xl bg-navy-900 text-white text-sm font-semibold hover:bg-navy-800 disabled:opacity-60 transition-colors flex items-center gap-2">
+                {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : editingProduct ? "Save Changes" : "Create Gift Product"}
               </button>
             </div>
           </div>
@@ -769,7 +878,7 @@ export default function AdminGiftingPage() {
 
   const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["gifting-products-admin"],
-    queryFn: () => giftingApi.getProducts({ limit: 100 }),
+    queryFn: () => adminApi.getProducts({ category: "Gifting", limit: 100, sort: "-createdAt" }),
   });
   const giftProducts: GiftProduct[] = (productsData?.data?.products || []).map((p: GiftProduct) => ({
     ...p,
@@ -896,6 +1005,12 @@ export default function AdminGiftingPage() {
                   <div className="p-3">
                     <p className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</p>
                     <p className="text-sm font-bold text-gray-900 mt-1">{formatPrice(p.price)}</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Stock: <span className={cn("font-semibold", (p.totalStock ?? 0) === 0 ? "text-red-600" : "text-gray-700")}>{p.totalStock ?? 0}</span>
+                      {(p.soldCount ?? 0) > 0 && (
+                        <span className="text-gray-400"> · {p.soldCount} sold</span>
+                      )}
+                    </p>
                     {(p.giftOccasions?.length || 0) > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {(p.giftOccasions || []).slice(0, 2).map((occ: string) => (
@@ -1014,7 +1129,26 @@ export default function AdminGiftingPage() {
           key={editProduct?._id || "new-gift-product"}
           product={editProduct}
           onClose={() => { setIsModalOpen(false); setEditProduct(null); }}
-          onSave={() => { setIsModalOpen(false); setEditProduct(null); refetchProducts(); }}
+          onSave={(saved) => {
+            setIsModalOpen(false);
+            setEditProduct(null);
+            if (saved?._id) {
+              queryClient.setQueryData(
+                ["gifting-products-admin"],
+                (old: { data?: { products?: GiftProduct[] } } | undefined) => {
+                  if (!old?.data?.products) return old;
+                  const list = old.data.products;
+                  const idx = list.findIndex((x) => x._id === saved._id);
+                  const next =
+                    idx >= 0 ?
+                      list.map((x, i) => (i === idx ? saved : x))
+                    : [saved, ...list];
+                  return { ...old, data: { ...old.data, products: next } };
+                },
+              );
+            }
+            void refetchProducts();
+          }}
         />
       )}
     </div>

@@ -218,10 +218,41 @@ export const productApi = {
     unwrapAxios("products.byCategory", api.get(`/products/category/${category}`, { params }), schemas.productsPaginated),
   getFilterOptions: () =>
     unwrapAxios("products.filters", api.get("/products/filters"), schemas.filterOptions),
-  create: (data: FormData) =>
-    unwrapAxios("products.create", api.post("/products", data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.productSingle),
-  update: (id: string, data: FormData) =>
-    unwrapAxios("products.update", api.patch(`/products/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.productSingle),
+  create: (
+    data: FormData,
+    opts?: { onUploadProgress?: (percent: number) => void },
+  ) =>
+    unwrapAxios(
+      "products.create",
+      api.post("/products", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+        onUploadProgress: (e) => {
+          if (e.total && opts?.onUploadProgress) {
+            opts.onUploadProgress(Math.round((e.loaded * 100) / e.total));
+          }
+        },
+      }),
+      schemas.productSingle,
+    ),
+  update: (
+    id: string,
+    data: FormData,
+    opts?: { onUploadProgress?: (percent: number) => void },
+  ) =>
+    unwrapAxios(
+      "products.update",
+      api.patch(`/products/${id}`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+        onUploadProgress: (e) => {
+          if (e.total && opts?.onUploadProgress) {
+            opts.onUploadProgress(Math.round((e.loaded * 100) / e.total));
+          }
+        },
+      }),
+      schemas.productSingle,
+    ),
   delete: (id: string) => del204("products.delete", api.delete(`/products/${id}`)),
   deleteImage: (id: string, publicId: string) =>
     unwrapAxios(
@@ -396,6 +427,12 @@ export const storefrontApi = {
 export const adminApi = {
   getProducts: (params?: Record<string, string | number | boolean | undefined>) =>
     unwrapAxios("admin.products", api.get("/admin/products", { params }), schemas.productsPaginated),
+  getProductById: (id: string) =>
+    unwrapAxios(
+      "admin.productById",
+      api.get(`/admin/products/${id}`),
+      schemas.productSingle,
+    ),
   searchProducts: (params?: Record<string, string | number | boolean | undefined>) =>
     unwrapAxios("admin.products.search", api.get("/admin/products/search", { params }), schemas.productsPaginated),
   getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
@@ -456,6 +493,16 @@ export const adminApi = {
       api.patch(`/admin/reviews/${id}/moderate`, { action }),
       schemas.reviewSingle,
     ),
+  getMarketingAudiencePreview: (params: {
+    audience: "all" | "users" | "admins" | "selected";
+    channels: string;
+    includeOfflineLeads?: boolean;
+  }) =>
+    unwrapAxios(
+      "admin.marketingPreview",
+      api.get("/admin/emails/audience-preview", { params }),
+      schemas.marketingAudiencePreview,
+    ),
   sendMarketingEmail: (data: {
     subject: string;
     messageHtml: string;
@@ -463,6 +510,8 @@ export const adminApi = {
     userIds?: string[];
     ctaText?: string;
     ctaLink?: string;
+    channels?: Array<"email" | "in_app" | "push">;
+    includeOfflineLeads?: boolean;
   }) => unwrapAxios("admin.email", api.post("/admin/emails/send", data), schemas.successMessageData),
   getStorefrontSettings: () =>
     unwrapAxios("admin.storefront.get", api.get("/admin/storefront/settings"), schemas.adminStorefront),

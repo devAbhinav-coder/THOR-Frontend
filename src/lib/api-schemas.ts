@@ -385,6 +385,24 @@ export const successMessageData = z
   .object({ status: z.string(), message: z.string().optional(), data: z.unknown().optional() })
   .passthrough();
 
+export const marketingAudiencePreview = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      audience: z.string(),
+      accountUsers: z.number(),
+      offlineLeadEmails: z.number(),
+      estimatedEmailRecipients: z.number(),
+      estimatedNotificationRecipients: z.number(),
+      channels: z.array(z.string()),
+      delivery: z.object({
+        resendConfigured: z.boolean(),
+        redisEnabled: z.boolean(),
+      }),
+    })
+    .passthrough(),
+});
+
 export const adminOrdersList = z.object({
   status: z.string(),
   pagination: z
