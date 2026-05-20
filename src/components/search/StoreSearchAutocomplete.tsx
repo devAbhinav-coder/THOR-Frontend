@@ -72,14 +72,41 @@ async function fetchSuggestions(
       });
       return (res.data?.products || []) as Product[];
     }
-    const res = await productApi.getAll({
-      search: trimmed,
-      page: 1,
-      limit: SUGGEST_LIMIT,
+    // Use advanced autocomplete for better fuzzy matching and typo tolerance
+    const res = await productApi.autocomplete(trimmed, SUGGEST_LIMIT);
+    const raw = res.data?.suggestions || [];
+    return raw.map((s) => {
+      const item = s as {
+        id?: string;
+        _id?: string;
+        name: string;
+        slug: string;
+        image?: string;
+        price: number;
+        category?: string;
+      };
+      const id = item._id ?? item.id ?? item.slug;
+      return {
+        _id: id,
+        name: item.name,
+        slug: item.slug,
+        price: item.price,
+        category: item.category ?? "",
+        images: item.image ? [{ url: item.image, publicId: "", alt: item.name }] : [],
+      } as Product;
     });
-    return (res.data?.products || []) as Product[];
   } catch {
-    return [];
+    // Fallback to basic search if advanced autocomplete fails
+    try {
+      const res = await productApi.getAll({
+        search: trimmed,
+        page: 1,
+        limit: SUGGEST_LIMIT,
+      });
+      return (res.data?.products || []) as Product[];
+    } catch {
+      return [];
+    }
   }
 }
 

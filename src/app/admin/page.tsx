@@ -8,9 +8,6 @@ import {
   Users,
   Package,
   AlertCircle,
-  ArrowUp,
-  ArrowDown,
-  Eye,
   BarChart3,
   RefreshCw,
   Tag,
@@ -24,21 +21,28 @@ import {
 import { adminApi, inventoryApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
 import { formatPrice, formatDate, getOrderStatusColor, cn } from '@/lib/utils';
-import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminErrorState from '@/components/admin/AdminErrorState';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 import { RevenueTrendAreaChart, OrdersMixPieChart } from '@/components/admin/charts';
+import {
+  AdminMetricCard,
+  AdminQuickActionsGrid,
+  BusinessPulseRow,
+  InventorySnapshotPanel,
+  MarketingPulseStrip,
+  StockAlertsPanel,
+  type AdminQuickLink,
+  type InventoryValuationOverall,
+} from '@/components/admin/dashboard';
 
 export default function AdminDashboardPage() {
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [invValuation, setInvValuation] = useState<{
-    totalUnits: number; totalValue: number; totalSaleValue: number; potentialMargin: number;
-  } | null>(null);
+  const [invValuation, setInvValuation] = useState<InventoryValuationOverall | null>(null);
 
   const loadAnalytics = useCallback(async (silent = false) => {
     if (silent) setIsRefreshing(true);
@@ -59,7 +63,8 @@ export default function AdminDashboardPage() {
         else toast.error('Could not refresh dashboard data.');
       }
       if (valRes.status === 'fulfilled') {
-        setInvValuation((valRes.value.data as any).overall ?? null);
+        const overall = (valRes.value.data as { overall?: InventoryValuationOverall }).overall;
+        setInvValuation(overall ?? null);
       }
     } catch {
       if (!silent) { setAnalytics(null); setLoadError(true); }
@@ -150,7 +155,10 @@ export default function AdminDashboardPage() {
   const returnReasonTotal =
     (analytics.refundsByReason || []).reduce((s, r) => s + (r.count || 0), 0) || 1;
   const topViewed = analytics.topViewedProducts ?? [];
-  const quickActions = [
+  const outOfStock = analytics.outOfStockProducts ?? analytics.lowStockProducts.filter((p) => p.totalStock === 0);
+  const lowStockOnly =
+    analytics.lowStockOnlyProducts ?? analytics.lowStockProducts.filter((p) => p.totalStock > 0);
+  const quickActions: AdminQuickLink[] = [
     { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
     { label: 'Returns', href: '/admin/returns', icon: RotateCcw },
     { label: 'Products', href: '/admin/products', icon: Package },
@@ -162,37 +170,9 @@ export default function AdminDashboardPage() {
     { label: 'Storefront', href: '/admin/storefront', icon: Store },
   ];
 
-  const statCards = [
-    {
-      label: 'Total revenue',
-      value: formatPrice(overview.totalRevenue),
-      sub: `${formatPrice(overview.monthRevenue)} this month · gross includes refunded orders; net = gross − refunds`,
-      icon: TrendingUp,
-      growth: overview.revenueGrowth,
-      color: 'bg-brand-50 text-brand-600',
-    },
-    {
-      label: 'Total Orders',
-      value: overview.totalOrders.toLocaleString(),
-      sub: `${overview.monthOrders} this month`,
-      icon: ShoppingBag,
-      color: 'bg-blue-50 text-blue-600',
-    },
-    {
-      label: 'Total Users',
-      value: overview.totalUsers.toLocaleString(),
-      sub: `${overview.newUsersThisMonth} new this month`,
-      icon: Users,
-      color: 'bg-green-50 text-green-600',
-    },
-    {
-      label: 'Active Products',
-      value: overview.totalProducts.toLocaleString(),
-      sub: `${analytics.lowStockProducts.length} low (<${LOW_STOCK_ALERT_EXCLUSIVE_MAX} units)`,
-      icon: Package,
-      color: 'bg-amber-50 text-amber-600',
-    },
-  ];
+  const stockAlertCount =
+    (analytics.stockHealth?.outOfStock ?? outOfStock.length) +
+    (analytics.stockHealth?.lowStock ?? lowStockOnly.length);
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white">
@@ -200,7 +180,7 @@ export default function AdminDashboardPage() {
         <AdminPageHeader
           title="Dashboard"
           badge="Live"
-          description="Gross revenue, fulfilment mix, and storefront signals — same analytics API as Revenue &amp; Analytics."
+          description="Operations command center — today’s sales, stock health, fulfilment queue, and storefront demand. Deep dives live under Analytics and Revenue."
           actions={
             <>
               <Button
@@ -230,143 +210,47 @@ export default function AdminDashboardPage() {
           }
         />
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
-          {quickActions.map(({ label, href, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group rounded-2xl border border-gray-200/90 bg-white/90 px-3 py-3.5 sm:px-4 sm:py-4 shadow-sm hover:border-brand-300/80 hover:shadow-md hover:bg-white transition-all duration-200"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-50 to-white border border-brand-100/80 text-brand-600 flex items-center justify-center group-hover:border-brand-200 group-hover:from-brand-100/80">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span className="text-xs sm:text-sm font-semibold text-gray-800">{label}</span>
-              </div>
-            </Link>
-          ))}
+        <AdminQuickActionsGrid links={quickActions} />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          <AdminMetricCard
+            label="Total revenue"
+            value={formatPrice(overview.totalRevenue)}
+            sub={`${formatPrice(overview.monthRevenue)} MTD · gross (paid + refunded)`}
+            icon={TrendingUp}
+            growth={overview.revenueGrowth}
+          />
+          <AdminMetricCard
+            label="Total orders"
+            value={overview.totalOrders.toLocaleString()}
+            sub={`${overview.monthOrders} this month`}
+            icon={ShoppingBag}
+          />
+          <AdminMetricCard
+            label="Customers"
+            value={overview.totalUsers.toLocaleString()}
+            sub={`${overview.newUsersThisMonth} new this month`}
+            icon={Users}
+          />
+          <AdminMetricCard
+            label="Catalogue health"
+            value={overview.totalProducts.toLocaleString()}
+            sub={
+              stockAlertCount > 0 ?
+                `${stockAlertCount} stock alert${stockAlertCount === 1 ? '' : 's'}`
+              : 'All SKUs stocked'
+            }
+            icon={Package}
+            variant={stockAlertCount > 0 ? 'danger' : 'success'}
+          />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {statCards.map((card) => (
-            <div
-              key={card.label}
-              className={cn(
-                'relative overflow-hidden rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md',
-                'bg-gradient-to-br from-white to-gray-50/50 border-gray-100/90',
-              )}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className={cn('h-11 w-11 rounded-xl flex items-center justify-center shadow-inner', card.color)}>
-                  <card.icon className="h-5 w-5" />
-                </div>
-                {card.growth !== undefined && (
-                  <span
-                    className={cn(
-                      'flex items-center gap-1 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full',
-                      card.growth >= 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50',
-                    )}
-                  >
-                    {card.growth >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                    {Math.abs(card.growth)}%
-                  </span>
-                )}
-              </div>
-              <p className="text-2xl font-bold font-serif text-gray-900 tracking-tight tabular-nums">{card.value}</p>
-              <p className="text-[11px] text-gray-500 mt-1 leading-snug">{card.sub}</p>
-              <p className="text-sm font-semibold text-gray-700 mt-2">{card.label}</p>
-            </div>
-          ))}
-        </div>
+        <BusinessPulseRow overview={overview} />
 
-        {/* ── Business Pulse Intelligence ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Repeat Customers</p>
-              <p className="text-xl font-bold text-blue-900">{overview.repeatRate || 0}%</p>
-              <p className="text-[11px] text-blue-600/70 font-medium">{overview.repeatCustomers || 0} buyers came back</p>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-purple-100 bg-purple-50/30 p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
-              <Tag className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Coupon Impact</p>
-              <p className="text-xl font-bold text-purple-900">{formatPrice(overview.couponDiscountTotal || 0)}</p>
-              <p className="text-[11px] text-purple-600/70 font-medium">{overview.couponOrdersTotal || 0} orders used codes</p>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-red-100 bg-red-50/30 p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-              <AlertCircle className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Order Friction</p>
-              <p className="text-xl font-bold text-red-900">{overview.cancellationRate || 0}%</p>
-              <p className="text-[11px] text-red-600/70 font-medium">{overview.cancellationCount || 0} orders cancelled</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Inventory Snapshot */}
-        {invValuation && (
-          <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Warehouse className="h-4 w-4 text-brand-600" />
-                  Inventory Snapshot
-                </h3>
-                <p className="text-xs text-gray-400 mt-0.5">Live stock valuation at cost price</p>
-              </div>
-              <Link
-                href="/admin/inventory"
-                className="text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline"
-              >
-                Manage →
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                {
-                  label: 'Total Units',
-                  value: invValuation.totalUnits.toLocaleString(),
-                  sub: 'In stock across all variants',
-                  color: 'text-blue-700',
-                },
-                {
-                  label: 'Inventory Cost',
-                  value: formatPrice(invValuation.totalValue),
-                  sub: 'At purchase cost price',
-                  color: 'text-gray-900',
-                },
-                {
-                  label: 'Sale Value',
-                  value: formatPrice(invValuation.totalSaleValue),
-                  sub: 'At current selling price',
-                  color: 'text-emerald-700',
-                },
-                {
-                  label: 'Potential Margin',
-                  value: `${invValuation.potentialMargin}%`,
-                  sub: 'If all stock sold at current price',
-                  color: invValuation.potentialMargin >= 0 ? 'text-emerald-700' : 'text-red-600',
-                },
-              ].map(c => (
-                <div key={c.label} className="bg-gray-50/80 rounded-xl p-3 border border-gray-100">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">{c.label}</p>
-                  <p className={`text-lg font-bold mt-1 ${c.color}`}>{c.value}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{c.sub}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <InventorySnapshotPanel
+          valuation={invValuation}
+          stockHealth={analytics.stockHealth}
+        />
 
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
           <div className="xl:col-span-3 rounded-2xl border border-gray-200/80 bg-white p-5 sm:p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)]">
@@ -488,85 +372,38 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {topViewed.length > 0 && (
-        <div className="bg-gradient-to-br from-navy-900 to-navy-950 rounded-xl p-5 border border-navy-800 text-white">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-gold-300" />
-              <h3 className="font-semibold">Most viewed on storefront</h3>
-            </div>
-            <Link href="/admin/analytics" className="text-xs font-medium text-gold-300 hover:text-gold-200 inline-flex items-center gap-1">
-              Full analytics <BarChart3 className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {topViewed.slice(0, 5).map((p, i) => (
-              <Link
-                key={String(p._id)}
-                href={`/shop/${encodeURIComponent(p.slug)}`}
-                target="_blank"
-                className="flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 p-2 transition-colors"
-              >
-                <span className="text-xs text-white/40 w-4">{i + 1}</span>
-                <div className="h-10 w-10 rounded-md overflow-hidden bg-navy-800 flex-shrink-0">
-                  {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{p.name}</p>
-                  <p className="text-[10px] text-white/50">{p.views.toLocaleString()} views</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      {topViewed.length > 0 && <MarketingPulseStrip topViewed={topViewed} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl p-5 border border-gray-100">
-          <h3 className="font-semibold text-gray-900 mb-4">Top Products</h3>
+        <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900">Top sellers</h3>
+            <Link href="/admin/analytics" className="text-xs font-semibold text-brand-600 hover:underline">
+              Full ranking →
+            </Link>
+          </div>
           <div className="space-y-3">
             {analytics.topProducts.map((product, i) => (
               <div key={product._id} className="flex items-center gap-3">
-                <span className="text-sm font-bold text-gray-400 w-5">{i + 1}</span>
-                <div className="h-10 w-10 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
+                <span className="text-sm font-bold text-gray-300 w-5 tabular-nums">{i + 1}</span>
+                <div className="h-10 w-10 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 ring-1 ring-gray-100">
                   {product.image ? <img src={product.image} alt={product.name} className="h-full w-full object-cover" /> : null}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                  <p className="text-xs text-gray-500">{product.totalSold} sold</p>
+                  <p className="text-xs text-gray-500">{product.totalSold} units · paid orders</p>
                 </div>
-                <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{formatPrice(product.revenue)}</p>
+                <p className="text-sm font-bold text-gray-900 flex-shrink-0 tabular-nums">{formatPrice(product.revenue)}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-100">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertCircle className="h-4 w-4 text-amber-500" />
-            <h3 className="font-semibold text-gray-900">Low Stock Alert</h3>
-          </div>
-          <p className="text-xs text-gray-400 mb-4">
-            Under {LOW_STOCK_ALERT_EXCLUSIVE_MAX} units total (variants combined)
-          </p>
-          {analytics.lowStockProducts.length === 0 ? (
-            <p className="text-sm text-gray-500">All products are well stocked!</p>
-          ) : (
-            <div className="space-y-2">
-              {analytics.lowStockProducts.map((product) => (
-                <div key={product._id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 truncate max-w-[180px]">{product.name}</p>
-                    <p className="text-xs text-gray-500">{product.category}</p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${product.totalStock === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {product.totalStock === 0 ? 'Out' : `${product.totalStock} left`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <StockAlertsPanel
+          outOfStock={outOfStock}
+          lowStockOnly={lowStockOnly}
+          stockHealth={analytics.stockHealth}
+        />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye } from 'lucide-react';
-import { categoryApi, productApi } from '@/lib/api';
+import { adminApi, categoryApi, productApi } from '@/lib/api';
 import { Category, Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { sumVariantStock, variantStockSummary } from '@/lib/productStock';
@@ -39,30 +39,77 @@ export default function AdminProductsPage() {
   const canPrevPage = pagination.currentPage > 1;
   const canNextPage = pagination.currentPage < pagination.totalPages;
 
-  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt', limit = pageSize) => {
+  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt', limit = pageSize, filter = quickFilter) => {
     setIsLoading(true);
     setLoadError(false);
     try {
-      const params: Record<string, string | number> = { page, limit, sort };
-      if (query) params.search = query;
-      if (categoryFilter) params.category = categoryFilter;
-      const res = await productApi.getAll(params);
-      setProducts(res.data.products);
-      const p = res.pagination;
-      setPagination({
-        currentPage: p?.currentPage ?? 1,
-        totalPages: p?.totalPages ?? 1,
-        totalProducts: p?.totalProducts ?? p?.total ?? 0,
-      });
+      const params: Record<string, string | number> = {
+        page,
+        limit,
+        sort,
+      };
+      if (filter === 'featured') params.isFeatured = 'true';
+      if (filter === 'active') params.isActive = 'true';
+      if (filter === 'inactive') params.isActive = 'false';
+      if (query) {
+        const searchRes = await adminApi.searchProducts({
+          q: query,
+          page,
+          limit,
+          sortBy: sort,
+          ...params,
+        });
+        setProducts(searchRes.data.products);
+        const p = searchRes.pagination;
+        setPagination({
+          currentPage: p?.currentPage ?? 1,
+          totalPages: p?.totalPages ?? 1,
+          totalProducts: p?.totalProducts ?? p?.total ?? 0,
+        });
+      } else {
+        // Use regular getAll for non-search queries
+        if (categoryFilter) params.category = categoryFilter;
+        const res = await adminApi.getProducts(params);
+        setProducts(res.data.products);
+        const p = res.pagination;
+        setPagination({
+          currentPage: p?.currentPage ?? 1,
+          totalPages: p?.totalPages ?? 1,
+          totalProducts: p?.totalProducts ?? p?.total ?? 0,
+        });
+      }
       setLoadError(false);
     } catch {
-      setProducts([]);
-      setLoadError(true);
+      // Fallback to basic search if advanced search fails
+      try {
+        const params: Record<string, string | number> = {
+          page,
+          limit,
+          sort,
+        };
+        if (query) params.search = query;
+        if (categoryFilter) params.category = categoryFilter;
+        if (filter === 'featured') params.isFeatured = 'true';
+        if (filter === 'active') params.isActive = 'true';
+        if (filter === 'inactive') params.isActive = 'false';
+        const res = await adminApi.getProducts(params);
+        setProducts(res.data.products);
+        const p = res.pagination;
+        setPagination({
+          currentPage: p?.currentPage ?? 1,
+          totalPages: p?.totalPages ?? 1,
+          totalProducts: p?.totalProducts ?? p?.total ?? 0,
+        });
+        setLoadError(false);
+      } catch {
+        setProducts([]);
+        setLoadError(true);
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [pageSize, categoryFilter]);
+  }, [pageSize, categoryFilter, quickFilter]);
 
   useEffect(() => {
     categoryApi
@@ -78,7 +125,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     fetchProducts(1, debouncedSearch, sortBy);
-  }, [debouncedSearch, sortBy, pageSize, fetchProducts]);
+  }, [debouncedSearch, sortBy, pageSize, quickFilter, fetchProducts]);
 
   const goToPage = (page: number) => {
     const safePage = Math.min(Math.max(1, page), Math.max(1, pagination.totalPages));
@@ -86,12 +133,7 @@ export default function AdminProductsPage() {
     void fetchProducts(safePage, debouncedSearch, sortBy);
   };
 
-  const filtered = products.filter((p) => {
-    if (quickFilter === 'featured') return !!p.isFeatured;
-    if (quickFilter === 'active') return !!p.isActive;
-    if (quickFilter === 'inactive') return !p.isActive;
-    return true;
-  });
+  const filtered = products;
 
   const handleDelete = async (id: string) => {
     try {

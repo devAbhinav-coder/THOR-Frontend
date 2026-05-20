@@ -55,7 +55,7 @@ import {
   getRazorpayConstructor,
   type RazorpaySuccessPayload,
 } from "@/lib/razorpayTypes";
-import { toCheckoutRowDisplay } from "@/lib/checkoutDisplayHelpers";
+import { toCheckoutRowDisplay, type CheckoutRowDisplay } from "@/lib/checkoutDisplayHelpers";
 import type { CartItem } from "@/types";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
@@ -130,7 +130,14 @@ type BuyNowCheckoutItem = {
   image: string;
   quantity: number;
   price: number;
-  variant: { size?: string; color?: string; colorCode?: string; sku: string };
+  variant: {
+    size?: string;
+    color?: string;
+    colorCode?: string;
+    sku: string;
+    stock?: number;
+    price?: number;
+  };
   customFieldAnswers?: { label: string; value: string }[];
   /** Variant stock when saved from PDP; caps qty in checkout. */
   maxStock?: number;
@@ -952,12 +959,12 @@ export default function CheckoutClient() {
   );
 
   const bumpLineQty = useCallback(
-    async (sku: string, delta: number, current: number, maxQty: number) => {
+    async (cartItemId: string, sku: string, delta: number, current: number, maxQty: number) => {
       const next = current + delta;
       if (next < 1) {
         setLineBusySku(sku);
         try {
-          await removeItem(sku);
+          await removeItem(cartItemId);
         } finally {
           setLineBusySku(null);
         }
@@ -976,7 +983,7 @@ export default function CheckoutClient() {
       }
       setLineBusySku(sku);
       try {
-        await updateItem(sku, capped);
+        await updateItem(cartItemId, capped);
       } finally {
         setLineBusySku(null);
       }
@@ -985,10 +992,10 @@ export default function CheckoutClient() {
   );
 
   const removeLine = useCallback(
-    async (sku: string) => {
+    async (cartItemId: string, sku: string) => {
       setLineBusySku(sku);
       try {
-        await removeItem(sku);
+        await removeItem(cartItemId);
       } finally {
         setLineBusySku(null);
       }
@@ -1891,7 +1898,10 @@ export default function CheckoutClient() {
                     )}
                   >
                     {checkoutItems.map((item, lineIndex) => {
-                      const row = toCheckoutRowDisplay(item, !!existingOrder);
+                      const row: CheckoutRowDisplay = toCheckoutRowDisplay(
+                        item,
+                        !!existingOrder,
+                      );
                       const rowKey =
                         existingOrder ?
                           `ord-${existingOrder._id}-${lineIndex}-${row.variant?.sku || "i"}`
@@ -1912,6 +1922,7 @@ export default function CheckoutClient() {
                           (item as CartItem)
                         : null;
                       const sku = cartLine?.variant?.sku;
+                      const cartItemId = cartLine?.cartItemId;
                       const buyNowSku =
                         buyNowItem && !existingOrder ?
                           buyNowItem.variant.sku
@@ -1921,19 +1932,9 @@ export default function CheckoutClient() {
                         (buyNowSku && lineBusySku === buyNowSku),
                       );
                       const maxLineQty =
-                        cartLine && sku ?
-                          Math.min(
-                            10,
-                            Math.max(
-                              1,
-                              cartLine.product?.variants?.find(
-                                (v) => v.sku === sku,
-                              )?.stock ?? 10,
-                            ),
-                          )
-                        : buyNowItem && !existingOrder ?
+                        buyNowItem && !existingOrder ?
                           Math.min(10, Math.max(1, buyNowItem.maxStock ?? 10))
-                        : 10;
+                        : Math.min(10, row.variant.stock ?? 10);
                       const showCartLineControls = Boolean(cartLine && sku);
                       const showBuyNowLineControls = Boolean(
                         buyNowItem && !existingOrder && buyNowSku,
@@ -2023,6 +2024,7 @@ export default function CheckoutClient() {
                                   disabled={lineBusy}
                                   onClick={() =>
                                     void bumpLineQty(
+                                      cartItemId!,
                                       sku,
                                       -1,
                                       row.quantity,
@@ -2048,6 +2050,7 @@ export default function CheckoutClient() {
                                   }
                                   onClick={() =>
                                     void bumpLineQty(
+                                      cartItemId!,
                                       sku,
                                       1,
                                       row.quantity,
@@ -2114,8 +2117,8 @@ export default function CheckoutClient() {
                                 type='button'
                                 disabled={lineBusy}
                                 onClick={() => {
-                                  if (showCartLineControls && sku) {
-                                    void removeLine(sku);
+                                  if (showCartLineControls && sku && cartItemId) {
+                                    void removeLine(cartItemId, sku);
                                   } else {
                                     void removeBuyNowLine();
                                   }

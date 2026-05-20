@@ -30,6 +30,35 @@ export const authMessage = z.object({
 
 export const authResetPassword = authWithUser;
 
+export const authForgotVerified = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z
+      .object({
+        verified: z.boolean().optional(),
+        resetToken: z.string().optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
+export const authSessionsList = z.object({
+  status: z.string(),
+  data: z.object({
+    sessions: z.array(
+      z.object({
+        id: z.string(),
+        deviceLabel: z.string(),
+        ip: z.string().optional(),
+        createdAt: z.string(),
+        lastUsedAt: z.string().optional(),
+        current: z.boolean(),
+      }),
+    ),
+  }),
+});
+
 export const authAddresses = z.object({
   status: z.string(),
   data: z.object({ addresses: z.array(doc) }),
@@ -95,6 +124,51 @@ export const filterOptions = z.object({
         .optional(),
     })
     .passthrough(),
+});
+
+export const autocompleteResponse = z.object({
+  status: z.string(),
+  data: z.object({
+    suggestions: z.array(
+      z
+        .object({
+          id: z.string(),
+          name: z.string(),
+          slug: z.string(),
+          image: z.string(),
+          price: z.number(),
+          category: z.string(),
+          relevance: z.number().optional(),
+        })
+        .passthrough(),
+    ),
+    query: z.string(),
+  }),
+});
+
+export const searchSuggestionsResponse = z.object({
+  status: z.string(),
+  data: z.object({
+    suggestions: z.array(z.string()),
+    query: z.string(),
+  }),
+});
+
+export const trendingSearchesResponse = z.object({
+  status: z.string(),
+  data: z.object({
+    trending: z.array(
+      z.object({
+        query: z.string(),
+        count: z.number(),
+      }),
+    ),
+  }),
+});
+
+export const productsFeatured = z.object({
+  status: z.string(),
+  data: z.object({ products: z.array(doc) }),
 });
 
 export const cartPayload = z.object({
@@ -391,7 +465,7 @@ export const adminUpdateUserRole = z.object({
   status: z.string(),
   data: z.object({
     user: z.object({
-      _id: z.string(),
+      _id: z.coerce.string(),
       role: z.enum(['user', 'admin']),
     }),
   }),
@@ -605,6 +679,18 @@ export const notificationSingle = z.object({
 export const pushPublicKey = z.object({
   status: z.string(),
   data: z.object({ publicKey: z.string(), enabled: z.boolean().optional() }).passthrough().optional(),
+}).passthrough();
+
+const notificationPreferences = z.object({
+  pushOptIn: z.boolean(),
+  mutedCategories: z.array(z.string()),
+  quietHoursStart: z.string().nullable(),
+  quietHoursEnd: z.string().nullable(),
+});
+
+export const notificationPreferencesResponse = z.object({
+  status: z.string(),
+  data: z.object({ preferences: notificationPreferences }).passthrough().optional(),
 }).passthrough();
 
 export const giftingProductsList = z.object({

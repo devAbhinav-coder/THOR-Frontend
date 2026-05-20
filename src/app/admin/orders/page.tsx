@@ -151,6 +151,7 @@ export default function AdminOrdersPage() {
       try {
         const params: Record<string, string | number> = { page, limit: 20 };
         if (statusFilter) params.status = statusFilter;
+        if (debouncedSearch) params.search = debouncedSearch;
         const res = await adminApi.getOrders(params);
         const incoming = res.data.orders as Order[];
         const nextPagination = res.pagination;
@@ -176,7 +177,7 @@ export default function AdminOrdersPage() {
         setIsLoadingMore(false);
       }
     },
-    [statusFilter],
+    [statusFilter, debouncedSearch],
   );
 
   const handleRefreshList = useCallback(() => {
@@ -279,21 +280,8 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const filteredOrders = useMemo(() => {
-    const q = debouncedSearch.toLowerCase();
-    if (!q) return orders;
-    return orders.filter((o) => {
-      if (o.orderNumber.toLowerCase().includes(q)) return true;
-      if (typeof o.user !== "object") return false;
-      return (
-        o.user.name.toLowerCase().includes(q) ||
-        o.user.email.toLowerCase().includes(q)
-      );
-    });
-  }, [orders, debouncedSearch]);
-
   const visibleOrders = useMemo(() => {
-    const list = [...filteredOrders];
+    const list = [...orders];
     switch (sortBy) {
       case "oldest":
         list.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
@@ -308,7 +296,7 @@ export default function AdminOrdersPage() {
         list.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
     }
     return list;
-  }, [filteredOrders, sortBy]);
+  }, [orders, sortBy]);
 
   // Build status counts from analytics
   const statusCounts: Record<string, number> = {};

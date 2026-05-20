@@ -3,4 +3,5 @@ export const queryKeys = {
   categories: ["categories"] as const,
   storefrontSettings: ["storefront", "settings"] as const,
   notifications: ["notifications"] as const,
+  notificationPreferences: ["notifications", "preferences"] as const,
 };

@@ -13,14 +13,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
 import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
+import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
+import { useDedupeSubmit } from '@/hooks/useDedupeSubmit';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
 });
 
+const otpSchema = z.object({
+  otp: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
+});
+
 const resetSchema = z
   .object({
-    otp: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
     newPassword: z
       .string()
       .min(8, 'Password must be at least 8 characters')
@@ -35,50 +40,74 @@ const resetSchema = z
   });
 
 type EmailForm = z.infer<typeof emailSchema>;
+type OtpForm = z.infer<typeof otpSchema>;
 type ResetForm = z.infer<typeof resetSchema>;
 
 export default function ForgotPasswordClient() {
-  const [step, setStep] = useState<'email' | 'reset'>('email');
+  const [step, setStep] = useState<'email' | 'otp' | 'reset'>('email');
   const [email, setEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [showPwd, setShowPwd] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, run } = useDedupeSubmit();
   const router = useRouter();
 
   const emailForm = useForm<EmailForm>({ resolver: zodResolver(emailSchema) });
+  const otpForm = useForm<OtpForm>({ resolver: zodResolver(otpSchema) });
   const resetForm = useForm<ResetForm>({ resolver: zodResolver(resetSchema) });
+  const newPasswordWatch = resetForm.watch('newPassword');
 
   const onSendCode = async (data: EmailForm) => {
-    setLoading(true);
-    try {
+    await run(async () => {
       await authApi.forgotPassword({ email: data.email });
       setEmail(data.email);
-      setStep('reset');
+      setStep('otp');
       toast.success('If an account exists for this email, a code was sent.');
-    } catch (err: unknown) {
+    }).catch((err: unknown) => {
       const error = err as { message?: string };
       toast.error(error.message || 'Could not send reset email.');
-    } finally {
-      setLoading(false);
-    }
+    });
+  };
+
+  const onVerifyOtp = async (data: OtpForm) => {
+    await run(async () => {
+      const res = await authApi.verifyOtpForgot({ email, otp: data.otp });
+      const token = res.data?.resetToken;
+      if (!token) {
+        toast.error('Verification succeeded but reset session is missing. Try again.');
+        return;
+      }
+      setResetToken(token);
+      setStep('reset');
+      toast.success('Code verified. Choose a new password.');
+    }).catch((err: unknown) => {
+      const error = err as { message?: string };
+      toast.error(error.message || 'Invalid or expired code.');
+    });
   };
 
   const onReset = async (data: ResetForm) => {
-    setLoading(true);
-    try {
-      const parsed = await authApi.resetPassword({
-        email,
-        otp: data.otp,
-        newPassword: data.newPassword,
+    await run(async () => {
+      const parsed = resetToken ?
+        await authApi.resetPasswordWithToken({
+          resetToken,
+          newPassword: data.newPassword,
+        })
+      : await authApi.resetPassword({
+          email,
+          otp: otpForm.getValues('otp'),
+          newPassword: data.newPassword,
+        });
+      useAuthStore.setState({
+        token: null,
+        user: parsed.data.user,
+        isAuthenticated: true,
       });
-      useAuthStore.setState({ token: null, user: parsed.data.user, isAuthenticated: true });
       toast.success('Password updated. You are signed in.');
       router.push('/');
-    } catch (err: unknown) {
+    }).catch((err: unknown) => {
       const error = err as { message?: string };
       toast.error(error.message || 'Could not reset password.');
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   if (step === 'reset') {
@@ -91,21 +120,11 @@ export default function ForgotPasswordClient() {
             </div>
             <h2 className="text-2xl font-serif font-bold text-white">Set a new password</h2>
             <p className="text-white/50 mt-2 text-sm">
-              Code sent to <span className="text-white/80 font-medium">{email}</span>
+              For <span className="text-white/80 font-medium">{email}</span>
             </p>
           </div>
 
           <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
-            <Input
-              {...resetForm.register('otp')}
-              inputMode="numeric"
-              maxLength={6}
-              label="6-digit code"
-              placeholder="000000"
-              error={resetForm.formState.errors.otp?.message}
-              autoComplete="one-time-code"
-            />
-            <OtpResendCooldown email={email} type="forgot_password" />
             <div className="relative">
               <Input
                 {...resetForm.register('newPassword')}
@@ -122,6 +141,7 @@ export default function ForgotPasswordClient() {
                 {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            <PasswordStrengthMeter password={newPasswordWatch || ''} />
             <Input
               {...resetForm.register('confirmPassword')}
               type="password"
@@ -131,6 +151,43 @@ export default function ForgotPasswordClient() {
             />
             <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
               Update password & sign in
+            </Button>
+            <button
+              type="button"
+              onClick={() => setStep('otp')}
+              className="flex w-full items-center justify-center gap-1 text-sm text-white/40 hover:text-white/70"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to code entry
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'otp') {
+    return (
+      <div className="w-full max-w-md">
+        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-serif font-bold text-white">Enter verification code</h2>
+            <p className="text-white/50 mt-2 text-sm">
+              Sent to <span className="text-white/80 font-medium">{email}</span>
+            </p>
+          </div>
+          <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
+            <Input
+              {...otpForm.register('otp')}
+              inputMode="numeric"
+              maxLength={6}
+              label="6-digit code"
+              placeholder="000000"
+              error={otpForm.formState.errors.otp?.message}
+              autoComplete="one-time-code"
+            />
+            <OtpResendCooldown email={email} type="forgot_password" />
+            <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
+              Verify code
             </Button>
             <button
               type="button"
@@ -150,7 +207,9 @@ export default function ForgotPasswordClient() {
       <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-serif font-bold text-white">Forgot password</h2>
-          <p className="text-white/50 mt-1 text-sm">We&apos;ll email you a 6-digit code to reset your password</p>
+          <p className="text-white/50 mt-1 text-sm">
+            We&apos;ll email you a 6-digit code to reset your password
+          </p>
         </div>
 
         <form onSubmit={emailForm.handleSubmit(onSendCode)} className="space-y-4">
@@ -168,7 +227,10 @@ export default function ForgotPasswordClient() {
         </form>
 
         <div className="mt-6 text-center">
-          <Link href="/auth/login" className="inline-flex items-center gap-1 text-sm text-brand-400 hover:text-brand-300">
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center gap-1 text-sm text-brand-400 hover:text-brand-300"
+          >
             <ArrowLeft className="h-4 w-4" /> Back to sign in
           </Link>
         </div>

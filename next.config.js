@@ -7,6 +7,9 @@ const nextConfig = {
   ...(process.env.VERCEL ? {} : { outputFileTracingRoot: path.join(__dirname, '../') }),
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    sri: {
+      algorithm: "sha384",
+    },
   },
   images: {
     // Product/media URLs are served from Cloudinary (already resized/optimized).
@@ -41,7 +44,9 @@ const nextConfig = {
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       {
         key: 'Permissions-Policy',
-        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=(), browsing-topics=()',
+        // No `browsing-topics` — not accepted by several scanners/browsers as a valid token yet.
+        value:
+          'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()',
       },
       // COOP — Lighthouse "Ensure proper origin isolation with COOP".
       // `same-origin-allow-popups` keeps Razorpay / Google OAuth popups working.

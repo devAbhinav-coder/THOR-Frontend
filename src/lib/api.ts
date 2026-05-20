@@ -100,6 +100,15 @@ async function del204(label: string, promise: Promise<AxiosResponse<unknown>>): 
   parseApiResponse(label, res.data, schemas.nullDataSuccess);
 }
 
+export type AuthSession = {
+  id: string;
+  deviceLabel: string;
+  ip?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  current: boolean;
+};
+
 export const authApi = {
   signupStart: (data: { name: string; email: string; password: string; phone: string }) =>
     unwrapAxios("auth.signupStart", api.post("/auth/signup/start", data), schemas.authMessage),
@@ -145,7 +154,33 @@ export const authApi = {
     unwrapAxios(
       "auth.verifyOtpForgot",
       api.post("/auth/verify-otp", { ...data, type: "forgot_password" }),
+      schemas.authForgotVerified,
+    ),
+  resetPasswordWithToken: (data: { resetToken: string; newPassword: string }) =>
+    unwrapAxios(
+      "auth.resetPasswordWithToken",
+      api.post("/auth/reset-password", data),
+      schemas.authResetPassword,
+    ),
+  getSessions: () =>
+    unwrapAxios("auth.getSessions", api.get("/auth/sessions"), schemas.authSessionsList),
+  revokeSession: (sessionId: string) =>
+    unwrapAxios(
+      "auth.revokeSession",
+      api.delete(`/auth/sessions/${sessionId}`),
+      schemas.authMessage,
+    ),
+  revokeOtherSessions: () =>
+    unwrapAxios(
+      "auth.revokeOtherSessions",
+      api.post("/auth/sessions/revoke-others"),
       schemas.successMessageData,
+    ),
+  revokeAllSessions: () =>
+    unwrapAxios(
+      "auth.revokeAllSessions",
+      api.post("/auth/sessions/revoke-all"),
+      schemas.authLogout,
     ),
   logout: () => unwrapAxios("auth.logout", api.post("/auth/logout"), schemas.authLogout),
   getMe: () => unwrapAxios("auth.getMe", api.get("/auth/me"), schemas.authMe),
@@ -163,12 +198,22 @@ export const authApi = {
 export const productApi = {
   getAll: (params?: Record<string, string | number>) =>
     unwrapAxios("products.getAll", api.get("/products", { params }), schemas.productsPaginated),
+  // Advanced search endpoints
+  search: (params?: Record<string, string | number>) =>
+    unwrapAxios("products.search", api.get("/products/search", { params }), schemas.productsPaginated),
+  autocomplete: (query: string, limit = 5) =>
+    unwrapAxios("products.autocomplete", api.get("/products/autocomplete", { params: { q: query, limit } }), schemas.autocompleteResponse),
+  getSearchSuggestions: (query: string) =>
+    unwrapAxios("products.searchSuggestions", api.get("/products/suggestions", { params: { q: query } }), schemas.searchSuggestionsResponse),
+  getTrendingSearches: (limit = 10) =>
+    unwrapAxios("products.trendingSearches", api.get("/products/trending", { params: { limit } }), schemas.trendingSearchesResponse),
+  // Existing endpoints
   recordView: (slug: string) =>
     unwrapAxios("products.recordView", api.post(`/products/${encodeURIComponent(slug)}/view`), schemas.viewCount),
   getBySlug: (slug: string) =>
     unwrapAxios("products.getBySlug", api.get(`/products/${slug}`), schemas.productSingle),
   getFeatured: () =>
-    unwrapAxios("products.featured", api.get("/products/featured"), schemas.productsPaginated),
+    unwrapAxios("products.featured", api.get("/products/featured"), schemas.productsFeatured),
   getByCategory: (category: string, params?: Record<string, string | number>) =>
     unwrapAxios("products.byCategory", api.get(`/products/category/${category}`, { params }), schemas.productsPaginated),
   getFilterOptions: () =>
@@ -186,17 +231,56 @@ export const productApi = {
     ),
 };
 
+function cartIdempotencyConfig(idempotencyKey?: string) {
+  if (!idempotencyKey) return {};
+  return {
+    headers: { "Idempotency-Key": idempotencyKey },
+  };
+}
+
 export const cartApi = {
   get: () => unwrapAxios("cart.get", api.get("/cart"), schemas.cartPayload),
-  add: (data: { productId: string; variant: object; quantity: number; customFieldAnswers?: Array<{ label: string; value: string }> }) =>
-    unwrapAxios("cart.add", api.post("/cart/add", data), schemas.cartPayload),
-  update: (sku: string, quantity: number) =>
-    unwrapAxios("cart.update", api.patch(`/cart/item/${sku}`, { quantity }), schemas.cartPayload),
-  remove: (sku: string) =>
-    unwrapAxios("cart.remove", api.delete(`/cart/item/${sku}`), schemas.cartPayload),
+  add: (
+    data: {
+      productId: string;
+      variant: object;
+      quantity: number;
+      customFieldAnswers?: Array<{ label: string; value: string }>;
+    },
+    opts?: { idempotencyKey?: string },
+  ) =>
+    unwrapAxios(
+      "cart.add",
+      api.post(
+        "/cart/add",
+        { ...data, ...(opts?.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}) },
+        cartIdempotencyConfig(opts?.idempotencyKey),
+      ),
+      schemas.cartPayload,
+    ),
+  update: (cartItemId: string, quantity: number, opts?: { idempotencyKey?: string }) =>
+    unwrapAxios(
+      "cart.update",
+      api.patch(
+        `/cart/item/${cartItemId}`,
+        { quantity, ...(opts?.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}) },
+        cartIdempotencyConfig(opts?.idempotencyKey),
+      ),
+      schemas.cartPayload,
+    ),
+  remove: (cartItemId: string) =>
+    unwrapAxios("cart.remove", api.delete(`/cart/item/${cartItemId}`), schemas.cartPayload),
   clear: () => unwrapAxios("cart.clear", api.delete("/cart"), schemas.cartClear),
-  applyCoupon: (couponCode: string) =>
-    unwrapAxios("cart.applyCoupon", api.post("/cart/apply-coupon", { couponCode }), schemas.cartApplyCoupon),
+  applyCoupon: (couponCode: string, opts?: { idempotencyKey?: string }) =>
+    unwrapAxios(
+      "cart.applyCoupon",
+      api.post(
+        "/cart/apply-coupon",
+        { couponCode, ...(opts?.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}) },
+        cartIdempotencyConfig(opts?.idempotencyKey),
+      ),
+      schemas.cartApplyCoupon,
+    ),
   removeCoupon: () => unwrapAxios("cart.removeCoupon", api.delete("/cart/coupon"), schemas.cartPayload),
   uploadCustomFieldImage: (data: FormData) =>
     unwrapAxios(
@@ -269,6 +353,8 @@ export const couponApi = {
   getAll: () => unwrapAxios("coupons.getAll", api.get("/coupons"), schemas.couponsAdminList),
   update: (id: string, data: object) =>
     unwrapAxios("coupons.update", api.patch(`/coupons/${id}`, data), schemas.successData),
+  archive: (id: string) =>
+    unwrapAxios("coupons.archive", api.patch(`/coupons/${id}/archive`), schemas.successData),
   delete: (id: string) => del204("coupons.delete", api.delete(`/coupons/${id}`)),
 };
 
@@ -308,6 +394,10 @@ export const storefrontApi = {
 };
 
 export const adminApi = {
+  getProducts: (params?: Record<string, string | number | boolean | undefined>) =>
+    unwrapAxios("admin.products", api.get("/admin/products", { params }), schemas.productsPaginated),
+  searchProducts: (params?: Record<string, string | number | boolean | undefined>) =>
+    unwrapAxios("admin.products.search", api.get("/admin/products/search", { params }), schemas.productsPaginated),
   getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
   getAuditLogs: (params?: Record<string, string | number>) =>
     unwrapAxios("admin.auditLogs", api.get("/admin/security/audit", { params }), schemas.adminAuditLogsList),
@@ -360,6 +450,12 @@ export const adminApi = {
   deleteReview: (id: string) => del204("admin.deleteReview", api.delete(`/admin/reviews/${id}`)),
   replyToReview: (id: string, text: string) =>
     unwrapAxios("admin.replyReview", api.patch(`/admin/reviews/${id}/reply`, { text }), schemas.reviewSingle),
+  moderateReview: (id: string, action: "approve" | "hide" | "restore") =>
+    unwrapAxios(
+      "admin.moderateReview",
+      api.patch(`/admin/reviews/${id}/moderate`, { action }),
+      schemas.reviewSingle,
+    ),
   sendMarketingEmail: (data: {
     subject: string;
     messageHtml: string;
@@ -550,7 +646,7 @@ export const inventoryApi = {
   updatePurchaseInvoice: (id: string, payload: Record<string, unknown>) =>
     unwrapAxios('inventory.updatePurchaseInvoice', api.put(`/admin/inventory/purchase-invoices/${id}`, payload), schemas.adminPurchaseInvoiceSingle),
   deletePurchaseInvoice: (id: string) =>
-    unwrapAxios('inventory.deletePurchaseInvoice', api.delete(`/admin/inventory/purchase-invoices/${id}`), schemas.successMessageData),
+    del204('inventory.deletePurchaseInvoice', api.delete(`/admin/inventory/purchase-invoices/${id}`)),
   getGstSummary: (params?: { year?: number; month?: string; quarter?: string }) =>
     unwrapAxios('inventory.gstSummary', api.get('/admin/inventory/gst-summary', { params }), schemas.adminGstSummary),
 };
@@ -595,6 +691,23 @@ export const notificationApi = {
     unwrapAxios("notifications.unsubscribePush", api.post("/notifications/push/unsubscribe", { endpoint }), schemas.successData),
   sendTestPushToSelf: () =>
     unwrapAxios("notifications.sendTestPushToSelf", api.post("/notifications/push/test-self"), schemas.successData),
+  getPreferences: () =>
+    unwrapAxios(
+      "notifications.getPreferences",
+      api.get("/notifications/preferences"),
+      schemas.notificationPreferencesResponse
+    ),
+  updatePreferences: (body: {
+    pushOptIn?: boolean;
+    mutedCategories?: string[];
+    quietHoursStart?: string | null;
+    quietHoursEnd?: string | null;
+  }) =>
+    unwrapAxios(
+      "notifications.updatePreferences",
+      api.patch("/notifications/preferences", body),
+      schemas.notificationPreferencesResponse
+    ),
 };
 
 export const giftingApi = {

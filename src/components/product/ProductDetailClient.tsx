@@ -644,14 +644,16 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
       const answersArray = Object.entries(customFieldAnswers).map(
         ([label, value]) => ({ label, value }),
       );
+      const optVariant = {
+        size: selectedVariant.size,
+        color: selectedVariant.color,
+        colorCode: selectedVariant.colorCode,
+        sku: selectedVariant.sku,
+        stock: selectedVariant.stock,
+      };
       await addToCart(
         product._id,
-        {
-          sku: selectedVariant.sku,
-          size: selectedVariant.size,
-          color: selectedVariant.color,
-          colorCode: selectedVariant.colorCode,
-        },
+        optVariant,
         quantity,
         answersArray.length > 0 ? answersArray : undefined,
         product,

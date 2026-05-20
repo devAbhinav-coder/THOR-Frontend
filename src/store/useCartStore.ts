@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { Cart, CartItem, Product } from '@/types';
 import { cartApi } from '@/lib/api';
+import {
+  getOrCreateCartIdempotencyKey,
+  clearCartIdempotencyKey,
+} from '@/lib/cartIdempotency';
 import toast from 'react-hot-toast';
 
 /** Survives full page reload / new tab so checkout still sees cart-applied coupon after fetchCart. */
@@ -127,7 +131,12 @@ function mergeOptimisticCart(
 ): Cart {
   const price = unitPriceForVariant(product, variant.sku);
   const newItem: CartItem = {
-    product,
+    cartItemId: `opt-${Date.now()}`,
+    product: product._id,
+    productName: product.name,
+    productSlug: product.slug,
+    productImage: product.images?.[0]?.url || "",
+    isActive: product.isActive,
     variant,
     quantity,
     price,
@@ -176,8 +185,8 @@ interface CartState {
     /** When set, cart badge + drawer update immediately (then server confirms) */
     product?: Product,
   ) => Promise<void>;
-   updateItem: (sku: string, quantity: number) => Promise<void>;
-   removeItem: (sku: string) => Promise<void>;
+   updateItem: (cartItemId: string, quantity: number) => Promise<void>;
+   removeItem: (cartItemId: string) => Promise<void>;
    clearCart: () => Promise<void>;
    applyCoupon: (code: string) => Promise<void>;
    removeCoupon: () => Promise<void>;
@@ -230,8 +239,15 @@ interface CartState {
        });
      }
 
-     try {
-       const body = await cartApi.add({ productId, variant, quantity, customFieldAnswers });
+    const idemOp = `add:${key}`;
+    const idempotencyKey = getOrCreateCartIdempotencyKey(idemOp);
+
+    try {
+      const body = await cartApi.add(
+        { productId, variant, quantity, customFieldAnswers },
+        { idempotencyKey },
+      );
+      clearCartIdempotencyKey(idemOp);
       const cart = body.data.cart;
       set({
         cart,
@@ -251,9 +267,33 @@ interface CartState {
     }
   },
 
-   updateItem: async (sku, quantity) => {
+  updateItem: async (cartItemId, quantity) => {
+    const previousCart = get().cart;
+    if (!previousCart) return;
+
+    // Optimistic update
+    const nextItems = previousCart.items.map((it) =>
+      it.cartItemId === cartItemId ? { ...it, quantity } : it,
+    );
+    const nextSubtotal = nextItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+    const optimisticCart = {
+      ...previousCart,
+      items: nextItems,
+      subtotal: nextSubtotal,
+      total: Math.max(0, nextSubtotal - (previousCart.discount || 0)),
+    };
+
+    set({
+      cart: optimisticCart,
+      itemCount: nextItems.reduce((acc, it) => acc + it.quantity, 0),
+    });
+
+    const idemOp = `update:${cartItemId}:${quantity}`;
+    const idempotencyKey = getOrCreateCartIdempotencyKey(idemOp);
+
     try {
-      const body = await cartApi.update(sku, quantity);
+      const body = await cartApi.update(cartItemId, quantity, { idempotencyKey });
+      clearCartIdempotencyKey(idemOp);
       const cart = body.data.cart;
       set({
         cart,
@@ -261,23 +301,53 @@ interface CartState {
         appliedCouponCode: resolveAppliedCouponCode(cart, get().appliedCouponCode),
       });
     } catch (err: unknown) {
+      // Rollback
+      set({
+        cart: previousCart,
+        itemCount: previousCart.items.reduce((acc, it) => acc + it.quantity, 0),
+      });
       const error = err as { message?: string };
-      toast.error(error.message || 'Failed to update cart');
+      toast.error(error.message || "Failed to update cart");
     }
   },
 
-  removeItem: async (sku) => {
+  removeItem: async (cartItemId) => {
+    const previousCart = get().cart;
+    if (!previousCart) return;
+
+    // Optimistic removal
+    const nextItems = previousCart.items.filter(
+      (it) => it.cartItemId !== cartItemId,
+    );
+    const nextSubtotal = nextItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+    const optimisticCart = {
+      ...previousCart,
+      items: nextItems,
+      subtotal: nextSubtotal,
+      total: Math.max(0, nextSubtotal - (previousCart.discount || 0)),
+    };
+
+    set({
+      cart: optimisticCart,
+      itemCount: nextItems.reduce((acc, it) => acc + it.quantity, 0),
+    });
+
     try {
-      const body = await cartApi.remove(sku);
+      const body = await cartApi.remove(cartItemId);
       const cart = body.data.cart;
       set({
         cart,
         itemCount: cart.items.reduce((acc: number, item: CartItem) => acc + item.quantity, 0),
         appliedCouponCode: resolveAppliedCouponCode(cart, get().appliedCouponCode),
       });
-      toast.success('Item removed from cart');
+      toast.success("Item removed from cart");
     } catch {
-      toast.error('Failed to remove item');
+      // Rollback
+      set({
+        cart: previousCart,
+        itemCount: previousCart.items.reduce((acc, it) => acc + it.quantity, 0),
+      });
+      toast.error("Failed to remove item");
     }
   },
 
@@ -292,8 +362,13 @@ interface CartState {
   },
 
   applyCoupon: async (code) => {
+    const normalized = code.trim().toUpperCase();
+    const idemOp = `coupon:${normalized}`;
+    const idempotencyKey = getOrCreateCartIdempotencyKey(idemOp);
+
     try {
-      const body = await cartApi.applyCoupon(code);
+      const body = await cartApi.applyCoupon(normalized, { idempotencyKey });
+      clearCartIdempotencyKey(idemOp);
       const cart = body.data.cart;
       const resolved = (body.data.coupon?.code || code).trim();
       const next =

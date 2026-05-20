@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Tag, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Sparkles, Archive } from 'lucide-react';
 import { couponApi } from '@/lib/api';
 import { Coupon } from '@/types';
 import { formatDate, formatPrice } from '@/lib/utils';
@@ -39,6 +39,17 @@ export default function AdminCouponsPage() {
       fetchCoupons();
     } catch {
       toast.error('Failed to delete coupon');
+    }
+  };
+
+  const handleArchive = async (id: string, code: string) => {
+    if (!confirm(`Archive coupon ${code}? It will be deactivated and hidden from active campaigns.`)) return;
+    try {
+      await couponApi.archive(id);
+      toast.success('Coupon archived');
+      fetchCoupons();
+    } catch {
+      toast.error('Failed to archive coupon');
     }
   };
 
@@ -138,6 +149,14 @@ export default function AdminCouponsPage() {
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
+                            title="Archive"
+                            onClick={() => handleArchive(coupon._id, coupon.code)}
+                            className="p-1.5 text-gray-500 hover:text-amber-700 hover:bg-amber-50 rounded-md"
+                          >
+                            <Archive className="h-4 w-4" />
+                          </button>
+                          <button
+                            title="Delete"
                             onClick={() => handleDelete(coupon._id)}
                             className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md"
                           >

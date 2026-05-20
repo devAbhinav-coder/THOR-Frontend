@@ -34,7 +34,7 @@ function ReviewStars({ rating, size = 'h-3.5 w-3.5' }: { rating: number; size?: 
 }
 
 export default function AdminReviewsPage() {
-  type ReviewFilter = 'all' | 'replied' | 'unreplied' | 'verified';
+  type ReviewFilter = 'all' | 'replied' | 'unreplied' | 'verified' | 'flagged' | 'hidden';
   type ReviewSort = 'newest' | 'lowest' | 'highest';
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,16 +45,30 @@ export default function AdminReviewsPage() {
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<ReviewFilter>('all');
   const [sortBy, setSortBy] = useState<ReviewSort>('newest');
+  const [moderatingId, setModeratingId] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<{
     images: { url: string }[];
     index: number;
     userName: string;
   } | null>(null);
 
-  const fetchReviews = async (page = 1) => {
+  const serverStatusForFilter = (
+    filter: ReviewFilter,
+  ): 'all' | 'flagged' | 'hidden' | undefined => {
+    if (filter === 'flagged') return 'flagged';
+    if (filter === 'hidden') return 'hidden';
+    return undefined;
+  };
+
+  const fetchReviews = async (page = 1, filter: ReviewFilter = activeFilter) => {
     setIsLoading(true);
     try {
-      const res = await adminApi.getReviews({ page, limit: 20 });
+      const status = serverStatusForFilter(filter);
+      const res = await adminApi.getReviews({
+        page,
+        limit: 20,
+        ...(status ? { status } : {}),
+      });
       setReviews(res.data.reviews);
       setPagination(res.pagination);
     } catch {
@@ -65,8 +79,9 @@ export default function AdminReviewsPage() {
   };
 
   useEffect(() => {
-    fetchReviews();
-  }, []);
+    void fetchReviews(1, activeFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when filter changes only
+  }, [activeFilter]);
 
   const metrics = useMemo(() => {
     if (!reviews.length) return { avg: 0, replied: 0, verified: 0 };
@@ -86,6 +101,10 @@ export default function AdminReviewsPage() {
       replied: reviews.filter((r) => !!r.adminReply?.text).length,
       unreplied: reviews.filter((r) => !r.adminReply?.text).length,
       verified: reviews.filter((r) => r.isVerifiedPurchase).length,
+      flagged: reviews.filter(
+        (r) => r.status === 'flagged' || r.status === 'pending_moderation',
+      ).length,
+      hidden: reviews.filter((r) => r.status === 'hidden' || !!r.deletedAt).length,
     }),
     [reviews],
   );
@@ -95,6 +114,14 @@ export default function AdminReviewsPage() {
     if (activeFilter === 'replied') list = list.filter((r) => !!r.adminReply?.text);
     if (activeFilter === 'unreplied') list = list.filter((r) => !r.adminReply?.text);
     if (activeFilter === 'verified') list = list.filter((r) => r.isVerifiedPurchase);
+    if (activeFilter === 'flagged') {
+      list = list.filter(
+        (r) => r.status === 'flagged' || r.status === 'pending_moderation',
+      );
+    }
+    if (activeFilter === 'hidden') {
+      list = list.filter((r) => r.status === 'hidden' || !!r.deletedAt);
+    }
 
     if (sortBy === 'newest') {
       list.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
@@ -134,6 +161,38 @@ export default function AdminReviewsPage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [imagePreview]);
+
+  const handleModerate = async (
+    id: string,
+    action: 'approve' | 'hide' | 'restore',
+  ) => {
+    setModeratingId(id);
+    try {
+      const res = await adminApi.moderateReview(id, action);
+      const updated = res.data.review as Review;
+      setReviews((prev) => {
+        let next = prev.map((r) => (r._id === id ? { ...r, ...updated } : r));
+        if (
+          (activeFilter === 'flagged' && updated.status === 'visible') ||
+          (activeFilter === 'hidden' && action === 'restore')
+        ) {
+          next = next.filter((r) => r._id !== id);
+        }
+        return next;
+      });
+      toast.success(
+        action === 'approve'
+          ? 'Review approved'
+          : action === 'hide'
+            ? 'Review hidden'
+            : 'Review restored',
+      );
+    } catch {
+      toast.error('Moderation action failed');
+    } finally {
+      setModeratingId(null);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this review? This cannot be undone.')) return;
@@ -221,11 +280,16 @@ export default function AdminReviewsPage() {
               { id: 'replied', label: 'Replied' },
               { id: 'unreplied', label: 'Unreplied' },
               { id: 'verified', label: 'Verified' },
+              { id: 'flagged', label: 'Flagged' },
+              { id: 'hidden', label: 'Hidden' },
             ] as const
           ).map((chip) => (
             <button
               key={chip.id}
-              onClick={() => setActiveFilter(chip.id)}
+              onClick={() => {
+                setActiveFilter(chip.id);
+                setPagination((p) => ({ ...p, currentPage: 1 }));
+              }}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
                 activeFilter === chip.id
@@ -345,12 +409,78 @@ export default function AdminReviewsPage() {
                               Verified
                             </span>
                           )}
+                          {review.status && review.status !== 'visible' && (
+                            <span
+                              className={cn(
+                                'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                                review.status === 'flagged' || review.status === 'pending_moderation'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-gray-200 text-gray-700',
+                              )}
+                            >
+                              {review.status.replace('_', ' ')}
+                            </span>
+                          )}
+                          {(review.reportCount ?? 0) > 0 && (
+                            <span className="text-[10px] font-semibold text-red-600">
+                              {review.reportCount} report{(review.reportCount ?? 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
                           <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                      {(review.status === 'flagged' ||
+                        review.status === 'pending_moderation' ||
+                        review.status === 'hidden' ||
+                        review.deletedAt) && (
+                        <>
+                          {(review.status === 'flagged' ||
+                            review.status === 'pending_moderation' ||
+                            review.status === 'hidden') && (
+                            <button
+                              type="button"
+                              disabled={moderatingId === review._id}
+                              onClick={() => handleModerate(review._id, 'approve')}
+                              className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {review.status !== 'hidden' && !review.deletedAt && (
+                            <button
+                              type="button"
+                              disabled={moderatingId === review._id}
+                              onClick={() => handleModerate(review._id, 'hide')}
+                              className="rounded-xl bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-200 disabled:opacity-50"
+                            >
+                              Hide
+                            </button>
+                          )}
+                          {(review.status === 'hidden' || review.deletedAt) && (
+                            <button
+                              type="button"
+                              disabled={moderatingId === review._id}
+                              onClick={() => handleModerate(review._id, 'restore')}
+                              className="rounded-xl bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 transition hover:bg-brand-100 disabled:opacity-50"
+                            >
+                              Restore
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {(!review.status || review.status === 'visible') && !review.deletedAt && (
+                        <button
+                          type="button"
+                          disabled={moderatingId === review._id}
+                          onClick={() => handleModerate(review._id, 'hide')}
+                          className="rounded-xl bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-200 disabled:opacity-50"
+                        >
+                          Hide
+                        </button>
+                      )}
                       <button
                         onClick={() => openReplyBox(review._id, review.adminReply?.text)}
                         className={cn(
@@ -488,7 +618,7 @@ export default function AdminReviewsPage() {
       {pagination.totalPages > 1 && (
         <div className="mt-7 flex items-center justify-center gap-2">
           <button
-            onClick={() => fetchReviews(pagination.currentPage - 1)}
+            onClick={() => fetchReviews(pagination.currentPage - 1, activeFilter)}
             disabled={pagination.currentPage === 1}
             className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >
@@ -498,7 +628,7 @@ export default function AdminReviewsPage() {
             Page {pagination.currentPage} of {pagination.totalPages}
           </span>
           <button
-            onClick={() => fetchReviews(pagination.currentPage + 1)}
+            onClick={() => fetchReviews(pagination.currentPage + 1, activeFilter)}
             disabled={pagination.currentPage === pagination.totalPages}
             className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >

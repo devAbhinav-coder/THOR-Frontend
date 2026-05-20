@@ -26,6 +26,16 @@ import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/queryKeys";
 import { useNotificationBrowserPush } from "@/hooks/useNotificationBrowserPush";
+import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
+import NotificationPreferencesPanel from "@/components/layout/NotificationPreferencesPanel";
+import {
+  optimisticMarkNotificationRead,
+  optimisticMarkAllNotificationsRead,
+  optimisticClearAllNotifications,
+  restoreNotificationsCache,
+  invalidateNotifications,
+} from "@/lib/notificationCache";
+import type { NotificationsListResponse } from "@/types/notifications";
 
 const TOAST_CLEAR = "notif-clear-all";
 const TOAST_MARK_READ = "notif-mark-all-read";
@@ -76,6 +86,13 @@ export default function NotificationBell({
     requestBrowserPermission,
   } = useNotificationBrowserPush(isAuthedStable ? user : null);
 
+  const {
+    preferences,
+    isLoading: preferencesLoading,
+    isSaving: preferencesSaving,
+    updatePreferences,
+  } = useNotificationPreferences(isAuthedStable && !!user);
+
   const updatePanelPosition = useCallback(() => {
     const btn = triggerRef.current?.querySelector("button");
     if (!btn) return;
@@ -116,41 +133,62 @@ export default function NotificationBell({
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => notificationApi.markAsRead(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications }),
+    onMutate: (id) => {
+      const snapshot = optimisticMarkNotificationRead(queryClient, id);
+      return { snapshot };
+    },
+    onError: (_err, _id, ctx) => {
+      restoreNotificationsCache(
+        queryClient,
+        ctx?.snapshot as NotificationsListResponse | undefined
+      );
+    },
+    onSettled: () => invalidateNotifications(queryClient),
   });
 
   const markAllAsReadMutation = useMutation({
     mutationFn: () => notificationApi.markAllAsRead(),
     onMutate: () => {
       toast.loading("Marking all as read…", { id: TOAST_MARK_READ });
+      const snapshot = optimisticMarkAllNotificationsRead(queryClient);
+      return { snapshot };
     },
     onSuccess: () => {
       toast.dismiss(TOAST_MARK_READ);
       toast.success("All marked as read");
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
     },
-    onError: (err: { message?: string }) => {
+    onError: (err: { message?: string }, _v, ctx) => {
       toast.dismiss(TOAST_MARK_READ);
+      restoreNotificationsCache(
+        queryClient,
+        ctx?.snapshot as NotificationsListResponse | undefined
+      );
       toast.error(err?.message || "Could not update notifications.");
     },
+    onSettled: () => invalidateNotifications(queryClient),
   });
 
   const clearAllMutation = useMutation({
     mutationFn: () => notificationApi.clearAll(),
     onMutate: () => {
       toast.loading("Clearing notifications…", { id: TOAST_CLEAR });
+      const snapshot = optimisticClearAllNotifications(queryClient);
+      return { snapshot };
     },
     onSuccess: () => {
       toast.dismiss(TOAST_CLEAR);
       toast.success("All notifications cleared");
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
       setIsOpen(false);
     },
-    onError: (err: { message?: string }) => {
+    onError: (err: { message?: string }, _v, ctx) => {
       toast.dismiss(TOAST_CLEAR);
+      restoreNotificationsCache(
+        queryClient,
+        ctx?.snapshot as NotificationsListResponse | undefined
+      );
       toast.error(err?.message || "Could not clear notifications.");
     },
+    onSettled: () => invalidateNotifications(queryClient),
   });
 
   const sendTestPushMutation = useMutation({
@@ -404,6 +442,19 @@ export default function NotificationBell({
             </span>
           </div>
         )}
+
+        <NotificationPreferencesPanel
+          preferences={preferences}
+          isLoading={preferencesLoading}
+          isSaving={preferencesSaving}
+          onSave={(patch) => {
+            updatePreferences(patch, {
+              onSuccess: () => toast.success("Notification preferences saved"),
+              onError: (err: { message?: string }) =>
+                toast.error(err?.message || "Could not save preferences."),
+            });
+          }}
+        />
       </div>,
       document.body,
     );

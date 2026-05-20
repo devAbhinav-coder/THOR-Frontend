@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { reapplyStoredConsentIfAny } from "@/lib/cookieConsent";
+import { gtagJsIntegrity } from "@/lib/thirdPartySri";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
 
@@ -13,10 +14,14 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
 export default function GoogleAnalytics() {
   if (!GA_ID) return null;
 
+  const gtagIntegrity = gtagJsIntegrity();
+
   return (
     <Script
       src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`}
       strategy='afterInteractive'
+      integrity={gtagIntegrity}
+      crossOrigin={gtagIntegrity ? "anonymous" : undefined}
       onLoad={() => {
         const w = window as Window & { gtag?: (...args: unknown[]) => void };
         if (typeof w.gtag === "function") {

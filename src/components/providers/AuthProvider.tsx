@@ -4,11 +4,13 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCartStore } from '@/store/useCartStore';
 import { useWishlistStore } from '@/store/useWishlistStore';
+import { useCartSync } from '@/hooks/useCartSync';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   const { fetchCart } = useCartStore();
   const { fetchWishlist } = useWishlistStore();
+  useCartSync();
 
   useEffect(() => {
     try {

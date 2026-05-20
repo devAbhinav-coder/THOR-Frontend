@@ -84,19 +84,11 @@ export default function CartClient() {
     const skus = new Set<string>();
     if (!cart?.items?.length) return skus;
     for (const item of cart.items) {
-      const product = item.product;
-      if (!product || product.isActive === false) {
-        skus.add(item.variant.sku);
-        continue;
-      }
-      const variant = (product.variants || []).find(
-        (v) => v.sku === item.variant.sku,
-      );
-      if (!variant || Number(variant.stock || 0) <= 0) {
-        skus.add(item.variant.sku);
-      } else if (item.quantity > Number(variant.stock || 0)) {
+      if (item.isActive === false) {
         skus.add(item.variant.sku);
       }
+      // Note: Strict stock evaluation is deferred to checkout.
+      // If we wanted real-time frontend stock, we would need to fetch product variants here.
     }
     return skus;
   }, [cart?.items]);
@@ -225,34 +217,14 @@ export default function CartClient() {
                 .filter((item: CartItem) => item.product)
                 .map((item: CartItem) =>
                   (() => {
-                    const variantStock = Number(
-                      (item.product?.variants || []).find(
-                        (v) => v.sku === item.variant.sku,
-                      )?.stock ?? -1,
-                    );
-                    const isOutOfStock = variantStock === 0;
-                    const exceedsCurrentStock =
-                      variantStock > 0 && item.quantity > variantStock;
-                    const isUnavailable =
-                      unavailableItemSkus.has(item.variant.sku) ||
-                      isOutOfStock ||
-                      exceedsCurrentStock;
-                    const isCorporateGift = (
-                      item.product?.giftOccasions || []
-                    ).some(
-                      (o) => String(o).trim().toLowerCase() === "corporate",
-                    );
-                    const minQty =
-                      isCorporateGift ?
-                        Math.max(item.product?.minOrderQty || 1, 10)
-                      : Math.max(item.product?.minOrderQty || 1, 1);
-                    const thumb =
-                      item.product?.images?.[0]?.url || PLACEHOLDER_IMAGE;
-                    const rowKey = cartLineReactKey(item);
-                    const productHref =
-                      item.product?.slug ?
-                        `/shop/${encodeURIComponent(item.product.slug)}`
-                      : "#";
+                    // With snapshot cart items, real-time stock is evaluated at checkout.
+                    const isOutOfStock = !item.isActive;
+                    const exceedsCurrentStock = (item.variant.stock !== undefined && item.quantity >= item.variant.stock);
+                    const isUnavailable = unavailableItemSkus.has(item.variant.sku) || isOutOfStock;
+                    const minQty = 1; // Assuming 1 for now unless we add minQty to snapshot
+                    const thumb = item.productImage || PLACEHOLDER_IMAGE;
+                    const rowKey = item.cartItemId || item.variant.sku;
+                    const productHref = item.productSlug ? `/shop/${encodeURIComponent(item.productSlug)}` : "#";
                     return (
                       <div
                         key={rowKey}
@@ -265,7 +237,7 @@ export default function CartClient() {
                           <Image
                             key={rowKey}
                             src={thumb}
-                            alt={item.product?.name || "Product"}
+                            alt={item.productName || "Product"}
                             fill
                             sizes='96px'
                             className='object-cover'
@@ -279,7 +251,7 @@ export default function CartClient() {
                                 href={productHref}
                                 className='font-medium text-gray-900 text-sm hover:text-brand-700 line-clamp-2'
                               >
-                                {item.product?.name || "Product"}
+                                {item.productName || "Product"}
                               </Link>
                               <p className='text-xs text-gray-500 mt-1'>
                                 {[
@@ -344,8 +316,6 @@ export default function CartClient() {
                                 <p className='text-[11px] text-red-600 mt-1 font-semibold'>
                                   {isOutOfStock ?
                                     "This item is out of stock. Remove it to continue."
-                                  : exceedsCurrentStock ?
-                                    `Only ${variantStock} left. Reduce quantity or remove this item.`
                                   : "This item is unavailable right now. Remove it to continue."}
                                 </p>
                               )}
@@ -363,7 +333,7 @@ export default function CartClient() {
                               </div>
                               <button
                                 type='button'
-                                onClick={() => removeItem(item.variant.sku)}
+                                onClick={() => removeItem(item.cartItemId)}
                                 disabled={isLoading}
                                 className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
                                 aria-label='Remove item'
@@ -383,11 +353,11 @@ export default function CartClient() {
                                 onClick={() =>
                                   item.quantity > minQty ?
                                     updateItem(
-                                      item.variant.sku,
+                                      item.cartItemId,
                                       item.quantity - 1,
                                     )
                                   : item.quantity === 1 ?
-                                    removeItem(item.variant.sku)
+                                    removeItem(item.cartItemId)
                                   : undefined
                                 }
                                 className='h-9 w-9 grid place-items-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
@@ -404,7 +374,7 @@ export default function CartClient() {
                               <button
                                 onClick={() =>
                                   updateItem(
-                                    item.variant.sku,
+                                    item.cartItemId,
                                     item.quantity + 1,
                                   )
                                 }
@@ -412,7 +382,8 @@ export default function CartClient() {
                                 disabled={
                                   isLoading ||
                                   isOutOfStock ||
-                                  (variantStock > 0 && item.quantity >= variantStock)
+                                  exceedsCurrentStock ||
+                                  item.quantity >= 10
                                 }
                                 aria-label='Increase quantity'
                               >

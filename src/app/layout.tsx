@@ -211,6 +211,7 @@ gtag('consent', 'default', {
     <html
       lang='en'
       className={`${dmSans.variable} ${playfair.variable}`}
+      {...(nonce ? { "data-csp-nonce": nonce } : {})}
       suppressHydrationWarning
     >
       <head>

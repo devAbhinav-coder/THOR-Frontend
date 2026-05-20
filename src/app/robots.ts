@@ -54,7 +54,7 @@ export default function robots(): MetadataRoute.Robots {
          * Block AI training crawlers from scraping product descriptions,
          * pricing, and customer reviews.
          */
-        userAgent: ["GPTBot", "CCBot", "anthropic-ai", "Claude-Web"],
+        userAgent: ["GPTBot", "CCBot", "anthropic-ai", "Claude-Web", "Google-Extended", "OAI-SearchBot"],
         disallow: "/",
       },
     ],

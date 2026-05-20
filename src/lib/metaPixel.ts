@@ -96,14 +96,18 @@ export const trackAddToCart = (product: Product, quantity: number = 1, priceOver
 export const trackPurchase = (order: any) => {
   if (typeof window === "undefined" || !window.fbq) return;
   
-  const contentIds = order.items?.map((item: any) => 
-    typeof item.product === 'object' ? item.product._id : item.product
-  ) || [];
+  const contentIds = order.items?.map((item: any) => {
+    if (typeof item.product === 'object' && item.product) return item.product._id;
+    if (typeof item.product === 'string') return item.product;
+    return item._id || item.id;
+  }) || [];
 
   const contents = order.items?.map((item: any) => {
-    const productObj = typeof item.product === 'object' ? item.product : item;
+    const productObj = typeof item.product === 'object' ? item.product : null;
+    const productId = productObj?._id || productObj?.id || (typeof item.product === 'string' ? item.product : (item._id || item.id));
+
     return {
-      id: productObj._id || productObj.id,
+      id: productId,
       quantity: item.quantity || 1,
       item_price: item.price || 0,
     };

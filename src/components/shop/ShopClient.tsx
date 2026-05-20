@@ -160,6 +160,40 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
     queryFn: async ({ pageParam }) => {
       const pg = pageParam as number;
 
+      // Use advanced search endpoint when there's a search query for better fuzzy matching
+      if (filters.search && filters.search.trim()) {
+        const searchParams: Record<string, string | number> = {
+          q: filters.search.slice(0, SEARCH_MAX_LEN),
+          page: pg,
+          limit: SHOP_PAGE_LIMIT,
+        };
+        
+        // Map sort parameter
+        if (filters.sort === 'price') searchParams.sortBy = 'price';
+        else if (filters.sort === '-price') {
+          searchParams.sortBy = 'price';
+          searchParams.sortOrder = 'desc';
+        }
+        else if (filters.sort === '-ratings.average') searchParams.sortBy = 'ratings.average';
+        else if (filters.sort === '-ratings.count') searchParams.sortBy = 'soldCount';
+        else searchParams.sortBy = 'relevance';
+        
+        // Add filters
+        if (filters.category) searchParams.categories = filters.category;
+        if (filters.fabric) searchParams.fabrics = filters.fabric;
+        if (filters.minPrice) searchParams.minPrice = Number(filters.minPrice);
+        if (filters.maxPrice) searchParams.maxPrice = Number(filters.maxPrice);
+        if (filters.rating) searchParams.minRating = Number(filters.rating);
+        if (filters.isFeatured) searchParams.isFeatured = filters.isFeatured === 'true';
+        
+        try {
+          return await productApi.search(searchParams);
+        } catch {
+          // Fallback to basic search if advanced search fails
+        }
+      }
+      
+      // Use basic search for non-search queries or as fallback
       const params: Record<string, string | number> = {
         sort: filters.sort,
         page: pg,

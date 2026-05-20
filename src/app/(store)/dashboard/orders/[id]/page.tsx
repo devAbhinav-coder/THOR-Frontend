@@ -368,6 +368,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelLocked, setCancelLocked] = useState(false);
 
   // Review state
   const [reviewEligibility, setReviewEligibility] = useState<
@@ -497,16 +498,35 @@ export default function OrderDetailPage() {
   };
 
   const handleCancel = async () => {
+    if (!order || isCancelling || cancelLocked) return;
+    if (!["pending", "confirmed"].includes(order.status)) return;
     if (!confirm("Are you sure you want to cancel this order?")) return;
+
+    const previous = order;
     setIsCancelling(true);
+    setCancelLocked(true);
+    setOrder({ ...order, status: "cancelled" });
+
     try {
-      const body = await orderApi.cancel(order!._id);
-      setOrder(body.data.order);
-      toast.success("Order cancelled successfully");
+      const body = await orderApi.cancel(order._id);
+      setOrder(body.data.order as Order);
+      const msg = body.message || "";
+      if (msg.toLowerCase().includes("already cancelled")) {
+        toast.success("This order was already cancelled");
+      } else {
+        toast.success("Order cancelled successfully");
+      }
     } catch (err: unknown) {
-      toast.error(
-        (err as { message?: string })?.message || "Failed to cancel order",
-      );
+      setOrder(previous);
+      const message =
+        (err as { message?: string })?.message || "Failed to cancel order";
+      if (message.toLowerCase().includes("already cancelled")) {
+        setOrder({ ...previous, status: "cancelled" });
+        toast.success("This order was already cancelled");
+      } else {
+        toast.error(message);
+        setCancelLocked(false);
+      }
     } finally {
       setIsCancelling(false);
     }
@@ -746,9 +766,10 @@ export default function OrderDetailPage() {
               size='sm'
               onClick={handleCancel}
               loading={isCancelling}
+              disabled={isCancelling || cancelLocked}
               className='text-red-600 border-red-200 hover:bg-red-50 text-xs'
             >
-              Cancel Order
+              {isCancelling ? "Cancelling…" : "Cancel Order"}
             </Button>
           )}
           {isReturnEligible && (

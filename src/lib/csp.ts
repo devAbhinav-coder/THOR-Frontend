@@ -74,11 +74,12 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "base-uri 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",
+    // "require-trusted-types-for 'script'", // Removed to prevent TrustedHTML errors with dangerouslySetInnerHTML (JSON-LD)
   ];
 
   if (process.env.NODE_ENV === "production") {
+    // `upgrade-insecure-requests` replaces deprecated `block-all-mixed-content` (still removes mixed content).
     directives.push("upgrade-insecure-requests");
-    directives.push("block-all-mixed-content");
   }
 
   return directives.join("; ");

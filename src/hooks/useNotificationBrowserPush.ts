@@ -20,6 +20,19 @@ const pushSubscribedUsers = new Set<string>();
 const pushSubscribeInFlightByUser = new Map<string, Promise<void>>();
 const syncedEndpointKeys = new Set<string>();
 
+function applicationServerKeysMatch(
+  subscriptionKey: ArrayBuffer | null | undefined,
+  serverPublicKey: Uint8Array,
+): boolean {
+  if (!subscriptionKey) return false;
+  const sub = new Uint8Array(subscriptionKey);
+  if (sub.length !== serverPublicKey.length) return false;
+  for (let i = 0; i < sub.length; i++) {
+    if (sub[i] !== serverPublicKey[i]) return false;
+  }
+  return true;
+}
+
 async function getPushPublicConfig(): Promise<{
   enabled: boolean;
   publicKey: string;
@@ -67,15 +80,32 @@ async function subscribeWithVapid(user: NonNullable<UserLike>): Promise<void> {
   const { enabled, publicKey } = await getPushPublicConfig();
   if (!enabled || !publicKey) return;
 
-  const existing = await registration.pushManager.getSubscription();
-  const subscription =
-    existing ||
-    (await registration.pushManager.subscribe({
+  const serverKeyBytes = urlBase64ToUint8Array(publicKey);
+  let subscription = await registration.pushManager.getSubscription();
+  if (
+    subscription &&
+    !applicationServerKeysMatch(
+      subscription.options?.applicationServerKey ?? null,
+      serverKeyBytes,
+    )
+  ) {
+    try {
+      await notificationApi.unsubscribePush(subscription.endpoint);
+    } catch {
+      /* ignore */
+    }
+    await subscription.unsubscribe();
+    subscription = null;
+    syncedEndpointKeys.forEach((key) => {
+      if (key.startsWith(`${userId}::`)) syncedEndpointKeys.delete(key);
+    });
+  }
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(
-        publicKey,
-      ) as unknown as BufferSource,
-    }));
+      applicationServerKey: serverKeyBytes as unknown as BufferSource,
+    });
+  }
   const endpoint = subscription.endpoint || "";
   const endpointKey = `${userId}::${endpoint}`;
   if (endpoint && syncedEndpointKeys.has(endpointKey)) return;

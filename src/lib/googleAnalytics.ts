@@ -94,13 +94,17 @@ export const trackGaBeginCheckout = (total: number, orderOrCartItems: any[]) => 
     value: total,
     items: orderOrCartItems.map((item, index) => {
       // Handle both CartItem structures and Order item structures
-      const productObj = item.product || item;
+      const productObj = typeof item.product === 'object' ? item.product : null;
+      const productId = productObj?._id || productObj?.id || (typeof item.product === 'string' ? item.product : (item._id || item.id));
+      const productName = productObj?.name || item.productName || item.name || "Product";
+      const productCategory = productObj?.category || item.productCategory || "";
+
       return {
-        item_id: productObj._id || productObj.id || "unknown",
-        item_name: productObj.name || "Product",
-        item_category: productObj.category || "",
+        item_id: productId || "unknown",
+        item_name: productName,
+        item_category: productCategory,
         item_brand: "The House of Rani",
-        price: item.price || productObj.price || 0,
+        price: item.price || productObj?.price || 0,
         quantity: item.quantity || 1,
         index,
       };
@@ -120,11 +124,15 @@ export const trackGaPurchase = (order: any) => {
     currency: order.currency || "INR",
     coupon: order.couponCode || "",
     items: (order.items || []).map((item: any, index: number) => {
-      const productObj = typeof item.product === 'object' ? item.product : item;
+      const productObj = typeof item.product === 'object' ? item.product : null;
+      const productId = productObj?._id || productObj?.id || (typeof item.product === 'string' ? item.product : (item._id || item.id));
+      const productName = productObj?.name || item.productName || item.name || "Product";
+      const productCategory = productObj?.category || item.productCategory || "";
+
       return {
-        item_id: productObj._id || productObj.id || "unknown",
-        item_name: productObj.name || "Product",
-        item_category: productObj.category || "",
+        item_id: productId || "unknown",
+        item_name: productName,
+        item_category: productCategory,
         item_brand: "The House of Rani",
         price: item.price || 0,
         quantity: item.quantity || 1,

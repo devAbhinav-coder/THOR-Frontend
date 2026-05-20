@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { RAZORPAY_CHECKOUT_JS_INTEGRITY } from '@/lib/thirdPartySri';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -79,41 +80,71 @@ function razorpayConstructorReady(): boolean {
     (window as unknown as { Razorpay?: unknown }).Razorpay);
 }
 
+function removeRazorpayScriptElement(): void {
+  document.getElementById('razorpay-script')?.remove();
+}
+
+let razorpayLoadPromise: Promise<boolean> | null = null;
+
 /** Loads Razorpay Checkout script; resolves when `window.Razorpay` is usable. */
 export const loadRazorpayScript = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') return resolve(false);
-    if (razorpayConstructorReady()) return resolve(true);
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  if (razorpayConstructorReady()) return Promise.resolve(true);
+  if (razorpayLoadPromise) return razorpayLoadPromise;
+
+  razorpayLoadPromise = new Promise((resolve) => {
+    const finish = (ok: boolean) => {
+      razorpayLoadPromise = null;
+      resolve(ok);
+    };
 
     const waitUntilReadyOrTimeout = (maxMs: number) => {
       const deadline = Date.now() + maxMs;
       const id = window.setInterval(() => {
         if (razorpayConstructorReady()) {
           window.clearInterval(id);
-          resolve(true);
+          finish(true);
         } else if (Date.now() > deadline) {
           window.clearInterval(id);
-          resolve(false);
+          finish(false);
         }
       }, 50);
     };
 
+    const inject = () => {
+      removeRazorpayScriptElement();
+
+      const script = document.createElement('script');
+      script.id = 'razorpay-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.crossOrigin = 'anonymous';
+      script.integrity = RAZORPAY_CHECKOUT_JS_INTEGRITY;
+      const n = getCspNonce();
+      if (n) script.setAttribute('nonce', n);
+      script.onload = () => {
+        if (razorpayConstructorReady()) finish(true);
+        else waitUntilReadyOrTimeout(20_000);
+      };
+      script.onerror = () => {
+        removeRazorpayScriptElement();
+        finish(false);
+      };
+      document.body.appendChild(script);
+    };
+
     const existing = document.getElementById('razorpay-script');
+    if (existing && !razorpayConstructorReady()) {
+      // Stale tag from a prior SRI/CSP failure — reinject instead of waiting 20s.
+      inject();
+      return;
+    }
     if (existing) {
       waitUntilReadyOrTimeout(20_000);
       return;
     }
 
-    const script = document.createElement('script');
-    script.id = 'razorpay-script';
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    const n = getCspNonce();
-    if (n) script.setAttribute('nonce', n);
-    script.onload = () => {
-      if (razorpayConstructorReady()) resolve(true);
-      else waitUntilReadyOrTimeout(20_000);
-    };
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
+    inject();
   });
+
+  return razorpayLoadPromise;
 };

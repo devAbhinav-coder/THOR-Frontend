@@ -225,6 +225,9 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
 
       let saved: Product | undefined;
       if (product) {
+        if (product.updatedAt) {
+          fd.append('updatedAt', product.updatedAt);
+        }
         const res = await productApi.update(product._id, fd);
         saved = (res.data?.product || undefined) as Product | undefined;
         toast.success('Product updated');

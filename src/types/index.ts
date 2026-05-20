@@ -96,15 +96,24 @@ export interface Product {
   seoDescription?: string;
   hsnCode?: string;
   createdAt: string;
+  /** ISO timestamp for optimistic locking on admin updates */
+  updatedAt?: string;
 }
 
 export interface CartItem {
-  product: Product;
+  cartItemId: string;
+  product: string;
+  productName: string;
+  productSlug: string;
+  productImage: string;
+  isActive: boolean;
   variant: {
     size?: string;
     color?: string;
     colorCode?: string;
     sku: string;
+    stock?: number;
+    price?: number;
   };
   quantity: number;
   price: number;
@@ -124,7 +133,14 @@ export interface OrderItem {
   product: string | Product;
   name: string;
   image: string;
-  variant: { size?: string; color?: string; sku: string };
+  variant: {
+    size?: string;
+    color?: string;
+    colorCode?: string;
+    sku: string;
+    stock?: number;
+    price?: number;
+  };
   quantity: number;
   price: number;
   customFieldAnswers?: { label: string; value: string }[]; // Gifting
@@ -338,6 +354,8 @@ export interface Order {
   };
 }
 
+export type ReviewStatus = 'visible' | 'hidden' | 'flagged' | 'pending_moderation';
+
 export interface Review {
   _id: string;
   product: string | { _id: string; name: string; slug?: string };
@@ -348,6 +366,11 @@ export interface Review {
   images?: { url: string; publicId: string }[];
   isVerifiedPurchase: boolean;
   helpfulVotes: string[];
+  helpfulCount?: number;
+  status?: ReviewStatus;
+  deletedAt?: string | null;
+  reportCount?: number;
+  moderationFlags?: string[];
   adminReply?: { text: string; createdAt: string };
   createdAt: string;
 }
@@ -464,8 +487,27 @@ export interface DashboardAnalytics {
     totalCustomersWithOrders?: number;
     repeatRate?: number;
     avgLtv?: number;
+    /** Paid line-item sales vs catalog variant cost (COGS proxy) */
+    productRevenue?: number;
+    productCogs?: number;
+    grossProfit?: number;
+    grossMarginPercent?: number;
+    monthProductRevenue?: number;
+    monthProductCogs?: number;
+    monthGrossProfit?: number;
+    monthGrossMarginPercent?: number;
+    profitLinesMissingCost?: number;
+    profitOrderLines?: number;
   };
   refundsByReason: { _id: string; count: number }[];
+  stockHealth?: {
+    outOfStock: number;
+    lowStock: number;
+    totalActiveProducts: number;
+    totalUnits: number;
+  };
+  outOfStockProducts?: { _id: string; name: string; totalStock: number; category: string }[];
+  lowStockOnlyProducts?: { _id: string; name: string; totalStock: number; category: string }[];
   lowStockProducts: { _id: string; name: string; totalStock: number; category: string }[];
   recentOrders: Order[];
   ordersByStatus: { _id: string; count: number }[];
@@ -488,6 +530,39 @@ export interface DashboardAnalytics {
   paymentMethodMix?: { _id: string; revenue: number; count: number }[];
   ordersByHour?: { hour: number; orders: number; revenue: number }[];
   topVariantSizes?: { _id: string; units: number; revenue: number }[];
+  topProductsByProfit?: ProductProfitRow[];
+  categoryProfit?: CategoryProfitRow[];
+  profitByMonth?: {
+    _id: { year: number; month: number };
+    productRevenue: number;
+    cogs: number;
+    grossProfit: number;
+  }[];
+}
+
+export interface ProductProfitRow {
+  _id: string;
+  name: string;
+  image: string;
+  category: string;
+  unitsSold: number;
+  revenue: number;
+  cogs: number;
+  profit: number;
+  marginPercent: number;
+  avgSellPrice: number;
+  avgUnitCost: number;
+  linesMissingCost: number;
+  orderLines: number;
+}
+
+export interface CategoryProfitRow {
+  _id: string;
+  revenue: number;
+  cogs: number;
+  profit: number;
+  units: number;
+  marginPercent: number;
 }
 
 

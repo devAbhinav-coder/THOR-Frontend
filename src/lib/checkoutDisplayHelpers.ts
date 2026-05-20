@@ -5,7 +5,14 @@ export type CheckoutRowDisplay = {
   name: string;
   quantity: number;
   price: number;
-  variant: { size?: string; color?: string; sku: string };
+  variant: {
+    size?: string;
+    color?: string;
+    colorCode?: string;
+    sku: string;
+    stock?: number;
+    price?: number;
+  };
   thumbUrl: string;
   customFieldAnswers?: { label: string; value: string }[];
 };
@@ -28,16 +35,24 @@ export function toCheckoutRowDisplay(
   }
   const c = item as CartItem | BuyNowCheckoutDisplayItem;
   const name =
-    (c as CartItem).product?.name ?? (c as BuyNowCheckoutDisplayItem).name;
+    (c as CartItem).productName ??// Fallback just in case
+    (c as BuyNowCheckoutDisplayItem).name;
   const thumbUrl =
-    (c as CartItem).product?.images?.[0]?.url ??
+    (c as CartItem).productImage ??
     (c as BuyNowCheckoutDisplayItem).product?.images?.[0]?.url ??
     "";
+  
+  // Extract stock for quantity caps
+  const stock = 
+    (c as CartItem).variant?.stock ?? 
+    (c as BuyNowCheckoutDisplayItem).variant?.stock ?? 
+    (c as BuyNowCheckoutDisplayItem).maxStock;
+
   return {
     name,
     quantity: c.quantity,
     price: c.price,
-    variant: c.variant,
+    variant: { ...c.variant, stock },
     thumbUrl,
     customFieldAnswers: c.customFieldAnswers,
   };

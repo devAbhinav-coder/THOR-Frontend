@@ -17,7 +17,7 @@ export default function GlobalError({
           </p>
           <button
             type="button"
-            onClick={() => reset()}
+            onClick={() => (typeof reset === 'function' ? reset() : window.location.reload())}
             className="mt-6 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
           >
             Try again
