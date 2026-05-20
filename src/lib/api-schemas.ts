@@ -26,7 +26,15 @@ export const authLogout = z.object({
 export const authMessage = z.object({
   status: z.string(),
   message: z.string(),
-});
+  data: z
+    .object({
+      type: z.string().optional(),
+      retryAfter: z.number().optional(),
+    })
+    .passthrough()
+    .optional(),
+  retryAfter: z.number().optional(),
+}).passthrough();
 
 export const authResetPassword = authWithUser;
 
@@ -56,6 +64,14 @@ export const authSessionsList = z.object({
         current: z.boolean(),
       }),
     ),
+  }),
+});
+
+export const authRevokeOtherSessions = z.object({
+  status: z.string(),
+  message: z.string().optional(),
+  data: z.object({
+    revoked: z.number(),
   }),
 });
 

@@ -184,7 +184,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
         if (filters.minPrice) searchParams.minPrice = Number(filters.minPrice);
         if (filters.maxPrice) searchParams.maxPrice = Number(filters.maxPrice);
         if (filters.rating) searchParams.minRating = Number(filters.rating);
-        if (filters.isFeatured) searchParams.isFeatured = filters.isFeatured === 'true';
+        if (filters.isFeatured) searchParams.isFeatured = filters.isFeatured;
         
         try {
           return await productApi.search(searchParams);

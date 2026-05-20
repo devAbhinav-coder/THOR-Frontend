@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactElement } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -41,7 +41,7 @@ const presetMessages = [
   },
 ];
 
-const audienceMeta: Record<Audience, { icon: JSX.Element; label: string; hint: string }> = {
+const audienceMeta: Record<Audience, { icon: ReactElement; label: string; hint: string }> = {
   users: {
     icon: <Users className="h-4 w-4" />,
     label: "Registered customers",

@@ -3,29 +3,43 @@
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { authApi } from "@/lib/api";
+import {
+  DEFAULT_OTP_COOLDOWN_SEC,
+  formatOtpRetryMessage,
+  otpRetryAfterFromSuccess,
+  parseApiClientError,
+} from "@/lib/authOtpClient";
 
 export type OtpFlowType = "signup" | "login" | "forgot_password";
-
-const COOLDOWN_SEC = 60;
 
 type Props = {
   email: string;
   type: OtpFlowType;
-  /** Bump to reset the 60s timer after the parent sends the first code. */
+  /** Bump to reset the cooldown timer after the parent sends the first code. */
   resetKey?: number;
+  /** Server hint (seconds) when parent just sent a code — overrides default 60s. */
+  initialSeconds?: number;
   className?: string;
 };
 
 /**
- * Resend OTP control with a 60s cooldown and visible countdown (matches backend rules).
+ * Resend OTP control with server-aligned cooldown and visible countdown.
  */
-export function OtpResendCooldown({ email, type, resetKey = 0, className }: Props) {
-  const [secondsLeft, setSecondsLeft] = useState(COOLDOWN_SEC);
+export function OtpResendCooldown({
+  email,
+  type,
+  resetKey = 0,
+  initialSeconds = DEFAULT_OTP_COOLDOWN_SEC,
+  className,
+}: Props) {
+  const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setSecondsLeft(COOLDOWN_SEC);
-  }, [email, type, resetKey]);
+    setSecondsLeft(
+      initialSeconds > 0 ? Math.ceil(initialSeconds) : DEFAULT_OTP_COOLDOWN_SEC,
+    );
+  }, [email, type, resetKey, initialSeconds]);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -39,12 +53,14 @@ export function OtpResendCooldown({ email, type, resetKey = 0, className }: Prop
     if (!email || secondsLeft > 0 || loading) return;
     setLoading(true);
     try {
-      await authApi.resendOtp({ email, type });
-      setSecondsLeft(COOLDOWN_SEC);
+      const res = await authApi.resendOtp({ email, type });
+      const sec = otpRetryAfterFromSuccess(res);
+      setSecondsLeft(sec);
       toast.success("A new code was sent to your email.");
     } catch (err: unknown) {
-      const e = err as { message?: string };
-      toast.error(e.message || "Could not resend code.");
+      const { message, retryAfter } = parseApiClientError(err);
+      if (retryAfter) setSecondsLeft(retryAfter);
+      toast.error(formatOtpRetryMessage(message, retryAfter));
     } finally {
       setLoading(false);
     }

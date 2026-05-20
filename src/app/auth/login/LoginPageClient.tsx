@@ -16,6 +16,12 @@ import { authApi } from "@/lib/api";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
 import AuthPendingOverlay from "@/components/auth/AuthPendingOverlay";
 import { ApiValidationError } from "@/lib/parseApi";
+import {
+  DEFAULT_OTP_COOLDOWN_SEC,
+  formatOtpRetryMessage,
+  otpRetryAfterFromSuccess,
+  parseApiClientError,
+} from "@/lib/authOtpClient";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -53,6 +59,9 @@ export default function LoginPageClient() {
   const [otpStep, setOtpStep] = useState<"email" | "code">("email");
   const [otpEmail, setOtpEmail] = useState("");
   const [otpSending, setOtpSending] = useState(false);
+  const [otpResendResetKey, setOtpResendResetKey] = useState(0);
+  const [otpResendCooldownSec, setOtpResendCooldownSec] = useState(DEFAULT_OTP_COOLDOWN_SEC);
+  const [otpVerifyCooldownSec, setOtpVerifyCooldownSec] = useState(0);
   const [pendingCopy, setPendingCopy] = useState<PendingCopy>({
     title: "Please wait",
     description: "We are preparing your secure sign-in session.",
@@ -75,6 +84,14 @@ export default function LoginPageClient() {
     defaultValues: { otp: "" },
   });
 
+  useEffect(() => {
+    if (otpVerifyCooldownSec <= 0) return;
+    const id = window.setTimeout(() => {
+      setOtpVerifyCooldownSec((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [otpVerifyCooldownSec]);
+
   const onSendLoginOtp = async (data: OtpEmailForm) => {
     setOtpSending(true);
     setPendingCopy({
@@ -82,25 +99,31 @@ export default function LoginPageClient() {
       description: "Checking your account and delivering OTP to your inbox.",
     });
     try {
-      await authApi.sendOtp({ type: "login", email: data.email });
+      const res = await authApi.sendOtp({ type: "login", email: data.email });
       setOtpEmail(data.email);
+      setOtpResendCooldownSec(otpRetryAfterFromSuccess(res));
+      setOtpResendResetKey((k) => k + 1);
+      setOtpVerifyCooldownSec(0);
       setOtpStep("code");
       toast.success("We sent a sign-in code to your email.");
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Could not send sign-in code.");
+      const { message, retryAfter } = parseApiClientError(err);
+      if (retryAfter) setOtpResendCooldownSec(retryAfter);
+      toast.error(formatOtpRetryMessage(message, retryAfter));
     } finally {
       setOtpSending(false);
     }
   };
 
   const onVerifyLoginOtp = async (data: OtpCodeForm) => {
+    if (otpVerifyCooldownSec > 0) return;
     setPendingCopy({
       title: "Verifying code",
       description: "Finalizing sign-in and restoring your secure session.",
     });
     try {
       await loginWithOtp(otpEmail, data.otp);
+      setOtpVerifyCooldownSec(0);
       toast.success("Welcome back!");
       router.push(redirect);
     } catch (err: unknown) {
@@ -110,8 +133,9 @@ export default function LoginPageClient() {
         );
         return;
       }
-      const error = err as { message?: string };
-      toast.error(error.message || "Invalid or expired code.");
+      const { message, retryAfter } = parseApiClientError(err);
+      if (retryAfter) setOtpVerifyCooldownSec(retryAfter);
+      toast.error(formatOtpRetryMessage(message, retryAfter));
     }
   };
 
@@ -201,10 +225,27 @@ export default function LoginPageClient() {
                   placeholder="000000"
                   error={otpCodeForm.formState.errors.otp?.message}
                 />
-                <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
-                  Sign in
+                <OtpResendCooldown
+                  email={otpEmail}
+                  type="login"
+                  resetKey={otpResendResetKey}
+                  initialSeconds={otpResendCooldownSec}
+                />
+                {otpVerifyCooldownSec > 0 && (
+                  <p className="text-center text-sm text-amber-400/90">
+                    Too many attempts. Try again in {otpVerifyCooldownSec}s.
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  variant="brand"
+                  size="lg"
+                  className="w-full"
+                  loading={isLoading}
+                  disabled={otpVerifyCooldownSec > 0}
+                >
+                  {otpVerifyCooldownSec > 0 ? `Sign in in ${otpVerifyCooldownSec}s` : "Sign in"}
                 </Button>
-                <OtpResendCooldown email={otpEmail} type="login" />
                 <button
                   type="button"
                   onClick={() => {

@@ -49,7 +49,9 @@ export default function ConversionRateChart({
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 8, fill: '#64748b', angle: -35, textAnchor: 'end' }}
+            angle={-35}
+            textAnchor="end"
+            tick={{ fontSize: 8, fill: '#64748b' }}
             height={56}
             interval={0}
           />

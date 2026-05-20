@@ -7,6 +7,8 @@ export type BuyNowCheckoutDisplayItem = {
   variant: CartItem["variant"];
   quantity: number;
   price: number;
+  /** Variant stock when saved from PDP; caps qty in checkout. */
+  maxStock?: number;
   customFieldAnswers?: { label: string; value: string }[];
 };
 

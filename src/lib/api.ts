@@ -18,6 +18,7 @@ import type {
   AdminSalesInvoiceWriteBody,
 } from "@/types";
 import { toastForNonAuthHttpError } from "@/lib/httpClientToast";
+import { getForgotPasswordVerifyIdempotencyKey } from "@/lib/authOtpClient";
 
 /** Shared axios instance (interceptors, base URL). Exported so thin modules
  *  like `invoiceStore` can call endpoints without depending on the full
@@ -90,7 +91,13 @@ api.interceptors.response.use(
 
     toastForNonAuthHttpError(status);
 
-    return Promise.reject({ message, status: error.response?.status });
+    const retryAfterRaw = error.response?.data?.retryAfter;
+    const retryAfter =
+      typeof retryAfterRaw === "number" && retryAfterRaw > 0 ?
+        Math.ceil(retryAfterRaw)
+      : undefined;
+
+    return Promise.reject({ message, status: error.response?.status, retryAfter });
   },
 );
 
@@ -153,7 +160,15 @@ export const authApi = {
   verifyOtpForgot: (data: { email: string; otp: string }) =>
     unwrapAxios(
       "auth.verifyOtpForgot",
-      api.post("/auth/verify-otp", { ...data, type: "forgot_password" }),
+      api.post(
+        "/auth/verify-otp",
+        { ...data, type: "forgot_password" },
+        {
+          headers: {
+            "Idempotency-Key": getForgotPasswordVerifyIdempotencyKey(data.email),
+          },
+        },
+      ),
       schemas.authForgotVerified,
     ),
   resetPasswordWithToken: (data: { resetToken: string; newPassword: string }) =>
@@ -174,7 +189,7 @@ export const authApi = {
     unwrapAxios(
       "auth.revokeOtherSessions",
       api.post("/auth/sessions/revoke-others"),
-      schemas.successMessageData,
+      schemas.authRevokeOtherSessions,
     ),
   revokeAllSessions: () =>
     unwrapAxios(

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -15,6 +15,13 @@ import toast from 'react-hot-toast';
 import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
 import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
 import { useDedupeSubmit } from '@/hooks/useDedupeSubmit';
+import {
+  clearForgotPasswordVerifyIdempotencyKey,
+  formatOtpRetryMessage,
+  otpRetryAfterFromSuccess,
+  parseApiClientError,
+  DEFAULT_OTP_COOLDOWN_SEC,
+} from '@/lib/authOtpClient';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -48,6 +55,9 @@ export default function ForgotPasswordClient() {
   const [email, setEmail] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [showPwd, setShowPwd] = useState(false);
+  const [resendResetKey, setResendResetKey] = useState(0);
+  const [resendCooldownSec, setResendCooldownSec] = useState(DEFAULT_OTP_COOLDOWN_SEC);
+  const [verifyCooldownSec, setVerifyCooldownSec] = useState(0);
   const { loading, run } = useDedupeSubmit();
   const router = useRouter();
 
@@ -56,19 +66,32 @@ export default function ForgotPasswordClient() {
   const resetForm = useForm<ResetForm>({ resolver: zodResolver(resetSchema) });
   const newPasswordWatch = resetForm.watch('newPassword');
 
+  useEffect(() => {
+    if (verifyCooldownSec <= 0) return;
+    const id = window.setTimeout(() => {
+      setVerifyCooldownSec((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [verifyCooldownSec]);
+
   const onSendCode = async (data: EmailForm) => {
     await run(async () => {
-      await authApi.forgotPassword({ email: data.email });
+      const res = await authApi.forgotPassword({ email: data.email });
       setEmail(data.email);
+      setResendCooldownSec(otpRetryAfterFromSuccess(res));
+      setResendResetKey((k) => k + 1);
+      setVerifyCooldownSec(0);
       setStep('otp');
       toast.success('If an account exists for this email, a code was sent.');
     }).catch((err: unknown) => {
-      const error = err as { message?: string };
-      toast.error(error.message || 'Could not send reset email.');
+      const { message, retryAfter } = parseApiClientError(err);
+      if (retryAfter) setResendCooldownSec(retryAfter);
+      toast.error(formatOtpRetryMessage(message, retryAfter));
     });
   };
 
   const onVerifyOtp = async (data: OtpForm) => {
+    if (verifyCooldownSec > 0) return;
     await run(async () => {
       const res = await authApi.verifyOtpForgot({ email, otp: data.otp });
       const token = res.data?.resetToken;
@@ -76,12 +99,15 @@ export default function ForgotPasswordClient() {
         toast.error('Verification succeeded but reset session is missing. Try again.');
         return;
       }
+      clearForgotPasswordVerifyIdempotencyKey(email);
       setResetToken(token);
+      setVerifyCooldownSec(0);
       setStep('reset');
       toast.success('Code verified. Choose a new password.');
     }).catch((err: unknown) => {
-      const error = err as { message?: string };
-      toast.error(error.message || 'Invalid or expired code.');
+      const { message, retryAfter } = parseApiClientError(err);
+      if (retryAfter) setVerifyCooldownSec(retryAfter);
+      toast.error(formatOtpRetryMessage(message, retryAfter));
     });
   };
 
@@ -185,9 +211,26 @@ export default function ForgotPasswordClient() {
               error={otpForm.formState.errors.otp?.message}
               autoComplete="one-time-code"
             />
-            <OtpResendCooldown email={email} type="forgot_password" />
-            <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
-              Verify code
+            <OtpResendCooldown
+              email={email}
+              type="forgot_password"
+              resetKey={resendResetKey}
+              initialSeconds={resendCooldownSec}
+            />
+            {verifyCooldownSec > 0 && (
+              <p className="text-center text-sm text-amber-400/90">
+                Too many attempts. Try again in {verifyCooldownSec}s.
+              </p>
+            )}
+            <Button
+              type="submit"
+              variant="brand"
+              size="lg"
+              className="w-full"
+              loading={loading}
+              disabled={verifyCooldownSec > 0}
+            >
+              {verifyCooldownSec > 0 ? `Verify in ${verifyCooldownSec}s` : 'Verify code'}
             </Button>
             <button
               type="button"
