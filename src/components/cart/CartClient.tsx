@@ -9,7 +9,6 @@ import {
   Plus,
   Trash2,
   ShoppingBag,
-  Tag,
   X,
   ArrowRight,
   Truck,
@@ -21,6 +20,8 @@ import { cartLineReactKey } from "@/lib/cartLineKey";
 import { couponApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CartItem, Coupon } from "@/types";
+import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
+import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 
@@ -429,26 +430,11 @@ export default function CartClient() {
 
                 {cart.discount > 0 ?
                   <div className='mt-3 space-y-3 rounded-xl border border-green-200 bg-green-50 p-3'>
-                    <div className='flex items-start gap-2 min-w-0'>
-                      <Tag
-                        className='h-4 w-4 text-green-700 shrink-0 mt-0.5'
-                        aria-hidden
-                      />
-                      <div className='min-w-0'>
-                        <p className='text-sm font-medium text-green-900 break-words'>
-                          <span className='font-semibold tracking-wide'>
-                            {appliedCouponCode || "Coupon"}
-                          </span>
-                          <span className='text-green-800'>
-                            {" "}
-                            · You save {formatPrice(cart.discount)}
-                          </span>
-                        </p>
-                        <p className='text-xs text-green-800/75 mt-1'>
-                          The discount is included in your total below.
-                        </p>
-                      </div>
-                    </div>
+                    <CouponAppliedBanner
+                      code={appliedCouponCode}
+                      savedAmount={cart.discount}
+                      eligibleCoupons={eligibleCoupons}
+                    />
                     <Button
                       type='button'
                       variant='outline'
@@ -532,26 +518,7 @@ export default function CartClient() {
                           )}
                           disabled={couponLoading || cart.discount > 0}
                         >
-                          <div className='flex items-center justify-between gap-2'>
-                            <span className='font-mono font-bold text-sm text-brand-700'>
-                              {c.code}
-                            </span>
-                            <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
-                              {c.eligibilityType === "first_order" ?
-                                "First Order"
-                              : c.eligibilityType === "returning" ?
-                                "Returning"
-                              : "All Users"}
-                            </span>
-                          </div>
-                          <p className='text-xs text-gray-500 mt-1'>
-                            {c.discountType === "percentage" ?
-                              `${c.discountValue}% off`
-                            : `${formatPrice(c.discountValue)} off`}
-                            {c.minOrderAmount ?
-                              ` · Min ${formatPrice(c.minOrderAmount)}`
-                            : ""}
-                          </p>
+                          <CouponOfferPreview coupon={c} />
                         </button>
                       ))}
                     </div>
@@ -673,31 +640,7 @@ export default function CartClient() {
                   )}
                   disabled={couponLoading || cart.discount > 0}
                 >
-                  <div className='flex items-center justify-between gap-2 min-w-0'>
-                    <span className='font-mono font-bold text-sm text-brand-700 truncate'>
-                      {c.code}
-                    </span>
-                    <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
-                      {c.eligibilityType === "first_order" ?
-                        "First Order"
-                      : c.eligibilityType === "returning" ?
-                        "Returning"
-                      : "All Users"}
-                    </span>
-                  </div>
-                  <p className='text-xs text-gray-500 mt-1'>
-                    {c.discountType === "percentage" ?
-                      `${c.discountValue}% off`
-                    : `${formatPrice(c.discountValue)} off`}
-                    {c.minOrderAmount ?
-                      ` · Min ${formatPrice(c.minOrderAmount)}`
-                    : ""}
-                  </p>
-                  {c.description && (
-                    <p className='text-xs text-gray-400 mt-1 line-clamp-2'>
-                      {c.description}
-                    </p>
-                  )}
+                  <CouponOfferPreview coupon={c} />
                 </button>
               ))}
             </div>

@@ -18,6 +18,8 @@ import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 import { cn, formatPrice } from "@/lib/utils";
 import type { Category, Product, StorefrontSettings } from "@/types";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
+import { getNextGiftingPageParam } from "@/lib/infiniteScrollPagination";
 import { Skeleton } from "@/components/ui/SkeletonLoader";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
 import { productNeedsCustomization } from "@/lib/productCustomization";
@@ -100,7 +102,6 @@ export default function GiftingPageClient({
   const [priceFilter, setPriceFilter] = useState<PriceFilterKey>("all");
   const [minRating, setMinRating] = useState<number>(0);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const handleSearchChange = (value: string) =>
     setSearch(value.slice(0, SEARCH_MAX_LEN));
 
@@ -129,9 +130,10 @@ export default function GiftingPageClient({
     useInfiniteQuery<GiftingProductsResponse>({
       queryKey: [
         "gifting-products",
+        "v2",
         activeOccasion,
         debouncedSearch,
-        sortBy, // changing sort changes backend fetch mode
+        sortBy,
       ],
       queryFn: ({ pageParam }) => {
         const { page, excludeIds } = (pageParam || { page: 1, excludeIds: "" }) as { page: number; excludeIds: string };
@@ -145,14 +147,8 @@ export default function GiftingPageClient({
           ),
         });
       },
-      getNextPageParam: (lastPage, allPages) => {
-        if (lastPage.pagination?.hasNextPage === false) return undefined;
-        if (!lastPage.pagination?.hasNextPage && lastPage.pagination?.totalPages === 1) return undefined;
-        
-        const page = (lastPage.pagination?.currentPage || 1) + 1;
-        const seenIds = allPages.flatMap(pg => pg.data?.products || []).map(p => p._id).join(",");
-        return { page, excludeIds: seenIds };
-      },
+      getNextPageParam: (lastPage, allPages) =>
+        getNextGiftingPageParam(lastPage, allPages, 12, sortBy === "relevance"),
       initialPageParam: { page: 1, excludeIds: "" },
       staleTime: 45_000,
       placeholderData: (previousData) => previousData,
@@ -247,19 +243,14 @@ export default function GiftingPageClient({
     return list;
   }, [rawProducts, sortBy, priceFilter, minRating]);
 
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const hit = entries[0]?.isIntersecting;
-        if (hit && hasNextPage && !isFetchingNextPage) fetchNextPage();
-      },
-      { rootMargin: "600px 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const { sentinelRef } = useInfiniteScrollTrigger({
+    hasNextPage: Boolean(hasNextPage),
+    isFetchingNextPage,
+    isPending: isLoading && rawProducts.length === 0,
+    fetchNextPage,
+    rootMargin: "400px 0px",
+    enabled: !isLoading || rawProducts.length > 0,
+  });
 
   useEffect(() => {
     if (giftingHeroBanners.length <= 1) return;
@@ -755,14 +746,19 @@ export default function GiftingPageClient({
               {products.map((product) => (
                 <GiftProductCard key={product._id} product={product} />
               ))}
+              {isFetchingNextPage ?
+                Array.from({ length: 6 }).map((_, i) => (
+                  <GiftProductCardSkeleton key={`more-${products.length}-${i}`} />
+                ))
+              : null}
             </div>
-            <div ref={sentinelRef} className='h-10' />
-            {isFetchingNextPage && (
-              <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 pb-8'>
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <GiftProductCardSkeleton key={i} />
-                ))}
-              </div>
+            {(hasNextPage || isFetchingNextPage) && (
+              <div ref={sentinelRef} className='h-px w-full shrink-0' aria-hidden />
+            )}
+            {!hasNextPage && !isFetchingNextPage && products.length > 0 && (
+              <p className='mt-8 pb-8 text-center text-sm text-gray-600'>
+                You&apos;ve reached the end.
+              </p>
             )}
           </>
         }

@@ -12,10 +12,10 @@ const PurchaseInvoicesTab  = lazy(() => import('./components/PurchaseInvoicesTab
 const GstSummaryTab        = lazy(() => import('./components/GstSummaryTab'));
 
 const TABS = [
-  { id: 'stock',    label: 'Stock',             icon: Warehouse,  desc: 'Product & variant stock levels' },
-  { id: 'ledger',   label: 'Movement Log',       icon: History,    desc: 'Every stock change tracked' },
-  { id: 'purchase', label: 'Purchase Invoices',  icon: FileText,   desc: 'Kharcha / procurement bills' },
-  { id: 'gst',      label: 'GST Summary',        icon: Receipt,    desc: 'GSTR-2 purchase summary' },
+  { id: 'stock',    label: 'Stock & Margin',     icon: Warehouse,  desc: 'Stock, units sold, estimated revenue & gross margin per SKU' },
+  { id: 'ledger',   label: 'Movement Log',       icon: History,    desc: 'Audit trail — sales, purchases, returns & adjustments' },
+  { id: 'purchase', label: 'Purchase Bills',     icon: FileText,   desc: 'Supplier tax invoices (CGST/SGST/IGST) — view, edit & void' },
+  { id: 'gst',      label: 'GST / GSTR-2',       icon: Receipt,    desc: 'Input tax credit summary by supplier & month (purchase register)' },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -41,7 +41,7 @@ export default function InventoryPage() {
       <AdminPageHeader
         title="Inventory"
         badge="Live"
-        description="Stock levels, movement history, purchase kharcha, and GST purchase summary — all in one place."
+        description="Stock, margin & GST purchase register. Operating costs (shipping, ads) are logged separately under Operating costs."
         actions={
           <Link
             href="/admin/products"

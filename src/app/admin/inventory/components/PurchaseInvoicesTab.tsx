@@ -3,49 +3,24 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   Plus, Trash2, RefreshCw, FileText, CheckCircle, Clock, AlertCircle, X as XIcon,
+  Eye, Pencil, Search, Printer, IndianRupee, Receipt,
 } from 'lucide-react';
 import { inventoryApi } from '@/lib/api';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
-import { Search } from 'lucide-react';
 import Image from 'next/image';
-
-interface LineItem {
-  product?: string;
-  productName: string;
-  sku: string;
-  variantLabel?: string;
-  quantity: number;
-  unitCost: number;
-  hsn?: string;
-  gstRate: number;
-  taxableAmount: number;
-  cgst: number;
-  sgst: number;
-  igst: number;
-  lineTotal: number;
-}
-
-interface PurchaseInvoice {
-  _id: string;
-  invoiceNumber: string;
-  supplierName: string;
-  supplierGstin?: string;
-  supplyType: 'intra' | 'inter';
-  invoiceDate: string;
-  lineItems: LineItem[];
-  totalTaxable: number;
-  totalCgst: number;
-  totalSgst: number;
-  totalIgst: number;
-  totalTax: number;
-  grandTotal: number;
-  paymentStatus: 'unpaid' | 'paid' | 'partial';
-  paidAmount: number;
-  notes?: string;
-  createdAt: string;
-}
+import PurchaseInvoiceDocument from './PurchaseInvoiceDocument';
+import {
+  EMPTY_LINE,
+  GST_RATES,
+  calcLine,
+  generateInvoiceNumber,
+  supplyTypeLabel,
+  type PurchaseInvoice,
+  type PurchaseInvoiceSummary,
+  type PurchaseLineItem,
+} from './purchaseInvoiceUtils';
 
 interface SearchResult {
   _id: string;
@@ -55,19 +30,13 @@ interface SearchResult {
   images: { url: string }[];
 }
 
-function generateInvoiceNumber() {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const rand = Math.random().toString(36).substring(2, 5).toUpperCase();
-  return `PUR-${date}-${rand}`;
-}
-
-function LineItemForm({ 
-  line, 
-  onUpdate, 
-  onRemove 
-}: { 
-  line: LineItem; 
-  onUpdate: (field: string, value: any) => void;
+function LineItemForm({
+  line,
+  onUpdate,
+  onRemove,
+}: {
+  line: PurchaseLineItem;
+  onUpdate: (field: string, value: string | number | undefined) => void;
   onRemove?: () => void;
 }) {
   const [showSearch, setShowSearch] = useState(false);
@@ -82,12 +51,12 @@ function LineItemForm({
     setSearching(true);
     try {
       const res = await inventoryApi.getOverview({ search: val, limit: 10 });
-      setResults((res.data as any).products ?? []);
+      setResults((res.data as { products?: SearchResult[] }).products ?? []);
     } catch { /* ignore */ }
     finally { setSearching(false); }
   };
 
-  const select = (prod: SearchResult, variant: any) => {
+  const select = (prod: SearchResult, variant: SearchResult['variants'][0]) => {
     onUpdate('product', prod._id);
     onUpdate('productName', prod.name);
     onUpdate('sku', variant.sku);
@@ -99,26 +68,33 @@ function LineItemForm({
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl p-4 space-y-4 bg-gray-50/50 shadow-sm relative group">
+    <div className="border border-gray-200 rounded-xl p-4 space-y-4 bg-gray-50/50 shadow-sm relative">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="relative">
-          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Product Search / Name</label>
+          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Product</label>
           <div className="relative">
-            <input 
-              placeholder="Start typing to search or enter manually..." 
+            <input
+              placeholder="Search catalog or type name…"
               value={line.productName}
-              onChange={e => { onUpdate('productName', e.target.value); if (!showSearch) setShowSearch(true); search(e.target.value); }}
+              onChange={e => {
+                onUpdate('productName', e.target.value);
+                if (!showSearch) setShowSearch(true);
+                search(e.target.value);
+              }}
               onFocus={() => setShowSearch(true)}
-              className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white shadow-sm" 
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-            
             {showSearch && (query.length >= 2 || results.length > 0) && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-                {searching && <div className="p-3 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                  <RefreshCw className="h-3 w-3 animate-spin" /> Searching Catalog...
-                </div>}
-                {!searching && results.length === 0 && <div className="p-3 text-center text-xs text-gray-500">No matching products found. Keep typing for manual entry.</div>}
+              <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                {searching && (
+                  <div className="p-3 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                    <RefreshCw className="h-3 w-3 animate-spin" /> Searching…
+                  </div>
+                )}
+                {!searching && results.length === 0 && (
+                  <div className="p-3 text-center text-xs text-gray-500">No match — manual entry OK</div>
+                )}
                 {results.map(p => (
                   <div key={p._id} className="border-b border-gray-50 last:border-0">
                     <div className="px-3 py-2 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase flex items-center gap-2">
@@ -127,21 +103,16 @@ function LineItemForm({
                       </div>
                       {p.name}
                     </div>
-                    <div className="p-1 grid grid-cols-1 gap-0.5">
-                      {p.variants.map(v => (
-                        <button
-                          key={v.sku}
-                          onClick={() => select(p, v)}
-                          className="text-left px-3 py-1.5 hover:bg-brand-50 rounded-md text-xs flex items-center justify-between group/v"
-                        >
-                          <span className="font-medium text-gray-700">
-                            {[v.size, v.color].filter(Boolean).join(' / ') || 'Default Variant'}
-                            <span className="text-[10px] text-gray-400 ml-2 font-normal">#{v.sku}</span>
-                          </span>
-                          <span className="text-[10px] font-bold text-brand-600 opacity-0 group-hover/v:opacity-100 transition-opacity">SELECT →</span>
-                        </button>
-                      ))}
-                    </div>
+                    {p.variants.map(v => (
+                      <button
+                        key={v.sku}
+                        type="button"
+                        onClick={() => select(p, v)}
+                        className="w-full text-left px-3 py-1.5 hover:bg-brand-50 text-xs"
+                      >
+                        {[v.size, v.color].filter(Boolean).join(' / ') || 'Default'} · #{v.sku}
+                      </button>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -149,117 +120,77 @@ function LineItemForm({
           </div>
           {line.product && (
             <p className="text-[9px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
-              <CheckCircle className="h-2.5 w-2.5" /> LINKED TO CATALOG
-              <button onClick={() => { onUpdate('product', undefined); }} className="ml-1 text-gray-400 hover:text-red-500">Remove Link</button>
+              <CheckCircle className="h-2.5 w-2.5" /> Linked to catalog
+              <button type="button" onClick={() => onUpdate('product', undefined)} className="text-gray-400 hover:text-red-500 ml-1">
+                Unlink
+              </button>
             </p>
           )}
         </div>
-        
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">SKU / Variant</label>
-            {line.product && selectedProd ? (
-              <select 
-                value={line.sku} 
-                onChange={e => {
-                  if (e.target.value === 'NEW') {
-                    onUpdate('sku', '');
-                    onUpdate('variantLabel', '');
-                  } else {
-                    const v = selectedProd.variants.find(v => v.sku === e.target.value);
-                    if (v) {
-                      onUpdate('sku', v.sku);
-                      onUpdate('variantLabel', [v.size, v.color].filter(Boolean).join(' / ') || 'Default');
-                    }
-                  }
-                }}
-                className="w-full h-9 px-2 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white font-medium"
-              >
-                {selectedProd.variants.map(v => (
-                  <option key={v.sku} value={v.sku}>
-                    {v.sku} ({[v.size, v.color].filter(Boolean).join(' / ') || 'Default'})
-                  </option>
-                ))}
-                <option value="NEW">+ Add New Variant SKU</option>
-              </select>
-            ) : (
-              <input placeholder="SKU *" value={line.sku} onChange={e => onUpdate('sku', e.target.value)}
-                className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white shadow-sm" />
-            )}
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">SKU</label>
+            <input
+              placeholder="SKU *"
+              value={line.sku}
+              onChange={e => onUpdate('sku', e.target.value)}
+              className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs bg-white"
+            />
           </div>
           <div>
-            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Label / HSN</label>
-            <div className="grid grid-cols-2 gap-1">
-              <input placeholder="Label" value={line.variantLabel || ''} onChange={e => onUpdate('variantLabel', e.target.value)}
-                className="w-full h-9 px-2 rounded-lg border border-gray-200 text-[10px] focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white shadow-sm" />
-              <input placeholder="HSN" value={line.hsn || ''} onChange={e => onUpdate('hsn', e.target.value)}
-                className="w-full h-9 px-2 rounded-lg border border-gray-200 text-[10px] focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white shadow-sm" />
-            </div>
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">HSN</label>
+            <input
+              placeholder="HSN/SAC"
+              value={line.hsn || ''}
+              onChange={e => onUpdate('hsn', e.target.value)}
+              className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs bg-white"
+            />
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 items-center pt-2 border-t border-gray-100">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 items-end pt-2 border-t border-gray-100">
         <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Quantity</label>
+          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Qty</label>
           <input type="number" min={1} value={line.quantity}
             onChange={e => onUpdate('quantity', Number(e.target.value))}
-            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs font-bold text-navy-900 focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white" />
+            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs font-bold bg-white" />
         </div>
         <div>
           <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Unit Cost ₹</label>
           <input type="number" min={0} step="0.01" value={line.unitCost}
             onChange={e => onUpdate('unitCost', Number(e.target.value))}
-            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs font-bold text-navy-900 focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white" />
+            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs font-bold bg-white" />
         </div>
         <div>
           <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">GST %</label>
           <select value={line.gstRate} onChange={e => onUpdate('gstRate', Number(e.target.value))}
-            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white">
-            {[0, 3, 5, 12, 18, 28].map(r => <option key={r} value={r}>{r}%</option>)}
+            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs bg-white">
+            {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
           </select>
         </div>
         <div className="text-xs">
-          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Taxable</p>
-          <p className="font-bold text-gray-900">₹{line.taxableAmount.toFixed(2)}</p>
+          <p className="text-[9px] text-gray-400 uppercase">Taxable</p>
+          <p className="font-bold">₹{line.taxableAmount.toFixed(2)}</p>
         </div>
         <div className="text-xs">
-          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Total GST</p>
+          <p className="text-[9px] text-gray-400 uppercase">GST</p>
           <p className="font-bold text-emerald-600">₹{(line.cgst + line.sgst + line.igst).toFixed(2)}</p>
         </div>
-        <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-brand-100 shadow-inner">
+        <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-brand-100">
           <div className="text-xs">
-            <p className="text-[9px] font-bold text-brand-400 uppercase mb-0.5">Line Total</p>
+            <p className="text-[9px] text-brand-400 uppercase">Total</p>
             <p className="font-extrabold text-brand-700">₹{line.lineTotal.toFixed(2)}</p>
           </div>
           {onRemove && (
-            <button onClick={onRemove}
-              className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg text-gray-300 transition-colors">
+            <button type="button" onClick={onRemove} className="p-1.5 hover:bg-red-50 text-gray-300 hover:text-red-600 rounded-lg">
               <Trash2 className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
-      
-      {/* Click outside to close search */}
-      {showSearch && <div className="fixed inset-0 z-0" onClick={() => setShowSearch(false)} />}
+      {showSearch && <div className="fixed inset-0 z-10" onClick={() => setShowSearch(false)} />}
     </div>
   );
-}
-
-const EMPTY_LINE = (): LineItem => ({
-  productName: '', sku: '', variantLabel: '', quantity: 1,
-  unitCost: 0, hsn: '', gstRate: 18,
-  taxableAmount: 0, cgst: 0, sgst: 0, igst: 0, lineTotal: 0,
-});
-
-function calcLine(q: number, cost: number, rate: number, supplyType: 'intra' | 'inter') {
-  const taxable = Math.round(q * cost * 100) / 100;
-  const gst = Math.round(taxable * rate / 100 * 100) / 100;
-  const cgst = supplyType === 'intra' ? Math.round(gst / 2 * 100) / 100 : 0;
-  const sgst = supplyType === 'intra' ? Math.round(gst / 2 * 100) / 100 : 0;
-  const igst = supplyType === 'inter' ? gst : 0;
-  return { taxableAmount: taxable, cgst, sgst, igst, lineTotal: taxable + gst };
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -288,37 +219,45 @@ function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
     notes: '',
     updateCostPrice: true,
   });
-  const [lines, setLines] = useState<LineItem[]>([EMPTY_LINE()]);
+  const [lines, setLines] = useState<PurchaseLineItem[]>([EMPTY_LINE()]);
   const [saving, setSaving] = useState(false);
 
-  const updateLine = (idx: number, field: keyof LineItem, value: string | number) => {
+  const updateLine = (idx: number, field: keyof PurchaseLineItem, value: string | number | undefined) => {
     setLines(prev => {
       const next = [...prev];
-      const l = { ...next[idx]! } as any;
-      l[field] = value;
+      const base = { ...next[idx]! };
+      const l = { ...base, [field]: value } as PurchaseLineItem;
       const calc = calcLine(Number(l.quantity), Number(l.unitCost), Number(l.gstRate), form.supplyType);
       next[idx] = { ...l, ...calc };
       return next;
     });
   };
 
-  const totals = lines.reduce((a, l) => ({
-    taxable: a.taxable + l.taxableAmount,
-    cgst: a.cgst + l.cgst,
-    sgst: a.sgst + l.sgst,
-    igst: a.igst + l.igst,
-    grand: a.grand + l.lineTotal,
-  }), { taxable: 0, cgst: 0, sgst: 0, igst: 0, grand: 0 });
+  const totals = lines.reduce(
+    (a, l) => ({
+      taxable: a.taxable + l.taxableAmount,
+      cgst: a.cgst + l.cgst,
+      sgst: a.sgst + l.sgst,
+      igst: a.igst + l.igst,
+      grand: a.grand + l.lineTotal,
+    }),
+    { taxable: 0, cgst: 0, sgst: 0, igst: 0, grand: 0 },
+  );
 
   const handle = async () => {
     if (!form.invoiceNumber || !form.supplierName || !form.invoiceDate) {
-      toast.error('Fill in required fields');
+      toast.error('Invoice number, supplier & date required');
+      return;
+    }
+    if (lines.some(l => !l.sku || !l.productName || l.quantity < 1)) {
+      toast.error('Each line needs product name, SKU & quantity');
       return;
     }
     setSaving(true);
     try {
       await inventoryApi.createPurchaseInvoice({
         ...form,
+        supplierGstin: form.supplierGstin || undefined,
         lineItems: lines.map(l => ({
           product: l.product,
           productName: l.productName,
@@ -330,183 +269,460 @@ function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
           gstRate: l.gstRate,
         })),
       });
-      toast.success('Purchase invoice created & stock updated');
+      toast.success('Purchase invoice saved — stock updated for linked items');
       onSaved();
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to create invoice');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create invoice');
     } finally {
       setSaving(false);
     }
   };
 
   return (
+    <ModalShell title="New Purchase Invoice" onClose={onClose}>
+      <InvoiceHeaderFields form={form} setForm={setForm} />
+      <LineItemsEditor lines={lines} setLines={setLines} supplyType={form.supplyType} updateLine={updateLine} />
+      <TotalsBar totals={totals} supplyType={form.supplyType} />
+      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+        <input type="checkbox" checked={form.updateCostPrice}
+          onChange={e => setForm(p => ({ ...p, updateCostPrice: e.target.checked }))}
+          className="rounded border-gray-300" />
+        Auto-update variant cost price from this bill
+      </label>
+      <ModalFooter onClose={onClose} onSave={handle} saving={saving} saveLabel="Create & Update Stock" />
+    </ModalShell>
+  );
+}
+
+function EditModal({
+  invoice,
+  onClose,
+  onSaved,
+}: {
+  invoice: PurchaseInvoice;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    invoiceNumber: invoice.invoiceNumber,
+    supplierName: invoice.supplierName,
+    supplierGstin: invoice.supplierGstin ?? '',
+    supplyType: invoice.supplyType,
+    invoiceDate: invoice.invoiceDate.slice(0, 10),
+    paymentStatus: invoice.paymentStatus,
+    paidAmount: invoice.paidAmount ?? 0,
+    notes: invoice.notes ?? '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handle = async () => {
+    setSaving(true);
+    try {
+      await inventoryApi.updatePurchaseInvoice(invoice._id, {
+        ...form,
+        supplierGstin: form.supplierGstin || '',
+        paidAmount: form.paymentStatus === 'paid' ? invoice.grandTotal : form.paidAmount,
+      });
+      toast.success('Invoice updated');
+      onSaved();
+      onClose();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Update failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell title={`Edit · ${invoice.invoiceNumber}`} onClose={onClose}>
+      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+        Line items & GST amounts cannot be changed after creation (stock already posted). Edit supplier, payment & notes only.
+      </p>
+      <InvoiceHeaderFields form={form} setForm={setForm} />
+      <ModalFooter onClose={onClose} onSave={handle} saving={saving} saveLabel="Save Changes" />
+    </ModalShell>
+  );
+}
+
+function ViewModal({
+  invoiceId,
+  onClose,
+  onEdit,
+}: {
+  invoiceId: string;
+  onClose: () => void;
+  onEdit: (inv: PurchaseInvoice) => void;
+}) {
+  const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await inventoryApi.getPurchaseInvoice(invoiceId);
+        setInvoice((res.data as { invoice: PurchaseInvoice }).invoice);
+      } catch {
+        toast.error('Could not load invoice');
+        onClose();
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [invoiceId, onClose]);
+
+  const print = () => {
+    const el = document.getElementById('purchase-invoice-print');
+    if (!el) return;
+    const w = window.open('', '_blank');
+    if (!w) { toast.error('Allow pop-ups to print'); return; }
+    w.document.write(`<html><head><title>${invoice?.invoiceNumber ?? 'Invoice'}</title>
+      <style>body{font-family:system-ui,sans-serif;margin:24px} table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #e5e7eb;padding:6px 8px;font-size:12px} th{background:#f9fafb}</style></head><body>`);
+    w.document.write(el.innerHTML);
+    w.document.write('</body></html>');
+    w.document.close();
+    w.print();
+  };
+
+  return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="font-bold text-gray-900">New Purchase Invoice</h3>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><XIcon className="h-4 w-4" /></button>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl my-6">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl z-10">
+          <h3 className="font-bold text-gray-900">Purchase Invoice</h3>
+          <div className="flex items-center gap-2">
+            {invoice && (
+              <>
+                <Button variant="outline" size="sm" className="rounded-lg" onClick={print}>
+                  <Printer className="h-4 w-4 mr-1" /> Print
+                </Button>
+                <Button variant="outline" size="sm" className="rounded-lg" onClick={() => { onEdit(invoice); onClose(); }}>
+                  <Pencil className="h-4 w-4 mr-1" /> Edit
+                </Button>
+              </>
+            )}
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><XIcon className="h-4 w-4" /></button>
+          </div>
         </div>
-
-        <div className="p-6 space-y-5">
-          {/* Supplier info */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { label: 'Invoice Number *', key: 'invoiceNumber', placeholder: 'INV-001' },
-              { label: 'Supplier Name *', key: 'supplierName', placeholder: 'Supplier Co.' },
-              { label: 'Supplier GSTIN', key: 'supplierGstin', placeholder: '22AAAAA0000A1Z5' },
-              { label: 'Invoice Date *', key: 'invoiceDate', placeholder: '', type: 'date' },
-            ].map(f => (
-              <div key={f.key} className="relative">
-                <label className="text-xs font-semibold text-gray-600 mb-1 block">{f.label}</label>
-                <div className="relative">
-                  <input
-                    type={f.type || 'text'}
-                    placeholder={f.placeholder}
-                    value={(form as any)[f.key]}
-                    onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                    className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-                  {f.key === 'invoiceNumber' && (
-                    <button 
-                      type="button" 
-                      onClick={() => setForm(p => ({ ...p, invoiceNumber: generateInvoiceNumber() }))}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-brand-600 transition-colors"
-                      title="Regenerate Invoice Number"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-            <div>
-              <label className="text-xs font-semibold text-gray-600 mb-1 block">Supply Type</label>
-              <select
-                value={form.supplyType}
-                onChange={e => setForm(p => ({ ...p, supplyType: e.target.value as 'intra' | 'inter' }))}
-                className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-              >
-                <option value="intra">Intra-State (CGST + SGST)</option>
-                <option value="inter">Inter-State (IGST)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-600 mb-1 block">Payment Status</label>
-              <select
-                value={form.paymentStatus}
-                onChange={e => setForm(p => ({ ...p, paymentStatus: e.target.value as any }))}
-                className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-              >
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-                <option value="partial">Partial</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Line items */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-semibold text-gray-700">Line Items</h4>
-                <p className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded uppercase">Stock & Cost Auto-Syncs for Catalog Items</p>
-              </div>
-              <button
-                onClick={() => setLines(p => [...p, EMPTY_LINE()])}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Line
-              </button>
-            </div>
-            <div className="space-y-3">
-              {lines.map((l, idx) => (
-                <LineItemForm
-                  key={idx}
-                  line={l}
-                  onUpdate={(f, v) => updateLine(idx, f as any, v)}
-                  onRemove={lines.length > 1 ? () => setLines(p => p.filter((_, i) => i !== idx)) : undefined}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Totals summary */}
-          <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
-            {[
-              { label: 'Taxable', value: totals.taxable },
-              { label: 'CGST', value: totals.cgst },
-              { label: 'SGST', value: totals.sgst },
-              { label: 'IGST', value: totals.igst },
-              { label: 'Grand Total', value: totals.grand, bold: true },
-            ].map(t => (
-              <div key={t.label}>
-                <p className="text-xs text-gray-500">{t.label}</p>
-                <p className={`font-${t.bold ? 'bold text-gray-900' : 'semibold text-gray-700'}`}>₹{t.value.toFixed(2)}</p>
-              </div>
-            ))}
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-            <input type="checkbox" checked={form.updateCostPrice}
-              onChange={e => setForm(p => ({ ...p, updateCostPrice: e.target.checked }))}
-              className="rounded border-gray-300" />
-            Auto-update cost price on product variants
-          </label>
-        </div>
-
-        <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
-          <Button variant="outline" className="flex-1 rounded-xl" onClick={onClose}>Cancel</Button>
-          <Button variant="brand" className="flex-1 rounded-xl" onClick={handle} disabled={saving}>
-            {saving ? 'Creating…' : 'Create Invoice & Update Stock'}
-          </Button>
+        <div className="p-6">
+          {loading ? (
+            <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
+          ) : invoice ? (
+            <PurchaseInvoiceDocument invoice={invoice} />
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
+function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h3 className="font-bold text-gray-900">{title}</h3>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><XIcon className="h-4 w-4" /></button>
+        </div>
+        <div className="p-6 space-y-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceHeaderFields<T extends Record<string, unknown>>({
+  form,
+  setForm,
+}: {
+  form: T;
+  setForm: React.Dispatch<React.SetStateAction<T>>;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {[
+        { label: 'Invoice Number *', key: 'invoiceNumber', placeholder: 'PUR-20250522-ABC' },
+        { label: 'Supplier Name *', key: 'supplierName', placeholder: 'Supplier / Vendor' },
+        { label: 'Supplier GSTIN', key: 'supplierGstin', placeholder: '22AAAAA0000A1Z5' },
+        { label: 'Invoice Date *', key: 'invoiceDate', type: 'date' },
+      ].map(f => (
+        <div key={f.key}>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">{f.label}</label>
+          <div className="relative">
+            <input
+              type={f.type || 'text'}
+              placeholder={f.placeholder}
+              value={String((form as Record<string, unknown>)[f.key] ?? '')}
+              onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+              className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+            />
+            {f.key === 'invoiceNumber' && (
+              <button
+                type="button"
+                onClick={() => setForm(p => ({ ...p, invoiceNumber: generateInvoiceNumber() } as T))}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-brand-600"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      <div>
+        <label className="text-xs font-semibold text-gray-600 mb-1 block">Supply Type</label>
+        <select
+          value={String((form as Record<string, unknown>).supplyType)}
+          onChange={e => setForm(p => ({ ...p, supplyType: e.target.value } as T))}
+          className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm"
+        >
+          <option value="intra">Intra-State (CGST + SGST)</option>
+          <option value="inter">Inter-State (IGST)</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-gray-600 mb-1 block">Payment Status</label>
+        <select
+          value={String((form as Record<string, unknown>).paymentStatus)}
+          onChange={e => setForm(p => ({ ...p, paymentStatus: e.target.value } as T))}
+          className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm"
+        >
+          <option value="unpaid">Unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="partial">Partial</option>
+        </select>
+      </div>
+      {(form as Record<string, unknown>).paymentStatus === 'partial' && (
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Paid Amount ₹</label>
+          <input
+            type="number"
+            min={0}
+            value={Number((form as Record<string, unknown>).paidAmount ?? 0)}
+            onChange={e => setForm(p => ({ ...p, paidAmount: Number(e.target.value) } as T))}
+            className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm"
+          />
+        </div>
+      )}
+      <div className="sm:col-span-2">
+        <label className="text-xs font-semibold text-gray-600 mb-1 block">Notes</label>
+        <input
+          value={String((form as Record<string, unknown>).notes ?? '')}
+          onChange={e => setForm(p => ({ ...p, notes: e.target.value } as T))}
+          placeholder="PO reference, delivery challan no., etc."
+          className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm"
+        />
+      </div>
+    </div>
+  );
+}
+
+function LineItemsEditor({
+  lines,
+  setLines,
+  supplyType,
+  updateLine,
+}: {
+  lines: PurchaseLineItem[];
+  setLines: React.Dispatch<React.SetStateAction<PurchaseLineItem[]>>;
+  supplyType: 'intra' | 'inter';
+  updateLine: (idx: number, field: keyof PurchaseLineItem, value: string | number | undefined) => void;
+}) {
+  useEffect(() => {
+    setLines(prev =>
+      prev.map(l => ({ ...l, ...calcLine(l.quantity, l.unitCost, l.gstRate, supplyType) })),
+    );
+  }, [supplyType, setLines]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-semibold text-gray-700">Line Items</h4>
+        <button
+          type="button"
+          onClick={() => setLines(p => [...p, EMPTY_LINE()])}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Line
+        </button>
+      </div>
+      <div className="space-y-3">
+        {lines.map((l, idx) => (
+          <LineItemForm
+            key={idx}
+            line={l}
+            onUpdate={(f, v) => updateLine(idx, f as keyof PurchaseLineItem, v)}
+            onRemove={lines.length > 1 ? () => setLines(p => p.filter((_, i) => i !== idx)) : undefined}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TotalsBar({
+  totals,
+  supplyType,
+}: {
+  totals: { taxable: number; cgst: number; sgst: number; igst: number; grand: number };
+  supplyType: 'intra' | 'inter';
+}) {
+  const rows =
+    supplyType === 'intra'
+      ? [
+          { label: 'Taxable', value: totals.taxable },
+          { label: 'CGST', value: totals.cgst },
+          { label: 'SGST', value: totals.sgst },
+          { label: 'Grand Total', value: totals.grand, bold: true },
+        ]
+      : [
+          { label: 'Taxable', value: totals.taxable },
+          { label: 'IGST', value: totals.igst },
+          { label: 'Grand Total', value: totals.grand, bold: true },
+        ];
+
+  return (
+    <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
+      {rows.map(t => (
+        <div key={t.label}>
+          <p className="text-xs text-gray-500">{t.label}</p>
+          <p className={t.bold ? 'font-bold text-gray-900 text-base' : 'font-semibold text-gray-700'}>
+            ₹{t.value.toFixed(2)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ModalFooter({
+  onClose,
+  onSave,
+  saving,
+  saveLabel,
+}: {
+  onClose: () => void;
+  onSave: () => void;
+  saving: boolean;
+  saveLabel: string;
+}) {
+  return (
+    <div className="flex gap-3 pt-2 border-t border-gray-100">
+      <Button variant="outline" className="flex-1 rounded-xl" onClick={onClose}>Cancel</Button>
+      <Button variant="brand" className="flex-1 rounded-xl" onClick={onSave} disabled={saving}>
+        {saving ? 'Saving…' : saveLabel}
+      </Button>
+    </div>
+  );
+}
+
 export default function PurchaseInvoicesTab() {
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
+  const [summary, setSummary] = useState<PurchaseInvoiceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
+  const [editInvoice, setEditInvoice] = useState<PurchaseInvoice | null>(null);
 
   const load = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const res = await inventoryApi.listPurchaseInvoices({ page: p, limit: 20 });
-      setInvoices((res.data as any).invoices ?? []);
-      setTotalPages((res as any).pagination?.totalPages ?? 1);
-      setTotal((res as any).pagination?.total ?? 0);
+      const params: Record<string, string | number> = { page: p, limit: 20 };
+      if (search.trim()) params.search = search.trim();
+      if (paymentFilter) params.paymentStatus = paymentFilter;
+      if (from) params.from = from;
+      if (to) params.to = to;
+      const res = await inventoryApi.listPurchaseInvoices(params);
+      const data = res.data as { invoices?: PurchaseInvoice[]; summary?: PurchaseInvoiceSummary };
+      setInvoices(data.invoices ?? []);
+      setSummary(data.summary ?? null);
+      const pag = res.pagination as { totalPages?: number; total?: number } | undefined;
+      setTotalPages(pag?.totalPages ?? 1);
+      setTotal(pag?.total ?? 0);
       setPage(p);
-    } catch { toast.error('Failed to load invoices'); }
-    finally { setLoading(false); }
-  }, []);
+    } catch {
+      toast.error('Failed to load invoices');
+    } finally {
+      setLoading(false);
+    }
+  }, [search, paymentFilter, from, to]);
 
   useEffect(() => { load(1); }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this invoice?')) return;
+  const handleVoid = async (inv: PurchaseInvoice) => {
+    if (!confirm(`Void invoice ${inv.invoiceNumber}? This cannot be undone. Stock is NOT reversed automatically.`)) return;
     try {
-      await inventoryApi.deletePurchaseInvoice(id);
-      toast.success('Deleted');
+      await inventoryApi.deletePurchaseInvoice(inv._id);
+      toast.success('Invoice voided');
       load(page);
-    } catch { toast.error('Failed to delete'); }
+    } catch {
+      toast.error('Failed to void invoice');
+    }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{total} purchase invoice{total !== 1 ? 's' : ''}</p>
-        <div className="flex gap-2">
-          <button onClick={() => load(page)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
+    <div className="space-y-5">
+      {summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Bills', value: String(summary.invoiceCount), icon: FileText, color: 'text-gray-900' },
+            { label: 'Purchase Value', value: formatPrice(summary.grandTotal), icon: IndianRupee, color: 'text-emerald-700' },
+            { label: 'Input GST (ITC)', value: formatPrice(summary.totalTax), icon: Receipt, color: 'text-blue-700' },
+            { label: 'Outstanding Payable', value: formatPrice(summary.outstandingPayable), icon: AlertCircle, color: 'text-red-600' },
+          ].map(c => (
+            <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-gray-400 mb-1">
+                <c.icon className="h-3.5 w-3.5" />
+                <p className="text-[10px] uppercase tracking-wide font-semibold">{c.label}</p>
+              </div>
+              <p className={`text-lg font-bold ${c.color}`}>{c.value}</p>
+              {(c.label === 'Outstanding Payable' && (summary.unpaidCount + summary.partialCount) > 0) && (
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  {summary.unpaidCount} unpaid · {summary.partialCount} partial
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <div className="flex flex-col lg:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && load(1)}
+              placeholder="Search supplier, invoice no., GSTIN…"
+              className="w-full h-10 pl-9 pr-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+            />
+          </div>
+          <select
+            value={paymentFilter}
+            onChange={e => setPaymentFilter(e.target.value)}
+            className="h-10 px-3 rounded-xl border border-gray-200 text-sm min-w-[130px]"
+          >
+            <option value="">All payments</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="partial">Partial</option>
+            <option value="paid">Paid</option>
+          </select>
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+            className="h-10 px-3 rounded-xl border border-gray-200 text-sm" title="From date" />
+          <input type="date" value={to} onChange={e => setTo(e.target.value)}
+            className="h-10 px-3 rounded-xl border border-gray-200 text-sm" title="To date" />
+          <Button variant="brand" size="sm" className="rounded-xl h-10" onClick={() => load(1)}>Apply</Button>
+          <button onClick={() => load(page)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 h-10">
             <RefreshCw className={`h-4 w-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <Button variant="brand" size="sm" className="rounded-xl" onClick={() => setShowCreate(true)}>
+          <Button variant="brand" size="sm" className="rounded-xl h-10 ml-auto" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4 mr-1" /> New Invoice
           </Button>
         </div>
@@ -524,87 +740,77 @@ export default function PurchaseInvoicesTab() {
             <FileText className="h-8 w-8 text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-400">No purchase invoices yet</p>
             <button onClick={() => setShowCreate(true)} className="mt-3 text-sm font-semibold text-brand-600 hover:underline">
-              Create your first invoice
+              Record your first supplier bill
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {invoices.map(inv => (
-              <div key={inv._id}>
-                <div
-                  className="px-4 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => setExpanded(expanded === inv._id ? null : inv._id)}
-                >
-                  <div className="flex items-start gap-3 justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-gray-900 text-sm">{inv.supplierName}</p>
-                        <span className="text-xs text-gray-400">#{inv.invoiceNumber}</span>
-                        <StatusBadge status={inv.paymentStatus} />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[720px]">
+              <thead>
+                <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                  <th className="text-left px-4 py-3">Supplier / Invoice</th>
+                  <th className="text-left px-4 py-3">Date</th>
+                  <th className="text-left px-4 py-3">GST</th>
+                  <th className="text-right px-4 py-3">Taxable</th>
+                  <th className="text-right px-4 py-3">Total</th>
+                  <th className="text-left px-4 py-3">Payment</th>
+                  <th className="text-right px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {invoices.map(inv => (
+                  <tr key={inv._id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-gray-900">{inv.supplierName}</p>
+                      <p className="text-xs text-gray-400 font-mono">#{inv.invoiceNumber}</p>
+                      {inv.supplierGstin && <p className="text-[10px] text-gray-400 font-mono mt-0.5">{inv.supplierGstin}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{formatDate(inv.invoiceDate)}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">
+                      {supplyTypeLabel(inv.supplyType).split('(')[0]?.trim()}
+                      <br />
+                      <span className="text-gray-400">{inv.lineItems.length} items</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700">{formatPrice(inv.totalTaxable)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-gray-900">{formatPrice(inv.grandTotal)}</td>
+                    <td className="px-4 py-3"><StatusBadge status={inv.paymentStatus} /></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setViewId(inv._id)}
+                          className="p-2 rounded-lg text-gray-500 hover:bg-brand-50 hover:text-brand-700"
+                          title="View invoice"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditInvoice(inv)}
+                          className="p-2 rounded-lg text-gray-500 hover:bg-amber-50 hover:text-amber-700"
+                          title="Edit payment & supplier"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleVoid(inv)}
+                          className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600"
+                          title="Void invoice"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                      <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        <span className="text-xs text-gray-500">{formatDate(inv.invoiceDate)}</span>
-                        {inv.supplierGstin && <span className="text-xs text-gray-400 font-mono">{inv.supplierGstin}</span>}
-                        <span className="text-xs text-gray-500">{inv.lineItems.length} item{inv.lineItems.length !== 1 ? 's' : ''}</span>
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-gray-900">{formatPrice(inv.grandTotal)}</p>
-                      <p className="text-xs text-gray-400">Taxable: {formatPrice(inv.totalTaxable)}</p>
-                    </div>
-                  </div>
-                </div>
-                {expanded === inv._id && (
-                  <div className="px-4 pb-4 border-t border-gray-50 bg-gray-50/50">
-                    <table className="w-full text-xs mt-3">
-                      <thead>
-                        <tr className="text-gray-400 uppercase tracking-wide">
-                          <th className="text-left py-1 pr-3">Item</th>
-                          <th className="text-left py-1 pr-3">SKU</th>
-                          <th className="text-right py-1 pr-3">Qty</th>
-                          <th className="text-right py-1 pr-3">Unit Cost</th>
-                          <th className="text-right py-1 pr-3">GST%</th>
-                          <th className="text-right py-1">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {inv.lineItems.map((l, i) => (
-                          <tr key={i}>
-                            <td className="py-1.5 pr-3 font-medium text-gray-800">{l.productName} {l.variantLabel ? `(${l.variantLabel})` : ''}</td>
-                            <td className="py-1.5 pr-3 text-gray-500 font-mono">{l.sku}</td>
-                            <td className="py-1.5 pr-3 text-right">{l.quantity}</td>
-                            <td className="py-1.5 pr-3 text-right">{formatPrice(l.unitCost)}</td>
-                            <td className="py-1.5 pr-3 text-right">{l.gstRate}%</td>
-                            <td className="py-1.5 text-right font-semibold">{formatPrice(l.lineTotal)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="font-bold text-gray-900 border-t border-gray-200">
-                          <td colSpan={4} className="py-2 text-right text-xs text-gray-500">
-                            CGST: ₹{inv.totalCgst.toFixed(2)} · SGST: ₹{inv.totalSgst.toFixed(2)} · IGST: ₹{inv.totalIgst.toFixed(2)}
-                          </td>
-                          <td colSpan={2} className="py-2 text-right">Grand: {formatPrice(inv.grandTotal)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                    <div className="flex justify-end mt-3">
-                      <button
-                        onClick={() => handleDelete(inv._id)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">Page {page} of {totalPages}</p>
+            <p className="text-xs text-gray-500">{total} invoice{total !== 1 ? 's' : ''} · Page {page}/{totalPages}</p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => load(page - 1)}>Prev</Button>
               <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => load(page + 1)}>Next</Button>
@@ -614,6 +820,20 @@ export default function PurchaseInvoicesTab() {
       </div>
 
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onSaved={() => load(1)} />}
+      {viewId && (
+        <ViewModal
+          invoiceId={viewId}
+          onClose={() => setViewId(null)}
+          onEdit={inv => { setEditInvoice(inv); setViewId(null); }}
+        />
+      )}
+      {editInvoice && (
+        <EditModal
+          invoice={editInvoice}
+          onClose={() => setEditInvoice(null)}
+          onSaved={() => load(page)}
+        />
+      )}
     </div>
   );
 }

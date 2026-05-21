@@ -227,6 +227,32 @@
       animation: none;
     }
   }
+
+  /* Rani Care composer — no inner scrollbar arrows on textarea */
+  textarea.rani-composer-input {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  textarea.rani-composer-input::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /* Rani Care — respect reduced motion (animations use motion-reduce: too) */
+  @media (prefers-reduced-motion: reduce) {
+    [data-rani-care] *,
+    .animate-rani-panel-in,
+    .animate-rani-panel-out,
+    .animate-rani-msg-user,
+    .animate-rani-msg-bot,
+    .animate-rani-fab-ring,
+    .animate-rani-header-shine,
+    .animate-rani-online {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
 }
 
 /* Swiper overrides */

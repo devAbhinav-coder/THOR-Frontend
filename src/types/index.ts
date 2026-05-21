@@ -538,6 +538,11 @@ export interface DashboardAnalytics {
     cogs: number;
     grossProfit: number;
   }[];
+  refundsByMonth?: {
+    _id: { year: number; month: number };
+    refunds: number;
+    count: number;
+  }[];
 }
 
 export interface ProductProfitRow {

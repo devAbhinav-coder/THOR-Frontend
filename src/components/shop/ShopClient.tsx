@@ -23,7 +23,10 @@ import { cn } from "@/lib/utils";
 import { trackSearch } from "@/lib/metaPixel";
 import { trackGaSearch } from "@/lib/googleAnalytics";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
+import { getNextNumericPage } from "@/lib/infiniteScrollPagination";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
+import { ProductInfiniteGrid } from "@/components/product/ProductInfiniteGrid";
 
 const SORT_OPTIONS = [
   { label: "Recommended", value: "-createdAt" },
@@ -59,7 +62,6 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
   const [storefrontSettings, setStorefrontSettings] =
     useState<StorefrontSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const routeBasePath = categoryContext ?
       `/shop/category/${encodeURIComponent(categoryContext.slug)}`
@@ -156,7 +158,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
     fetchNextPage,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["shop-products", queryKey],
+    queryKey: ["shop-products", "v2", queryKey],
     queryFn: async ({ pageParam }) => {
       const pg = pageParam as number;
 
@@ -210,21 +212,8 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
       return productApi.getAll(params);
     },
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      const p = lastPage.pagination;
-      const cur = p?.currentPage ?? 1;
-      const tp = Math.max(1, p?.totalPages ?? 1);
-      const total = p?.total ?? p?.totalProducts ?? 0;
-      const batch = (lastPage.data?.products || []) as Product[];
-      if (typeof p?.hasNextPage === "boolean") {
-        return p.hasNextPage ? cur + 1 : undefined;
-      }
-      if (cur < tp) return cur + 1;
-      if (batch.length === SHOP_PAGE_LIMIT && total > cur * SHOP_PAGE_LIMIT) {
-        return cur + 1;
-      }
-      return undefined;
-    },
+    getNextPageParam: (lastPage, allPages) =>
+      getNextNumericPage(lastPage, allPages, SHOP_PAGE_LIMIT),
     // 5-min cache keeps random page-1 stable within a tab; new visit = new $sample
     staleTime: 5 * 60 * 1000,
   });
@@ -252,27 +241,15 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
     };
   }, [data?.pages, hasNextPage]);
 
-  useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const hit = entries[0]?.isIntersecting;
-        if (hit && hasNextPage && !isFetchingNextPage && !isPending) {
-          void fetchNextPage();
-        }
-      },
-      { root: null, rootMargin: "640px 0px", threshold: 0.01 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [
-    fetchNextPage,
-    hasNextPage,
+  const { sentinelRef } = useInfiniteScrollTrigger({
+    hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
-    isPending,
-    products.length,
-  ]);
+    isPending: isPending && products.length === 0,
+    fetchNextPage,
+    rootMargin: "400px 0px",
+    threshold: 0,
+    enabled: !isPending || products.length > 0,
+  });
 
   const buildQueryString = (next: typeof filters, omitCategory: boolean) => {
     const params = new URLSearchParams();
@@ -703,34 +680,19 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
                   </Button>
                 </div>
               </div>
-            : <>
-                <div className={productGridClass}>
-                  {products.map((product) => (
-                    <ProductCard key={product._id} product={product} />
-                  ))}
-                </div>
-
-                {/* Infinite scroll sentinel */}
-                <div
-                  ref={loadMoreRef}
-                  className='h-12 w-full shrink-0'
-                  aria-hidden
-                />
-
-                {isFetchingNextPage && (
-                  <div className={`mt-6 ${productGridClass}`}>
-                    {[...Array(6)].map((_, i) => (
-                      <ProductCardSkeleton key={`more-${i}`} />
-                    ))}
-                  </div>
-                )}
-
-                {!pagination?.hasNextPage && products.length > 0 && (
-                  <p className='mt-8 text-center text-sm text-gray-600'>
-                    You’ve reached the end.
-                  </p>
-                )}
-              </>
+            : <ProductInfiniteGrid
+                gridClassName={productGridClass}
+                items={products}
+                getItemKey={(p) => p._id}
+                renderItem={(product) => <ProductCard product={product} />}
+                isInitialLoading={false}
+                isFetchingNextPage={isFetchingNextPage}
+                hasNextPage={Boolean(hasNextPage)}
+                pageSize={SHOP_PAGE_LIMIT}
+                loadMoreSkeletonCount={6}
+                sentinelRef={sentinelRef}
+                endMessage="You've reached the end."
+              />
             }
           </div>
         </div>

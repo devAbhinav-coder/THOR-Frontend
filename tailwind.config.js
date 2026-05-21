@@ -116,6 +116,34 @@ module.exports = {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "rani-panel-in": {
+          from: { opacity: "0", transform: "translateY(20px) scale(0.94)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "rani-panel-out": {
+          from: { opacity: "1", transform: "translateY(0) scale(1)" },
+          to: { opacity: "0", transform: "translateY(12px) scale(0.97)" },
+        },
+        "rani-msg-user": {
+          from: { opacity: "0", transform: "translateX(12px) scale(0.98)" },
+          to: { opacity: "1", transform: "translateX(0) scale(1)" },
+        },
+        "rani-msg-bot": {
+          from: { opacity: "0", transform: "translateX(-12px) scale(0.98)" },
+          to: { opacity: "1", transform: "translateX(0) scale(1)" },
+        },
+        "rani-fab-ring": {
+          "0%": { transform: "scale(1)", opacity: "0.45" },
+          "100%": { transform: "scale(1.55)", opacity: "0" },
+        },
+        "rani-online": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.65", transform: "scale(0.92)" },
+        },
+        "rani-header-shine": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "100%": { backgroundPosition: "200% 50%" },
+        },
         "nav-indeterminate": {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(450%)" },
@@ -126,6 +154,13 @@ module.exports = {
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 2s infinite",
         fadeIn: "fadeIn 0.5s ease-out",
+        "rani-panel-in": "rani-panel-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "rani-panel-out": "rani-panel-out 0.22s cubic-bezier(0.4, 0, 1, 1) both",
+        "rani-msg-user": "rani-msg-user 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "rani-msg-bot": "rani-msg-bot 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "rani-fab-ring": "rani-fab-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "rani-online": "rani-online 2s ease-in-out infinite",
+        "rani-header-shine": "rani-header-shine 6s ease infinite",
         "nav-indeterminate": "nav-indeterminate 1s ease-in-out infinite",
       },
     },

@@ -1,22 +1,39 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { orderApi, storefrontApi } from "@/lib/api";
+import { orderApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
-import type { Order, StorefrontSettings } from "@/types";
+import type { Order } from "@/types";
 import {
   getReturnReasonByIndex,
   isOrderReturnEligible,
   RETURN_REASON_OPTIONS,
 } from "@/lib/orderReturnHelpers";
 import {
-  INITIAL_ACTIONS,
-  MAX_MESSAGES,
-  OPEN_KEY,
-  RECENT_ORDER_LIMIT,
-  STORAGE_KEY,
-} from "./constants";
-import { detectIntent, findOrderIdByNumber } from "./intent";
+  clearChatStorage,
+  loadOpenState,
+  loadStoredMessages,
+  persistMessages,
+  saveOpenState,
+} from "./chatStorage";
+import { MAX_MESSAGES, RECENT_ORDER_LIMIT } from "./constants";
+import {
+  FOLLOW_UP_ACTIONS,
+  inferPendingFromActions,
+  isAnythingElse,
+  isGoodbye,
+  isGreeting,
+  isThanks,
+  matchAffirmation,
+  MENU_ACTIONS,
+  type PendingPrompt,
+} from "./conversationFlow";
+import {
+  detectIntent,
+  findOrderIdByNumber,
+  getIntentSuggestions,
+  INTENT_USER_LABEL,
+} from "./intent";
 import {
   botMessage,
   formatOrderDetailText,
@@ -27,9 +44,7 @@ import type { ChatMessage, OrderSummary, QuickAction } from "./types";
 
 const SUPPORT_PHONE = "8340311033";
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
-const greeting = "Hi, I am your support assistant.";
-const GREETING_RE = /^(hi|hey|hello|hola|namaste|hii+|heyy+)\b[!. ]*$/i;
-const THANKS_RE = /\b(thanks|thank you|thx|shukriya|dhanyavaad)\b/i;
+const GREETING = "Hi! How can I help you today?";
 
 export function useRaniCareChat() {
   const { isAuthenticated } = useAuthStore();
@@ -38,44 +53,60 @@ export function useRaniCareChat() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [contactPhone] = useState(SUPPORT_PHONE);
   const [contactEmail] = useState(SUPPORT_EMAIL);
-  const endRef = useRef<HTMLDivElement | null>(null);
   const recentOrdersRef = useRef<Order[]>([]);
+  const greetedRef = useRef(false);
+  const pendingPromptRef = useRef<PendingPrompt | null>(null);
+  const wasAuthRef = useRef(isAuthenticated);
+
+  const setPending = (p: PendingPrompt | null) => {
+    pendingPromptRef.current = p;
+  };
+
+  const resolvePending = (): PendingPrompt | null => {
+    if (pendingPromptRef.current) return pendingPromptRef.current;
+    const lastBot = [...messages].reverse().find((m) => m.sender === "bot");
+    return inferPendingFromActions(lastBot?.actions);
+  };
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const savedOpen = localStorage.getItem(OPEN_KEY);
-      if (savedOpen) setOpen(savedOpen === "1");
-      if (raw) {
-        const parsed = JSON.parse(raw) as ChatMessage[];
-        if (Array.isArray(parsed) && parsed.length) {
-          setMessages(parsed.slice(-MAX_MESSAGES));
-          return;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    setMessages([]);
+    setOpen(loadOpenState());
+    const { messages: stored } = loadStoredMessages();
+    setMessages(stored);
+    const lastBot = [...stored].reverse().find((m) => m.sender === "bot");
+    pendingPromptRef.current = inferPendingFromActions(lastBot?.actions);
   }, []);
 
   useEffect(() => {
-    if (!messages.length) return;
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(messages.slice(-MAX_MESSAGES)),
-    );
+    if (messages.length) persistMessages(messages);
   }, [messages]);
 
   useEffect(() => {
-    localStorage.setItem(OPEN_KEY, open ? "1" : "0");
+    saveOpenState(open);
   }, [open]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing, loadingOrders]);
+    if (wasAuthRef.current && !isAuthenticated) {
+      clearChatStorage();
+      setMessages([]);
+      greetedRef.current = false;
+      setPending(null);
+    }
+    wasAuthRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!open || greetedRef.current || messages.length > 0) return;
+    greetedRef.current = true;
+    window.setTimeout(() => {
+      setMessages((prev) => {
+        if (prev.length) return prev;
+        return [botMessage(GREETING, MENU_ACTIONS)];
+      });
+    }, 320);
+  }, [open, messages.length]);
 
   const pushBot = (
     text: string,
@@ -241,8 +272,9 @@ export function useRaniCareChat() {
       return;
     }
 
+    setPending({ type: "cancel_order", orderId: o._id });
     pushBot(
-      `Cancel order ${o.orderNumber}?\nThis is only available before dispatch. Refunds for online payments follow your bank or card issuer’s timeline.`,
+      `Cancel order **${o.orderNumber}**?\nOnly before dispatch. Reply **yes** to confirm or **no** to keep the order.`,
       [
         { label: "Yes, cancel", value: `cancel_confirm:${o._id}` },
         { label: "No, keep order", value: "cancel_abort" },
@@ -316,7 +348,7 @@ export function useRaniCareChat() {
         await fetchRecentOrders();
         pushBot(
           `Return submitted for **${full.orderNumber}**. Refund will go to your **original payment method** (usually 5–7 business days).`,
-          INITIAL_ACTIONS,
+          FOLLOW_UP_ACTIONS,
           undefined,
           320,
         );
@@ -353,12 +385,10 @@ export function useRaniCareChat() {
     try {
       await orderApi.cancel(orderId, "Cancelled via customer support chat");
       await fetchRecentOrders();
+      setPending(null);
       pushBot(
-        "Your order has been cancelled. If you paid online, your refund will be processed according to your bank or card issuer—typically within a few business days.\n\nThank you. If you need anything else, I am here.",
-        [
-          { label: "View orders", value: "action:recent_orders" },
-          { label: "Email us", value: "email support" },
-        ],
+        "Your order has been cancelled. Online refunds usually take a few business days via your bank or card.",
+        FOLLOW_UP_ACTIONS,
       );
     } catch (err: unknown) {
       const msg =
@@ -377,24 +407,72 @@ export function useRaniCareChat() {
     }
   };
 
+  const clearChat = (withWelcome = true) => {
+    clearChatStorage();
+    setMessages([]);
+    setShowClearConfirm(false);
+    greetedRef.current = false;
+    setPending(null);
+    if (withWelcome) {
+      greetedRef.current = true;
+      pushBot(GREETING, MENU_ACTIONS, undefined, 200);
+    }
+  };
+
+  const handleShortReply = async (rawInput: string): Promise<boolean> => {
+    const trimmed = rawInput.trim();
+
+    if (isAnythingElse(trimmed)) {
+      setPending(null);
+      pushBot("What do you need help with?", MENU_ACTIONS, undefined, 160);
+      return true;
+    }
+
+    if (isGoodbye(trimmed)) {
+      setPending(null);
+      pushBot("Take care.", [{ label: "My orders", value: "action:recent_orders" }], undefined, 160);
+      return true;
+    }
+
+    if (isThanks(trimmed)) {
+      setPending(null);
+      pushBot("You're welcome.", FOLLOW_UP_ACTIONS, undefined, 160);
+      return true;
+    }
+
+    const aff = matchAffirmation(trimmed);
+    if (!aff) return false;
+
+    const pending = resolvePending();
+    if (pending?.type === "cancel_order") {
+      setPending(null);
+      if (aff === "yes") {
+        pushUser("Yes");
+        await executeCancel(pending.orderId);
+      } else {
+        pushUser("No");
+        pushBot("Okay — your order is unchanged.", FOLLOW_UP_ACTIONS, undefined, 200);
+      }
+      return true;
+    }
+
+    if (aff === "yes") {
+      pushBot("Choose what you need below.", MENU_ACTIONS, undefined, 160);
+      return true;
+    }
+
+    pushBot("Okay.", FOLLOW_UP_ACTIONS, undefined, 160);
+    return true;
+  };
+
   const respondWithIntent = async (rawInput: string) => {
     const trimmed = rawInput.trim();
-    if (THANKS_RE.test(trimmed)) {
-      pushBot(
-        "Thank you. Glad I could help. If you need anything else, just message me anytime.",
-        INITIAL_ACTIONS,
-        undefined,
-        180,
-      );
-      return;
-    }
-    if (GREETING_RE.test(trimmed)) {
-      pushBot(
-        `${greeting} How can I help you today?`,
-        INITIAL_ACTIONS,
-        undefined,
-        180,
-      );
+
+    if (await handleShortReply(trimmed)) return;
+
+    if (isGreeting(trimmed)) {
+      setPending(null);
+      pushBot(GREETING, MENU_ACTIONS, undefined, 160);
       return;
     }
 
@@ -516,13 +594,31 @@ export function useRaniCareChat() {
       }
     }
 
-    pushBot(
-      "Sorry, I could not understand that clearly. Please choose one option below, or send your order number and I will check it for you.",
-      INITIAL_ACTIONS,
-    );
+    const suggestions = getIntentSuggestions(rawInput, 2);
+    if (suggestions.length) {
+      const hint = suggestions.map((s) => s.label).join(" or ");
+      const actions: QuickAction[] = suggestions.map((s) => ({
+        label: s.label.charAt(0).toUpperCase() + s.label.slice(1),
+        value: s.actionValue,
+      }));
+      actions.push(...MENU_ACTIONS.slice(0, 3));
+      pushBot(
+        `Did you mean **${hint}**? Tap below, or send your order number.`,
+        actions,
+      );
+      return;
+    }
+
+    pushBot("Choose an option below or send your order number.", MENU_ACTIONS);
   };
 
   const handleAction = async (value: string) => {
+    if (value === "action:menu") {
+      setPending(null);
+      pushUser("Menu");
+      pushBot("What do you need help with?", MENU_ACTIONS, undefined, 160);
+      return;
+    }
     if (value === "action:recent_orders") {
       pushUser("Show my orders");
       await presentOrderList({ intro: "Here are your recent orders." });
@@ -569,13 +665,9 @@ export function useRaniCareChat() {
       return;
     }
     if (value === "return_abort") {
-      pushUser("Cancel");
-      pushBot(
-        "No problem. If you need a return later, open **My orders** and pick your order.",
-        INITIAL_ACTIONS,
-        undefined,
-        220,
-      );
+      pushUser("No");
+      setPending(null);
+      pushBot("Return cancelled. Your order is unchanged.", FOLLOW_UP_ACTIONS, undefined, 200);
       return;
     }
     if (value.startsWith("open_order_return:")) {
@@ -606,13 +698,9 @@ export function useRaniCareChat() {
       return;
     }
     if (value === "cancel_abort") {
-      pushUser("Do not cancel");
-      pushBot(
-        "Understood. Your order is unchanged. How else can we help?",
-        INITIAL_ACTIONS,
-        undefined,
-        250,
-      );
+      pushUser("No");
+      setPending(null);
+      pushBot("Your order is unchanged.", FOLLOW_UP_ACTIONS, undefined, 200);
       return;
     }
     if (value.startsWith("open_order:")) {
@@ -631,15 +719,24 @@ export function useRaniCareChat() {
       window.location.href = `tel:${contactPhone.replace(/\s+/g, "")}`;
     else if (value === "email support")
       window.location.href = `mailto:${contactEmail}?subject=Customer%20Support%20Request`;
-    else await submitUserText(value);
+    else {
+      const isMachine =
+        value.startsWith("action:") || /^[a-z]+:/.test(value);
+      if (!isMachine) {
+        const label = INTENT_USER_LABEL[detectIntent(value)];
+        pushUser(label ?? value);
+      }
+      await respondWithIntent(value);
+    }
   };
 
-  const submitUserText = async (text: string) => {
+  const submitUserText = async (text: string): Promise<boolean> => {
     const trimmed = text.trim();
-    if (!trimmed || typing || loadingOrders) return;
+    if (!trimmed || typing || loadingOrders) return false;
     setInput("");
     setMessages((prev) => [...prev, userMessage(trimmed)].slice(-MAX_MESSAGES));
     await respondWithIntent(trimmed);
+    return true;
   };
 
   return {
@@ -650,10 +747,12 @@ export function useRaniCareChat() {
     input,
     setInput,
     messages,
-    endRef,
     contactPhone,
     contactEmail,
     handleAction,
     submitUserText,
+    showClearConfirm,
+    setShowClearConfirm,
+    clearChat,
   };
 }

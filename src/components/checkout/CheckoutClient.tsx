@@ -33,7 +33,6 @@ import {
   RotateCcw,
   Shield,
   ShoppingBag,
-  Tag,
   Trash2,
   Truck,
   Wallet,
@@ -50,6 +49,8 @@ import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Coupon, Order } from "@/types";
+import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
+import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
 import type { CheckoutDisplayItem } from "@/types/checkoutDisplay";
 import {
   getRazorpayConstructor,
@@ -1736,27 +1737,12 @@ export default function CheckoutClient() {
 
                     {hasAppliedCoupon ?
                       <div className='rounded-xl border border-green-200 bg-green-50 p-3 min-w-0 space-y-3'>
-                        <div className='flex items-start gap-2 min-w-0'>
-                          <Tag
-                            className='h-4 w-4 text-green-600 shrink-0 mt-0.5'
-                            aria-hidden
-                          />
-                          <div className='min-w-0 flex-1'>
-                            <p className='text-sm font-medium text-green-900 break-words'>
-                              <span className='font-semibold tracking-wide'>
-                                {activeCouponCode || "Coupon"}
-                              </span>
-                              <span className='text-green-800'>
-                                {" "}
-                                · You save {formatPrice(activeCouponDiscount)}
-                              </span>
-                            </p>
-                            <p className='text-xs text-green-800/75 mt-1'>
-                              The discount is reflected in your order total
-                              below.
-                            </p>
-                          </div>
-                        </div>
+                        <CouponAppliedBanner
+                          code={activeCouponCode}
+                          savedAmount={activeCouponDiscount}
+                          eligibleCoupons={eligibleCoupons}
+                          helperText="The discount is reflected in your order total below."
+                        />
                         <Button
                           type='button'
                           variant='outline'
@@ -1841,26 +1827,7 @@ export default function CheckoutClient() {
                               : "hover:border-brand-300 hover:bg-brand-50",
                             )}
                           >
-                            <div className='flex items-center justify-between gap-2 min-w-0'>
-                              <span className='font-mono font-bold text-sm text-brand-700 truncate min-w-0'>
-                                {c.code}
-                              </span>
-                              <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
-                                {c.eligibilityType === "first_order" ?
-                                  "First Order"
-                                : c.eligibilityType === "returning" ?
-                                  "Returning"
-                                : "All Users"}
-                              </span>
-                            </div>
-                            <p className='text-xs text-gray-500 mt-1'>
-                              {c.discountType === "percentage" ?
-                                `${c.discountValue}% off`
-                              : `${formatPrice(c.discountValue)} off`}
-                              {c.minOrderAmount ?
-                                ` · Min ${formatPrice(c.minOrderAmount)}`
-                              : ""}
-                            </p>
+                            <CouponOfferPreview coupon={c} />
                           </button>
                         ))}
                       </div>
@@ -2339,31 +2306,7 @@ export default function CheckoutClient() {
                         : "hover:border-brand-300 hover:bg-brand-50",
                       )}
                     >
-                      <div className='flex items-center justify-between gap-2 min-w-0'>
-                        <span className='font-mono font-bold text-sm text-brand-700 truncate'>
-                          {coupon.code}
-                        </span>
-                        <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase'>
-                          {coupon.eligibilityType === "first_order" ?
-                            "First Order"
-                          : coupon.eligibilityType === "returning" ?
-                            "Returning"
-                          : "All Users"}
-                        </span>
-                      </div>
-                      <p className='text-xs text-gray-500 mt-1'>
-                        {coupon.discountType === "percentage" ?
-                          `${coupon.discountValue}% off`
-                        : `${formatPrice(coupon.discountValue)} off`}
-                        {coupon.minOrderAmount ?
-                          ` · Min ${formatPrice(coupon.minOrderAmount)}`
-                        : ""}
-                      </p>
-                      {coupon.description && (
-                        <p className='text-xs text-gray-400 mt-1 line-clamp-2'>
-                          {coupon.description}
-                        </p>
-                      )}
+                      <CouponOfferPreview coupon={coupon} />
                     </button>
                   ))}
                 </div>

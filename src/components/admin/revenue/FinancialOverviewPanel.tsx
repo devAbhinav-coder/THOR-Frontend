@@ -60,6 +60,12 @@ export default function FinancialOverviewPanel({ fin }: { fin: FinancialSnapshot
     { label: 'COGS', value: formatPrice(fin.cogs), hint: 'Cost of goods sold', color: 'text-slate-700' },
     { label: 'Gross profit', value: formatPrice(fin.grossProfit), hint: `${fin.grossMarginPct}% product margin`, color: 'text-emerald-700' },
     { label: 'Net income', value: formatPrice(fin.netIncome), hint: `Profit + fees − coupons · ${fin.netIncomeMarginPct}%`, color: 'text-teal-800' },
+    ...(fin.operatingExpenses > 0
+      ? [
+          { label: 'Operating costs', value: formatPrice(fin.operatingExpenses), hint: 'Logged in Operating costs', color: 'text-red-600' },
+          { label: 'Net after costs', value: formatPrice(fin.netAfterOperating), hint: 'Net income − operating', color: 'text-navy-900' },
+        ]
+      : []),
   ];
 
   return (
@@ -97,7 +103,30 @@ export default function FinancialOverviewPanel({ fin }: { fin: FinancialSnapshot
           <FlowArrow icon={Minus} />
           <FlowStep label="Coupons −" value={formatPrice(fin.couponDiscounts)} tone="minus" />
           <FlowArrow icon={Equal} />
-          <FlowStep label="Net income" value={formatPrice(fin.netIncome)} sub="Estimated operating" tone="highlight" />
+          <FlowStep
+            label="Net income"
+            value={formatPrice(fin.netIncome)}
+            sub={fin.operatingExpenses > 0 ? 'Before shop costs' : 'Estimated operating'}
+            tone={fin.operatingExpenses > 0 ? 'result' : 'highlight'}
+          />
+          {fin.operatingExpenses > 0 && (
+            <>
+              <FlowArrow icon={Minus} />
+              <FlowStep
+                label="Operating costs"
+                value={formatPrice(fin.operatingExpenses)}
+                sub="Ship · pack · ads · misc"
+                tone="minus"
+              />
+              <FlowArrow icon={Equal} />
+              <FlowStep
+                label="Net after costs"
+                value={formatPrice(fin.netAfterOperating)}
+                sub="True bottom line (est.)"
+                tone="highlight"
+              />
+            </>
+          )}
         </div>
       </div>
 

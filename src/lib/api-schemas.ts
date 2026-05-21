@@ -197,19 +197,6 @@ export const cartClear = z.object({
   message: z.string(),
 });
 
-export const cartApplyCoupon = z.object({
-  status: z.string(),
-  data: z.object({
-    cart: doc,
-    coupon: z.object({
-      code: z.string(),
-      discountType: z.string().optional(),
-      discountValue: z.number().optional(),
-      appliedDiscount: z.number(),
-    }),
-  }),
-});
-
 /** Online prepay: order row is created only after verify-payment (legacy clients may still receive { order, razorpayOrder }). */
 const mongoObjectIdString = z.string().regex(/^[a-fA-F0-9]{24}$/);
 
@@ -791,4 +778,20 @@ export const adminGstSummary = z.object({
     totals: z.any(),
     year: z.number(),
   }),
+}).passthrough();
+
+export const adminOperatingExpenseList = z.object({
+  status: z.string(),
+  pagination: paginationShape,
+  data: z.object({ expenses: z.array(doc) }),
+}).passthrough();
+
+export const adminOperatingExpenseSingle = z.object({
+  status: z.string(),
+  data: z.object({ expense: doc }),
+}).passthrough();
+
+export const adminOperatingExpenseSummary = z.object({
+  status: z.string(),
+  data: z.object({ summary: z.any() }),
 }).passthrough();

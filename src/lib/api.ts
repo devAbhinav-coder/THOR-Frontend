@@ -325,7 +325,7 @@ export const cartApi = {
         { couponCode, ...(opts?.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}) },
         cartIdempotencyConfig(opts?.idempotencyKey),
       ),
-      schemas.cartApplyCoupon,
+      schemas.cartPayload,
     ),
   removeCoupon: () => unwrapAxios("cart.removeCoupon", api.delete("/cart/coupon"), schemas.cartPayload),
   uploadCustomFieldImage: (data: FormData) =>
@@ -451,6 +451,8 @@ export const adminApi = {
   searchProducts: (params?: Record<string, string | number | boolean | undefined>) =>
     unwrapAxios("admin.products.search", api.get("/admin/products/search", { params }), schemas.productsPaginated),
   getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
+  getRevenueSummary: (params: { period: string; year?: number; month?: number }) =>
+    unwrapAxios("admin.revenueSummary", api.get("/admin/revenue/summary", { params }), schemas.adminAnalytics),
   getAuditLogs: (params?: Record<string, string | number>) =>
     unwrapAxios("admin.auditLogs", api.get("/admin/security/audit", { params }), schemas.adminAuditLogsList),
   getOrders: (params?: object) =>
@@ -713,6 +715,19 @@ export const inventoryApi = {
     del204('inventory.deletePurchaseInvoice', api.delete(`/admin/inventory/purchase-invoices/${id}`)),
   getGstSummary: (params?: { year?: number; month?: string; quarter?: string }) =>
     unwrapAxios('inventory.gstSummary', api.get('/admin/inventory/gst-summary', { params }), schemas.adminGstSummary),
+};
+
+export const operatingExpensesApi = {
+  list: (params?: Record<string, string | number>) =>
+    unwrapAxios('operatingExpenses.list', api.get('/admin/operating-expenses', { params }), schemas.adminOperatingExpenseList),
+  getSummary: (params?: { year?: number }) =>
+    unwrapAxios('operatingExpenses.summary', api.get('/admin/operating-expenses/summary', { params }), schemas.adminOperatingExpenseSummary),
+  create: (payload: Record<string, unknown>) =>
+    unwrapAxios('operatingExpenses.create', api.post('/admin/operating-expenses', payload), schemas.adminOperatingExpenseSingle),
+  update: (id: string, payload: Record<string, unknown>) =>
+    unwrapAxios('operatingExpenses.update', api.put(`/admin/operating-expenses/${id}`, payload), schemas.adminOperatingExpenseSingle),
+  void: (id: string) =>
+    del204('operatingExpenses.void', api.delete(`/admin/operating-expenses/${id}`)),
 };
 
 export const blogApi = {

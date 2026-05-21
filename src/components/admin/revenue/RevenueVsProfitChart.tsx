@@ -14,9 +14,8 @@ import {
 } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import { formatPrice } from '@/lib/utils';
+import { mergeMonthlyChartRows } from '@/lib/revenuePeriod';
 import type { DashboardAnalytics } from '@/types';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function fmtAxis(v: number) {
   if (v >= 100000) return `₹${(v / 100000).toFixed(0)}L`;
@@ -24,22 +23,52 @@ function fmtAxis(v: number) {
   return `₹${Math.round(v)}`;
 }
 
+type ChartRow = {
+  name: string;
+  grossRevenue: number;
+  netRevenue: number;
+  refunds: number;
+  grossProfit: number;
+  productRevenue: number;
+  cogs: number;
+  orders: number;
+};
+
 function ChartTooltip({ active, payload }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
-  const row = payload[0]?.payload as {
-    name: string;
-    grossRevenue: number;
-    netRevenue: number;
-    grossProfit: number;
-    productRevenue: number;
-  };
+  const row = payload[0]?.payload as ChartRow;
+  if (!row) return null;
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-lg text-xs">
-      <p className="font-bold text-gray-900 mb-2">{row.name}</p>
-      <p className="text-blue-700">Gross revenue: {formatPrice(row.grossRevenue)}</p>
-      <p className="text-navy-700">Net revenue: {formatPrice(row.netRevenue)}</p>
-      <p className="text-gray-600">Product revenue: {formatPrice(row.productRevenue)}</p>
-      <p className="text-emerald-700 font-semibold mt-1">Gross profit: {formatPrice(row.grossProfit)}</p>
+    <div className="rounded-xl border border-gray-200 bg-white px-3.5 py-3 shadow-lg text-xs min-w-[200px]">
+      <p className="font-bold text-gray-900 mb-2 border-b border-gray-100 pb-1.5">{row.name}</p>
+      <div className="space-y-1">
+        <p className="flex justify-between gap-4">
+          <span className="text-blue-700">Gross revenue</span>
+          <span className="font-semibold tabular-nums">{formatPrice(row.grossRevenue)}</span>
+        </p>
+        <p className="flex justify-between gap-4">
+          <span className="text-red-600">Refunds</span>
+          <span className="font-semibold tabular-nums">−{formatPrice(row.refunds)}</span>
+        </p>
+        <p className="flex justify-between gap-4 border-t border-gray-100 pt-1">
+          <span className="text-navy-800 font-medium">Net revenue</span>
+          <span className="font-bold tabular-nums text-navy-900">{formatPrice(row.netRevenue)}</span>
+        </p>
+        <p className="flex justify-between gap-4 pt-1">
+          <span className="text-slate-600">Product revenue</span>
+          <span className="tabular-nums">{formatPrice(row.productRevenue)}</span>
+        </p>
+        <p className="flex justify-between gap-4">
+          <span className="text-slate-500">COGS</span>
+          <span className="tabular-nums">{formatPrice(row.cogs)}</span>
+        </p>
+        <p className="flex justify-between gap-4 border-t border-emerald-100 pt-1">
+          <span className="text-emerald-700 font-semibold">Gross profit</span>
+          <span className="font-bold tabular-nums text-emerald-800">{formatPrice(row.grossProfit)}</span>
+        </p>
+        <p className="text-[10px] text-gray-400 pt-0.5">{row.orders} orders</p>
+      </div>
     </div>
   );
 }
@@ -47,36 +76,25 @@ function ChartTooltip({ active, payload }: TooltipProps<number, string>) {
 export default function RevenueVsProfitChart({
   revenueByMonth,
   profitByMonth,
+  refundsByMonth,
   height = 340,
+  chartTitle,
 }: {
   revenueByMonth: DashboardAnalytics['revenueByMonth'];
   profitByMonth: DashboardAnalytics['profitByMonth'];
+  refundsByMonth?: { _id: { year: number; month: number }; refunds: number }[];
   height?: number;
+  chartTitle?: string;
 }) {
   const [mounted, setMounted] = useState(false);
   const uid = useId().replace(/:/g, '');
 
   useEffect(() => setMounted(true), []);
 
-  const chartData = useMemo(() => {
-    const profitMap = new Map(
-      (profitByMonth ?? []).map((p) => [`${p._id.year}-${p._id.month}`, p]),
-    );
-    return revenueByMonth.map((d) => {
-      const key = `${d._id.year}-${d._id.month}`;
-      const profit = profitMap.get(key);
-      const m = MONTHS[d._id.month - 1];
-      const grossRevenue = d.revenue;
-      return {
-        name: `${m} ${String(d._id.year).slice(-2)}`,
-        grossRevenue,
-        netRevenue: grossRevenue,
-        productRevenue: profit?.productRevenue ?? 0,
-        grossProfit: profit?.grossProfit ?? 0,
-        cogs: profit?.cogs ?? 0,
-      };
-    });
-  }, [revenueByMonth, profitByMonth]);
+  const chartData = useMemo(
+    () => mergeMonthlyChartRows(revenueByMonth, profitByMonth, refundsByMonth),
+    [revenueByMonth, profitByMonth, refundsByMonth],
+  );
 
   if (!mounted) {
     return <div className="w-full rounded-2xl bg-gray-100 animate-pulse" style={{ height }} />;
@@ -95,6 +113,7 @@ export default function RevenueVsProfitChart({
 
   return (
     <div className="w-full" style={{ height }}>
+      {chartTitle && <p className="text-[10px] text-gray-400 mb-1 -mt-1">{chartTitle}</p>}
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -110,14 +129,21 @@ export default function RevenueVsProfitChart({
             name="Gross revenue"
             fill={`url(#gross-${uid})`}
             radius={[4, 4, 0, 0]}
-            maxBarSize={28}
+            maxBarSize={22}
+          />
+          <Bar
+            dataKey="netRevenue"
+            name="Net revenue"
+            fill="#1e3a5f"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={22}
           />
           <Bar
             dataKey="productRevenue"
             name="Product revenue"
             fill="#94a3b8"
             radius={[4, 4, 0, 0]}
-            maxBarSize={28}
+            maxBarSize={18}
           />
           <Line
             type="monotone"

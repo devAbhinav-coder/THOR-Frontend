@@ -58,6 +58,7 @@ const navSections: NavSection[] = [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Revenue", href: "/admin/revenue", icon: IndianRupee },
+      { label: "Operating costs", href: "/admin/expenses", icon: Receipt },
     ],
   },
   {
