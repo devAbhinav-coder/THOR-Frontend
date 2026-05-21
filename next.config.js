@@ -7,9 +7,9 @@ const nextConfig = {
   ...(process.env.VERCEL ? {} : { outputFileTracingRoot: path.join(__dirname, '../') }),
   experimental: {
     optimizePackageImports: ["lucide-react"],
-    sri: {
-      algorithm: "sha384",
-    },
+    // SRI disabled: production was blocking webpack chunks when HTML integrity
+    // hashes did not match CDN/cached assets (login and other client pages stuck
+    // on skeleton UI). Re-enable only after atomic deploys + CDN purge are verified.
   },
   images: {
     // Product/media URLs are served from Cloudinary (already resized/optimized).
