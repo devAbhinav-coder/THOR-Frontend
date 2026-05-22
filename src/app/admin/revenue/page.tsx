@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 import { inventoryApi, operatingExpensesApi } from '@/lib/api';
 
-import { useAdminAnalytics } from '@/hooks/useAdminAnalytics';
+import { useAdminAnalytics, invalidateAdminAnalyticsCache } from '@/hooks/useAdminAnalytics';
 
 import { useRevenuePeriod } from '@/hooks/useRevenuePeriod';
 
@@ -149,13 +149,10 @@ export default function AdminRevenuePage() {
 
 
   const handleRefresh = () => {
-
+    invalidateAdminAnalyticsCache();
     refresh();
-
     reloadPeriod();
-
     loadInventory();
-
   };
 
 
@@ -218,49 +215,40 @@ export default function AdminRevenuePage() {
 
   const periodData = summary;
 
-  const scoped = periodData?.overview;
+  const periodOverview = periodData?.overview;
 
-  const feesRetained = overview.nonRefundableFeesRetained ?? 0;
+  const feesRetained =
+    periodOverview?.nonRefundableFeesRetained ?? overview.nonRefundableFeesRetained ?? 0;
 
+  const gross = periodOverview?.grossRevenue ?? overview.totalRevenue;
 
+  const refunded = periodOverview?.refunds ?? overview.refundedAmount ?? 0;
 
-  const gross = scoped?.grossRevenue ?? overview.totalRevenue;
+  const netLike = periodOverview?.netRevenue ?? Math.max(0, gross - refunded);
 
-  const refunded = scoped?.refunds ?? overview.refundedAmount ?? 0;
-
-  const netLike = scoped?.netRevenue ?? Math.max(0, gross - refunded);
+  const finInput = periodOverview
+    ? {
+        ...periodOverview,
+        grossMarginPercent: periodOverview.grossMarginPercent,
+        couponOrdersTotal: periodOverview.couponOrdersCount,
+      }
+    : overview;
 
   const fin = buildFinancialSnapshot(
-
-    scoped
-
-      ? {
-
-          grossRevenue: scoped.grossRevenue,
-
-          netRevenue: scoped.netRevenue,
-
-          refunds: scoped.refunds,
-
-          productRevenue: scoped.productRevenue,
-
-          cogs: scoped.cogs,
-
-          grossProfit: scoped.grossProfit,
-
-          grossMarginPercent: scoped.grossMarginPercent,
-
-        }
-
-      : overview,
-
+    finInput,
     refunded,
-
     feesRetained,
-
     period === 'year' ? yearOpex : period === 'lifetime' ? yearOpex : 0,
-    { usePeriodFields: !!scoped, periodScoped: !!scoped },
+    { usePeriodFields: !!periodOverview },
   );
+
+  const couponTotal = periodOverview?.couponDiscountTotal ?? overview.couponDiscountTotal ?? 0;
+  const couponOrders =
+    periodOverview?.couponOrdersCount ?? overview.couponOrdersTotal ?? 0;
+  const shippingTotal = periodOverview?.shippingCollected ?? overview.shippingCollected ?? 0;
+  const codTotal = periodOverview?.codFeeCollected ?? overview.codFeeCollected ?? 0;
+  const taxTotal = periodOverview?.taxCollected ?? overview.taxCollected ?? 0;
+  const feesKept = periodOverview?.nonRefundableFeesRetained ?? feesRetained;
 
 
 
@@ -291,15 +279,10 @@ export default function AdminRevenuePage() {
 
 
   const refundRatePct =
-
-    (scoped?.orders ?? overview.totalOrders) > 0
-
-      ? ((scoped?.refundedOrdersCount ?? overview.refundedOrdersCount ?? 0) /
-
-          (scoped?.orders ?? overview.totalOrders)) *
-
+    (periodOverview?.orders ?? overview.totalOrders) > 0
+      ? ((periodOverview?.refundedOrdersCount ?? overview.refundedOrdersCount ?? 0) /
+          (periodOverview?.orders ?? overview.totalOrders)) *
         100
-
       : 0;
 
   const retainRatePct = gross > 0 ? (netLike / gross) * 100 : 0;
@@ -638,7 +621,7 @@ export default function AdminRevenuePage() {
 
                 label="Orders"
 
-                value={(scoped?.orders ?? overview.totalOrders)?.toLocaleString() ?? '—'}
+                value={(periodOverview?.orders ?? overview.totalOrders)?.toLocaleString() ?? '—'}
 
                 sub="In selected period"
 
@@ -650,7 +633,9 @@ export default function AdminRevenuePage() {
 
                 value={formatPrice(
 
-                  (scoped?.orders ?? 0) > 0 ? gross / (scoped?.orders ?? 1) : overview.avgOrderValue ?? 0,
+                  (periodOverview?.orders ?? 0) > 0
+                    ? gross / (periodOverview?.orders ?? 1)
+                    : overview.avgOrderValue ?? 0,
 
                 )}
 
@@ -694,7 +679,7 @@ export default function AdminRevenuePage() {
 
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
 
-              Revenue leakage & fees (store lifetime)
+              Revenue leakage & fees · {periodData?.label ?? 'period'}
 
             </h3>
 
@@ -704,23 +689,23 @@ export default function AdminRevenuePage() {
 
                 label="Coupon discounts"
 
-                value={formatPrice(overview.couponDiscountTotal || 0)}
+                value={formatPrice(couponTotal)}
 
-                sub={`${overview.couponOrdersTotal || 0} orders`}
+                sub={`${couponOrders} orders with codes`}
 
                 tone="red"
 
               />
 
-              <LeakCard label="Shipping collected" value={formatPrice(overview.shippingCollected || 0)} />
+              <LeakCard label="Shipping collected" value={formatPrice(shippingTotal)} />
 
-              <LeakCard label="COD fees" value={formatPrice(overview.codFeeCollected || 0)} />
+              <LeakCard label="COD fees" value={formatPrice(codTotal)} />
 
               <LeakCard
 
                 label="GST collected"
 
-                value={formatPrice(overview.taxCollected || 0)}
+                value={formatPrice(taxTotal)}
 
                 tone="emerald"
 
@@ -730,7 +715,7 @@ export default function AdminRevenuePage() {
 
                 label="Fees kept on refunds"
 
-                value={formatPrice(feesRetained)}
+                value={formatPrice(feesKept)}
 
                 tone="emerald"
 
@@ -742,9 +727,16 @@ export default function AdminRevenuePage() {
 
             <div>
 
-              <p className="text-xs font-bold text-gray-700 mb-3">Payment mix (lifetime)</p>
+              <p className="text-xs font-bold text-gray-700 mb-3">
 
-              <PaymentMethodMixPanel rows={analytics.paymentMethodMix || []} grossTotal={overview.totalRevenue} />
+                Payment mix · {periodData?.label ?? 'period'}
+
+              </p>
+
+              <PaymentMethodMixPanel
+                rows={periodData?.paymentMethodMix ?? analytics.paymentMethodMix ?? []}
+                grossTotal={gross}
+              />
 
             </div>
 

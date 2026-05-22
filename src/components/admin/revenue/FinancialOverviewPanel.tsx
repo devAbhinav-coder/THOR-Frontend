@@ -106,7 +106,7 @@ export default function FinancialOverviewPanel({ fin }: { fin: FinancialSnapshot
           <FlowStep
             label="Net income"
             value={formatPrice(fin.netIncome)}
-            sub={fin.operatingExpenses > 0 ? 'Before shop costs' : 'Estimated operating'}
+            sub={fin.operatingExpenses > 0 ? 'Before shop costs' : 'After fees − coupons'}
             tone={fin.operatingExpenses > 0 ? 'result' : 'highlight'}
           />
           {fin.operatingExpenses > 0 && (

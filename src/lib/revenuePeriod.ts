@@ -17,12 +17,19 @@ export type RevenuePeriodSummary = {
     grossProfit: number;
     grossMarginPercent: number;
     orders: number;
+    couponDiscountTotal: number;
+    couponOrdersCount: number;
+    shippingCollected: number;
+    codFeeCollected: number;
+    taxCollected: number;
+    nonRefundableFeesRetained: number;
   };
   revenueByMonth: DashboardAnalytics['revenueByMonth'];
   profitByMonth: NonNullable<DashboardAnalytics['profitByMonth']>;
   refundsByMonth: { _id: { year: number; month: number }; refunds: number; count: number }[];
   topProductsByProfit: NonNullable<DashboardAnalytics['topProductsByProfit']>;
   categoryProfit: NonNullable<DashboardAnalytics['categoryProfit']>;
+  paymentMethodMix?: { _id: string; revenue: number; count: number }[];
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
