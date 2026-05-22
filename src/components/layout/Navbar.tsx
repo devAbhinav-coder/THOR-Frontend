@@ -266,11 +266,17 @@ export default function Navbar() {
                 type='button'
                 onClick={() => setIsMenuOpen((o) => !o)}
                 className='lg:hidden inline-flex items-center justify-center h-11 w-11 -ml-2 text-white/85 hover:text-white rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none'
-                aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-label={
+                  isMenuOpen ? "Close navigation menu" : "Open navigation menu"
+                }
                 aria-expanded={isMenuOpen}
                 aria-controls='mobile-nav-drawer'
               >
-                <Menu className='h-6 w-6' strokeWidth={1.5} aria-hidden='true' />
+                <Menu
+                  className='h-6 w-6'
+                  strokeWidth={1.5}
+                  aria-hidden='true'
+                />
               </button>
               {/* Logo — left on mobile, desktop flow */}
               <Link
@@ -333,21 +339,33 @@ export default function Navbar() {
               </div>
 
               <Link
-                href='/shop?sort=-createdAt'
-                className='px-3 py-2 text-sm font-medium text-gold-400 hover:text-gold-300  hover:bg-navy-800 rounded-md transition-colors'
-              >
-                New Arrivals
-              </Link>
-              <Link
                 href='/gifting'
                 className='flex items-center gap-1 px-3 py-2 text-sm font-medium text-brand-300 hover:text-brand-200 hover:bg-navy-800 rounded-md transition-colors'
               >
                 <Gift className='h-3.5 w-3.5' />
                 Gifting
               </Link>
+              {/* about  */}
+              <Link
+                href='/about'
+                className={cn(
+                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  pathname.startsWith("/about") ?
+                    "text-white bg-navy-700"
+                  : "text-white/75 hover:text-white hover:bg-navy-800",
+                )}
+              >
+                About Us
+              </Link>
+
               <Link
                 href='/blog'
-                className='px-3 py-2 text-sm font-medium text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                className={cn(
+                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  pathname.startsWith("/blog") ?
+                    "text-white bg-navy-700"
+                  : "text-white/75 hover:text-white hover:bg-navy-800",
+                )}
               >
                 Blog
               </Link>
@@ -589,12 +607,26 @@ export default function Navbar() {
                 <Link
                   onClick={() => setIsMenuOpen(false)}
                   href='/blog'
-                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                  className={cn(
+                    "flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group",
+                    pathname.startsWith("/blog") && "bg-navy-800/80",
+                  )}
                 >
                   <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
                     <LayoutDashboard className='w-4 h-4' />
                   </div>
                   The Rani Blog
+                </Link>
+                {/* about */}
+                <Link
+                  onClick={() => setIsMenuOpen(false)}
+                  href='/about'
+                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                >
+                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                    <Shield className='w-4 h-4' />
+                  </div>
+                  About
                 </Link>
                 <Link
                   onClick={() => setIsMenuOpen(false)}
@@ -737,9 +769,9 @@ export default function Navbar() {
                 isOn ? "text-brand-400" : "text-white/90",
               );
               const cartAriaSuffix =
-                showCartBadge && itemCount > 0
-                  ? `, ${itemCount} item${itemCount === 1 ? "" : "s"} in cart`
-                  : "";
+                showCartBadge && itemCount > 0 ?
+                  `, ${itemCount} item${itemCount === 1 ? "" : "s"} in cart`
+                : "";
               return (
                 <Link
                   key={id}

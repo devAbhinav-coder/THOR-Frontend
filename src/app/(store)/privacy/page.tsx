@@ -1,21 +1,14 @@
 import type { Metadata } from "next";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import Link from "next/link";
+import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildInfoPageMetadata({
+  path: "/privacy",
   title: "Privacy Policy",
   description:
-    "How The House of Rani collects, uses, and protects your personal information when you shop with us.",
-  alternates: {
-    canonical: "/privacy",
-  },
-  openGraph: {
-    title: "Privacy Policy | The House of Rani",
-    description:
-      "How we collect, use, store, and protect your personal data when you shop with us.",
-    url: "/privacy",
-  },
-};
+    "How The House of Rani collects, uses, and protects your personal information when you shop sarees and ethnic wear online.",
+});
 
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
 

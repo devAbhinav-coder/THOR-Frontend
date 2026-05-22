@@ -1,21 +1,15 @@
 import type { Metadata } from "next";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import Link from "next/link";
+import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildInfoPageMetadata({
+  path: "/shipping",
   title: "Shipping Policy",
   description:
-    "Shipping zones, processing times, delivery estimates, tracking, and what to do if your order is delayed or damaged — The House of Rani.",
-  alternates: {
-    canonical: "/shipping",
-  },
-  openGraph: {
-    title: "Shipping Policy | The House of Rani",
-    description:
-      "How we ship across India, processing times, tracking, and delivery estimates.",
-    url: "/shipping",
-  },
-};
+    "Shipping across India for sarees and ethnic wear — processing times, delivery estimates, free delivery over ₹1,099, tracking, and delays.",
+  priority: "support",
+});
 
 export default function ShippingPage() {
   return (

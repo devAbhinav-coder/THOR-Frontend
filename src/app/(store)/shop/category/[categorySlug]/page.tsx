@@ -255,6 +255,13 @@ export default async function ShopCategoryPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryLd) }}
         />
       )}
+      {!filtered && (
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2'>
+          <p className='text-sm text-gray-600 leading-relaxed max-w-3xl'>
+            {categoryIntro}
+          </p>
+        </div>
+      )}
       <Suspense fallback={<ShopLoading />}>
         <ShopClient categoryContext={{ name: category.name, slug: canonicalSlug }} />
       </Suspense>

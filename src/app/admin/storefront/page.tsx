@@ -1095,7 +1095,7 @@ export default function AdminStorefrontPage() {
               : p
           )
         }
-        placeholder="Short description for the left column"
+        placeholder="Secondary gifting blurb (sarees lead on homepage SEO — keep under 160 chars, avoid 'corporate gifting' as opener)"
       />
       <input
         className={inputCls}

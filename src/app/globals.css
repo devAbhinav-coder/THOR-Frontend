@@ -291,3 +291,55 @@ html.lenis body {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
+
+/* About page — marquee + motion */
+@keyframes about-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.about-page .about-marquee {
+  animation: about-marquee 28s linear infinite;
+  width: max-content;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-page .about-marquee {
+    animation: none;
+  }
+}
+
+/* About page — CSS reveals (Lenis-friendly, no GSAP scrub) */
+.about-page [data-about-reveal],
+.about-page [data-about-reveal-scale] {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.about-page [data-about-reveal-scale] {
+  transform: translate3d(0, 20px, 0) scale(0.98);
+}
+
+.about-page [data-about-reveal].about-visible,
+.about-page [data-about-reveal-scale].about-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-page [data-about-reveal],
+  .about-page [data-about-reveal-scale] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

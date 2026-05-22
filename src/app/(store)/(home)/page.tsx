@@ -10,6 +10,14 @@ import {
   fetchStorefrontSettingsHome,
 } from "@/lib/storefrontServer";
 import { getSiteUrl } from "@/lib/siteUrl";
+import {
+  HOME_KEYWORDS,
+  HOME_META_DESCRIPTION,
+  HOME_OG_DESCRIPTION,
+  HOME_OG_TITLE,
+  HOME_TITLE,
+  ORG_SCHEMA_DESCRIPTION,
+} from "@/lib/brandSeo";
 
 const CategorySection = dynamic(() => import("@/components/home/CategorySection"));
 const FeaturedProducts = dynamic(() => import("@/components/home/FeaturedProducts"));
@@ -25,27 +33,9 @@ const OG_IMAGE = `${SITE_URL}/ogimage.png`;
 const LOGO_IMAGE = `${SITE_URL}/logoNew.png`;
 
 export const metadata: Metadata = {
-  title: "Buy Premium Sarees Online & Handcrafted Gifts | The House of Rani",
-  description:
-    "Drape timeless elegance. Discover exquisite sarees, lehengas, and handcrafted gifts for every occasion — where heritage craftsmanship meets modern luxury. Free delivery across India.",
-  keywords: [
-    "sarees online India",
-    "buy sarees online",
-    "bridal sarees",
-    "lehengas online",
-    "Indian ethnic wear",
-    "gifting sarees",
-    "corporate gifting India",
-    "handmade gifts India",
-    "wedding gifts India",
-    "The House of Rani",
-    "House of Rani",
-    "premium sarees",
-    "salwar suits online",
-    "festive wear India",
-    "saree shop India",
-    "ethnic wear online India",
-  ],
+  title: HOME_TITLE,
+  description: HOME_META_DESCRIPTION,
+  keywords: [...HOME_KEYWORDS],
   metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: "/",
@@ -60,9 +50,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Buy Premium Sarees & Handcrafted Gifts | The House of Rani",
-    description:
-      "Drape timeless elegance. Discover premium sarees & handcrafted gifts — where heritage meets modern luxury. Free delivery across India.",
+    title: HOME_OG_TITLE,
+    description: HOME_OG_DESCRIPTION,
     url: `${SITE_URL}/`,
     type: "website",
     siteName: "The House of Rani",
@@ -72,15 +61,14 @@ export const metadata: Metadata = {
         url: OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: "The House of Rani — Premium Indian Ethnic Wear & Gifting",
+        alt: "The House of Rani — Premium Sarees & Indian Ethnic Wear",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Buy Premium Sarees & Handcrafted Gifts | The House of Rani",
-    description:
-      "Premium sarees, bridal wear, and curated gifting collections for every occasion. Free delivery across India.",
+    title: HOME_OG_TITLE,
+    description: HOME_OG_DESCRIPTION,
     images: [OG_IMAGE],
   },
 };
@@ -107,9 +95,8 @@ export default async function HomePage() {
     "@type": "WebPage",
     "@id": `${SITE_URL}/#webpage`,
     url: `${SITE_URL}/`,
-    name: "Buy Premium Sarees Online & Handcrafted Gifts | The House of Rani",
-    description:
-      "Premium sarees and handcrafted gifting designed for elegance, tradition, and modern luxury. Free delivery across India.",
+    name: HOME_TITLE,
+    description: HOME_META_DESCRIPTION,
     inLanguage: "en-IN",
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#organization` },
@@ -146,8 +133,7 @@ export default async function HomePage() {
     url: SITE_URL,
     logo: LOGO_IMAGE,
     image: OG_IMAGE,
-    description:
-      "Premium sarees, lehengas, and handcrafted gifting for every occasion — where heritage craftsmanship meets modern luxury.",
+    description: ORG_SCHEMA_DESCRIPTION,
     priceRange: "₹₹",
     currenciesAccepted: "INR",
     paymentAccepted: "Cash, Credit Card, UPI, Net Banking",
@@ -156,7 +142,7 @@ export default async function HomePage() {
       name: "India",
     },
     sameAs: [
-      "https://www.instagram.com/housofrani",
+      "https://www.instagram.com/houseofrani",
     ],
   };
 
@@ -178,7 +164,7 @@ export default async function HomePage() {
           "@type": "ItemList",
           name: "Featured Products — The House of Rani",
           description:
-            "Handpicked premium sarees and gifting collections from The House of Rani.",
+            "Handpicked premium sarees and ethnic wear from The House of Rani.",
           url: `${SITE_URL}/shop?isFeatured=true`,
           numberOfItems: featuredProducts.length,
           itemListElement: featuredProducts

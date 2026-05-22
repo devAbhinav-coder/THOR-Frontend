@@ -400,10 +400,14 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
                   </div>
                   <div className='flex flex-col items-center justify-center px-4 sm:px-5 text-center'>
                     <h1 className='font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight'>
-                      {shopBanner.title || "Shop Our Collection"}
+                      {categoryContext?.name ?
+                        `${categoryContext.name} Sarees & Ethnic Wear`
+                      : shopBanner.title || "Shop Our Collection"}
                     </h1>
                     <p className='mt-2 text-sm sm:text-lg text-gray-700 max-w-2xl mx-auto'>
-                      {shopBanner.subtitle ||
+                      {categoryContext?.name ?
+                        `Browse ${categoryContext.name} at The House of Rani — premium fabrics, trusted delivery, and easy returns.`
+                      : shopBanner.subtitle ||
                         "Discover premium ethnic wear crafted for every occasion."}
                     </p>
                   </div>
@@ -691,7 +695,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
                 pageSize={SHOP_PAGE_LIMIT}
                 loadMoreSkeletonCount={6}
                 sentinelRef={sentinelRef}
-                endMessage="You've reached the end."
+                endMessage={undefined}
               />
             }
           </div>

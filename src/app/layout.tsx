@@ -13,6 +13,12 @@ import CookieConsentBanner from "@/components/layout/CookieConsentBanner";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import MetaPixel from "@/components/analytics/MetaPixel";
 import { getSiteUrl } from "@/lib/siteUrl";
+import {
+  ORG_SCHEMA_DESCRIPTION,
+  ROOT_DEFAULT_DESCRIPTION,
+  ROOT_DEFAULT_TITLE,
+  ROOT_KEYWORDS,
+} from "@/lib/brandSeo";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 const dmSans = DM_Sans({
@@ -72,22 +78,11 @@ const DNS_PREFETCH_HINTS = [
 
 export const metadata: Metadata = {
   title: {
-    default: "The House of Rani | Premium Indian Ethnic Wear & Gifting",
+    default: ROOT_DEFAULT_TITLE,
     template: "%s | The House of Rani",
   },
-  description:
-    "Discover premium sarees and handcrafted gifting at The House of Rani—where heritage craftsmanship meets modern elegance. Shop timeless styles delivered across India.",
-keywords: [
-  "sarees online India",
-  "buy sarees online",
-  "premium sarees",
-  "designer sarees India",
-  "festive sarees India",
-  "handcrafted gifts India",
-  "corporate gifting India",
-  "gift hampers India",
-  "The House of Rani"
-],
+  description: ROOT_DEFAULT_DESCRIPTION,
+  keywords: [...ROOT_KEYWORDS],
   authors: [{ name: "The House of Rani" }],
   creator: "The House of Rani",
   applicationName: "The House of Rani",
@@ -97,24 +92,24 @@ openGraph: {
   locale: "en_IN",
   url: SITE_URL,
   siteName: "The House of Rani",
-  title: "Premium Sarees & Handcrafted Gifts | The House of Rani",
+  title: "Premium Sarees & Indian Ethnic Wear | The House of Rani",
   description:
-    "Discover premium sarees and handcrafted gifting—where heritage meets modern luxury.",
+    "Premium sarees, lehengas, and ethnic wear — heritage craftsmanship with modern elegance. Free delivery over ₹1,099.",
   images: [
     {
       url: `${SITE_URL}/ogimage.png`,
       width: 1200,
       height: 630,
-      alt: "Premium Sarees & Handcrafted Gifts – The House of Rani",
+      alt: "Premium Sarees & Indian Ethnic Wear – The House of Rani",
 
     },
   ],
 },
  twitter: {
   card: "summary_large_image",
-  title: "Premium Sarees & Handcrafted Gifts | The House of Rani",
+  title: "Premium Sarees & Indian Ethnic Wear | The House of Rani",
   description:
-    "Explore premium sarees and handcrafted gifting designed for elegance and timeless style.",
+    "Shop premium sarees, lehengas, and ethnic wear designed for weddings, festivals, and everyday elegance.",
   images: [`${SITE_URL}/ogimage.png`],
 },
   verification: {
@@ -152,7 +147,7 @@ export default async function RootLayout({
           width: 512,
           height: 512,
         },
-        description:"Premium sarees and handcrafted gifting designed for elegance, tradition, and modern luxury.",
+        description: ORG_SCHEMA_DESCRIPTION,
         /**
          * sameAs links the brand to its official social and directory profiles.
          * Google uses these to build and verify the Knowledge Panel entry.

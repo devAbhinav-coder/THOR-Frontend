@@ -68,7 +68,13 @@ export function ProductInfiniteGrid<T>({
       )}
 
       {!hasNextPage && !isFetchingNextPage && items.length > 0 && endMessage ?
-        <p className='mt-8 text-center text-sm text-gray-600'>{endMessage}</p>
+        <p
+          data-nosnippet
+          className='mt-8 text-center text-sm text-gray-500'
+          aria-hidden='true'
+        >
+          {endMessage}
+        </p>
       : null}
     </>
   );

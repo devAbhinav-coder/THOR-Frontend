@@ -2,21 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
-export const metadata: Metadata = {
-  title: "FAQ",
+export const metadata: Metadata = buildInfoPageMetadata({
+  path: "/faq",
+  title: "FAQ — Sarees, Orders, Shipping & Returns",
   description:
-    "Frequently asked questions about orders, shipping, returns, customization, and gifting at The House of Rani.",
-  alternates: {
-    canonical: "/faq",
-  },
-  openGraph: {
-    title: "FAQ | The House of Rani",
-    description:
-      "Answers about orders, shipping, returns, customization, and gifting.",
-    url: "/faq",
-  },
-};
+    "Frequently asked questions about buying sarees online, orders, shipping across India, returns, sizing, and gifting at The House of Rani.",
+  priority: "support",
+});
 
 const faqItems = [
   {
@@ -121,6 +115,10 @@ export default function FaqPage() {
         <h2>Need more help?</h2>
         <p>
           Explore policy pages for detailed information:{" "}
+          <Link href='/about' className='text-brand-600 hover:underline'>
+            About us
+          </Link>
+          {" · "}
           <Link href='/shipping' className='text-brand-600 hover:underline'>
             Shipping Policy
           </Link>
@@ -139,6 +137,10 @@ export default function FaqPage() {
           {" · "}
           <Link href='/gifting' className='text-brand-600 hover:underline'>
             Gifting
+          </Link>
+          {" · "}
+          <Link href='/blog' className='text-brand-600 hover:underline'>
+            Journal & styling tips
           </Link>
         </p>
       </LegalPageLayout>

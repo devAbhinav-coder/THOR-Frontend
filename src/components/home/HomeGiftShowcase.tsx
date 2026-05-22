@@ -185,6 +185,8 @@ export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
   return (
     <section
       ref={sectionRef}
+      data-nosnippet
+      aria-label='Gifting collections'
       className='relative bg-[#FAF9F6] w-full z-20 md:h-[calc(var(--card-count)*80vh+100vh)] py-12 md:py-0'
       style={{ "--card-count": cards.length } as React.CSSProperties}
     >

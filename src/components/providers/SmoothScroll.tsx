@@ -78,6 +78,23 @@ function LenisGsapSync() {
   return null;
 }
 
+/** Silkier Lenis feel on editorial pages (About, home). */
+function LenisEditorialRouteTune() {
+  const pathname = usePathname();
+  const lenis = useLenis();
+
+  useEffect(() => {
+    if (!lenis) return;
+    const isAbout = pathname === "/about";
+    const isHome = pathname === "/";
+    lenis.options.lerp = isAbout ? 0.1 : isHome ? 0.06 : 0.08;
+    lenis.options.duration = isAbout ? 1.15 : isHome ? 1.4 : 1.25;
+    lenis.options.wheelMultiplier = isAbout ? 1 : isHome ? 0.92 : 1;
+    lenis.resize();
+  }, [pathname, lenis]);
+
+  return null;
+}
 
 export default function SmoothScroll({ children }: { children: ReactNode }) {
   const [lenisOn, setLenisOn] = useState(false);
@@ -113,6 +130,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     >
       <LenisGsapSync />
       <LenisScrollToTopOnRoute />
+      <LenisEditorialRouteTune />
       {children}
     </ReactLenis>
   );

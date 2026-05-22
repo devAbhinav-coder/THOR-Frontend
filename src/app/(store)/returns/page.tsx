@@ -1,21 +1,15 @@
 import type { Metadata } from "next";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import Link from "next/link";
+import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildInfoPageMetadata({
+  path: "/returns",
   title: "Return & Cancellation Policy",
   description:
-    "How to return items, request refunds, and cancel orders at The House of Rani — including COD, shipping charges, and order timelines.",
-  alternates: {
-    canonical: "/returns",
-  },
-  openGraph: {
-    title: "Return & Cancellation Policy | The House of Rani",
-    description:
-      "Returns, refunds, and cancellations for orders placed with The House of Rani.",
-    url: "/returns",
-  },
-};
+    "7-day returns, refunds, and order cancellations for sarees and ethnic wear at The House of Rani — including COD and shipping charge rules.",
+  priority: "support",
+});
 
 export default function ReturnsPage() {
   return (

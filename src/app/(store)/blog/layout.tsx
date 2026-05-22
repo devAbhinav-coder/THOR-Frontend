@@ -7,7 +7,7 @@ const OG_IMAGE = `${appUrl}/ogimage.png`;
 export const metadata: Metadata = {
   title: "The House of Rani Journal | Saree Styling, Bridal & Gifting Stories",
   description:
-    "Explore the House of Rani Journal — saree styling advice, bridal outfit inspiration, gifting ideas for every occasion, and behind-the-scenes stories from our atelier. Discover Indian ethnic wear through every story.",
+    "The House of Rani Journal — saree styling guides, bridal outfit inspiration, fabric care, festive wear tips, and stories from our Indian ethnic wear atelier. New articles weekly.",
   keywords: [
     "saree styling tips",
     "bridal saree inspiration",

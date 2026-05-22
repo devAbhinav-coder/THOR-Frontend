@@ -43,6 +43,57 @@ export default function LegalPageLayout({ title, description, lastUpdated, child
         >
           {children}
         </div>
+
+        <nav
+          className="mt-8 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6"
+          aria-label="Related pages"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+            Related pages
+          </p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            <li>
+              <Link href="/about" className="text-brand-600 hover:underline">
+                About us
+              </Link>
+            </li>
+            <li>
+              <Link href="/shop" className="text-brand-600 hover:underline">
+                Shop sarees
+              </Link>
+            </li>
+            <li>
+              <Link href="/blog" className="text-brand-600 hover:underline">
+                Journal
+              </Link>
+            </li>
+            <li>
+              <Link href="/faq" className="text-brand-600 hover:underline">
+                FAQ
+              </Link>
+            </li>
+            <li>
+              <Link href="/shipping" className="text-brand-600 hover:underline">
+                Shipping
+              </Link>
+            </li>
+            <li>
+              <Link href="/returns" className="text-brand-600 hover:underline">
+                Returns
+              </Link>
+            </li>
+            <li>
+              <Link href="/terms" className="text-brand-600 hover:underline">
+                Terms
+              </Link>
+            </li>
+            <li>
+              <Link href="/privacy" className="text-brand-600 hover:underline">
+                Privacy
+              </Link>
+            </li>
+          </ul>
+        </nav>
       </article>
     </div>
   );

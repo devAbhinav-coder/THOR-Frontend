@@ -11,6 +11,7 @@ import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { Category, StorefrontSettings } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
+import { resolveFooterQuickLinks } from "@/lib/footerQuickLinks";
 
 function normalizeHref(href: string): string {
   const raw = String(href || "").trim();
@@ -66,20 +67,10 @@ export default function Footer() {
   });
 
   const footer = settings?.footer;
-  const quickLinks =
-    footer?.quickLinks?.length ?
-      footer.quickLinks
-    : [
-        { label: "Home", href: "/" },
-        { label: "Shop Sarees", href: "/shop" },
-        { label: "Gifting", href: "/gifting" },
-        { label: "New Arrivals", href: "/shop?sort=-createdAt" },
-        { label: "Featured", href: "/shop?isFeatured=true" },
-        { label: "Returns", href: "/returns" },
-        { label: "Cart", href: "/cart" },
-      ];
+  const quickLinks = resolveFooterQuickLinks(footer?.quickLinks);
 
   const bottomBarSection = [
+    { label: "About Us", href: "/about" },
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Return Policy", href: "/returns" },
     { label: "Terms of Service", href: "/terms" },
@@ -118,7 +109,7 @@ export default function Footer() {
             </Link>
             <p className='text-sm leading-relaxed mb-5 text-white/85'>
               {footer?.description ||
-                "Your destination for exquisite Indian ethnic wear. Curated collections of sarees, lehengas, and more — crafted with love and tradition. "}
+                "Your destination for exquisite Indian ethnic wear. Curated sarees, lehengas, salwar suits, and more — crafted with love and tradition."}
             </p>
             <div className='flex space-x-2'>
               {socialLinks.map(({ Icon, href, label }) => (

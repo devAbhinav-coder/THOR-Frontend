@@ -1,21 +1,14 @@
 import type { Metadata } from "next";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import Link from "next/link";
+import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildInfoPageMetadata({
+  path: "/terms",
   title: "Terms of Service",
   description:
-    "Terms and conditions for using The House of Rani website, placing orders, and purchasing products.",
-  alternates: {
-    canonical: "/terms",
-  },
-  openGraph: {
-    title: "Terms of Service | The House of Rani",
-    description:
-      "Terms governing use of our website, accounts, orders, and purchases.",
-    url: "/terms",
-  },
-};
+    "Terms and conditions for shopping sarees and ethnic wear on The House of Rani — accounts, orders, payments, and purchases.",
+});
 
 export default function TermsPage() {
   return (

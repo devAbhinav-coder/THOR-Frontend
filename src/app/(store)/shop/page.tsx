@@ -7,11 +7,12 @@ import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import type { Product } from "@/types";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
+import { SHOP_META_DESCRIPTION, SHOP_META_TITLE } from "@/lib/brandSeo";
 
 const SITE_URL = getSiteUrl();
-const baseTitle = "Shop | The House of Rani";
-const baseDesc =
-  "Shop premium sarees, lehengas, and ethnic wear at The House of Rani. Filter by category, fabric, price, and rating to find your perfect look.";
+
+const baseTitle = SHOP_META_TITLE;
+const baseDesc = SHOP_META_DESCRIPTION;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
