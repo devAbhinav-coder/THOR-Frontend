@@ -19,9 +19,10 @@ import { BRAND_NAME } from "@/lib/brandSeo";
 import { cn } from "@/lib/utils";
 import { useAboutReveal } from "@/hooks/useAboutReveal";
 import type {
-  AboutImage,
   AboutInternalLink,
+  AboutPageVisuals,
   AboutProductTeaser,
+  AboutVisualImage,
 } from "@/components/about/aboutPageTypes";
 
 const MARQUEE_WORDS = [
@@ -38,51 +39,82 @@ const MARQUEE_WORDS = [
 ];
 
 type Props = {
-  images: AboutImage[];
+  visuals: AboutPageVisuals;
   products: AboutProductTeaser[];
   internalLinks: AboutInternalLink[];
 };
 
-function AboutImageFrame({
+function productHref(href: unknown): string | undefined {
+  if (typeof href !== "string") return undefined;
+  const h = href.trim();
+  return h.startsWith("/") ? h : undefined;
+}
+
+function AboutVisualFrame({
   img,
   className,
   priority,
   sizes,
+  showViewLabel = false,
 }: {
-  img: AboutImage;
+  img: AboutVisualImage | null | undefined;
   className?: string;
   priority?: boolean;
   sizes: string;
+  showViewLabel?: boolean;
 }) {
-  return (
-    <figure className={cn("relative overflow-hidden", className)}>
+  const src = typeof img?.src === "string" ? img.src.trim() : "";
+  if (!src) return null;
+
+  const href = productHref(img?.href);
+  const alt = img?.alt || `${BRAND_NAME} — handcrafted sarees`;
+
+  const inner = (
+    <>
       <Image
-        src={img.src}
-        alt={img.alt}
+        src={src}
+        alt={alt}
         fill
         priority={priority}
         sizes={sizes}
-        className="object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105"
+        className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         loader={cloudinaryLoader}
       />
-      {img.caption ? (
-        <figcaption className="absolute bottom-0 inset-x-0 z-10 bg-gradient-to-t from-navy-950/90 via-navy-950/40 to-transparent px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-white/90">
+      {img?.caption ? (
+        <figcaption className="absolute bottom-0 inset-x-0 z-10 bg-gradient-to-t from-navy-950/90 via-navy-950/40 to-transparent px-4 py-3 text-[11px] uppercase tracking-[0.14em] text-white/90 line-clamp-2">
           {img.caption}
         </figcaption>
       ) : null}
-    </figure>
+      {showViewLabel && href ? (
+        <span className="absolute top-3 right-3 z-10 rounded-full bg-white/95 text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+          View saree
+        </span>
+      ) : null}
+    </>
   );
+
+  const figureClass = cn("relative overflow-hidden block", className);
+
+  if (href) {
+    return (
+      <Link href={href} className={cn(figureClass, "group")}>
+        {inner}
+      </Link>
+    );
+  }
+
+  return <figure className={figureClass}>{inner}</figure>;
 }
 
 export default function AboutPageClient({
-  images,
+  visuals,
   products,
   internalLinks,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   useAboutReveal(rootRef);
-  const heroImage = images[0];
-  const gallery = images.slice(0, 6);
+  const heroImage = visuals.hero;
+  const { dreamBanner, bento, intention, connect } = visuals;
   const shopLinks = internalLinks.filter((l) => l.group === "shop");
   const helpLinks = internalLinks.filter((l) => l.group === "help");
   const discoverLinks = internalLinks.filter((l) => l.group === "discover");
@@ -235,13 +267,13 @@ export default function AboutPageClient({
               </div>
             </div>
 
-            {gallery[1] ? (
+            {dreamBanner ? (
               <div
                 data-about-reveal-scale
                 className="mt-16 sm:mt-20 group relative aspect-[21/9] sm:aspect-[2.4/1] rounded-3xl overflow-hidden ring-1 ring-stone-200/80 shadow-2xl"
               >
-                <AboutImageFrame
-                  img={gallery[1]}
+                <AboutVisualFrame
+                  img={dreamBanner}
                   className="absolute inset-0"
                   sizes="100vw"
                 />
@@ -253,7 +285,7 @@ export default function AboutPageClient({
         <AboutChapterFeatures />
 
         {/* ── Bento gallery ── */}
-        {gallery.length >= 3 ? (
+        {bento.length >= 3 ? (
           <section
             className="bg-navy-950 py-16 sm:py-24"
             aria-label="Saree craftsmanship gallery"
@@ -265,18 +297,18 @@ export default function AboutPageClient({
                 </h2>
                 <Link
                   href="/shop"
-                  className="inline-flex items-center gap-2 text-sm font-bold text-brand-300 hover:text-brand-200"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-brand-300 hover:text-brand-200 shrink-0"
                 >
                   View full collection <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-12 gap-3 sm:gap-4 auto-rows-[minmax(140px,1fr)]">
-                {gallery.slice(0, 5).map((img, idx) => (
-                  <figure
+                {bento.map((img, idx) => (
+                  <div
                     key={`${img.src}-${idx}`}
                     data-about-reveal-scale
                     className={cn(
-                      "group relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-white/10",
+                      "relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-white/10",
                       idx === 0 && "col-span-2 md:col-span-7 md:row-span-2 min-h-[280px] md:min-h-[420px]",
                       idx === 1 && "col-span-1 md:col-span-5 min-h-[180px]",
                       idx === 2 && "col-span-1 md:col-span-5 min-h-[180px]",
@@ -284,12 +316,13 @@ export default function AboutPageClient({
                       idx === 4 && "col-span-1 md:col-span-8 min-h-[160px]",
                     )}
                   >
-                    <AboutImageFrame
+                    <AboutVisualFrame
                       img={img}
                       className="absolute inset-0"
                       sizes="(max-width: 768px) 50vw, 33vw"
+                      showViewLabel={Boolean(img.href)}
                     />
-                  </figure>
+                  </div>
                 ))}
               </div>
             </div>
@@ -303,15 +336,16 @@ export default function AboutPageClient({
         >
           <div className="absolute inset-0 bg-gradient-to-br from-brand-950/40 via-navy-950 to-navy-950" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-14 items-center">
-            {gallery[2] ? (
+            {intention ? (
               <div
                 data-about-reveal-scale
                 className="group relative aspect-[3/4] max-w-md mx-auto lg:mx-0 rounded-[2rem] overflow-hidden ring-1 ring-white/15 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.6)]"
               >
-                <AboutImageFrame
-                  img={gallery[2]}
+                <AboutVisualFrame
+                  img={intention}
                   className="absolute inset-0"
                   sizes="(max-width: 1024px) 90vw, 40vw"
+                  showViewLabel={Boolean(intention.href)}
                 />
               </div>
             ) : null}
@@ -456,7 +490,7 @@ export default function AboutPageClient({
           helpLinks={helpLinks}
         />
 
-        <AboutConnectSection galleryImage={gallery[3]} />
+        <AboutConnectSection galleryImage={connect ?? undefined} />
       </main>
     </div>
   );

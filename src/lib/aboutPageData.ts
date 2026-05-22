@@ -1,7 +1,9 @@
 import type {
   AboutImage,
   AboutInternalLink,
+  AboutPageVisuals,
   AboutProductTeaser,
+  AboutVisualImage,
 } from "@/components/about/aboutPageTypes";
 import type { HeroSlide, Category, Product } from "@/types";
 import { fallbackHeroSlides } from "@/lib/heroSlidesFallback";
@@ -19,9 +21,61 @@ import whyChooseUsImg from "@/assets/why-choose-us.png";
 
 function productImageAlt(product: Product): string {
   const name = product.name?.trim() || "saree";
-  return `${name} — story-led ethnic saree at ${BRAND_NAME}`;
+  return `${name} — shop at ${BRAND_NAME}`;
 }
 
+function toProductVisual(p: Product): AboutVisualImage | null {
+  const url =
+    typeof p.images?.[0]?.url === "string" ? p.images[0].url.trim() : "";
+  const slug = typeof p.slug === "string" ? p.slug.trim() : "";
+  if (!url || !slug) return null;
+  return {
+    src: url,
+    alt: productImageAlt(p),
+    caption: p.name?.trim(),
+    href: `/shop/${encodeURIComponent(slug)}`,
+  };
+}
+
+function pickProductVisuals(featured: Product[] | null): AboutVisualImage[] {
+  const out: AboutVisualImage[] = [];
+  const seen = new Set<string>();
+  for (const p of featured || []) {
+    const v = toProductVisual(p);
+    if (!v || seen.has(v.src)) continue;
+    seen.add(v.src);
+    out.push(v);
+  }
+  return out;
+}
+
+function toVisual(img: AboutImage | null | undefined): AboutVisualImage | null {
+  const src = typeof img?.src === "string" ? img.src.trim() : "";
+  if (!src) return null;
+  return {
+    src,
+    alt: img?.alt || `${BRAND_NAME} — handcrafted sarees`,
+    caption: img?.caption,
+  };
+}
+
+function attachProductHref(
+  visual: AboutVisualImage | null,
+  featured: Product[] | null,
+): AboutVisualImage | null {
+  if (!visual) return null;
+  const match = (featured || []).find((p) => {
+    const url =
+      typeof p.images?.[0]?.url === "string" ? p.images[0].url.trim() : "";
+    const slug = typeof p.slug === "string" ? p.slug.trim() : "";
+    return url && slug && url === visual.src;
+  });
+  if (!match) return visual;
+  const linked = toProductVisual(match);
+  return linked ? { ...visual, href: linked.href, caption: linked.caption ?? visual.caption } : visual;
+}
+
+/** Same ordered list as before: hero slides → featured → brand fallbacks. */
 async function resolveAboutPageImages(
   featured: Product[] | null,
 ): Promise<AboutImage[]> {
@@ -51,7 +105,9 @@ async function resolveAboutPageImages(
 
   (featured || []).slice(0, 3).forEach((p) => {
     const url = p.images?.[0]?.url;
-    if (url) push(url, productImageAlt(p));
+    if (typeof url === "string" && url.trim()) {
+      push(url.trim(), productImageAlt(p));
+    }
   });
 
   push(
@@ -63,6 +119,90 @@ async function resolveAboutPageImages(
   if (out.length < 2) push(ogFallback, `${BRAND_NAME} — About us`);
 
   return out.slice(0, 8);
+}
+
+function pickFeaturedForSection(
+  products: AboutVisualImage[],
+  heroSlideSrcs: Set<string>,
+  usedSrcs: Set<string>,
+  fallbackIndex: number,
+): AboutVisualImage | null {
+  const candidate =
+    products.find(
+      (p) => !heroSlideSrcs.has(p.src) && !usedSrcs.has(p.src),
+    ) ??
+    products.find((p) => !heroSlideSrcs.has(p.src)) ??
+    products[fallbackIndex] ??
+    products[0] ??
+    null;
+  if (candidate) usedSrcs.add(candidate.src);
+  return candidate;
+}
+
+/**
+ * Section mapping:
+ * - hero → images[0] (hero slide 1)
+ * - dreamBanner → images[1] (hero slide 2)
+ * - bento → images[0..4] (hero slides + featured in list)
+ * - intention → featured saree (NOT hero slide 3)
+ * - connect → featured saree (NOT hero slide 4)
+ */
+async function resolveAboutVisualsAsync(
+  featured: Product[] | null,
+): Promise<AboutPageVisuals> {
+  const images = await resolveAboutPageImages(featured);
+  const products = pickProductVisuals(featured);
+  const heroSlideSrcs = new Set(images.slice(0, 4).map((i) => i.src));
+  const usedProductSrcs = new Set<string>();
+
+  const hero = images[0] ?? null;
+  const dreamBanner = toVisual(images[1]);
+  const bento = images
+    .slice(0, 5)
+    .map((img) => attachProductHref(toVisual(img), featured))
+    .filter((v): v is AboutVisualImage => Boolean(v));
+
+  const intention =
+    pickFeaturedForSection(products, heroSlideSrcs, usedProductSrcs, 0) ??
+    attachProductHref(toVisual(images[4]), featured) ??
+    attachProductHref(toVisual(images[5]), featured) ?? {
+      src: whyChooseUsImg.src,
+      alt: `${BRAND_NAME} — premium Indian ethnic wear`,
+      href: "/shop",
+    };
+
+  const connect =
+    pickFeaturedForSection(products, heroSlideSrcs, usedProductSrcs, 1) ??
+    pickFeaturedForSection(products, heroSlideSrcs, new Set(), 0) ?? {
+      src: whyChooseUsImg.src,
+      alt: `${BRAND_NAME} — premium Indian ethnic wear`,
+      href: "/shop",
+    };
+
+  return {
+    hero,
+    dreamBanner,
+    bento,
+    intention,
+    connect,
+  };
+}
+
+/** Unique images for JSON-LD */
+export function collectAboutSchemaImages(visuals: AboutPageVisuals): AboutImage[] {
+  const out: AboutImage[] = [];
+  const seen = new Set<string>();
+  const push = (img: AboutImage | null | undefined) => {
+    if (!img?.src || seen.has(img.src)) return;
+    seen.add(img.src);
+    out.push({ src: img.src, alt: img.alt, caption: img.caption });
+  };
+  push(visuals.hero);
+  push(visuals.dreamBanner);
+  visuals.bento.forEach(push);
+  push(visuals.intention);
+  push(visuals.connect);
+  return out;
 }
 
 function toProductTeasers(products: Product[] | null): AboutProductTeaser[] {
@@ -158,7 +298,8 @@ function buildCategoryLinks(
 }
 
 export type AboutPageData = {
-  images: AboutImage[];
+  visuals: AboutPageVisuals;
+  schemaImages: AboutImage[];
   products: AboutProductTeaser[];
   internalLinks: AboutInternalLink[];
   categories: Pick<Category, "name" | "slug">[];
@@ -171,8 +312,7 @@ export async function resolveAboutPageData(): Promise<AboutPageData> {
   ]);
 
   const categories = (categoryStats || []).filter(isShopCatalogCategory).slice(0, 8);
-
-  const images = await resolveAboutPageImages(featured);
+  const visuals = await resolveAboutVisualsAsync(featured);
   const products = toProductTeasers(featured);
   const internalLinks = [
     ...buildStaticInternalLinks(),
@@ -180,7 +320,8 @@ export async function resolveAboutPageData(): Promise<AboutPageData> {
   ];
 
   return {
-    images,
+    visuals,
+    schemaImages: collectAboutSchemaImages(visuals),
     products,
     internalLinks,
     categories: categories.map((c) => ({

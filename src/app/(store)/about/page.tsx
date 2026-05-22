@@ -34,8 +34,10 @@ export const metadata: Metadata = {
 
 export default async function AboutRoutePage() {
   const appUrl = getSiteUrl();
-  const { images, products, internalLinks } = await resolveAboutPageData();
-  const primaryImage = images[0]?.src ?? `${appUrl}/ogimage.png`;
+  const { visuals, schemaImages, products, internalLinks } =
+    await resolveAboutPageData();
+  const primaryImage =
+    visuals.hero?.src ?? schemaImages[0]?.src ?? `${appUrl}/ogimage.png`;
   const schemaLinks = aboutLinksForSchema(internalLinks, appUrl);
 
   const aboutPageLd = {
@@ -55,7 +57,7 @@ export default async function AboutRoutePage() {
         ? primaryImage
         : `${appUrl}${primaryImage}`,
     },
-    image: images.slice(0, 5).map((img) => ({
+    image: schemaImages.slice(0, 5).map((img) => ({
       "@type": "ImageObject",
       url: img.src.startsWith("http") ? img.src : `${appUrl}${img.src}`,
       caption: img.alt,
@@ -133,7 +135,7 @@ export default async function AboutRoutePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(siteNavLd) }}
       />
       <AboutPageClient
-        images={images}
+        visuals={visuals}
         products={products}
         internalLinks={internalLinks}
       />

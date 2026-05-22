@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Instagram, Mail, Phone } from "lucide-react";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { BRAND_NAME } from "@/lib/brandSeo";
-import type { AboutImage } from "@/components/about/aboutPageTypes";
+import type { AboutVisualImage } from "@/components/about/aboutPageTypes";
 
 const INSTAGRAM_URL = "https://www.instagram.com/houseofrani";
 const INSTAGRAM_HANDLE = "@houseofrani";
@@ -13,7 +13,7 @@ const SUPPORT_EMAIL = "support@thehouseofrani.com";
 const SUPPORT_PHONE = "+91 83403 11033";
 
 type Props = {
-  galleryImage?: AboutImage;
+  galleryImage?: AboutVisualImage;
 };
 
 export default function AboutConnectSection({ galleryImage }: Props) {
@@ -32,19 +32,36 @@ export default function AboutConnectSection({ galleryImage }: Props) {
         >
           <div className="grid lg:grid-cols-2">
             {galleryImage ? (
-              <div className="relative aspect-[4/3] lg:aspect-auto lg:min-h-[320px] overflow-hidden">
+              <div className="relative aspect-[4/3] lg:aspect-auto lg:min-h-[320px] overflow-hidden group">
+                {typeof galleryImage.href === "string" &&
+                galleryImage.href.trim().startsWith("/") ?
+                  <Link
+                    href={galleryImage.href.trim()}
+                    className="absolute inset-0 z-[1] block"
+                    aria-label={`View ${galleryImage.caption || "saree"}`}
+                  >
+                    <span className="sr-only">View product</span>
+                  </Link>
+                : null}
                 <Image
                   src={galleryImage.src}
                   alt={galleryImage.alt}
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                   loader={cloudinaryLoader}
                 />
-                <div
-                  className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white/20 via-transparent to-transparent lg:from-transparent"
-                  aria-hidden
-                />
+                {galleryImage.caption ? (
+                  <p className="absolute bottom-0 inset-x-0 z-[2] bg-gradient-to-t from-navy-950/80 to-transparent px-4 py-3 text-xs text-white/90 line-clamp-2">
+                    {galleryImage.caption}
+                  </p>
+                ) : null}
+                {typeof galleryImage.href === "string" &&
+                galleryImage.href.trim().startsWith("/") ? (
+                  <span className="absolute top-3 right-3 z-[2] rounded-full bg-white text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
+                    View saree
+                  </span>
+                ) : null}
               </div>
             ) : (
               <div
