@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminErrorState from '@/components/admin/AdminErrorState';
+import { AdminAiExplainButton } from '@/components/admin/ai';
 import toast from 'react-hot-toast';
 
 type ReturnOrder = {
@@ -202,6 +203,7 @@ export default function AdminReturnsPage() {
         description="Track return requests, reasons, and which products or customers are involved most often. Data below is aggregated from all orders (not just this page)."
         actions={
           <>
+            <AdminAiExplainButton kind="returns" label="AI explain returns" />
             <Button
               type="button"
               variant="outline"

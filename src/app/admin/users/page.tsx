@@ -40,6 +40,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useAuthStore } from "@/store/useAuthStore";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import AdminErrorState from "@/components/admin/AdminErrorState";
+import { AdminAiExplainButton } from "@/components/admin/ai";
 
 type UserInsight = {
   user: User;
@@ -1321,6 +1322,13 @@ export default function AdminUsersPage() {
                         </p>
                       </div>
                     ))}
+                  </div>
+                  <div className="flex justify-end">
+                    <AdminAiExplainButton
+                      kind="user"
+                      userId={selectedUser._id}
+                      label="AI customer advice"
+                    />
                   </div>
 
                   <div className='flex flex-wrap items-center gap-2'>

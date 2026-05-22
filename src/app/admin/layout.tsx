@@ -14,6 +14,7 @@ import {
   Star,
   LogOut,
   BarChart3,
+  Sparkles,
   LayoutGrid,
   Store,
   Menu,
@@ -56,6 +57,7 @@ const navSections: NavSection[] = [
     title: "Overview",
     items: [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { label: "Business Assistant", href: "/admin/ai", icon: Sparkles },
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Revenue", href: "/admin/revenue", icon: IndianRupee },
       { label: "Operating costs", href: "/admin/expenses", icon: Receipt },
@@ -229,6 +231,7 @@ const SHOP_SITE_CTA = "Go to website";
 
 const mobileQuickLinks = [
   { label: "Dash", href: "/admin" },
+  { label: "AI", href: "/admin/ai" },
   { label: "Orders", href: "/admin/orders" },
   { label: "Returns", href: "/admin/returns" },
   { label: "Revenue", href: "/admin/revenue" },

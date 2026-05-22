@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { adminApi } from '@/lib/api';
 import { Review } from '@/types';
 import { cn, formatDate } from '@/lib/utils';
+import { AdminAiReviewDraftButton } from '@/components/admin/ai';
 
 function ReviewStars({ rating, size = 'h-3.5 w-3.5' }: { rating: number; size?: string }) {
   return (
@@ -584,6 +585,10 @@ export default function AdminReviewsPage() {
                         <p className="mt-0.5 text-right text-xs text-gray-400">{replyText.length}/500</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
+                        <AdminAiReviewDraftButton
+                          reviewId={review._id}
+                          onDraft={(text) => setReplyText(text)}
+                        />
                         <button
                           onClick={() => handleReply(review._id)}
                           disabled={isReplying || !replyText.trim()}

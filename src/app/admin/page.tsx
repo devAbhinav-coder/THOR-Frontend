@@ -36,6 +36,7 @@ import {
   type AdminQuickLink,
   type InventoryValuationOverall,
 } from '@/components/admin/dashboard';
+import { AdminAiBriefCard, AdminAiActionSuggestions } from '@/components/admin/ai';
 
 export default function AdminDashboardPage() {
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
@@ -211,6 +212,11 @@ export default function AdminDashboardPage() {
         />
 
         <AdminQuickActionsGrid links={quickActions} />
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <AdminAiBriefCard />
+          <AdminAiActionSuggestions />
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <AdminMetricCard

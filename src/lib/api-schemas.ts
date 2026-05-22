@@ -795,3 +795,71 @@ export const adminOperatingExpenseSummary = z.object({
   status: z.string(),
   data: z.object({ summary: z.any() }),
 }).passthrough();
+
+const adminAiTextPayload = z.object({
+  text: z.string(),
+  bullets: z.array(z.string()).optional(),
+  intro: z.string().optional(),
+  cached: z.boolean().optional(),
+  generatedAt: z.string().optional(),
+  model: z.string().optional(),
+});
+
+export const adminAiStatus = z.object({
+  status: z.string(),
+  data: z.object({
+    enabled: z.boolean(),
+    model: z.string().optional(),
+    provider: z.string().optional(),
+    features: z.array(z.string()).optional(),
+  }),
+});
+
+export const adminAiTextResponse = z.object({
+  status: z.string(),
+  data: adminAiTextPayload,
+});
+
+export const adminAiActionSuggestions = z.object({
+  status: z.string(),
+  data: z.object({
+    rules: z.array(
+      z.object({
+        id: z.string(),
+        priority: z.enum(['high', 'medium', 'low']),
+        title: z.string(),
+        detail: z.string(),
+        href: z.string().optional(),
+      }),
+    ),
+    summary: adminAiTextPayload.nullable().optional(),
+  }),
+});
+
+export const adminAiProductDraft = z.object({
+  status: z.string(),
+  data: adminAiTextPayload.extend({
+    shortDescription: z.string().optional(),
+    description: z.string().optional(),
+    seoTitle: z.string().optional(),
+    seoDescription: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    productDetailKeys: z.string().optional(),
+    productDetailValues: z.string().optional(),
+  }),
+});
+
+export const adminAiReviewDraft = z.object({
+  status: z.string(),
+  data: adminAiTextPayload.extend({
+    replyText: z.string().optional(),
+  }),
+});
+
+export const adminAiMarketingDraft = z.object({
+  status: z.string(),
+  data: adminAiTextPayload.extend({
+    subject: z.string().optional(),
+    messageHtml: z.string().optional(),
+  }),
+});

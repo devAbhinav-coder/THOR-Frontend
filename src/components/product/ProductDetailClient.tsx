@@ -39,8 +39,16 @@ import { isLowInStockVariant } from "@/lib/inventoryConstants";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
-import { trackViewContent, trackAddToCart, trackAddToWishlist } from "@/lib/metaPixel";
-import { trackGaViewItem, trackGaAddToCart, trackGaAddToWishlist } from "@/lib/googleAnalytics";
+import {
+  trackViewContent,
+  trackAddToCart,
+  trackAddToWishlist,
+} from "@/lib/metaPixel";
+import {
+  trackGaViewItem,
+  trackGaAddToCart,
+  trackGaAddToWishlist,
+} from "@/lib/googleAnalytics";
 import {
   type ReviewEligibility,
   type ReviewFormState,
@@ -494,14 +502,15 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
     let cancelled = false;
     reviewApi
       .canReview(productId)
-      .then((body) =>
-        !cancelled &&
-        setReviewEligibility({
-          canReview: body.data.canReview,
-          hasPurchased: body.data.hasPurchased ?? false,
-          hasReviewed: body.data.hasReviewed ?? false,
-          orderId: body.data.orderId ? String(body.data.orderId) : null,
-        }),
+      .then(
+        (body) =>
+          !cancelled &&
+          setReviewEligibility({
+            canReview: body.data.canReview,
+            hasPurchased: body.data.hasPurchased ?? false,
+            hasReviewed: body.data.hasReviewed ?? false,
+            orderId: body.data.orderId ? String(body.data.orderId) : null,
+          }),
       )
       .catch(() => {});
     return () => {
@@ -1575,9 +1584,6 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                   { label: "Category", value: product.category },
                   product.subcategory ?
                     { label: "Subcategory", value: product.subcategory }
-                  : null,
-                  product.fabric ?
-                    { label: "Fabric", value: product.fabric }
                   : null,
                   {
                     label: "SKU",

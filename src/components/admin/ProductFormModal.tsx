@@ -9,8 +9,16 @@ import { Input } from '@/components/ui/input';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
 import { isMulticolorLabel, VARIANT_MULTICOLOR_MARKER } from '@/lib/variantSwatch';
-import { bulkTextFromPairs, pairsFromBulkInput } from '@/lib/productDetailsBulk';
+import {
+  bulkTextFromPairs,
+  mergeFabricIntoProductDetails,
+  pairsFromBulkInput,
+} from '@/lib/productDetailsBulk';
 import ProductDetailsBulkFields from '@/components/admin/ProductDetailsBulkFields';
+import {
+  AdminAiProductCopySection,
+  type ProductCopyDraft,
+} from '@/components/admin/ai/AdminAiProductCopySection';
 
 interface Props {
   product: Product | null;
@@ -139,6 +147,17 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   useEffect(() => {
     categoryApi.getAll().then((res) => setCategories(res.data.categories || [])).catch(() => {});
   }, []);
+
+  /** Keep specs table Fabric row in sync with the Fabric dropdown */
+  useEffect(() => {
+    const f = form.fabric.trim();
+    if (!f) return;
+    const merged = mergeFabricIntoProductDetails(detailsKeysText, detailsValuesText, f);
+    if (merged.keys !== detailsKeysText || merged.values !== detailsValuesText) {
+      setDetailsKeysText(merged.keys);
+      setDetailsValuesText(merged.values);
+    }
+  }, [form.fabric]); // eslint-disable-line react-hooks/exhaustive-deps -- sync only on fabric change
 
   useEffect(() => {
     if (!product?._id) {
@@ -401,7 +420,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                     className={inputCls}
                     value={form.shortDescription}
                     onChange={(e) => set('shortDescription', e.target.value)}
-                    placeholder="One-line summary shown in product listings"
+                    placeholder="2 sentences for listings (~120–200 chars) — AI fills this separately from long description"
                   />
                 </Field>
                 <Field label="HSN Code">
@@ -705,12 +724,45 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 </div>
               </div>
 
+              <AdminAiProductCopySection
+                name={form.name}
+                category={form.category}
+                subcategory={form.subcategory}
+                fabric={form.fabric}
+                price={form.price}
+                comparePrice={form.comparePrice}
+                tags={form.tags}
+                variants={variants}
+                productId={editingProduct?._id}
+                onApply={(d: ProductCopyDraft) => {
+                  setForm((f) => ({
+                    ...f,
+                    shortDescription: d.shortDescription ?? f.shortDescription,
+                    description: d.description ?? f.description,
+                    seoTitle: d.seoTitle ?? f.seoTitle,
+                    seoDescription: d.seoDescription ?? f.seoDescription,
+                    tags: d.tags?.length ? d.tags.join(', ') : f.tags,
+                  }));
+                  const merged = mergeFabricIntoProductDetails(
+                    d.productDetailKeys || '',
+                    d.productDetailValues || '',
+                    form.fabric,
+                  );
+                  if (merged.keys.trim()) {
+                    setDetailsKeysText(merged.keys);
+                    setDetailsValuesText(merged.values);
+                  }
+                  setShowSeo(true);
+                }}
+              />
+
               <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                   Product detail table (keys & values)
                 </h3>
                 <p className="text-xs text-gray-400">
-                  Shown on the product page as a specs table — same payload as before, faster to paste.
+                  Shown on the product page as a specs table. <strong>Fabric</strong> row fills automatically
+                  when you pick fabric above (or use AI generate).
                 </p>
                 <ProductDetailsBulkFields
                   keysText={detailsKeysText}

@@ -19,6 +19,7 @@ import {
 import { adminApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import { AdminAiEmailDraftButton } from "@/components/admin/ai";
 
 type Audience = "users" | "admins" | "all";
 type Channel = "email" | "in_app" | "push";
@@ -245,6 +246,10 @@ export default function AdminEmailsPage() {
             </div>
           </div>
 
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            Compose
+          </p>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -292,6 +297,9 @@ export default function AdminEmailsPage() {
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Message
             </label>
+            <p className="text-[11px] text-violet-800/90 mt-1 mb-1.5 leading-snug">
+              AI ke liye yahan likho kya bhejna hai — phir neeche &quot;AI draft from your notes&quot; dabayein.
+            </p>
             <textarea
               value={messageHtml}
               onChange={(e) => setMessageHtml(e.target.value)}
@@ -299,6 +307,20 @@ export default function AdminEmailsPage() {
               placeholder="Write your campaign message. Line breaks are preserved in email and notifications."
               className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+              <AdminAiEmailDraftButton
+                adminBrief={messageHtml ?? ""}
+                subjectHint={subject}
+                audience={audience}
+                estimatedRecipients={stats?.estimatedEmailRecipients}
+                ctaText={ctaText}
+                ctaLink={ctaLink}
+                onDraft={(sub, html) => {
+                  setSubject(sub);
+                  setMessageHtml(html);
+                }}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

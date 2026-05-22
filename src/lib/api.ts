@@ -694,6 +694,9 @@ export const adminApi = {
   },
 };
 
+/** @see adminAiApi — AI calls live in a separate module to avoid Webpack/HMR dropping nested adminApi methods. */
+export { adminAiApi } from "@/lib/adminAiApi";
+
 export const inventoryApi = {
   getOverview: (params?: Record<string, string | number>) =>
     unwrapAxios('inventory.overview', api.get('/admin/inventory', { params }), schemas.adminInventoryOverview),

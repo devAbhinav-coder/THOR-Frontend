@@ -37,6 +37,7 @@ import { Button } from '@/components/ui/button';
 import { formatDateTime, formatPrice, getOrderStatusColor, cn, getPaymentStatusColor } from '@/lib/utils';
 import { getMaxRefundableInr, getNonRefundableFeesInr } from '@/lib/orderRefundPolicy';
 import AdminOrderPackingSlip4R from '@/components/admin/AdminOrderPackingSlip4R';
+import { AdminAiExplainButton } from '@/components/admin/ai';
 
 function adminPaymentMethodLabel(pm: Order['paymentMethod']): string {
   switch (pm) {
@@ -1171,6 +1172,7 @@ export default function AdminOrderDetailsPage() {
             <p className="text-sm text-gray-500 mt-1">{formatDateTime(order.createdAt)}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <AdminAiExplainButton kind="order" orderId={order._id} label="AI explain order" />
             <button
               type="button"
               disabled={!invoiceEligible || generatingInvoice}

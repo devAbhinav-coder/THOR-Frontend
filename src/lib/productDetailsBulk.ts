@@ -34,6 +34,37 @@ export function bulkTextFromPairs(pairs: ProductDetailPair[]): {
 /**
  * Build aligned key/value rows for the API. Same validation: N keys ⇒ N values.
  */
+/** Insert or update the Fabric row from the product form dropdown */
+export function mergeFabricIntoProductDetails(
+  keys: string,
+  values: string,
+  fabric: string,
+): { keys: string; values: string } {
+  const f = fabric.trim();
+  if (!f) return { keys, values };
+
+  const kLines = keys.split(/\r?\n/).map((s) => s.trim());
+  const vLines = values.split(/\r?\n/).map((s) => s.trim());
+  const hasKeys = kLines.some(Boolean);
+
+  if (!hasKeys) {
+    return {
+      keys: "Fabric",
+      values: f,
+    };
+  }
+
+  const idx = kLines.findIndex((k) => k.toLowerCase() === "fabric");
+  if (idx >= 0) {
+    vLines[idx] = f;
+  } else {
+    kLines.unshift("Fabric");
+    vLines.unshift(f);
+  }
+  while (vLines.length < kLines.length) vLines.push("");
+  return { keys: kLines.join("\n"), values: vLines.join("\n") };
+}
+
 export function pairsFromBulkInput(
   keysRaw: string,
   valuesRaw: string,
