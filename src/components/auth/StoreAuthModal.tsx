@@ -1,11 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AuthModal from "@/components/auth/AuthModal";
-import AuthModalGuestGuard from "@/components/auth/AuthModalGuestGuard";
 import AuthGoogleShell from "@/app/auth/AuthGoogleShell";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   closeAuthModalUrl,
   parseAuthModalView,
@@ -43,6 +43,11 @@ export default function StoreAuthModal() {
   const router = useRouter();
   const search = searchParams.toString();
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hasSessionChecked = useAuthStore((s) => s.hasSessionChecked);
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const sessionReady = hasHydrated && hasSessionChecked;
+
   const view = parseAuthModalView(searchParams.get("auth"));
   const redirectRaw = searchParams.get("redirect");
   const redirect = useMemo(
@@ -50,8 +55,8 @@ export default function StoreAuthModal() {
     [redirectRaw],
   );
 
-  const close = useCallback(() => {
-    router.push(closeAuthModalUrl(pathname, search), { scroll: false });
+  const dismissModal = useCallback(() => {
+    router.replace(closeAuthModalUrl(pathname, search), { scroll: false });
   }, [pathname, router, search]);
 
   const switchView = useCallback(
@@ -61,47 +66,71 @@ export default function StoreAuthModal() {
     [pathname, router, search],
   );
 
+  /** After a fresh login/signup inside the modal — close overlay then go to redirect target. */
   const onAuthSuccess = useCallback(() => {
-    close();
-    router.push(redirect);
+    const cleanUrl = closeAuthModalUrl(pathname, search);
+    const pathOnly = pathname.split("?")[0] || "/";
+    const redirectPath = redirect.split("?")[0] || "/";
+
+    router.replace(cleanUrl, { scroll: false });
+
+    if (redirectPath !== pathOnly) {
+      router.push(redirect);
+    }
     router.refresh();
-  }, [close, redirect, router]);
+  }, [pathname, redirect, router, search]);
+
+  useEffect(() => {
+    if (!view || !sessionReady || !isAuthenticated) return;
+    dismissModal();
+  }, [view, sessionReady, isAuthenticated, dismissModal]);
 
   if (!view) return null;
+
+  if (sessionReady && isAuthenticated) return null;
 
   return (
     <AuthModal
       open
       title={TITLES[view]}
       subtitle={SUBTITLES[view]}
-      onClose={close}
+      onClose={dismissModal}
     >
       <AuthGoogleShell>
-        <AuthModalGuestGuard onAlreadySignedIn={onAuthSuccess}>
-        {view === "login" && (
-          <LoginPageClient
-            embedded
-            redirect={redirect}
-            onSuccess={onAuthSuccess}
-            onSwitchToSignup={() => switchView("signup")}
-            onForgotPassword={() => switchView("forgot")}
-          />
-        )}
-        {view === "signup" && (
-          <SignupPageClient
-            embedded
-            onSuccess={onAuthSuccess}
-            onSwitchToLogin={() => switchView("login")}
-          />
-        )}
-        {view === "forgot" && (
-          <ForgotPasswordClient
-            embedded
-            onSuccess={onAuthSuccess}
-            onBackToLogin={() => switchView("login")}
-          />
-        )}
-        </AuthModalGuestGuard>
+        {!sessionReady ?
+          <div
+            className="min-h-[160px] flex items-center justify-center"
+            role="status"
+            aria-label="Loading sign in"
+          >
+            <div className="h-9 w-9 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
+          </div>
+        : <>
+            {view === "login" && (
+              <LoginPageClient
+                embedded
+                redirect={redirect}
+                onSuccess={onAuthSuccess}
+                onSwitchToSignup={() => switchView("signup")}
+                onForgotPassword={() => switchView("forgot")}
+              />
+            )}
+            {view === "signup" && (
+              <SignupPageClient
+                embedded
+                onSuccess={onAuthSuccess}
+                onSwitchToLogin={() => switchView("login")}
+              />
+            )}
+            {view === "forgot" && (
+              <ForgotPasswordClient
+                embedded
+                onSuccess={onAuthSuccess}
+                onBackToLogin={() => switchView("login")}
+              />
+            )}
+          </>
+        }
       </AuthGoogleShell>
     </AuthModal>
   );
