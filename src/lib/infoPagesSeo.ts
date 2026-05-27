@@ -17,12 +17,11 @@ export function buildInfoPageMetadata({
 }: InfoPageConfig): Metadata {
   const appUrl = getSiteUrl();
   const canonical = path.startsWith("/") ? path : `/${path}`;
-  const fullTitle =
-    priority === "support" ? `${title} | The House of Rani` : `${title} | The House of Rani`;
+  void priority;
   const ogImage = `${appUrl}/ogimage.png`;
 
   return {
-    title: fullTitle,
+    title,
     description,
     alternates: { canonical },
     robots: {
@@ -35,7 +34,7 @@ export function buildInfoPageMetadata({
       },
     },
     openGraph: {
-      title: fullTitle,
+      title: `${title} | The House of Rani`,
       description,
       url: `${appUrl}${canonical}`,
       type: "website",
@@ -52,7 +51,7 @@ export function buildInfoPageMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: fullTitle,
+      title: `${title} | The House of Rani`,
       description,
       images: [ogImage],
     },

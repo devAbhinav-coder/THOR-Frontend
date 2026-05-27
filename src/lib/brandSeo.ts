@@ -6,7 +6,7 @@
 export const BRAND_NAME = "The House of Rani";
 export const BRAND_SHORT = "House of Rani";
 
-/** Homepage + root default title (sarees lead; gifting not in title). */
+/** Homepage SERP title (absolute — includes brand once). */
 export const HOME_TITLE =
   "Buy Premium Sarees Online in India | Ethnic Wear — The House of Rani";
 
@@ -35,8 +35,7 @@ export const HOME_GIFT_SHOWCASE_DESCRIPTION =
 export const FOOTER_DEFAULT_DESCRIPTION =
   "Discover premium Indian ethnic wear including sarees, salwar suits, and festive styles — crafted with elegance, tradition, and timeless design.";
 
-export const SHOP_META_TITLE =
-  "Shop Premium Sarees & Ethnic Wear | The House of Rani";
+export const SHOP_META_TITLE = "Shop Premium Sarees & Ethnic Wear Online India";
 export const SHOP_META_DESCRIPTION =
   "Shop premium sarees, salwar suits, and ethnic wear at The House of Rani. Filter by category, fabric, price, and rating. Free delivery over ₹1,099.";
 

@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import ImageUploader from "@/components/ui/ImageUploader";
 import Link from "next/link";
 import type { Product as ProductType } from "@/types";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 interface CustomField {
   _id: string;
@@ -112,7 +113,7 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
     if (product.isCustomizable && !isAuthenticated) {
       toast.error("Please log in to submit a custom gift request.");
       onClose();
-      router.push(`/auth/login?redirect=/gifting`);
+      router.push(loginUrlWithRedirect("/gifting"));
       return;
     }
 

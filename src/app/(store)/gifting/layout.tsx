@@ -6,9 +6,9 @@ const appUrl = getSiteUrl();
 const OG_IMAGE = `${appUrl}/ogimage.png`;
 
 export const metadata: Metadata = {
-  title: "Gifting Collection | Curated Premium Gifts",
+  title: "Saree Gift Sets & Ethnic Gift Hampers Online India",
   description:
-    "Explore thoughtful gifting at The House of Rani — premium, customizable gifts for weddings, corporate occasions, festivals, and personal celebrations. Shop curated gift collections with free shipping across India.",
+    "Buy saree gift sets, ethnic hampers, and customizable gifts online in India — weddings, corporate gifting, festivals & celebrations. Free shipping over ₹1,099 at The House of Rani.",
   keywords: [
     "gifting collection India",
     "premium gift sets",

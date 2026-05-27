@@ -6,6 +6,7 @@ import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { getSiteUrl } from "@/lib/siteUrl";
 import type { Category, Product } from "@/types";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
+import { resolveCategoryPageSeo } from "@/lib/categoryPageSeo";
 import { resolveCategoryBySlug, toShopCategorySlug } from "@/lib/shopCategorySeo";
 
 const SITE_URL = getSiteUrl();
@@ -88,13 +89,15 @@ export async function generateMetadata({
     toShopCategorySlug(p.categorySlug);
   const basePath = `/shop/category/${encodeURIComponent(canonicalSlug)}`;
   const filtered = hasAnyFilters(sp);
-  const title = `${category.name} Sarees & Ethnic Wear | The House of Rani`;
-  const description = `Browse ${category.name} at The House of Rani. Premium ethnic wear with trusted delivery, easy returns, and secure checkout.`;
+  const seo = resolveCategoryPageSeo(category.name, canonicalSlug);
+  const title = seo.title;
+  const description = seo.description;
   const ogImage = `${SITE_URL}/ogimage.png`;
 
   return {
     title,
     description,
+    keywords: seo.keywords,
     alternates: { canonical: basePath },
     robots: {
       index: !filtered,
@@ -152,9 +155,6 @@ export default async function ShopCategoryPage({
   const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
-  const categoryIntro =
-    String(category.description || "").trim() ||
-    `Explore ${category.name} collection at The House of Rani with premium craftsmanship, trusted delivery, and easy returns.`;
 
   const categoryLd =
     products.length === 0 ?
@@ -255,15 +255,14 @@ export default async function ShopCategoryPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryLd) }}
         />
       )}
-      {!filtered && (
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2'>
-          <p className='text-sm text-gray-600 leading-relaxed max-w-3xl'>
-            {categoryIntro}
-          </p>
-        </div>
-      )}
       <Suspense fallback={<ShopLoading />}>
-        <ShopClient categoryContext={{ name: category.name, slug: canonicalSlug }} />
+        <ShopClient
+          categoryContext={{
+            name: category.name,
+            slug: canonicalSlug,
+            description: String(category.description || "").trim() || undefined,
+          }}
+        />
       </Suspense>
     </>
   );

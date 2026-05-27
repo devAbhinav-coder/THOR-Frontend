@@ -19,6 +19,8 @@ import {
   AdminAiProductCopySection,
   type ProductCopyDraft,
 } from '@/components/admin/ai/AdminAiProductCopySection';
+import ProductSeoChecklist from '@/components/admin/ProductSeoChecklist';
+import { evaluateProductSeo } from '@/lib/productSeoChecklist';
 
 interface Props {
   product: Product | null;
@@ -158,6 +160,26 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       setDetailsValuesText(merged.values);
     }
   }, [form.fabric]); // eslint-disable-line react-hooks/exhaustive-deps -- sync only on fabric change
+
+  useEffect(() => {
+    const audit = evaluateProductSeo({
+      name: form.name,
+      shortDescription: form.shortDescription,
+      seoTitle: form.seoTitle,
+      seoDescription: form.seoDescription,
+      fabric: form.fabric,
+      category: form.category,
+    });
+    if (audit.score < 100) setShowSeo(true);
+  }, [
+    editingProduct?._id,
+    form.name,
+    form.shortDescription,
+    form.seoTitle,
+    form.seoDescription,
+    form.fabric,
+    form.category,
+  ]);
 
   useEffect(() => {
     if (!product?._id) {
@@ -773,23 +795,78 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 />
               </div>
 
-              {/* SEO collapsible */}
+              {/* SEO */}
               <div className="bg-gray-50 rounded-2xl overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setShowSeo(!showSeo)}
                   className="w-full flex items-center justify-between px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest hover:bg-gray-100 transition-colors"
                 >
-                  <span>SEO Settings (Optional)</span>
+                  <span className="flex items-center gap-2">
+                    SEO for Google India
+                    {evaluateProductSeo({
+                      name: form.name,
+                      shortDescription: form.shortDescription,
+                      seoTitle: form.seoTitle,
+                      seoDescription: form.seoDescription,
+                      fabric: form.fabric,
+                      category: form.category,
+                    }).score < 100 && (
+                      <span className="normal-case font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full text-[10px]">
+                        Needs work
+                      </span>
+                    )}
+                  </span>
                   {showSeo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {showSeo && (
                   <div className="px-5 pb-5 space-y-4">
+                    <ProductSeoChecklist
+                      name={form.name}
+                      shortDescription={form.shortDescription}
+                      seoTitle={form.seoTitle}
+                      seoDescription={form.seoDescription}
+                      fabric={form.fabric}
+                      category={form.category}
+                      onApplySuggestion={(patch) => {
+                        if (patch.seoTitle) set("seoTitle", patch.seoTitle);
+                        if (patch.seoDescription) set("seoDescription", patch.seoDescription);
+                        toast.success("SEO suggestions applied — review and save.");
+                      }}
+                    />
                     <Field label="SEO Title">
-                      <input className={inputCls} value={form.seoTitle} onChange={(e) => set('seoTitle', e.target.value)} placeholder="Custom page title for search engines" />
+                      <input
+                        className={inputCls}
+                        value={form.seoTitle}
+                        onChange={(e) => set("seoTitle", e.target.value)}
+                        placeholder="e.g. Buy Handpainted Kalamkari Silk Saree Online in India"
+                        maxLength={70}
+                      />
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        {form.seoTitle.length}/70 · Brand name is added automatically in Google.
+                      </p>
                     </Field>
                     <Field label="SEO Description">
-                      <textarea className={`${inputCls} resize-none`} value={form.seoDescription} onChange={(e) => set('seoDescription', e.target.value)} rows={2} placeholder="Meta description (max 160 chars)" maxLength={160} />
+                      <textarea
+                        className={`${inputCls} resize-none`}
+                        value={form.seoDescription}
+                        onChange={(e) => set("seoDescription", e.target.value)}
+                        rows={3}
+                        placeholder="120–160 chars: fabric, occasion, free delivery over ₹1,099, 7-day returns across India."
+                        maxLength={160}
+                      />
+                      <p
+                        className={`text-[11px] mt-1 ${
+                          form.seoDescription.length >= 120 ? "text-emerald-600" : "text-amber-600"
+                        }`}
+                      >
+                        {form.seoDescription.length}/160 characters
+                        {form.seoDescription.length > 0 && form.seoDescription.length < 120 ?
+                          " — add more detail for better click-through"
+                        : form.seoDescription.length >= 120 ?
+                          " — good length for Google"
+                        : ""}
+                      </p>
                     </Field>
                   </div>
                 )}

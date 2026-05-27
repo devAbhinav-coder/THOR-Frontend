@@ -24,6 +24,7 @@ import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 const SHIPPING_THRESHOLD = 1099;
 const SHIPPING_CHARGE = 99;
@@ -114,7 +115,9 @@ export default function CartClient() {
             size='lg'
             className='w-full sm:w-auto min-w-[200px]'
           >
-            <Link href='/auth/login?redirect=/cart'>Sign In</Link>
+            <Link href={loginUrlWithRedirect("/cart")} scroll={false}>
+              Sign In
+            </Link>
           </Button>
         </div>
       </div>

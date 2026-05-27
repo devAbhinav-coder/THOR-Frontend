@@ -1,8 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import AuthNavLink from "@/components/auth/AuthNavLink";
+import {
+  AuthFormRoot,
+  AuthFormHeader,
+  AuthFormDivider,
+  AuthFormFooter,
+  AuthBackButton,
+} from "@/components/auth/AuthFormChrome";
+import { authLinkText, authGhostBtn } from "@/lib/authFormShell";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -44,7 +52,21 @@ type PendingCopy = { title: string; description: string };
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-export default function LoginPageClient() {
+type LoginPageClientProps = {
+  embedded?: boolean;
+  redirect?: string;
+  onSuccess?: () => void;
+  onSwitchToSignup?: () => void;
+  onForgotPassword?: () => void;
+};
+
+export default function LoginPageClient({
+  embedded = false,
+  redirect: redirectProp,
+  onSuccess,
+  onSwitchToSignup,
+  onForgotPassword,
+}: LoginPageClientProps = {}) {
   const [showPassword, setShowPassword] = useState(false);
   /** GSI re-inits on every `width` change — render only after mount so width is stable (fixes first-click failures). */
   const [googleUiReady, setGoogleUiReady] = useState(false);
@@ -53,7 +75,15 @@ export default function LoginPageClient() {
   const { login, loginWithGoogle, loginWithOtp, isLoading } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const redirect = redirectProp ?? (searchParams.get("redirect") || "/");
+
+  const navigateAfterAuth = useCallback(() => {
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+    router.push(redirect);
+  }, [onSuccess, redirect, router]);
 
   const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
   const [otpStep, setOtpStep] = useState<"email" | "code">("email");
@@ -125,7 +155,7 @@ export default function LoginPageClient() {
       await loginWithOtp(otpEmail, data.otp);
       setOtpVerifyCooldownSec(0);
       toast.success("Welcome back!");
-      router.push(redirect);
+      navigateAfterAuth();
     } catch (err: unknown) {
       if (err instanceof ApiValidationError) {
         toast.error(
@@ -147,7 +177,7 @@ export default function LoginPageClient() {
     try {
       await login(data.email, data.password);
       toast.success("Welcome back!");
-      router.push(redirect);
+      navigateAfterAuth();
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || "Login failed. Please check your credentials.");
@@ -167,7 +197,7 @@ export default function LoginPageClient() {
     try {
       await loginWithGoogle(credential);
       toast.success("Welcome back!");
-      router.push(redirect);
+      navigateAfterAuth();
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || "Google sign-in failed.");
@@ -198,77 +228,88 @@ export default function LoginPageClient() {
     };
   }, [googleUiReady, updateGoogleButtonWidth]);
 
+  const googleBlock =
+    googleClientId ?
+      <div ref={googleButtonHostRef} className="w-full overflow-hidden min-h-[40px]">
+        {googleUiReady ?
+          <GoogleLogin
+            theme="outline"
+            size="large"
+            width={googleButtonWidth}
+            text="continue_with"
+            shape="rectangular"
+            logo_alignment="center"
+            use_fedcm_for_button={false}
+            onSuccess={(cred) => void handleGoogle(cred.credential)}
+            onError={() => toast.error("Google sign-in was cancelled or failed.")}
+          />
+        : null}
+      </div>
+    : null;
+
   if (loginMode === "otp") {
     if (otpStep === "code") {
       const isPending = isLoading || otpSending;
       return (
         <>
-          <div className="w-full max-w-md">
-            <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
-              <div className="text-center mb-6">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
-                  <Mail className="h-6 w-6" />
-                </div>
-                <h2 className="text-2xl font-serif font-bold text-white">Enter sign-in code</h2>
-                <p className="text-white/50 mt-2 text-sm">
-                  Code sent to <span className="text-white/80 font-medium">{otpEmail}</span>
+          <AuthFormRoot embedded={embedded}>
+            <AuthFormHeader
+              embedded={embedded}
+              title="Enter sign-in code"
+              subtitle={`Code sent to ${otpEmail}`}
+              icon={<Mail className="h-5 w-5" />}
+            />
+            <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-3">
+              <Input
+                {...otpCodeForm.register("otp")}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                label="6-digit code"
+                placeholder="000000"
+                error={otpCodeForm.formState.errors.otp?.message}
+              />
+              <OtpResendCooldown
+                email={otpEmail}
+                type="login"
+                resetKey={otpResendResetKey}
+                initialSeconds={otpResendCooldownSec}
+              />
+              {otpVerifyCooldownSec > 0 && (
+                <p className="text-center text-sm text-amber-700">
+                  Too many attempts. Try again in {otpVerifyCooldownSec}s.
                 </p>
-              </div>
-
-              <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-4">
-                <Input
-                  {...otpCodeForm.register("otp")}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  label="6-digit code"
-                  placeholder="000000"
-                  error={otpCodeForm.formState.errors.otp?.message}
-                />
-                <OtpResendCooldown
-                  email={otpEmail}
-                  type="login"
-                  resetKey={otpResendResetKey}
-                  initialSeconds={otpResendCooldownSec}
-                />
-                {otpVerifyCooldownSec > 0 && (
-                  <p className="text-center text-sm text-amber-400/90">
-                    Too many attempts. Try again in {otpVerifyCooldownSec}s.
-                  </p>
-                )}
-                <Button
-                  type="submit"
-                  variant="brand"
-                  size="lg"
-                  className="w-full"
-                  loading={isLoading}
-                  disabled={otpVerifyCooldownSec > 0}
-                >
-                  {otpVerifyCooldownSec > 0 ? `Sign in in ${otpVerifyCooldownSec}s` : "Sign in"}
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOtpStep("email");
-                    otpCodeForm.reset();
-                  }}
-                  className="w-full text-sm text-white/40 hover:text-white/70"
-                >
-                  ← Use a different email
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("password");
-                    setOtpStep("email");
-                  }}
-                  className="w-full text-sm text-white/30 hover:text-white/50"
-                >
-                  Sign in with password instead
-                </button>
-              </form>
-            </div>
-          </div>
+              )}
+              <Button
+                type="submit"
+                variant="brand"
+                size="lg"
+                className="w-full"
+                loading={isLoading}
+                disabled={otpVerifyCooldownSec > 0}
+              >
+                {otpVerifyCooldownSec > 0 ? `Sign in in ${otpVerifyCooldownSec}s` : "Sign in"}
+              </Button>
+              <AuthBackButton
+                embedded={embedded}
+                onClick={() => {
+                  setOtpStep("email");
+                  otpCodeForm.reset();
+                }}
+              >
+                ← Use a different email
+              </AuthBackButton>
+              <AuthBackButton
+                embedded={embedded}
+                onClick={() => {
+                  setLoginMode("password");
+                  setOtpStep("email");
+                }}
+              >
+                Sign in with password instead
+              </AuthBackButton>
+            </form>
+          </AuthFormRoot>
           <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
         </>
       );
@@ -277,34 +318,29 @@ export default function LoginPageClient() {
     const isPending = isLoading || otpSending;
     return (
       <>
-        <div className="w-full max-w-md">
-          <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-serif font-bold text-white">Email sign-in code</h2>
-              <p className="text-white/50 mt-1 text-sm">We&apos;ll email you a one-time 6-digit code</p>
-            </div>
-            <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-4">
-              <Input
-                {...otpEmailForm.register("email")}
-                type="email"
-                label="Email address"
-                placeholder="you@example.com"
-                error={otpEmailForm.formState.errors.email?.message}
-                autoComplete="email"
-              />
-              <Button type="submit" variant="brand" size="lg" className="w-full" loading={otpSending}>
-                Send code
-              </Button>
-              <button
-                type="button"
-                onClick={() => setLoginMode("password")}
-                className="w-full text-sm text-white/40 hover:text-white/70"
-              >
-                ← Back to password sign-in
-              </button>
-            </form>
-          </div>
-        </div>
+        <AuthFormRoot embedded={embedded}>
+          <AuthFormHeader
+            embedded={embedded}
+            title="Email sign-in code"
+            subtitle="We will send a one-time 6-digit code"
+          />
+          <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-3">
+            <Input
+              {...otpEmailForm.register("email")}
+              type="email"
+              label="Email"
+              placeholder="you@example.com"
+              error={otpEmailForm.formState.errors.email?.message}
+              autoComplete="email"
+            />
+            <Button type="submit" variant="brand" size="lg" className="w-full" loading={otpSending}>
+              Send code
+            </Button>
+            <AuthBackButton embedded={embedded} onClick={() => setLoginMode("password")}>
+              ← Back to password sign-in
+            </AuthBackButton>
+          </form>
+        </AuthFormRoot>
         <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
       </>
     );
@@ -313,64 +349,25 @@ export default function LoginPageClient() {
   const isPending = isLoading || otpSending;
   return (
     <>
-      <div className="w-full max-w-md">
-        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-serif font-bold text-white">Welcome back</h2>
-            <p className="text-white/50 mt-1 text-sm">Sign in to your account to continue</p>
-          </div>
+      <AuthFormRoot embedded={embedded}>
+        <AuthFormHeader
+          embedded={embedded}
+          title="Sign in to The House of Rani"
+          subtitle={embedded ? undefined : "Sign in to continue shopping"}
+        />
 
-        <button
-          type="button"
-          onClick={() => setLoginMode("otp")}
-          className="mb-4 w-full rounded-lg border border-white/15 bg-white/5 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10 transition-colors"
-        >
-          Sign in with email code
-        </button>
+        {googleBlock}
+        {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}
 
-        {googleClientId ? (
-          <div ref={googleButtonHostRef} className="mb-6 w-full overflow-hidden min-h-[40px]">
-            {googleUiReady ?
-              <GoogleLogin
-                theme="outline"
-                size="large"
-                width={googleButtonWidth}
-                text="continue_with"
-                shape="rectangular"
-                logo_alignment="center"
-                use_fedcm_for_button={false}
-                onSuccess={(cred) => void handleGoogle(cred.credential)}
-                onError={() => toast.error("Google sign-in was cancelled or failed.")}
-              />
-            : null}
-          </div>
-        ) : (
-          <p className="mb-6 text-center text-[11px] text-white/35">
-            Google sign-in is not configured (set NEXT_PUBLIC_GOOGLE_CLIENT_ID).
-          </p>
-        )}
-
-        {googleClientId ? (
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/10" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-wider">
-              <span className="bg-navy-900 px-3 text-white/35">or email</span>
-            </div>
-          </div>
-        ) : null}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <Input
             {...register("email")}
             type="email"
-            label="Email Address"
+            label="Email"
             placeholder="you@example.com"
             error={errors.email?.message}
             autoComplete="email"
           />
-
           <div className="relative">
             <Input
               {...register("password")}
@@ -384,33 +381,46 @@ export default function LoginPageClient() {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+              aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-
-          <div className="flex justify-end">
-            <Link href="/auth/forgot-password" className="text-sm text-brand-600 hover:text-brand-700">
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={() => setLoginMode("otp")}
+              className={authGhostBtn(embedded)}
+            >
+              Use email code instead
+            </button>
+            <AuthNavLink
+              embedded={embedded}
+              onNavigate={onForgotPassword}
+              href="/auth/forgot-password"
+              className={authLinkText(embedded)}
+            >
               Forgot password?
-            </Link>
+            </AuthNavLink>
           </div>
-
           <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
             <LogIn className="h-4 w-4 mr-2" />
-            Sign In
+            Sign in
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-white/40">
-            Don&apos;t have an account?{" "}
-            <Link href="/auth/signup" className="text-brand-400 hover:text-brand-300 font-medium">
-              Create one
-            </Link>
-          </p>
-        </div>
-        </div>
-      </div>
+        <AuthFormFooter embedded={embedded}>
+          Don&apos;t have an account?{" "}
+          <AuthNavLink
+            embedded={embedded}
+            onNavigate={onSwitchToSignup}
+            href="/auth/signup"
+            className={authLinkText(embedded)}
+          >
+            Create one
+          </AuthNavLink>
+        </AuthFormFooter>
+      </AuthFormRoot>
       <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
     </>
   );

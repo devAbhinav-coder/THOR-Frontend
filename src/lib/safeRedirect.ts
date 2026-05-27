@@ -7,16 +7,20 @@ export function safeRedirectPath(path: string | null | undefined): string | null
   return path;
 }
 
-/** Login URL with optional return path (pathname + search, internal only). */
+/** Opens the sign-in modal on the current path with optional return URL. */
 export function loginUrlWithRedirect(currentPathWithQuery: string): string {
   const trimmed = currentPathWithQuery.trim() || "/";
   if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
-    return "/auth/login";
+    return "/?auth=login";
   }
   if (trimmed.startsWith("/auth")) {
-    return "/auth/login";
+    return "/?auth=login";
   }
-  const safe = safeRedirectPath(trimmed.split("?")[0] || "/");
-  if (!safe) return "/auth/login";
-  return `/auth/login?redirect=${encodeURIComponent(trimmed)}`;
+  const pathname = trimmed.split("?")[0] || "/";
+  const safe = safeRedirectPath(pathname);
+  if (!safe) return "/?auth=login";
+  const params = new URLSearchParams();
+  params.set("auth", "login");
+  params.set("redirect", trimmed);
+  return `${pathname}?${params.toString()}`;
 }

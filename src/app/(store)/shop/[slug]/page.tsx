@@ -3,6 +3,10 @@ import ProductDetailClient from "@/components/product/ProductDetailClient";
 import { fetchProductBySlugServer } from "@/lib/storePrefetch";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
+import {
+  buildProductMetaDescription,
+  buildProductPageTitle,
+} from "@/lib/pageSeo";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -37,14 +41,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     const data = await res.json();
     const product = data.data.product;
-    const descRaw =
-      product.seoDescription ||
-      product.shortDescription ||
-      String(product.description || "").slice(0, 160);
+    const descRaw = buildProductMetaDescription(
+      product.seoDescription,
+      product.shortDescription,
+      product.description,
+    );
     const ogImage = product.images?.[0]?.url;
+    const pageTitle = buildProductPageTitle(product.name, product.seoTitle);
 
     return {
-      title: product.seoTitle || product.name,
+      title: pageTitle,
       description: descRaw,
       alternates: {
         canonical: `/shop/${safeSlug}`,
@@ -61,16 +67,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         .filter(Boolean)
         .join(", "),
       openGraph: {
-        title: product.name,
+        title: product.seoTitle?.trim() || `Buy ${product.name} Online in India`,
         description: descRaw,
         images: ogImage ?
           [{ url: ogImage, alt: product.name, width: 1200, height: 630 }]
         : undefined,
-        /* "og:type" = "product" tells crawlers & social platforms this is a
-           purchasable item — required for Facebook Catalog & Google Discovery. */
         type: "website",
         url: `${appUrl}/shop/${safeSlug}`,
         siteName: "The House of Rani",
+        locale: "en_IN",
       },
       twitter: {
         card: "summary_large_image",
@@ -157,29 +162,38 @@ export default async function ProductDetailPage({ params }: Props) {
             reviewEntries = [];
           }
 
+          const breadcrumbItems: Array<Record<string, unknown>> = [
+            {
+              "@type": "ListItem",
+              position: 1,
+              name: "Home",
+              item: `${appUrl}/`,
+            },
+            {
+              "@type": "ListItem",
+              position: 2,
+              name: "Shop",
+              item: `${appUrl}/shop`,
+            },
+          ];
+          if (product.category) {
+            breadcrumbItems.push({
+              "@type": "ListItem",
+              position: 3,
+              name: product.category,
+              item: `${appUrl}/shop?category=${encodeURIComponent(product.category)}`,
+            });
+          }
+          breadcrumbItems.push({
+            "@type": "ListItem",
+            position: breadcrumbItems.length + 1,
+            name: product.name,
+            item: productPageUrl,
+          });
           breadcrumbLd = {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
-            itemListElement: [
-              {
-                "@type": "ListItem",
-                position: 1,
-                name: "Home",
-                item: `${appUrl}/`,
-              },
-              {
-                "@type": "ListItem",
-                position: 2,
-                name: "Shop",
-                item: `${appUrl}/shop`,
-              },
-              {
-                "@type": "ListItem",
-                position: 3,
-                name: product.name,
-                item: productPageUrl,
-              },
-            ],
+            itemListElement: breadcrumbItems,
           };
 
           /**

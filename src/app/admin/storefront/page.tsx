@@ -93,12 +93,27 @@ export default function AdminStorefrontPage() {
     });
   };
 
+  const serializeSettingsForSave = (s: StorefrontSettings) => {
+    const sb = s.shopBanner;
+    return JSON.stringify({
+      ...s,
+      shopBanner: sb
+        ? {
+            ...sb,
+            leftImagePublicId: sb.leftImagePublicId ?? undefined,
+            centerImagePublicId: sb.centerImagePublicId ?? undefined,
+            rightImagePublicId: sb.rightImagePublicId ?? undefined,
+          }
+        : sb,
+    });
+  };
+
   const save = async () => {
     if (!settings) return;
     setIsSaving(true);
     try {
       const fd = new FormData();
-      fd.append('settings', JSON.stringify(settings));
+      fd.append('settings', serializeSettingsForSave(settings));
       Object.entries(heroImageFiles).forEach(([index, file]) => {
         if (file) fd.append(`heroImage_${index}`, file);
       });

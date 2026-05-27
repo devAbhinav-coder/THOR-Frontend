@@ -2,6 +2,12 @@ import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
+import {
+  fetchAllSitemapBlogs,
+  fetchAllSitemapGiftingProducts,
+  fetchAllSitemapProducts,
+} from "@/lib/sitemapData";
+import { SEO_SITEMAP_STATIC } from "@/lib/seoCrawl";
 
 type ProductLite = {
   slug?: string;
@@ -49,98 +55,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const apiUrl = await getBuildSafeApiBase();
   const now = new Date();
 
-  const baseRoutes: MetadataRoute.Sitemap = [
-    {
-      url: `${appUrl}/`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${appUrl}/shop`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.95,
-    },
-    {
-      url: `${appUrl}/gifting`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${appUrl}/blog`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.78,
-    },
-    {
-      url: `${appUrl}/about`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.84,
-    },
-    {
-      url: `${appUrl}/faq`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.72,
-    },
-    {
-      url: `${appUrl}/shipping`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.65,
-    },
-    {
-      url: `${appUrl}/returns`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.65,
-    },
-    {
-      url: `${appUrl}/terms`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.55,
-    },
-    {
-      url: `${appUrl}/privacy`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.55,
-    },
-  ];
+  const baseRoutes: MetadataRoute.Sitemap = SEO_SITEMAP_STATIC.map((route) => ({
+    url: `${appUrl}${route.path === "/" ? "" : route.path}`,
+    lastModified: now,
+    changeFrequency: route.changeFrequency,
+    priority: route.priority,
+  }));
 
   if (!apiUrl) return baseRoutes;
 
   try {
-    const [productRes, blogRes, giftingRes, categoryRes] = await Promise.all([
-      fetch(`${apiUrl}/products?limit=2000&page=1`, {
-        next: { revalidate: 3600 },
-      }),
-      fetch(`${apiUrl}/blogs?limit=2000&page=1`, {
-        next: { revalidate: 3600 },
-      }),
-      // Fetch gifting catalogue separately — products that are gifting-only
-      // may not appear in the general /products feed.
-      fetch(`${apiUrl}/gifting/products?limit=2000&page=1`, {
-        next: { revalidate: 3600 },
-      }),
+    const [products, blogs, giftingProducts, categoryRes] = await Promise.all([
+      fetchAllSitemapProducts(),
+      fetchAllSitemapBlogs(),
+      fetchAllSitemapGiftingProducts(),
       fetch(`${apiUrl}/categories?active=true`, {
         next: { revalidate: 3600 },
       }),
     ]);
 
-    const productJson = productRes.ok ? await productRes.json() : null;
-    const blogJson = blogRes.ok ? await blogRes.json() : null;
-    const giftingJson = giftingRes.ok ? await giftingRes.json() : null;
     const categoryJson = categoryRes.ok ? await categoryRes.json() : null;
-
-    const products: ProductLite[] = productJson?.data?.products || [];
-    const blogs: BlogLite[] = blogJson?.data?.blogs || [];
-    const giftingProducts: GiftingProductLite[] =
-      giftingJson?.data?.products || [];
     const categories: CategoryLite[] = categoryJson?.data?.categories || [];
 
     // Track slugs already emitted to avoid duplicates

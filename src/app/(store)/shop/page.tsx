@@ -45,10 +45,10 @@ export async function generateMetadata({
   });
 
   let title = baseTitle;
-  if (featured) title = `Featured Sarees & Ethnic Wear | The House of Rani`;
-  else if (cat) title = `${cat} Sarees & Ethnic Wear | The House of Rani`;
-  else if (fabric) title = `${fabric} Sarees | Shop | The House of Rani`;
-  else if (search) title = `"${search}" — Search Results | The House of Rani`;
+  if (featured) title = "Featured Sarees & Ethnic Wear Online India";
+  else if (cat) title = `${cat} Sarees & Ethnic Wear Online India`;
+  else if (fabric) title = `${fabric} Sarees — Shop Online India`;
+  else if (search) title = `Search: ${search}`;
 
   let description = baseDesc;
   if (cat) {

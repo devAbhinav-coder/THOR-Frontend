@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import CartClient from '@/components/cart/CartClient';
 
 export const metadata: Metadata = {
-  title: 'Shopping Cart | The House of Rani',
+  title: 'Shopping Cart',
   robots: { index: false, follow: false },
 };
 

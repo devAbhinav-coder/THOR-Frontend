@@ -74,7 +74,7 @@ export function OtpResendCooldown({
         type="button"
         onClick={() => void onResend()}
         disabled={disabled}
-        className="text-sm font-medium text-brand-400 hover:text-brand-300 disabled:text-white/25 disabled:cursor-not-allowed transition-colors"
+        className="text-sm font-medium text-brand-600 hover:text-brand-700 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Sending…" : secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : "Resend code"}
       </button>

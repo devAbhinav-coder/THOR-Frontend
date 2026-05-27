@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 /** Booleans for store shell nav highlights (mobile bottom + desktop patterns). */
 export type StoreNavActive = {
@@ -11,18 +11,29 @@ export type StoreNavActive = {
   userHub: boolean;
 };
 
-export function getStoreNavActive(pathname: string): StoreNavActive {
+export function getStoreNavActive(
+  pathname: string,
+  authModalView?: string | null,
+): StoreNavActive {
   return {
     home: pathname === "/",
     shop: pathname.startsWith("/shop"),
     gifting: pathname.startsWith("/gifting"),
     cart: pathname.startsWith("/cart"),
     orders: pathname.startsWith("/dashboard/orders"),
-    userHub: pathname === "/dashboard" || pathname === "/auth/login",
+    userHub:
+      pathname === "/dashboard" ||
+      pathname === "/auth/login" ||
+      authModalView === "login",
   };
 }
 
 export function useStoreNavActive(): StoreNavActive {
   const pathname = usePathname();
-  return useMemo(() => getStoreNavActive(pathname), [pathname]);
+  const searchParams = useSearchParams();
+  const authModalView = searchParams.get("auth");
+  return useMemo(
+    () => getStoreNavActive(pathname, authModalView),
+    [pathname, authModalView],
+  );
 }

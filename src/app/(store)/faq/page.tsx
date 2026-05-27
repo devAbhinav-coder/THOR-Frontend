@@ -3,10 +3,11 @@ import Link from "next/link";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
+import { FAQ_H1 } from "@/lib/pageHeadings";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/faq",
-  title: "FAQ — Sarees, Orders, Shipping & Returns",
+  title: FAQ_H1,
   description:
     "Frequently asked questions about buying sarees online, orders, shipping across India, returns, sizing, and gifting at The House of Rani.",
   priority: "support",
@@ -95,8 +96,8 @@ export default function FaqPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <LegalPageLayout
-        title='Frequently Asked Questions'
-        description='Quick answers about shopping, gifting, shipping, and support at The House of Rani.'
+        title={FAQ_H1}
+        description='Quick answers about buying sarees online, orders, shipping across India, returns, sizing, and gifting at The House of Rani.'
         lastUpdated='31 March 2026'
       >
         <h2>Common questions</h2>

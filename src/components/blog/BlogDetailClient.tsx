@@ -64,7 +64,7 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
     onError: () => {
       if (!isAuthenticated) {
         toast.error("Please login to like this post");
-        router.push("/auth/login");
+        router.push(loginUrlWithRedirect(window.location.pathname + window.location.search));
       } else {
         toast.error("Failed to action");
       }
@@ -191,7 +191,7 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
   const handleLike = () => {
     if (!isAuthenticated) {
       toast.error("Please login to like this story");
-      router.push("/auth/login");
+      router.push(loginUrlWithRedirect(window.location.pathname + window.location.search));
       return;
     }
     likeMutation.mutate(blog._id);
@@ -202,7 +202,7 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
     if (!commentText.trim()) return;
     if (!isAuthenticated) {
       toast.error("Please login to comment");
-      router.push("/auth/login");
+      router.push(loginUrlWithRedirect(window.location.pathname + window.location.search));
       return;
     }
     commentMutation.mutate({ blogId: blog._id, content: commentText.trim() });

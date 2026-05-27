@@ -18,6 +18,7 @@ import {
   HOME_TITLE,
   ORG_SCHEMA_DESCRIPTION,
 } from "@/lib/brandSeo";
+import { absolutePageTitle } from "@/lib/pageSeo";
 
 const CategorySection = dynamic(() => import("@/components/home/CategorySection"));
 const FeaturedProducts = dynamic(() => import("@/components/home/FeaturedProducts"));
@@ -33,7 +34,7 @@ const OG_IMAGE = `${SITE_URL}/ogimage.png`;
 const LOGO_IMAGE = `${SITE_URL}/logoNew.png`;
 
 export const metadata: Metadata = {
-  title: HOME_TITLE,
+  title: absolutePageTitle(HOME_TITLE),
   description: HOME_META_DESCRIPTION,
   keywords: [...HOME_KEYWORDS],
   metadataBase: new URL(SITE_URL),

@@ -5,7 +5,7 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/shipping",
-  title: "Shipping Policy",
+  title: "Shipping Policy — Sarees & Ethnic Wear Across India",
   description:
     "Shipping across India for sarees and ethnic wear — processing times, delivery estimates, free delivery over ₹1,099, tracking, and delays.",
   priority: "support",
@@ -14,7 +14,7 @@ export const metadata: Metadata = buildInfoPageMetadata({
 export default function ShippingPage() {
   return (
     <LegalPageLayout
-      title='Shipping Policy'
+      title='Shipping Policy — Sarees & Ethnic Wear Across India'
       description='This policy describes how we process, ship, and deliver orders within India. Timelines are estimates; actual delivery depends on your location and courier performance.'
       lastUpdated='27 March 2026'
     >

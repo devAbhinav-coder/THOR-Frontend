@@ -7,6 +7,7 @@ import { ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { HeroSlide } from "@/types";
 import { cn } from "@/lib/utils";
+import { resolveHomeHeroH1 } from "@/lib/pageHeadings";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 
 let hasPlayedHeroTextEntrance = false;
@@ -137,7 +138,7 @@ function HeroSection({ initialSlides }: Props) {
             </p>
           )}
           <h1 className='text-lg sm:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight mb-1 sm:mb-5 drop-shadow-lg'>
-            {slide.title}
+            {resolveHomeHeroH1(slide.title)}
           </h1>
           {slide.description && (
             <p className='hidden sm:block text-white text-xs sm:text-lg mb-4 sm:mb-8 leading-relaxed line-clamp-2 sm:line-clamp-none drop-shadow'>

@@ -5,7 +5,7 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/returns",
-  title: "Return & Cancellation Policy",
+  title: "Returns & Refunds — Sarees & Ethnic Wear (7 Days)",
   description:
     "7-day returns, refunds, and order cancellations for sarees and ethnic wear at The House of Rani — including COD and shipping charge rules.",
   priority: "support",
@@ -14,7 +14,7 @@ export const metadata: Metadata = buildInfoPageMetadata({
 export default function ReturnsPage() {
   return (
     <LegalPageLayout
-      title='Return & Cancellation Policy'
+      title='Returns & Refunds — Sarees & Ethnic Wear (7 Days)'
       description='We want you to love every piece you order. This page sets out how returns, refunds, and cancellations work for purchases made on our website, so expectations are clear from the start.'
       lastUpdated='22 April 2026'
     >

@@ -38,6 +38,7 @@ import RichTextContent from "@/components/ui/RichTextContent";
 import { isLowInStockVariant } from "@/lib/inventoryConstants";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 import {
   trackViewContent,
@@ -628,7 +629,9 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   const requireAuth = (msg: string) => {
     toast.error(msg);
     router.push(
-      "/auth/login?redirect=" + encodeURIComponent(window.location.pathname),
+      loginUrlWithRedirect(
+        window.location.pathname + window.location.search,
+      ),
     );
     return false;
   };

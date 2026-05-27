@@ -168,6 +168,9 @@ export default function AboutPageClient({
               Our story · Since day one
             </p>
             <h1 className="font-serif font-bold leading-[0.92] tracking-tight">
+              <span className="block text-[clamp(1.25rem,4vw,2rem)] text-brand-200/90 mb-2 tracking-wide">
+                About {BRAND_NAME} — Premium Sarees India
+              </span>
               <span className="block text-[clamp(2.75rem,11vw,7rem)] text-white">
                 Where Stories
               </span>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { buildContentSecurityPolicy, randomNonce } from "@/lib/csp";
+import { isAuthModalSearchParam } from "@/lib/seoCrawl";
 
 /** Block proxy/tunnel verbs at the edge (no legitimate use for this storefront). */
 const DISALLOWED_METHODS = new Set(["TRACE", "TRACK"]);
@@ -22,6 +23,11 @@ export function middleware(request: NextRequest) {
     "Content-Security-Policy",
     buildContentSecurityPolicy(nonce),
   );
+
+  if (isAuthModalSearchParam(request.nextUrl.searchParams.get("auth"))) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
   return response;
 }
 

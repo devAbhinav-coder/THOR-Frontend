@@ -17,6 +17,7 @@ import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal"
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 interface ProductCardProps {
   product: Product;
@@ -43,6 +44,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
   const [hasHoveredOnce, setHasHoveredOnce] = useState(false);
   const [secondaryLoaded, setSecondaryLoaded] = useState(false);
   const [secondaryImageError, setSecondaryImageError] = useState(false);
+  const [primaryImageError, setPrimaryImageError] = useState(false);
 
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
@@ -65,6 +67,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
       String(product.images[1]?.url || "").trim();
     return { primaryUrl: primary, secondaryUrl: secondary };
   }, [product.images]);
+
+  const showPrimaryImage = Boolean(primaryUrl) && !primaryImageError;
 
   // True when we have a valid, distinct secondary image
   const hasSecondary = Boolean(
@@ -135,7 +139,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
   const requireAuth = useCallback(
     (msg: string) => {
       toast.error(msg);
-      router.push("/auth/login");
+      router.push(loginUrlWithRedirect(window.location.pathname + window.location.search));
     },
     [router],
   );
@@ -348,7 +352,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           onMouseLeave={handleMouseLeave}
         >
           {/* ─── PRIMARY image — always rendered, fades out on hover ─── */}
-          {primaryUrl ?
+          {showPrimaryImage ?
             <Image
               src={primaryUrl}
               alt={primaryAlt}
@@ -362,12 +366,13 @@ function ProductCardInner({ product, className }: ProductCardProps) {
                 isHovered ? "scale-105" : "scale-100",
                 showSecondary ? "opacity-0" : "opacity-100",
               )}
+              onError={() => setPrimaryImageError(true)}
             />
-          : <div
-              className='absolute inset-0 flex items-center justify-center bg-gray-100'
-              aria-hidden='true'
-            >
-              <ShoppingBag className='w-12 h-12 text-gray-300' />
+          : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#f5f0ee] to-[#ebe3e0] px-3 text-center'>
+              <ShoppingBag className='w-10 h-10 text-brand-300' aria-hidden />
+              <span className='text-[11px] font-medium text-gray-500 leading-snug'>
+                Photo updating soon
+              </span>
             </div>
           }
 

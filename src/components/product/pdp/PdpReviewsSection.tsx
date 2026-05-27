@@ -18,6 +18,7 @@ import { formatDate, cn } from "@/lib/utils";
 import type { Product, Review } from "@/types";
 import { StarSelector, RatingBar } from "./PdpReviewPrimitives";
 import type { ReviewEligibility, ReviewFormState } from "./types";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 const REVIEW_TITLE_OPTIONS = [
   { value: "Not satisfied", label: "😕 Not satisfied" },
@@ -166,8 +167,13 @@ export function PdpReviewsSection({
                   <Check className='h-4 w-4' /> Review Submitted
                 </span>
               : null
-            : <Link
-                href='/auth/login'
+              : <Link
+                href={loginUrlWithRedirect(
+                  typeof window !== "undefined"
+                    ? window.location.pathname + window.location.search
+                    : "/",
+                )}
+                scroll={false}
                 className='text-sm text-brand-600 font-bold hover:bg-brand-50 px-4 py-2 rounded-xl transition-all flex items-center gap-2'
               >
                 Sign in to review <ChevronRight className='h-4 w-4' />

@@ -1,8 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import AuthNavLink from '@/components/auth/AuthNavLink';
+import {
+  AuthFormRoot,
+  AuthFormHeader,
+  AuthFormFooter,
+  AuthBackButton,
+  AuthStepBar,
+} from '@/components/auth/AuthFormChrome';
+import { authLinkText } from '@/lib/authFormShell';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -50,7 +58,17 @@ type EmailForm = z.infer<typeof emailSchema>;
 type OtpForm = z.infer<typeof otpSchema>;
 type ResetForm = z.infer<typeof resetSchema>;
 
-export default function ForgotPasswordClient() {
+type ForgotPasswordClientProps = {
+  embedded?: boolean;
+  onSuccess?: () => void;
+  onBackToLogin?: () => void;
+};
+
+export default function ForgotPasswordClient({
+  embedded = false,
+  onSuccess,
+  onBackToLogin,
+}: ForgotPasswordClientProps = {}) {
   const [step, setStep] = useState<'email' | 'otp' | 'reset'>('email');
   const [email, setEmail] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -60,6 +78,16 @@ export default function ForgotPasswordClient() {
   const [verifyCooldownSec, setVerifyCooldownSec] = useState(0);
   const { loading, run } = useDedupeSubmit();
   const router = useRouter();
+
+  const stepIndex = step === 'email' ? 0 : step === 'otp' ? 1 : 2;
+
+  const navigateAfterAuth = () => {
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+    router.push('/');
+  };
 
   const emailForm = useForm<EmailForm>({ resolver: zodResolver(emailSchema) });
   const otpForm = useForm<OtpForm>({ resolver: zodResolver(otpSchema) });
@@ -129,7 +157,7 @@ export default function ForgotPasswordClient() {
         isAuthenticated: true,
       });
       toast.success('Password updated. You are signed in.');
-      router.push('/');
+      navigateAfterAuth();
     }).catch((err: unknown) => {
       const error = err as { message?: string };
       toast.error(error.message || 'Could not reset password.');
@@ -138,146 +166,130 @@ export default function ForgotPasswordClient() {
 
   if (step === 'reset') {
     return (
-      <div className="w-full max-w-md">
-        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
-          <div className="text-center mb-6">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400">
-              <KeyRound className="h-6 w-6" />
-            </div>
-            <h2 className="text-2xl font-serif font-bold text-white">Set a new password</h2>
-            <p className="text-white/50 mt-2 text-sm">
-              For <span className="text-white/80 font-medium">{email}</span>
-            </p>
-          </div>
-
-          <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
-            <div className="relative">
-              <Input
-                {...resetForm.register('newPassword')}
-                type={showPwd ? 'text' : 'password'}
-                label="New password"
-                error={resetForm.formState.errors.newPassword?.message}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPwd(!showPwd)}
-                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-              >
-                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <PasswordStrengthMeter password={newPasswordWatch || ''} />
+      <AuthFormRoot embedded={embedded}>
+        {embedded ? <AuthStepBar total={3} current={2} /> : null}
+        <AuthFormHeader
+          embedded={embedded}
+          title="Set a new password"
+          subtitle={`For ${email}`}
+          icon={<KeyRound className="h-5 w-5" />}
+        />
+        <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-3">
+          <div className="relative">
             <Input
-              {...resetForm.register('confirmPassword')}
-              type="password"
-              label="Confirm new password"
-              error={resetForm.formState.errors.confirmPassword?.message}
+              {...resetForm.register('newPassword')}
+              type={showPwd ? 'text' : 'password'}
+              label="New password"
+              error={resetForm.formState.errors.newPassword?.message}
               autoComplete="new-password"
             />
-            <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
-              Update password & sign in
-            </Button>
             <button
               type="button"
-              onClick={() => setStep('otp')}
-              className="flex w-full items-center justify-center gap-1 text-sm text-white/40 hover:text-white/70"
+              onClick={() => setShowPwd(!showPwd)}
+              className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+              aria-label={showPwd ? 'Hide password' : 'Show password'}
             >
-              <ArrowLeft className="h-4 w-4" /> Back to code entry
+              {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
-          </form>
-        </div>
-      </div>
+          </div>
+          <PasswordStrengthMeter password={newPasswordWatch || ''} />
+          <Input
+            {...resetForm.register('confirmPassword')}
+            type="password"
+            label="Confirm new password"
+            error={resetForm.formState.errors.confirmPassword?.message}
+            autoComplete="new-password"
+          />
+          <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
+            Update password & sign in
+          </Button>
+          <AuthBackButton embedded={embedded} onClick={() => setStep('otp')}>
+            <ArrowLeft className="h-4 w-4" /> Back to code entry
+          </AuthBackButton>
+        </form>
+      </AuthFormRoot>
     );
   }
 
   if (step === 'otp') {
     return (
-      <div className="w-full max-w-md">
-        <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-serif font-bold text-white">Enter verification code</h2>
-            <p className="text-white/50 mt-2 text-sm">
-              Sent to <span className="text-white/80 font-medium">{email}</span>
+      <AuthFormRoot embedded={embedded}>
+        {embedded ? <AuthStepBar total={3} current={1} /> : null}
+        <AuthFormHeader
+          embedded={embedded}
+          title="Enter verification code"
+          subtitle={`Sent to ${email}`}
+        />
+        <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-3">
+          <Input
+            {...otpForm.register('otp')}
+            inputMode="numeric"
+            maxLength={6}
+            label="6-digit code"
+            placeholder="000000"
+            error={otpForm.formState.errors.otp?.message}
+            autoComplete="one-time-code"
+          />
+          <OtpResendCooldown
+            email={email}
+            type="forgot_password"
+            resetKey={resendResetKey}
+            initialSeconds={resendCooldownSec}
+          />
+          {verifyCooldownSec > 0 && (
+            <p className="text-center text-sm text-amber-700">
+              Too many attempts. Try again in {verifyCooldownSec}s.
             </p>
-          </div>
-          <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
-            <Input
-              {...otpForm.register('otp')}
-              inputMode="numeric"
-              maxLength={6}
-              label="6-digit code"
-              placeholder="000000"
-              error={otpForm.formState.errors.otp?.message}
-              autoComplete="one-time-code"
-            />
-            <OtpResendCooldown
-              email={email}
-              type="forgot_password"
-              resetKey={resendResetKey}
-              initialSeconds={resendCooldownSec}
-            />
-            {verifyCooldownSec > 0 && (
-              <p className="text-center text-sm text-amber-400/90">
-                Too many attempts. Try again in {verifyCooldownSec}s.
-              </p>
-            )}
-            <Button
-              type="submit"
-              variant="brand"
-              size="lg"
-              className="w-full"
-              loading={loading}
-              disabled={verifyCooldownSec > 0}
-            >
-              {verifyCooldownSec > 0 ? `Verify in ${verifyCooldownSec}s` : 'Verify code'}
-            </Button>
-            <button
-              type="button"
-              onClick={() => setStep('email')}
-              className="flex w-full items-center justify-center gap-1 text-sm text-white/40 hover:text-white/70"
-            >
-              <ArrowLeft className="h-4 w-4" /> Use a different email
-            </button>
-          </form>
-        </div>
-      </div>
+          )}
+          <Button
+            type="submit"
+            variant="brand"
+            size="lg"
+            className="w-full"
+            loading={loading}
+            disabled={verifyCooldownSec > 0}
+          >
+            {verifyCooldownSec > 0 ? `Verify in ${verifyCooldownSec}s` : 'Verify code'}
+          </Button>
+          <AuthBackButton embedded={embedded} onClick={() => setStep('email')}>
+            <ArrowLeft className="h-4 w-4" /> Use a different email
+          </AuthBackButton>
+        </form>
+      </AuthFormRoot>
     );
   }
 
   return (
-    <div className="w-full max-w-md">
-      <div className="bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-serif font-bold text-white">Forgot password</h2>
-          <p className="text-white/50 mt-1 text-sm">
-            We&apos;ll email you a 6-digit code to reset your password
-          </p>
-        </div>
-
-        <form onSubmit={emailForm.handleSubmit(onSendCode)} className="space-y-4">
-          <Input
-            {...emailForm.register('email')}
-            type="email"
-            label="Email address"
-            placeholder="you@example.com"
-            error={emailForm.formState.errors.email?.message}
-            autoComplete="email"
-          />
-          <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
-            Send code
-          </Button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center gap-1 text-sm text-brand-400 hover:text-brand-300"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to sign in
-          </Link>
-        </div>
-      </div>
-    </div>
+    <AuthFormRoot embedded={embedded}>
+      {embedded ? <AuthStepBar total={3} current={stepIndex} /> : null}
+      <AuthFormHeader
+        embedded={embedded}
+        title="Reset your password"
+        subtitle={embedded ? undefined : "We will email you a secure 6-digit code"}
+      />
+      <form onSubmit={emailForm.handleSubmit(onSendCode)} className="space-y-3">
+        <Input
+          {...emailForm.register('email')}
+          type="email"
+          label="Email"
+          placeholder="you@example.com"
+          error={emailForm.formState.errors.email?.message}
+          autoComplete="email"
+        />
+        <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
+          Send code
+        </Button>
+      </form>
+      <AuthFormFooter embedded={embedded}>
+        <AuthNavLink
+          embedded={embedded}
+          onNavigate={onBackToLogin}
+          href="/auth/login"
+          className={`inline-flex items-center gap-1 ${authLinkText(embedded)}`}
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to sign in
+        </AuthNavLink>
+      </AuthFormFooter>
+    </AuthFormRoot>
   );
 }

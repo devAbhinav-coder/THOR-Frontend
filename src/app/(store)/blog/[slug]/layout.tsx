@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const image = blog?.images?.[0]?.url;
 
     return {
-      title: `${title} | The House of Rani Journal`,
+      title: title,
       description:
         description || "Read this story from The House of Rani Journal.",
       keywords: [

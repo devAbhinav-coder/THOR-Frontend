@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/SkeletonLoader";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { queryKeys } from "@/lib/queryKeys";
+import { resolveGiftingHeroH1 } from "@/lib/pageHeadings";
 
 type SortKey =
   | "relevance"
@@ -318,7 +319,7 @@ export default function GiftingPageClient({
               <div className='absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center'>
                 <div className='max-w-xl text-white animate-in slide-in-from-bottom-8 fade-in duration-1000 ease-out'>
                   <h1 className='text-3xl sm:text-4xl lg:text-5xl font-serif font-bold leading-tight drop-shadow-xl'>
-                    {activeHero?.title || "Smart gifting made easy"}
+                    {resolveGiftingHeroH1(activeHero?.title)}
                   </h1>
                   <p className='mt-2 text-xs sm:text-sm text-white/90'>
                     {activeHero?.description ||

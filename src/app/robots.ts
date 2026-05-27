@@ -1,5 +1,12 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/siteUrl";
+import {
+  SEO_CRAWL_ALLOW_PUBLIC,
+  SEO_CRAWL_DISALLOW,
+} from "@/lib/seoCrawl";
+
+const DISALLOW = [...SEO_CRAWL_DISALLOW];
+const ALLOW_PUBLIC = [...SEO_CRAWL_ALLOW_PUBLIC];
 
 export default function robots(): MetadataRoute.Robots {
   const appUrl = getSiteUrl();
@@ -7,54 +14,32 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
-        /* Primary crawlers — allow all public pages, block private ones */
         userAgent: "*",
-        allow: "/",
-        disallow: [
-          "/admin",
-          "/admin/*",
-          "/auth",
-          "/auth/*",
-          "/checkout",
-          "/checkout/*",
-          "/cart",
-          "/cart/*",
-          "/dashboard",
-          "/dashboard/*",
-          "/api/*",
-        ],
+        allow: ALLOW_PUBLIC,
+        disallow: DISALLOW,
       },
       {
-        /* Google — same as above but without auth root to avoid redirect loops */
         userAgent: ["Googlebot", "Googlebot-News"],
-        allow: "/",
-        disallow: [
-          "/admin/*",
-          "/auth/*",
-          "/checkout/*",
-          "/cart",
-          "/cart/*",
-          "/dashboard/*",
-          "/api/*",
-        ],
+        allow: ALLOW_PUBLIC,
+        disallow: DISALLOW,
       },
       {
         /*
-         * Googlebot-Image must be explicitly allowed to crawl Cloudinary URLs
-         * so product images appear in Google Images and Google Shopping.
-         * Without this rule, image crawling may fall back to the generic
-         * "*" rule which is less trusted by Google.
+         * Googlebot-Image: product images on Cloudinary + on-site assets.
          */
         userAgent: "Googlebot-Image",
-        allow: "/",
-        disallow: ["/admin/*", "/auth/*", "/dashboard/*"],
+        allow: ["/", "/shop", "/about", "/blog", "/gifting"],
+        disallow: ["/admin/", "/auth/", "/dashboard/", "/cart/", "/checkout/"],
       },
       {
-        /*
-         * Block AI training crawlers from scraping product descriptions,
-         * pricing, and customer reviews.
-         */
-        userAgent: ["GPTBot", "CCBot", "anthropic-ai", "Claude-Web", "Google-Extended", "OAI-SearchBot"],
+        userAgent: [
+          "GPTBot",
+          "CCBot",
+          "anthropic-ai",
+          "Claude-Web",
+          "Google-Extended",
+          "OAI-SearchBot",
+        ],
         disallow: "/",
       },
     ],

@@ -63,6 +63,7 @@ import { useSearchParams } from "next/navigation";
 import OrderPlacementSuccessOverlay from "@/components/checkout/OrderPlacementSuccessOverlay";
 import { trackPurchase, trackInitiateCheckout } from "@/lib/metaPixel";
 import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 function normalizeIndianMobileDigits(val: string): string {
   let d = val.replace(/\D/g, "");
@@ -304,7 +305,7 @@ export default function CheckoutClient() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.replace("/auth/login?redirect=/checkout");
+      router.replace(loginUrlWithRedirect("/checkout"));
     }
   }, [isAuthenticated, router]);
 

@@ -41,6 +41,7 @@ import {
   userMessage,
 } from "./orderFormat";
 import type { ChatMessage, OrderSummary, QuickAction } from "./types";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 const SUPPORT_PHONE = "8340311033";
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
@@ -714,7 +715,7 @@ export function useRaniCareChat() {
     else if (value === "shipping policy") window.location.href = "/shipping";
     else if (value === "privacy policy") window.location.href = "/privacy";
     else if (value === "terms policy") window.location.href = "/terms";
-    else if (value === "sign in") window.location.href = "/auth/login";
+    else if (value === "sign in") window.location.href = loginUrlWithRedirect("/");
     else if (value === "call support")
       window.location.href = `tel:${contactPhone.replace(/\s+/g, "")}`;
     else if (value === "email support")

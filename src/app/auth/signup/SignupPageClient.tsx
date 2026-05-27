@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import AuthNavLink from "@/components/auth/AuthNavLink";
+import {
+  AuthFormRoot,
+  AuthFormHeader,
+  AuthFormDivider,
+  AuthFormFooter,
+  AuthBackButton,
+  AuthStepBar,
+} from "@/components/auth/AuthFormChrome";
+import { authLinkText } from "@/lib/authFormShell";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -58,12 +68,24 @@ type PendingCopy = { title: string; description: string };
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-export default function SignupPageClient() {
+type SignupPageClientProps = {
+  embedded?: boolean;
+  onSuccess?: () => void;
+  onSwitchToLogin?: () => void;
+};
+
+export default function SignupPageClient({
+  embedded = false,
+  onSuccess,
+  onSwitchToLogin,
+}: SignupPageClientProps = {}) {
   const [showPassword, setShowPassword] = useState(false);
   const [googleUiReady, setGoogleUiReady] = useState(false);
   const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
   const googleButtonHostRef = useRef<HTMLDivElement | null>(null);
-  const [step, setStep] = useState<"form" | "otp">("form");
+  const [wizardStep, setWizardStep] = useState<"details" | "password" | "otp">(
+    "details",
+  );
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingCopy, setPendingCopy] = useState<PendingCopy>({
     title: "Please wait",
@@ -72,6 +94,16 @@ export default function SignupPageClient() {
   const { signupStart, signupVerify, loginWithGoogle, isLoading } =
     useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/";
+
+  const navigateAfterAuth = useCallback(() => {
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+    router.push(redirect);
+  }, [onSuccess, redirect, router]);
 
   const form = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
@@ -96,7 +128,7 @@ export default function SignupPageClient() {
         phone: phoneDigits,
       });
       setPendingEmail(data.email);
-      setStep("otp");
+      setWizardStep("otp");
       toast.success("We sent a 6-digit code to your email.");
     } catch (err: unknown) {
       const error = err as { message?: string };
@@ -112,7 +144,7 @@ export default function SignupPageClient() {
     try {
       await signupVerify(pendingEmail, data.otp);
       toast.success("Account verified. Welcome to The House of Rani!");
-      router.push("/");
+      navigateAfterAuth();
     } catch (err: unknown) {
       if (err instanceof ApiValidationError) {
         toast.error(
@@ -138,7 +170,7 @@ export default function SignupPageClient() {
     try {
       await loginWithGoogle(credential);
       toast.success("Welcome! Your account is ready.");
-      router.push("/");
+      navigateAfterAuth();
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || "Google sign-up failed.");
@@ -169,63 +201,144 @@ export default function SignupPageClient() {
     };
   }, [googleUiReady, updateGoogleButtonWidth]);
 
-  if (step === "otp") {
+  const onContinueDetails = async () => {
+    const ok = await form.trigger(["name", "email", "phone"]);
+    if (ok) setWizardStep("password");
+  };
+
+  const stepIndex =
+    wizardStep === "details" ? 0 : wizardStep === "password" ? 1 : 2;
+
+  const googleBlock =
+    googleClientId ?
+      <div ref={googleButtonHostRef} className="w-full overflow-hidden min-h-[40px]">
+        {googleUiReady ?
+          <GoogleLogin
+            theme="outline"
+            size="large"
+            width={googleButtonWidth}
+            text="signup_with"
+            shape="rectangular"
+            logo_alignment="center"
+            use_fedcm_for_button={false}
+            onSuccess={(cred) => void handleGoogle(cred.credential)}
+            onError={() => toast.error("Google sign-up was cancelled or failed.")}
+          />
+        : null}
+      </div>
+    : null;
+
+  const termsLine = (
+    <p className="mt-4 text-center text-[10px] leading-snug text-gray-400">
+      By signing up you agree to our{" "}
+      <Link href="/terms" className="text-gray-500 hover:text-brand-600 hover:underline">
+        Terms
+      </Link>
+      ,{" "}
+      <Link href="/privacy" className="text-gray-500 hover:text-brand-600 hover:underline">
+        Privacy
+      </Link>
+      , and{" "}
+      <Link href="/returns" className="text-gray-500 hover:text-brand-600 hover:underline">
+        Returns
+      </Link>
+      .
+    </p>
+  );
+
+  if (wizardStep === "otp") {
     const isPending = isLoading;
     return (
       <>
-        <div className='w-full max-w-md'>
-          <div className='bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white'>
-            <div className='text-center mb-6'>
-              <div className='mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/20 text-brand-400'>
-                <Mail className='h-6 w-6' />
-              </div>
-              <h2 className='text-2xl font-serif font-bold text-white'>
-                Check your email
-              </h2>
-              <p className='text-white/50 mt-2 text-sm'>
-                Enter the 6-digit code we sent to{" "}
-                <span className='text-white/80 font-medium'>
-                  {pendingEmail}
-                </span>
-              </p>
-            </div>
-
-            <form
-              onSubmit={otpForm.handleSubmit(onSubmitOtp)}
-              className='space-y-4'
+        <AuthFormRoot embedded={embedded}>
+          {embedded ? <AuthStepBar total={3} current={2} /> : null}
+          <AuthFormHeader
+            embedded={embedded}
+            title="Verify your email"
+            subtitle={`Enter the code sent to ${pendingEmail}`}
+            icon={<Mail className="h-5 w-5" />}
+          />
+          <form onSubmit={otpForm.handleSubmit(onSubmitOtp)} className="space-y-3">
+            <Input
+              {...otpForm.register("otp")}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              label="Verification code"
+              placeholder="000000"
+              error={otpForm.formState.errors.otp?.message}
+            />
+            <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
+              Verify & create account
+            </Button>
+            <OtpResendCooldown email={pendingEmail} type="signup" />
+            <AuthBackButton
+              embedded={embedded}
+              onClick={() => {
+                setWizardStep("password");
+                otpForm.reset();
+              }}
             >
+              ← Back to password step
+            </AuthBackButton>
+          </form>
+        </AuthFormRoot>
+        <AuthPendingOverlay
+          active={isPending}
+          title={pendingCopy.title}
+          description={pendingCopy.description}
+        />
+      </>
+    );
+  }
+
+  if (wizardStep === "password") {
+    const isPending = isLoading;
+    return (
+      <>
+        <AuthFormRoot embedded={embedded}>
+          {embedded ? <AuthStepBar total={3} current={1} /> : null}
+          <AuthFormHeader
+            embedded={embedded}
+            title="Secure your account"
+            subtitle="Choose a strong password to finish setup"
+          />
+          <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-3">
+            <div className="relative">
               <Input
-                {...otpForm.register("otp")}
-                inputMode='numeric'
-                autoComplete='one-time-code'
-                maxLength={6}
-                label='Verification code'
-                placeholder='000000'
-                error={otpForm.formState.errors.otp?.message}
+                {...form.register("password")}
+                type={showPassword ? "text" : "password"}
+                label="Password"
+                placeholder="Min. 8 characters"
+                error={form.formState.errors.password?.message}
+                autoComplete="new-password"
               />
-              <Button
-                type='submit'
-                variant='brand'
-                size='lg'
-                className='w-full'
-                loading={isLoading}
-              >
-                Verify & create account
-              </Button>
-              <OtpResendCooldown email={pendingEmail} type='signup' />
               <button
-                type='button'
-                onClick={() => {
-                  setStep("form");
-                  otpForm.reset();
-                }}
-                className='w-full text-sm text-white/40 hover:text-white/70'
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                ← Back to edit details
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
-            </form>
-          </div>
-        </div>
+            </div>
+            <Input
+              {...form.register("confirmPassword")}
+              type="password"
+              label="Confirm password"
+              placeholder="Repeat password"
+              error={form.formState.errors.confirmPassword?.message}
+              autoComplete="new-password"
+            />
+            <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Send verification code
+            </Button>
+            <AuthBackButton embedded={embedded} onClick={() => setWizardStep("details")}>
+              ← Back to your details
+            </AuthBackButton>
+          </form>
+        </AuthFormRoot>
         <AuthPendingOverlay
           active={isPending}
           title={pendingCopy.title}
@@ -238,155 +351,66 @@ export default function SignupPageClient() {
   const isPending = isLoading;
   return (
     <>
-      <div className='w-full max-w-md'>
-        <div className='bg-navy-900 rounded-2xl shadow-2xl border border-navy-700 p-5 sm:p-8 [&_label]:text-white/70 [&_input]:bg-navy-800 [&_input]:border-navy-600 [&_input]:text-white [&_input::placeholder]:text-white/30 [&_input:focus]:border-brand-600'>
-          <div className='text-center mb-8'>
-            <h2 className='text-2xl font-serif font-bold text-white'>
-              Create Account
-            </h2>
-            <p className='text-white/50 mt-1 text-sm'>
-              Join The House of Rani — verify your email to finish
-            </p>
-          </div>
+      <AuthFormRoot embedded={embedded}>
+        {embedded ? <AuthStepBar total={3} current={stepIndex} /> : null}
+        <AuthFormHeader
+          embedded={embedded}
+          title="Create your House of Rani account"
+          subtitle={embedded ? undefined : "Join us — verify your email to finish"}
+        />
 
-          {googleClientId ?
-            <div
-              ref={googleButtonHostRef}
-              className='mb-6 w-full overflow-hidden min-h-[40px]'
-            >
-              {googleUiReady ?
-                <GoogleLogin
-                  theme='outline'
-                  size='large'
-                  width={googleButtonWidth}
-                  text='signup_with'
-                  shape='rectangular'
-                  logo_alignment='center'
-                  use_fedcm_for_button={false}
-                  onSuccess={(cred) => void handleGoogle(cred.credential)}
-                  onError={() =>
-                    toast.error("Google sign-up was cancelled or failed.")
-                  }
-                />
-              : null}
-            </div>
-          : <p className='mb-6 text-center text-[11px] text-white/35'>
-              Google sign-up is not configured (set
-              NEXT_PUBLIC_GOOGLE_CLIENT_ID).
-            </p>
-          }
+        {googleBlock}
+        {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}
 
-          {googleClientId ?
-            <div className='relative mb-6'>
-              <div className='absolute inset-0 flex items-center'>
-                <div className='w-full border-t border-white/10' />
-              </div>
-              <div className='relative flex justify-center text-xs uppercase tracking-wider'>
-                <span className='bg-navy-900 px-3 text-white/35'>
-                  or register with email
-                </span>
-              </div>
-            </div>
-          : null}
-
-          <form
-            onSubmit={form.handleSubmit(onSubmitForm)}
-            className='space-y-4'
+        <div className="space-y-3">
+          <Input
+            {...form.register("name")}
+            label="Full name"
+            placeholder="Your name"
+            error={form.formState.errors.name?.message}
+            autoComplete="name"
+          />
+          <Input
+            {...form.register("email")}
+            type="email"
+            label="Email"
+            placeholder="you@example.com"
+            error={form.formState.errors.email?.message}
+            autoComplete="email"
+          />
+          <Input
+            {...form.register("phone")}
+            type="tel"
+            label="Mobile (India)"
+            placeholder="10-digit number"
+            error={form.formState.errors.phone?.message}
+            maxLength={10}
+            hint="For order updates & delivery"
+          />
+          <Button
+            type="button"
+            variant="brand"
+            size="lg"
+            className="w-full"
+            onClick={() => void onContinueDetails()}
           >
-            <Input
-              {...form.register("name")}
-              label='Full Name'
-              placeholder='Your full name'
-              error={form.formState.errors.name?.message}
-              autoComplete='name'
-            />
-            <Input
-              {...form.register("email")}
-              type='email'
-              label='Email Address'
-              placeholder='you@example.com'
-              error={form.formState.errors.email?.message}
-              autoComplete='email'
-            />
-            <Input
-              {...form.register("phone")}
-              type='tel'
-              label='Phone Number'
-              placeholder='10-digit mobile number'
-              error={form.formState.errors.phone?.message}
-              maxLength={10}
-            />
-
-            <div className='relative'>
-              <Input
-                {...form.register("password")}
-                type={showPassword ? "text" : "password"}
-                label='Password'
-                placeholder='Create a strong password'
-                error={form.formState.errors.password?.message}
-                autoComplete='new-password'
-              />
-              <button
-                type='button'
-                onClick={() => setShowPassword(!showPassword)}
-                className='absolute right-3 top-8 text-gray-400 hover:text-gray-600'
-              >
-                {showPassword ?
-                  <EyeOff className='h-4 w-4' />
-                : <Eye className='h-4 w-4' />}
-              </button>
-            </div>
-
-            <Input
-              {...form.register("confirmPassword")}
-              type='password'
-              label='Confirm Password'
-              placeholder='Repeat your password'
-              error={form.formState.errors.confirmPassword?.message}
-              autoComplete='new-password'
-            />
-
-            <Button
-              type='submit'
-              variant='brand'
-              size='lg'
-              className='w-full'
-              loading={isLoading}
-            >
-              <UserPlus className='h-4 w-4 mr-2' />
-              Send verification code
-            </Button>
-          </form>
-
-          <div className='mt-6 text-center'>
-            <p className='text-sm text-white/40'>
-              Already have an account?{" "}
-              <Link
-                href='/auth/login'
-                className='text-brand-400 hover:text-brand-300 font-medium'
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
-
-          <p className='mt-5 max-w-[19rem] mx-auto text-center text-[10px] leading-snug text-white/35'>
-            By signing up you agree to our{" "}
-            <Link href='/terms' className='text-white/50 underline-offset-2 hover:text-brand-300 hover:underline'>
-              Terms
-            </Link>
-            ,{" "}
-            <Link href='/privacy' className='text-white/50 underline-offset-2 hover:text-brand-300 hover:underline'>
-              Privacy
-            </Link>
-            , and{" "}
-            <Link href='/returns' className='text-white/50 underline-offset-2 hover:text-brand-300 hover:underline'>
-              Returns
-            </Link>{" "}
-            policies.
-          </p>
+            Continue
+          </Button>
         </div>
-      </div>
+
+        <AuthFormFooter embedded={embedded}>
+          Already have an account?{" "}
+          <AuthNavLink
+            embedded={embedded}
+            onNavigate={onSwitchToLogin}
+            href="/auth/login"
+            className={authLinkText(embedded)}
+          >
+            Sign in
+          </AuthNavLink>
+        </AuthFormFooter>
+        {termsLine}
+      </AuthFormRoot>
       <AuthPendingOverlay
         active={isPending}
         title={pendingCopy.title}

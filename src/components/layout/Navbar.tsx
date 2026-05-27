@@ -38,6 +38,7 @@ import {
   useStoreNavActive,
   type StoreNavActive,
 } from "@/hooks/useStoreNavActive";
+import { useAuthModal } from "@/hooks/useAuthModal";
 import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 
 type MobileBottomItem = {
@@ -188,11 +189,10 @@ export default function Navbar() {
   }, [isSearchOpen, focusStoreSearch]);
 
   const isAuthedStable = hasSessionChecked && !isLoading && isAuthenticated;
+  const { href: authHref } = useAuthModal();
 
   const ordersHref =
-    isAuthedStable ? "/dashboard/orders" : (
-      "/auth/login?redirect=/dashboard/orders"
-    );
+    isAuthedStable ? "/dashboard/orders" : authHref("login", "/dashboard/orders");
 
   const navActive = useStoreNavActive();
 
@@ -232,11 +232,11 @@ export default function Navbar() {
         id: "profile",
         label: "Profile",
         Icon: User,
-        href: isAuthedStable ? "/dashboard" : "/auth/login",
+        href: isAuthedStable ? "/dashboard" : authHref("login"),
         activeKey: "userHub",
       },
     ],
-    [ordersHref, isAuthedStable],
+    [ordersHref, isAuthedStable, authHref],
   );
 
   return (
@@ -499,7 +499,8 @@ export default function Navbar() {
                   )}
                 </div>
               : <Link
-                  href='/auth/login'
+                  href={authHref("login")}
+                  scroll={false}
                   className='hidden lg:flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
                 >
                   <User className='h-5 w-5' />
@@ -724,14 +725,16 @@ export default function Navbar() {
                 : <div className='flex gap-2.5 mt-2'>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
-                      href='/auth/login'
+                      href={authHref("login")}
+                      scroll={false}
                       className='flex-1 py-3 text-xs font-bold text-white bg-navy-800 border border-navy-700 hover:bg-navy-700 hover:border-navy-600 rounded-2xl text-center transition-all shadow-sm'
                     >
                       Sign In
                     </Link>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
-                      href='/auth/signup'
+                      href={authHref("signup")}
+                      scroll={false}
                       className='flex-1 py-3 text-xs font-bold bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white rounded-2xl text-center shadow-lg shadow-brand-900/40 transition-all'
                     >
                       Create Account

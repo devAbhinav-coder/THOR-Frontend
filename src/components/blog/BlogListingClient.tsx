@@ -9,6 +9,7 @@ import type { Blog } from "@/types";
 import { Skeleton } from "@/components/ui/SkeletonLoader";
 import { plainBlogExcerpt } from "@/lib/blogServer";
 import type { BlogsPagination } from "@/lib/blogServer";
+import { BLOG_H1 } from "@/lib/pageHeadings";
 
 type Props = {
   initialBlogs?: Blog[];
@@ -103,11 +104,8 @@ export default function BlogListingClient({
             <Sparkles className='w-4 h-4' />
             The House of Rani Journal
           </div>
-          <h1 className='text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight mb-4 drop-shadow-lg'>
-            Inside the{" "}
-            <span className='text-transparent bg-clip-text bg-gradient-to-r from-gold-300 via-gold-400 to-brand-400'>
-              Atelier
-            </span>
+          <h1 className='text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight mb-4 drop-shadow-lg'>
+            {BLOG_H1}
           </h1>
           <p className='text-lg md:text-xl text-white/60 leading-relaxed font-light max-w-2xl mx-auto'>
             Saree styling guides, bridal inspiration, fabric care tips, and

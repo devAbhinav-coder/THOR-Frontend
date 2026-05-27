@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import Footer from '@/components/layout/Footer';
 import { StoreErrorBoundary } from '@/components/StoreErrorBoundary';
 import { StoreRaniCare } from '@/components/support/StoreRaniCare';
+import StoreAuthModal from '@/components/auth/StoreAuthModal';
 
 function NavbarShellFallback() {
   return (
@@ -29,6 +30,9 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       </main>
       <Footer />
       <StoreRaniCare />
+      <Suspense fallback={null}>
+        <StoreAuthModal />
+      </Suspense>
     </>
   );
 }

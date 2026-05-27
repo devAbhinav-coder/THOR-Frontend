@@ -5,9 +5,9 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/privacy",
-  title: "Privacy Policy",
+  title: "Privacy Policy — Saree Shopping at The House of Rani",
   description:
-    "How The House of Rani collects, uses, and protects your personal information when you shop sarees and ethnic wear online.",
+    "How The House of Rani collects, uses, and protects your personal information when you shop sarees and ethnic wear online in India.",
 });
 
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
@@ -15,7 +15,7 @@ const SUPPORT_EMAIL = "support@thehouseofrani.com";
 export default function PrivacyPage() {
   return (
     <LegalPageLayout
-      title="Privacy Policy"
+      title="Privacy Policy — Saree Shopping at The House of Rani"
       description="This policy explains how we handle your personal data when you use our website, place orders, or contact The House of Rani. We treat your information with care and in line with applicable Indian law."
       lastUpdated="22 April 2026"
     >

@@ -26,6 +26,22 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { getNextNumericPage } from "@/lib/infiniteScrollPagination";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
+import { resolveShopListHeading } from "@/lib/pageHeadings";
+import { resolveShopHeroContent } from "@/lib/shopHeroCopy";
+import ShopHeroBanner from "@/components/shop/ShopHeroBanner";
+function isUsableBannerImage(url?: string | null): boolean {
+  const u = String(url || "").trim();
+  if (!u) return false;
+  if (u.startsWith("/")) return true;
+  if (!/^https?:\/\//i.test(u)) return false;
+  if (/\.(pdf|mp4|webm|mov)(\?|$)/i.test(u)) return false;
+  return true;
+}
+
+function formatProductCount(n: number): string {
+  const total = Math.max(0, Number(n) || 0);
+  return `${total} ${total === 1 ? "product" : "products"}`;
+}
 import { ProductInfiniteGrid } from "@/components/product/ProductInfiniteGrid";
 
 const SORT_OPTIONS = [
@@ -40,8 +56,8 @@ const SEARCH_MAX_LEN = 30;
 const SHOP_PAGE_LIMIT = 12;
 
 const defaultShopBanner = {
-  title: "Shop Our Collection",
-  subtitle: "Discover premium ethnic wear crafted for every occasion.",
+  title: "",
+  subtitle: "",
   centerImage: "",
   leftImage: "",
   rightImage: "",
@@ -49,7 +65,11 @@ const defaultShopBanner = {
 };
 
 type ShopClientProps = {
-  categoryContext?: { name: string; slug: string } | null;
+  categoryContext?: {
+    name: string;
+    slug: string;
+    description?: string;
+  } | null;
 };
 
 export default function ShopClient({ categoryContext = null }: ShopClientProps) {
@@ -325,8 +345,20 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
       isActive: raw.isActive !== false,
     };
   }, [storefrontSettings]);
-  const headingText =
-    filters.isFeatured ? "Featured Products" : "Shop Collection";
+  const heroContent = resolveShopHeroContent({
+    categoryName: categoryContext?.name || filters.category,
+    categoryDescription: categoryContext?.description,
+    search: filters.search,
+    fabric: filters.fabric,
+    isFeatured: filters.isFeatured,
+    bannerTitle: shopBanner.title,
+  });
+  const headingText = resolveShopListHeading({
+    categoryName: categoryContext?.name || filters.category,
+    search: filters.search,
+    fabric: filters.fabric,
+    isFeatured: filters.isFeatured,
+  });
   const breadcrumbContext = useMemo(() => {
     if (filters.search) return `Search Products: "${searchTitle}"`;
     if (filters.category) return filters.category;
@@ -348,6 +380,13 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
   const productGridClass =
     "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0";
 
+  /** One full-width hero image only — prefer center, then legacy left/right as fallback */
+  const heroImageSrc =
+    isUsableBannerImage(shopBanner.centerImage) ? shopBanner.centerImage.trim()
+    : isUsableBannerImage(shopBanner.leftImage) ? shopBanner.leftImage.trim()
+    : isUsableBannerImage(shopBanner.rightImage) ? shopBanner.rightImage.trim()
+    : null;
+  const showImageHero = shopBanner.isActive && Boolean(heroImageSrc);
   const showShopBanner = shopBanner.isActive;
   const ListHeadingTag = showShopBanner ? "h2" : "h1";
 
@@ -359,78 +398,33 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
   return (
     <div>
       {showShopBanner && (
-        <section className='relative  overflow-x-clip'>
-          {shopBanner.centerImage ?
-            <div className='relative h-[140px] sm:h-[220px] lg:h-[230px]'>
+        <section className='relative overflow-x-clip border-b border-[#ead9d4]/60'>
+          {showImageHero && heroImageSrc ?
+            <div className='relative h-[148px] sm:h-[188px] lg:h-[208px]'>
               <Image
-                src={shopBanner.centerImage}
-                alt='Shop banner'
+                src={heroImageSrc}
+                alt='The House of Rani — premium sarees and ethnic wear collection'
                 fill
                 className='object-cover object-center'
                 sizes='100vw'
                 priority
               />
-              <div className='absolute inset-0 bg-black/20' />
-              <div className='absolute inset-0 flex flex-col items-center justify-center px-4 text-center'>
-              
-                <h1 className='font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight drop-shadow-md'>
-                  {shopBanner.title || "Shop Our Collection"} <br />
-                  {categoryContext?.name && <> of <span className="text-[#e94d63]">{categoryContext?.name}</span></>}
-                </h1>
-                <p className='mt-2 text-sm sm:text-lg text-white/95 max-w-2xl mx-auto drop-shadow'>
-                  {shopBanner.subtitle ||
-                    "Discover premium ethnic wear crafted for every occasion."}
-                </p>
-              </div>
+              <div className='absolute inset-0 bg-gradient-to-t from-navy-950/88 via-navy-900/45 to-navy-900/20' />
+              <ShopHeroBanner content={heroContent} variant='image' compact />
             </div>
-          : <div className='bg-[#f2eceb]'>
-              <div className='max-w-[1800px] mx-auto px-2 sm:px-4'>
-                <div className='grid grid-cols-1 sm:grid-cols-[150px_1fr_150px] lg:grid-cols-[220px_1fr_220px] items-stretch min-h-[130px] sm:min-h-[180px] lg:min-h-[210px]'>
-                  <div className='relative hidden sm:block'>
-                    {shopBanner.leftImage && (
-                      <Image
-                        src={shopBanner.leftImage}
-                        alt=''
-                        fill
-                        className='object-cover object-center'
-                        sizes='220px'
-                        loading='lazy'
-                      />
-                    )}
-                  </div>
-                  <div className='flex flex-col items-center justify-center px-4 sm:px-5 text-center'>
-                    <h1 className='font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight'>
-                      {categoryContext?.name ?
-                        `${categoryContext.name} Sarees & Ethnic Wear`
-                      : shopBanner.title || "Shop Our Collection"}
-                    </h1>
-                    <p className='mt-2 text-sm sm:text-lg text-gray-700 max-w-2xl mx-auto'>
-                      {categoryContext?.name ?
-                        `Browse ${categoryContext.name} at The House of Rani — premium fabrics, trusted delivery, and easy returns.`
-                      : shopBanner.subtitle ||
-                        "Discover premium ethnic wear crafted for every occasion."}
-                    </p>
-                  </div>
-                  <div className='relative hidden sm:block'>
-                    {shopBanner.rightImage && (
-                      <Image
-                        src={shopBanner.rightImage}
-                        alt=''
-                        fill
-                        className='object-cover object-center'
-                        sizes='220px'
-                        loading='lazy'
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
+          : <div
+              className={cn(
+                "bg-gradient-to-br from-[#f7f0ed] via-[#faf6f4] to-[#efe8e5]",
+                categoryContext && "ring-1 ring-inset ring-[#e8ddd9]/80",
+              )}
+            >
+              <ShopHeroBanner content={heroContent} variant='light' compact />
             </div>
           }
         </section>
       )}
 
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-5 sm:pt-4'>
         <nav
           aria-label='Breadcrumb'
           className='flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-600'
@@ -452,13 +446,13 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
           </span>
         </nav>
 
-        <div className='mt-4 mb-2 sm:mb-3 flex flex-wrap items-end justify-between gap-3'>
+        <div className='mt-2 mb-2 flex flex-wrap items-end justify-between gap-3'>
           <div>
             <ListHeadingTag className='text-xl sm:text-2xl font-serif font-semibold text-gray-900'>
               {headingText}
             </ListHeadingTag>
             <p className='text-sm text-gray-600 mt-1'>
-              {isLoading ? "Loading…" : `${pagination.totalProducts} products`}
+              {isLoading ? "Loading…" : formatProductCount(pagination.totalProducts)}
             </p>
           </div>
           <div className='flex items-center gap-2'>
@@ -488,10 +482,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
             </select>
           </div>
         </div>
-      </div>
-
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-7'>
-        <div className='lg:flex lg:items-start lg:gap-6'>
+        <div className='lg:flex lg:items-start lg:gap-5'>
           <aside
             id='shop-filters-drawer'
             role={isSidebarOpen ? "dialog" : undefined}
@@ -503,7 +494,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
               isSidebarOpen ?
                 "fixed top-2 bottom-2 left-0 z-50 w-80 max-w-[92vw] bg-white shadow-2xl overflow-y-auto rounded-2xl border border-gray-100"
               : "hidden",
-              "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:pl-1 lg:sticky lg:top-20 lg:self-start lg:h-fit lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto",
+              "lg:block lg:w-64 lg:min-w-64 lg:flex-none lg:bg-transparent lg:shadow-none lg:sticky lg:top-[4.75rem] lg:self-start lg:overflow-visible",
             )}
           >
             <h2 id='shop-filters-drawer-title' className='sr-only'>
@@ -525,7 +516,7 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
               </div>
             )}
 
-            <div className='space-y-5 p-4 sm:p-5 lg:p-0 lg:pr-2'>
+            <div className='space-y-4 p-4 sm:p-5 lg:p-0'>
               {activeFilterCount > 0 && (
                 <button
                   type='button'
@@ -718,7 +709,7 @@ function FilterSection({
   const panelId = `${uid}-panel`;
 
   return (
-    <div className='border-b border-gray-200 pb-5'>
+    <div className='border-b border-gray-200 pb-3 last:border-b-0 last:pb-0'>
       <button
         id={headingId}
         type='button'

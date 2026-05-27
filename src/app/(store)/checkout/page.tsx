@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import CheckoutClient from '@/components/checkout/CheckoutClient';
 
 export const metadata: Metadata = {
-  title: 'Checkout | The House of Rani',
+  title: 'Checkout',
   robots: { index: false, follow: false },
 };
 

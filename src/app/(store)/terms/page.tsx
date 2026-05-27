@@ -5,15 +5,15 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/terms",
-  title: "Terms of Service",
+  title: "Terms of Service — Shop Sarees & Ethnic Wear Online",
   description:
-    "Terms and conditions for shopping sarees and ethnic wear on The House of Rani — accounts, orders, payments, and purchases.",
+    "Terms and conditions for shopping sarees and ethnic wear on The House of Rani — accounts, orders, payments, and purchases across India.",
 });
 
 export default function TermsPage() {
   return (
     <LegalPageLayout
-      title='Terms of Service'
+      title='Terms of Service — Shop Sarees & Ethnic Wear Online'
       description='These terms govern your use of our website and your purchase of products from The House of Rani. By accessing our site or placing an order, you agree to these terms.'
       lastUpdated='27 March 2026'
     >
