@@ -6,7 +6,9 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { storefrontApi } from "@/lib/api";
 import { StorefrontSettings } from "@/types";
+import { cn } from "@/lib/utils";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
+import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
 type Props = {
   /** SSR-prefetched storefront settings — avoids a client fetch + late mount CLS. */
@@ -47,7 +49,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
     : ["Premium fabrics", "Curated colors", "Easy to shop"];
 
   return (
-    <section className='py-10 sm:py-12 bg-[#faf9f7]'>
+    <section className={cn(homeSectionStyles.pageBg, "py-10 sm:py-12")}>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='relative overflow-hidden rounded-3xl border border-gray-100 bg-gradient-to-br from-white via-white to-brand-50 shadow-sm'>
           {/* Soft image layer */}
@@ -110,7 +112,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
                   key={perk}
                   className='rounded-2xl bg-white/70 border border-gray-100 px-4 py-3'
                 >
-                  <p className='font-semibold text-gray-900'>{perk}</p>
+                  <p className='font-semibold text-navy-900'>{perk}</p>
                   <p className='mt-0.5 text-gray-600'>{perkSubtitle[index]}</p>
                 </div>
               ))}

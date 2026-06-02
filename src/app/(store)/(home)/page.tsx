@@ -276,7 +276,10 @@ export default async function HomePage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(featuredItemListLd) }}
         />
       )}
-      <HeroSection initialSlides={heroSlides} />
+      <HeroSection
+        initialSlides={heroSlides}
+        announcementMessages={storefrontSettings?.announcementMessages ?? []}
+      />
       <CategorySection initialCategories={categoryStats} />
       <FeaturedProducts initialProducts={featuredProducts} />
       <HomeBanner initialSettings={storefrontSettings} />

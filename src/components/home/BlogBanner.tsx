@@ -6,9 +6,11 @@ import { ArrowRight, BookOpen } from "lucide-react";
 import Image from "next/image";
 import { storefrontApi } from "@/lib/api";
 import { StorefrontSettings } from "@/types";
+import { cn } from "@/lib/utils";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -89,11 +91,11 @@ export default function BlogBanner() {
   return (
     <section
       ref={containerRef}
-      className='relative overflow-hidden bg-[#FAF9F6] py-16 sm:py-24 isolate'
+      className={cn(homeSectionStyles.pageBg, "relative isolate overflow-hidden py-16 sm:py-24")}
     >
       {/* Decorative background gradients */}
-      <div className='absolute top-0 right-0 -mr-20 -mt-20 w-[30rem] h-[30rem] bg-rose-200/40 rounded-full blur-[100px] pointer-events-none' />
-      <div className='absolute bottom-0 left-0 -ml-20 -mb-20 w-[30rem] h-[30rem] bg-blue-200/40 rounded-full blur-[100px] pointer-events-none' />
+      <div className='pointer-events-none absolute -mr-20 -mt-20 right-0 top-0 h-[30rem] w-[30rem] rounded-full bg-brand-100/50 blur-[100px]' />
+      <div className='pointer-events-none absolute -mb-20 -ml-20 bottom-0 left-0 h-[30rem] w-[30rem] rounded-full bg-navy-100/40 blur-[100px]' />
 
       <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
         {/* Apple-like Glass Card */}
@@ -104,18 +106,18 @@ export default function BlogBanner() {
           <div className='grid lg:grid-cols-2 gap-10 lg:gap-8 items-center relative z-10'>
             {/* Text Content */}
             <div className='max-w-xl mx-auto text-center lg:text-left'>
-              <div className='blog-text-reveal inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-50 border border-rose-100 text-rose-600 text-xs sm:text-sm font-semibold tracking-wide uppercase mb-6'>
-                <BookOpen className='w-3.5 h-3.5' />
+              <div className='blog-text-reveal mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 sm:text-sm'>
+                <BookOpen className='h-3.5 w-3.5' />
                 {blog?.eyebrow || "Journal & Stories"}
               </div>
 
-              <h2 className='blog-text-reveal text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-gray-900 tracking-tight mb-5 leading-[1.15]'>
+              <h2 className='blog-text-reveal mb-5 font-serif text-3xl font-medium leading-[1.15] tracking-tight text-navy-900 sm:text-4xl lg:text-5xl'>
                 {blog?.title?.split(" ").map((word, i, arr) => {
                   if (i >= arr.length - 2 && i > 0) {
                     return (
                       <span
                         key={i}
-                        className='text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500'
+                        className='bg-gradient-to-r from-brand-600 to-gold-500 bg-clip-text text-transparent'
                       >
                         {" "}
                         {word}
@@ -124,9 +126,9 @@ export default function BlogBanner() {
                   }
                   return i === 0 ? word : " " + word;
                 }) || (
-                  <>
+                    <>
                     Discover the{" "}
-                    <span className='text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500'>
+                    <span className='bg-gradient-to-r from-brand-600 to-gold-500 bg-clip-text text-transparent'>
                       Art of Ethnic
                     </span>
                   </>

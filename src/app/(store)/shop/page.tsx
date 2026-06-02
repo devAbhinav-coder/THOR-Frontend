@@ -77,6 +77,8 @@ export async function generateMetadata({
       "salwar suits",
       "premium sarees India",
       "saree shop India",
+      "sari",
+      "saree shopping online",
     ]
       .filter(Boolean)
       .join(", "),
@@ -122,10 +124,9 @@ async function fetchTopProductsForSchema(): Promise<Product[]> {
   const base = await getBuildSafeApiBase();
   if (!base) return [];
   try {
-    const res = await fetch(
-      `${base}/products?limit=12&page=1&sort=featured`,
-      { next: { revalidate: 300 } },
-    );
+    const res = await fetch(`${base}/products?limit=12&page=1&sort=featured`, {
+      next: { revalidate: 300 },
+    });
     if (!res.ok) return [];
     const json = (await res.json()) as { data?: { products?: Product[] } };
     return Array.isArray(json?.data?.products) ? json.data!.products! : [];
@@ -140,7 +141,8 @@ export default async function ShopPage({
   searchParams: SearchParams;
 }) {
   const sp = await searchParams;
-  const categoryParam = typeof sp.category === "string" ? sp.category.trim() : "";
+  const categoryParam =
+    typeof sp.category === "string" ? sp.category.trim() : "";
   if (categoryParam) {
     const categorySlug = toShopCategorySlug(categoryParam);
     if (categorySlug) {
@@ -211,105 +213,105 @@ export default async function ShopPage({
             ],
           },
         },
-        ...(products.length > 0
-          ? [
-              {
-                "@type": "ItemList",
-                "@id": `${SITE_URL}/shop#itemlist`,
-                name: "All Products — The House of Rani",
-                url: `${SITE_URL}/shop`,
-                numberOfItems: products.length,
-                itemListElement: products
-                  .filter((p) => p?.slug && p?.name)
-                  .map((p, idx) => ({
-                    "@type": "ListItem",
-                    position: idx + 1,
-                    item: {
-                      "@type": "Product",
-                      "@id": `${SITE_URL}/shop/${encodeURIComponent(p.slug)}#product`,
-                      name: p.name,
-                      url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
-                      description:
-                        p.shortDescription ||
-                        String(p.description || "").slice(0, 160),
-                      image:
-                        p.images?.[0]?.url
-                          ? [p.images[0].url]
-                          : [`${SITE_URL}/ogimage.png`],
-                      brand: {
-                        "@type": "Brand",
-                        name: "The House of Rani",
-                      },
-                      sku: p.variants?.[0]?.sku || p._id,
-                      offers: {
-                        "@type": "Offer",
-                        priceCurrency: "INR",
-                        price: Number(p.price || 0).toFixed(2),
-                        priceValidUntil,
-                        availability:
-                          p.totalStock > 0
-                            ? "https://schema.org/InStock"
-                            : "https://schema.org/OutOfStock",
-                        itemCondition: "https://schema.org/NewCondition",
-                        url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
-                        seller: {
-                          "@type": "Organization",
-                          name: "The House of Rani",
-                          url: SITE_URL,
-                        },
-                        hasMerchantReturnPolicy: {
-                          "@type": "MerchantReturnPolicy",
-                          applicableCountry: "IN",
-                          returnPolicyCategory:
-                            "https://schema.org/MerchantReturnFiniteReturnWindow",
-                          merchantReturnDays: 7,
-                          returnMethod: "https://schema.org/ReturnByMail",
-                          returnFees: "https://schema.org/FreeReturn",
-                        },
-                        shippingDetails: {
-                          "@type": "OfferShippingDetails",
-                          shippingRate: {
-                            "@type": "MonetaryAmount",
-                            value: "0",
-                            currency: "INR",
-                          },
-                          shippingDestination: {
-                            "@type": "DefinedRegion",
-                            addressCountry: "IN",
-                          },
-                          deliveryTime: {
-                            "@type": "ShippingDeliveryTime",
-                            handlingTime: {
-                              "@type": "QuantitativeValue",
-                              minValue: 1,
-                              maxValue: 2,
-                              unitCode: "DAY",
-                            },
-                            transitTime: {
-                              "@type": "QuantitativeValue",
-                              minValue: 3,
-                              maxValue: 7,
-                              unitCode: "DAY",
-                            },
-                          },
-                        },
-                      },
-                      ...(Number(p.ratings?.count || 0) > 0
-                        ? {
-                            aggregateRating: {
-                              "@type": "AggregateRating",
-                              ratingValue: String(p.ratings.average),
-                              reviewCount: String(p.ratings.count),
-                              bestRating: "5",
-                              worstRating: "1",
-                            },
-                          }
-                        : {}),
+        ...(products.length > 0 ?
+          [
+            {
+              "@type": "ItemList",
+              "@id": `${SITE_URL}/shop#itemlist`,
+              name: "All Products — The House of Rani",
+              url: `${SITE_URL}/shop`,
+              numberOfItems: products.length,
+              itemListElement: products
+                .filter((p) => p?.slug && p?.name)
+                .map((p, idx) => ({
+                  "@type": "ListItem",
+                  position: idx + 1,
+                  item: {
+                    "@type": "Product",
+                    "@id": `${SITE_URL}/shop/${encodeURIComponent(p.slug)}#product`,
+                    name: p.name,
+                    url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
+                    description:
+                      p.shortDescription ||
+                      String(p.description || "").slice(0, 160),
+                    image:
+                      p.images?.[0]?.url ?
+                        [p.images[0].url]
+                      : [`${SITE_URL}/ogimage.png`],
+                    brand: {
+                      "@type": "Brand",
+                      name: "The House of Rani",
                     },
-                  })),
-              },
-            ]
-          : []),
+                    sku: p.variants?.[0]?.sku || p._id,
+                    offers: {
+                      "@type": "Offer",
+                      priceCurrency: "INR",
+                      price: Number(p.price || 0).toFixed(2),
+                      priceValidUntil,
+                      availability:
+                        p.totalStock > 0 ?
+                          "https://schema.org/InStock"
+                        : "https://schema.org/OutOfStock",
+                      itemCondition: "https://schema.org/NewCondition",
+                      url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
+                      seller: {
+                        "@type": "Organization",
+                        name: "The House of Rani",
+                        url: SITE_URL,
+                      },
+                      hasMerchantReturnPolicy: {
+                        "@type": "MerchantReturnPolicy",
+                        applicableCountry: "IN",
+                        returnPolicyCategory:
+                          "https://schema.org/MerchantReturnFiniteReturnWindow",
+                        merchantReturnDays: 7,
+                        returnMethod: "https://schema.org/ReturnByMail",
+                        returnFees: "https://schema.org/FreeReturn",
+                      },
+                      shippingDetails: {
+                        "@type": "OfferShippingDetails",
+                        shippingRate: {
+                          "@type": "MonetaryAmount",
+                          value: "0",
+                          currency: "INR",
+                        },
+                        shippingDestination: {
+                          "@type": "DefinedRegion",
+                          addressCountry: "IN",
+                        },
+                        deliveryTime: {
+                          "@type": "ShippingDeliveryTime",
+                          handlingTime: {
+                            "@type": "QuantitativeValue",
+                            minValue: 1,
+                            maxValue: 2,
+                            unitCode: "DAY",
+                          },
+                          transitTime: {
+                            "@type": "QuantitativeValue",
+                            minValue: 3,
+                            maxValue: 7,
+                            unitCode: "DAY",
+                          },
+                        },
+                      },
+                    },
+                    ...(Number(p.ratings?.count || 0) > 0 ?
+                      {
+                        aggregateRating: {
+                          "@type": "AggregateRating",
+                          ratingValue: String(p.ratings.average),
+                          reviewCount: String(p.ratings.count),
+                          bestRating: "5",
+                          worstRating: "1",
+                        },
+                      }
+                    : {}),
+                  },
+                })),
+            },
+          ]
+        : []),
       ],
     };
   }
@@ -318,7 +320,7 @@ export default async function ShopPage({
     <>
       {collectionPageLd && (
         <script
-          type="application/ld+json"
+          type='application/ld+json'
           dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionPageLd) }}
         />
       )}

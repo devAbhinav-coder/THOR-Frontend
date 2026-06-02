@@ -1,30 +1,63 @@
 "use client";
 
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, memo, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingBag } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { HeroSlide } from "@/types";
 import { cn } from "@/lib/utils";
-import { resolveHomeHeroH1 } from "@/lib/pageHeadings";
+import { getHeroSlideDisplayTitle } from "@/lib/pageHeadings";
+import { heroLayout } from "@/lib/heroSectionLayout";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 
 let hasPlayedHeroTextEntrance = false;
 
+const TRUST_SIGNALS = [
+  "Authentic craftsmanship",
+  "Pan-India delivery",
+  "7-day easy returns",
+] as const;
+
 type Props = {
-  /** From server fetch — LCP image must not wait on client /settings request */
   initialSlides: HeroSlide[];
+  announcementMessages?: readonly string[];
 };
 
-function HeroSection({ initialSlides }: Props) {
-  /** Must track prop updates — `useState(initialSlides)` only used the first SSR payload. */
+function HeroSection({
+  initialSlides,
+  announcementMessages = [],
+}: Props) {
   const slides = initialSlides;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [playEntrance, setPlayEntrance] = useState(false);
-  /** Defer mounting non-LCP slides so the first <Image> isn't bandwidth-starved. */
   const [revealAllSlides, setRevealAllSlides] = useState(false);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+
+  const offers = useMemo(
+    () => announcementMessages.filter((m) => String(m || "").trim()),
+    [announcementMessages],
+  );
+
+  const hasBadge = useMemo(
+    () => slides.some((s) => Boolean(s.badge?.trim())),
+    [slides],
+  );
+  const hasSubtitle = useMemo(
+    () => slides.some((s) => Boolean(s.subtitle?.trim())),
+    [slides],
+  );
+  const hasDescription = useMemo(
+    () => slides.some((s) => Boolean(s.description?.trim())),
+    [slides],
+  );
+
+  useEffect(() => {
+    if (offers.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setAnnouncementIndex((prev) => (prev + 1) % offers.length);
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, [offers.length]);
 
   useEffect(() => {
     if (hasPlayedHeroTextEntrance) return;
@@ -37,7 +70,6 @@ function HeroSection({ initialSlides }: Props) {
 
   useEffect(() => {
     if (slides.length <= 1) return;
-    /** Wait for the LCP slide to load + a small idle window before mounting siblings. */
     const reveal = () => setRevealAllSlides(true);
     const win = window as Window & {
       requestIdleCallback?: (
@@ -61,7 +93,7 @@ function HeroSection({ initialSlides }: Props) {
     if (!isAutoPlaying) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(interval);
   }, [isAutoPlaying, slides.length]);
 
@@ -74,158 +106,220 @@ function HeroSection({ initialSlides }: Props) {
   const goToSlide = useCallback((index: number) => {
     setCurrentSlide(index);
     setIsAutoPlaying(false);
-    setTimeout(() => setIsAutoPlaying(true), 10000);
+    setTimeout(() => setIsAutoPlaying(true), 12000);
   }, []);
 
   const slide = slides[currentSlide] ?? slides[0];
   if (!slide || slides.length === 0) return null;
 
-  return (
-    <section className='relative h-[min(42svh,320px)] sm:h-[min(80svh,700px)] overflow-hidden bg-navy-950'>
-      {slides.map((s, i) => {
-        /** Only the LCP slide is mounted right away; others wait for `revealAllSlides`. */
-        const shouldMount = i === 0 || revealAllSlides || i === currentSlide;
-        return (
-          <div
-            key={`${s.image}-${s.title}-${i}`}
-            className={cn(
-              "absolute inset-0 transition-opacity duration-1000",
-              i === currentSlide ? "opacity-100" : "opacity-0",
-            )}
-            aria-hidden={i === currentSlide ? "false" : "true"}
-          >
-            {shouldMount ? (
-              <Image
-                src={s.image}
-                alt={s.title || "House of Rani — featured collection"}
-                fill
-                // Custom loader rewrites Cloudinary URLs through `f_auto,q_auto,w_<n>`
-                // so the browser receives AVIF/WebP at the rendered width — fixes
-                // the 1.9 MB Lighthouse "Improve image delivery" finding.
-                loader={cloudinaryLoader}
-                priority={i === 0}
-                fetchPriority={i === 0 ? "high" : "low"}
-                // Only the first slide is decoded synchronously (it's the LCP);
-                // others can decode lazily so they don't fight the LCP for CPU.
-                decoding={i === 0 ? "sync" : "async"}
-                loading={i === 0 ? "eager" : "lazy"}
-                sizes='100vw'
-                quality={i === 0 ? 65 : 60}
-                className='object-cover object-[center_top]'
-              />
-            ) : null}
-            <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/15' />
-          </div>
-        );
-      })}
+  const badge = slide.badge?.trim() || "";
+  const subtitle = slide.subtitle?.trim() || "";
+  const description = slide.description?.trim() || "";
+  const headline = getHeroSlideDisplayTitle(slide.title);
 
-      <div className='relative h-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center pt-3 '>
+  return (
+    <section className={heroLayout.section}>
+      <div className={heroLayout.media}>
+        {slides.map((s, i) => {
+          const shouldMount = i === 0 || revealAllSlides || i === currentSlide;
+          const isActive = i === currentSlide;
+          return (
+            <div
+              key={`${s.image}-${i}`}
+              className={cn(
+                "absolute inset-0 transition-opacity duration-[1400ms] ease-out",
+                isActive ? "opacity-100" : "opacity-0",
+              )}
+              aria-hidden={!isActive}
+            >
+              {shouldMount ?
+                <Image
+                  src={s.image}
+                  alt={s.title || "The House of Rani — premium ethnic wear"}
+                  fill
+                  loader={cloudinaryLoader}
+                  priority={i === 0}
+                  fetchPriority={i === 0 ? "high" : "low"}
+                  decoding={i === 0 ? "sync" : "async"}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  sizes="100vw"
+                  quality={i === 0 ? 68 : 62}
+                  className="object-cover object-[center_top]"
+                />
+              : null}
+            </div>
+          );
+        })}
+
+        <div className={heroLayout.overlay} aria-hidden />
         <div
-          className={cn(
-            "max-w-xl",
-            playEntrance && "motion-safe:animate-hero-text-in",
-          )}
-        >
-          {slide.badge && (
-            <span className='inline-flex items-center gap-1.5 bg-brand-600/90 text-white text-[9px] sm:text-xs font-semibold px-2 sm:px-3 py-1 sm:py-1.5 rounded-full mb-1.5 sm:mb-5 uppercase tracking-widest shadow-lg'>
-              <span className='w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse' />
-              {slide.badge}
-            </span>
-          )}
-          {slide.subtitle && (
-            <p className='text-gold-300 font-medium mb-1 sm:mb-2 text-[11px] sm:text-base tracking-wide'>
-              {slide.subtitle}
-            </p>
-          )}
-          <h1 className='text-lg sm:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight mb-1 sm:mb-5 drop-shadow-lg'>
-            {resolveHomeHeroH1(slide.title)}
-          </h1>
-          {slide.description && (
-            <p className='hidden sm:block text-white text-xs sm:text-lg mb-4 sm:mb-8 leading-relaxed line-clamp-2 sm:line-clamp-none drop-shadow'>
-              {slide.description}
-            </p>
-          )}
-          <div className='flex flex-wrap gap-1.5 sm:gap-3'>
-            <Button
-              asChild
-              size='sm'
-              className='sm:hidden bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-900/40 px-2.5 py-1.5 text-[11px]'
+          className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-navy-950/70 via-transparent to-transparent"
+          aria-hidden
+        />
+
+        <div className={heroLayout.content}>
+          <div className={heroLayout.inner}>
+            <div
+              className={cn(
+                heroLayout.copy,
+                playEntrance && "motion-safe:animate-hero-text-in",
+              )}
             >
-              <Link href={slide.ctaLink || "/shop"}>
-                <ShoppingBag className='h-3.5 w-3.5 mr-1' />
-                {slide.ctaText || "Shop Now"}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size='xl'
-              className='hidden sm:inline-flex bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-900/40'
-            >
-              <Link href={slide.ctaLink || "/shop"}>
-                <ShoppingBag className='h-5 w-5 mr-2' />
-                {slide.ctaText || "Shop Now"}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant='outline'
-              size='sm'
-              className='sm:hidden border-white bg-white text-navy-900 hover:bg-gray-100 hover:border-white shadow-sm px-2.5 py-1.5 text-[11px]'
-            >
-              <Link href={slide.secondaryCtaLink || "/shop"}>
-                {slide.secondaryCtaText || "View All"}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant='outline'
-              size='xl'
-              className='hidden sm:inline-flex border-white bg-white text-navy-900 hover:bg-gray-100 hover:border-white shadow-sm'
-            >
-              <Link href={slide.secondaryCtaLink || "/shop"}>
-                {slide.secondaryCtaText || "View All"}
-              </Link>
-            </Button>
+              {hasBadge && (
+                <div className={heroLayout.badgeSlot}>
+                  {badge ?
+                    <span
+                      key={`badge-${currentSlide}`}
+                      className="motion-safe:animate-hero-copy-in inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]"
+                    >
+                      {badge}
+                    </span>
+                  : null}
+                </div>
+              )}
+
+              {hasSubtitle && (
+                <div className={heroLayout.subtitleSlot}>
+                  {subtitle ?
+                    <p
+                      key={`subtitle-${currentSlide}`}
+                      className="motion-safe:animate-hero-copy-in text-[11px] font-medium tracking-[0.12em] text-gold-100 sm:text-sm [text-shadow:0_1px_14px_rgba(0,0,0,0.55)]"
+                    >
+                      {subtitle}
+                    </p>
+                  : null}
+                </div>
+              )}
+
+              <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-white/90 sm:text-[11px]">
+                The House of Rani
+              </p>
+              <div
+                className="mt-3 h-px w-14 bg-gradient-to-r from-gold-300/90 to-transparent sm:mt-4 sm:w-20"
+                aria-hidden
+              />
+
+              <div className={cn(heroLayout.titleSlot, "overflow-hidden")}>
+                <h1
+                  key={`title-${currentSlide}`}
+                  className="motion-safe:animate-hero-copy-in font-serif text-xl font-medium leading-[1.14] tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.1] [text-shadow:0_2px_24px_rgba(0,0,0,0.5)]"
+                >
+                  {headline}
+                </h1>
+              </div>
+
+              {hasDescription && (
+                <div
+                  className={cn(heroLayout.descriptionSlot, "overflow-hidden")}
+                >
+                  {description ?
+                    <p
+                      key={`desc-${currentSlide}`}
+                      className="motion-safe:animate-hero-copy-in max-w-lg text-xs font-light leading-relaxed text-[#ece8e3] line-clamp-2 sm:text-sm sm:line-clamp-3 [text-shadow:0_1px_18px_rgba(0,0,0,0.55)]"
+                    >
+                      {description}
+                    </p>
+                  : null}
+                </div>
+              )}
+
+              <div className={heroLayout.ctaSlot}>
+                <div
+                  key={`cta-${currentSlide}`}
+                  className="motion-safe:animate-hero-copy-in flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8"
+                >
+                  <Link
+                    href={slide.ctaLink || "/shop"}
+                    className="border-b border-white/65 pb-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white transition-colors hover:border-gold-200 hover:text-gold-100 sm:text-xs"
+                  >
+                    {slide.ctaText || "Explore collection"}
+                  </Link>
+                  <Link
+                    href={slide.secondaryCtaLink || "/gifting"}
+                    className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white sm:text-xs"
+                  >
+                    {slide.secondaryCtaText || "Curated gifting"}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={heroLayout.bottomDock}>
+          {offers.length > 0 && (
+            <div className={heroLayout.offerStrip}>
+              <p
+                key={announcementIndex}
+                className="motion-safe:animate-hero-copy-in text-center text-[10px] font-medium uppercase tracking-[0.2em] text-gold-200/95 sm:text-[11px]"
+              >
+                {offers[announcementIndex]}
+              </p>
+            </div>
+          )}
+
+          <div className={heroLayout.footer}>
+            <div className={heroLayout.footerRow}>
+              <ul
+                className="flex flex-wrap gap-x-5 gap-y-1.5 text-[10px] uppercase tracking-[0.18em] text-white/80 sm:gap-x-6 sm:text-[11px]"
+                aria-label="Shopping benefits"
+              >
+                {TRUST_SIGNALS.map((signal, i) => (
+                  <li key={signal} className="inline-flex items-center gap-5">
+                    {i > 0 && (
+                      <span
+                        className="hidden h-3 w-px bg-white/30 sm:inline-block"
+                        aria-hidden
+                      />
+                    )}
+                    {signal}
+                  </li>
+                ))}
+              </ul>
+
+              {slides.length > 1 && (
+                <div
+                  className="flex shrink-0 items-center gap-3"
+                  role="tablist"
+                  aria-label="Hero slides"
+                >
+                  <span className="text-[10px] tabular-nums tracking-[0.2em] text-white/70">
+                    {String(currentSlide + 1).padStart(2, "0")}
+                    <span className="mx-1.5 text-white/40">/</span>
+                    {String(slides.length).padStart(2, "0")}
+                  </span>
+                  <div className="flex gap-1.5">
+                    {slides.map((s, i) => {
+                      const isActive = i === currentSlide;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          aria-current={isActive ? "true" : undefined}
+                          aria-label={`Show slide ${i + 1} of ${slides.length}${s.title ? `: ${s.title}` : ""}`}
+                          onClick={() => goToSlide(i)}
+                          className="group relative h-7 w-7 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 sm:h-8 sm:w-8"
+                        >
+                          <span
+                            className={cn(
+                              "absolute left-1/2 top-1/2 block h-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/45 transition-[width,background-color] duration-500",
+                              isActive ?
+                                "w-8 bg-gold-200"
+                              : "w-3 group-hover:w-5 group-hover:bg-white/70",
+                            )}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-
-      {slides.length > 1 && (
-        <div
-          className='absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-1'
-          role='tablist'
-          aria-label='Hero slides'
-        >
-          {slides.map((s, i) => {
-            const isActive = i === currentSlide;
-            return (
-              <button
-                key={i}
-                type='button'
-                role='tab'
-                aria-selected={isActive}
-                aria-current={isActive ? "true" : undefined}
-                aria-label={`Show slide ${i + 1} of ${slides.length}${s.title ? `: ${s.title}` : ""}`}
-                onClick={() => goToSlide(i)}
-                className={cn(
-                  "group relative inline-flex items-center justify-center",
-                  // 28×28 hit area (>= WCAG 24×24); the visible pill is centered inside.
-                  "h-7 w-7 sm:h-8 sm:w-8 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30",
-                )}
-              >
-                <span
-                  className={cn(
-                    "block h-2 rounded-full transition-all duration-300",
-                    isActive ? "w-8 bg-brand-500" : (
-                      "w-2 bg-white/60 group-hover:bg-white/90"
-                    ),
-                  )}
-                />
-              </button>
-            );
-          })}
-        </div>
-      )}
     </section>
   );
 }

@@ -72,7 +72,9 @@ type ShopClientProps = {
   } | null;
 };
 
-export default function ShopClient({ categoryContext = null }: ShopClientProps) {
+export default function ShopClient({
+  categoryContext = null,
+}: ShopClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -83,10 +85,12 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
     useState<StorefrontSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const routeBasePath = categoryContext ?
+  const routeBasePath =
+    categoryContext ?
       `/shop/category/${encodeURIComponent(categoryContext.slug)}`
     : "/shop";
-  const categoryFromUrl = categoryContext?.name || searchParams.get("category") || "";
+  const categoryFromUrl =
+    categoryContext?.name || searchParams.get("category") || "";
   const [filters, setFilters] = useState({
     category: categoryFromUrl,
     fabric: searchParams.get("fabric") || "",
@@ -189,17 +193,18 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
           page: pg,
           limit: SHOP_PAGE_LIMIT,
         };
-        
+
         // Map sort parameter
-        if (filters.sort === 'price') searchParams.sortBy = 'price';
-        else if (filters.sort === '-price') {
-          searchParams.sortBy = 'price';
-          searchParams.sortOrder = 'desc';
-        }
-        else if (filters.sort === '-ratings.average') searchParams.sortBy = 'ratings.average';
-        else if (filters.sort === '-ratings.count') searchParams.sortBy = 'soldCount';
-        else searchParams.sortBy = 'relevance';
-        
+        if (filters.sort === "price") searchParams.sortBy = "price";
+        else if (filters.sort === "-price") {
+          searchParams.sortBy = "price";
+          searchParams.sortOrder = "desc";
+        } else if (filters.sort === "-ratings.average")
+          searchParams.sortBy = "ratings.average";
+        else if (filters.sort === "-ratings.count")
+          searchParams.sortBy = "soldCount";
+        else searchParams.sortBy = "relevance";
+
         // Add filters
         if (filters.category) searchParams.categories = filters.category;
         if (filters.fabric) searchParams.fabrics = filters.fabric;
@@ -207,14 +212,14 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
         if (filters.maxPrice) searchParams.maxPrice = Number(filters.maxPrice);
         if (filters.rating) searchParams.minRating = Number(filters.rating);
         if (filters.isFeatured) searchParams.isFeatured = filters.isFeatured;
-        
+
         try {
           return await productApi.search(searchParams);
         } catch {
           // Fallback to basic search if advanced search fails
         }
       }
-      
+
       // Use basic search for non-search queries or as fallback
       const params: Record<string, string | number> = {
         sort: filters.sort,
@@ -240,7 +245,9 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
 
   // Flatten pages in deterministic order.
   const products = useMemo(() => {
-    return (data?.pages ?? []).flatMap((pg) => (pg.data?.products || []) as Product[]);
+    return (data?.pages ?? []).flatMap(
+      (pg) => (pg.data?.products || []) as Product[],
+    );
   }, [data?.pages]);
 
   const hasLoadedOnceRef = useRef(false);
@@ -294,14 +301,18 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
         return;
       }
       router.push(
-        qs ? `/shop/category/${encodeURIComponent(nextSlug)}?${qs}` : `/shop/category/${encodeURIComponent(nextSlug)}`,
+        qs ?
+          `/shop/category/${encodeURIComponent(nextSlug)}?${qs}`
+        : `/shop/category/${encodeURIComponent(nextSlug)}`,
         { scroll: false },
       );
       return;
     }
 
     const qs = buildQueryString(newFilters, Boolean(categoryContext));
-    router.push(qs ? `${routeBasePath}?${qs}` : routeBasePath, { scroll: false });
+    router.push(qs ? `${routeBasePath}?${qs}` : routeBasePath, {
+      scroll: false,
+    });
   };
 
   const clearFilters = () => {
@@ -452,7 +463,9 @@ export default function ShopClient({ categoryContext = null }: ShopClientProps) 
               {headingText}
             </ListHeadingTag>
             <p className='text-sm text-gray-600 mt-1'>
-              {isLoading ? "Loading…" : formatProductCount(pagination.totalProducts)}
+              {isLoading ?
+                "Loading…"
+              : formatProductCount(pagination.totalProducts)}
             </p>
           </div>
           <div className='flex items-center gap-2'>

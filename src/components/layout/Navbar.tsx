@@ -40,6 +40,19 @@ import {
 } from "@/hooks/useStoreNavActive";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
+import {
+  mobileTabClass,
+  mobileTabIconClass,
+  navAnnouncementShell,
+  navAnnouncementText,
+  navBadgeCount,
+  navDropdownItem,
+  navDropdownPanel,
+  navIconButton,
+  navLinkClass,
+  navSearchInputClass,
+  navShellClass,
+} from "@/lib/navbarStyles";
 
 type MobileBottomItem = {
   id: string;
@@ -242,30 +255,22 @@ export default function Navbar() {
   return (
     <>
       <BrowserNotificationPrompt />
-      {announcementMessages.length > 0 && navActive.home && (
-        <div className='bg-navy-950 min-h-8 border-b border-navy-700 flex items-center justify-center px-3 py-1.5 text-center relative z-40 group cursor-default'>
-          <p className='text-xs sm:text-sm text-gold-300 font-medium leading-snug max-w-4xl animate-fadeIn'>
+      {announcementMessages.length > 0 && !navActive.home && (
+        <div className={navAnnouncementShell}>
+          <p className={navAnnouncementText}>
             {announcementMessages[announcementIndex]}
           </p>
         </div>
       )}
 
-      <header
-        className={cn(
-          "sticky top-0 z-50 border-b border-navy-800 bg-navy-950",
-          "transition-[box-shadow] duration-200 ease-out motion-reduce:transition-none",
-          isScrolled ?
-            "shadow-[0_8px_28px_-6px_rgba(0,0,0,0.5)]"
-          : "shadow-[0_2px_12px_-2px_rgba(0,0,0,0.28)]",
-        )}
-      >
+      <header className={navShellClass(isScrolled)}>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
-          <div className='flex items-center justify-between h-16 gap-2'>
+          <div className='flex items-center justify-between h-[4.25rem] gap-3'>
             <div className='flex items-center gap-1 sm:gap-2 lg:gap-0'>
               <button
                 type='button'
                 onClick={() => setIsMenuOpen((o) => !o)}
-                className='lg:hidden inline-flex items-center justify-center h-11 w-11 -ml-2 text-white/85 hover:text-white rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none'
+                className={cn(navIconButton, "lg:hidden -ml-1")}
                 aria-label={
                   isMenuOpen ? "Close navigation menu" : "Open navigation menu"
                 }
@@ -296,41 +301,31 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* Desktop nav */}
-            <nav className='hidden lg:flex items-center space-x-1 flex-1 justify-center mx-4'>
-              <Link
-                href='/'
-                className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  navActive.home ?
-                    "text-white bg-navy-700"
-                  : "text-white/75 hover:text-white hover:bg-navy-800",
-                )}
-              >
+            <nav className='hidden lg:flex items-center gap-0.5 flex-1 justify-center mx-4'>
+              <Link href='/' className={navLinkClass(navActive.home)}>
                 Home
               </Link>
 
               <div className='relative group'>
                 <button
                   type='button'
-                  className='flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/75 hover:text-white rounded-md hover:bg-navy-800 transition-colors'
+                  className={navLinkClass(navActive.shop)}
                   aria-label='Shop categories'
                   aria-haspopup='menu'
                 >
-                  Shop <ChevronDown className='h-4 w-4' aria-hidden />
+                  <span className='inline-flex items-center gap-1'>
+                    Shop <ChevronDown className='h-3.5 w-3.5 opacity-70' aria-hidden />
+                  </span>
                 </button>
-                <div className='absolute top-full left-0 bg-navy-900 border border-navy-700 shadow-2xl rounded-xl p-2 min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200'>
-                  <Link
-                    href='/shop'
-                    className='block px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-navy-800 rounded-lg transition-colors'
-                  >
+                <div className={navDropdownPanel}>
+                  <Link href='/shop' className={navDropdownItem}>
                     All Sarees
                   </Link>
                   {navCategories.map((cat) => (
                     <Link
                       key={cat._id}
                       href={buildShopCategoryHref(cat)}
-                      className='block px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-navy-800 rounded-lg transition-colors'
+                      className={navDropdownItem}
                     >
                       {cat.name}
                     </Link>
@@ -338,34 +333,18 @@ export default function Navbar() {
                 </div>
               </div>
 
-              <Link
-                href='/gifting'
-                className='flex items-center gap-1 px-3 py-2 text-sm font-medium text-brand-300 hover:text-brand-200 hover:bg-navy-800 rounded-md transition-colors'
-              >
-                <Gift className='h-3.5 w-3.5' />
+              <Link href='/gifting' className={navLinkClass(navActive.gifting)}>
                 Gifting
               </Link>
-              {/* about  */}
               <Link
                 href='/about'
-                className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  pathname.startsWith("/about") ?
-                    "text-white bg-navy-700"
-                  : "text-white/75 hover:text-white hover:bg-navy-800",
-                )}
+                className={navLinkClass(pathname.startsWith("/about"))}
               >
-                About Us
+                About
               </Link>
-
               <Link
                 href='/blog'
-                className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  pathname.startsWith("/blog") ?
-                    "text-white bg-navy-700"
-                  : "text-white/75 hover:text-white hover:bg-navy-800",
-                )}
+                className={navLinkClass(pathname.startsWith("/blog"))}
               >
                 Blog
               </Link>
@@ -376,6 +355,7 @@ export default function Navbar() {
                 scope={navActive.gifting ? "gifting" : "shop"}
                 variant='nav-dark'
                 urlSearch={urlSearchForNav}
+                inputClassName={navSearchInputClass}
               />
             </div>
 
@@ -384,12 +364,12 @@ export default function Navbar() {
               {isAuthedStable && (
                 <Link
                   href='/dashboard/wishlist'
-                  className='relative p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                  className={cn(navIconButton, "relative")}
                   aria-label='Wishlist'
                 >
-                  <Heart className='h-5 w-5' />
+                  <Heart className='h-5 w-5' strokeWidth={1.75} />
                   {wishlistProducts.length > 0 && (
-                    <span className='absolute -top-1 -right-1 bg-brand-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold'>
+                    <span className={navBadgeCount}>
                       {wishlistProducts.length}
                     </span>
                   )}
@@ -398,12 +378,12 @@ export default function Navbar() {
 
               <Link
                 href='/cart'
-                className='relative hidden lg:flex p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                className={cn(navIconButton, "relative hidden lg:inline-flex")}
                 aria-label='Cart'
               >
-                <ShoppingBag className='h-5 w-5' />
+                <ShoppingBag className='h-5 w-5' strokeWidth={1.75} />
                 {itemCount > 0 && (
-                  <span className='absolute -top-1 -right-1 bg-brand-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold'>
+                  <span className={navBadgeCount}>
                     {itemCount > 9 ? "9+" : itemCount}
                   </span>
                 )}
@@ -412,7 +392,7 @@ export default function Navbar() {
               <button
                 type='button'
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className='lg:hidden inline-flex items-center justify-center h-11 w-11 text-white/85 hover:text-white hover:bg-navy-800 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none'
+                className={cn(navIconButton, "lg:hidden")}
                 aria-label={isSearchOpen ? "Close search" : "Open search"}
                 aria-expanded={isSearchOpen}
                 aria-controls='mobile-search-panel'
@@ -427,7 +407,7 @@ export default function Navbar() {
                   <button
                     type='button'
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className='flex items-center gap-2 p-2 text-white/75 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                    className='flex items-center gap-2 rounded-full p-1.5 text-white/85 transition-colors duration-200 hover:bg-navy-800 hover:text-white'
                     aria-label='Account menu'
                     aria-expanded={isUserMenuOpen}
                     aria-haspopup='menu'
@@ -456,26 +436,26 @@ export default function Navbar() {
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className='absolute right-0 top-full mt-1 bg-navy-900 border border-navy-700 shadow-2xl rounded-xl p-2 min-w-[200px] animate-fadeIn'>
-                      <div className='px-3 py-2 border-b border-navy-700 mb-1'>
-                        <p className='text-sm font-semibold text-white truncate'>
+                    <div className='absolute right-0 top-full mt-2 min-w-[220px] rounded-xl border border-navy-700 bg-navy-950 p-2 shadow-2xl animate-fadeIn'>
+                      <div className='mb-1 border-b border-navy-800 px-3 py-2'>
+                        <p className='truncate text-sm font-medium text-white'>
                           {user?.name}
                         </p>
-                        <p className='text-xs text-white/50 truncate'>
+                        <p className='truncate text-xs text-white/55'>
                           {user?.email}
                         </p>
                       </div>
                       <Link
                         href='/dashboard'
                         prefetch
-                        className='flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-navy-800 rounded-lg'
+                        className='flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/80 transition-colors hover:bg-navy-800/80 hover:text-white'
                       >
                         <LayoutDashboard className='h-4 w-4' /> My Account
                       </Link>
                       <Link
                         href='/dashboard/orders'
                         prefetch
-                        className='flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-navy-800 rounded-lg'
+                        className='flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/80 transition-colors hover:bg-navy-800/80 hover:text-white'
                       >
                         <Package className='h-4 w-4' /> My Orders
                       </Link>
@@ -483,7 +463,7 @@ export default function Navbar() {
                         <Link
                           href='/admin'
                           prefetch
-                          className='flex items-center gap-2 px-3 py-2 text-sm text-gold-400 hover:text-gold-300 hover:bg-navy-800 rounded-lg font-medium'
+                          className='flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gold-300 transition-colors hover:bg-navy-800/80 hover:text-gold-200'
                         >
                           <Shield className='h-4 w-4' /> Admin Panel
                         </Link>
@@ -491,7 +471,7 @@ export default function Navbar() {
                       <button
                         type='button'
                         onClick={handleLogout}
-                        className='flex items-center gap-2 w-full px-3 py-2 text-sm text-brand-400 hover:text-brand-300 hover:bg-navy-800 rounded-lg'
+                        className='flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-300 transition-colors hover:bg-navy-800/80 hover:text-brand-200'
                       >
                         <LogOut className='h-4 w-4' /> Sign Out
                       </button>
@@ -501,10 +481,13 @@ export default function Navbar() {
               : <Link
                   href={authHref("login")}
                   scroll={false}
-                  className='hidden lg:flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-md transition-colors'
+                  className={cn(
+                    navLinkClass(false),
+                    "hidden lg:inline-flex items-center gap-1.5",
+                  )}
                 >
-                  <User className='h-5 w-5' />
-                  <span className='hidden sm:block'>Sign In</span>
+                  <User className='h-4 w-4' strokeWidth={1.75} />
+                  <span>Sign In</span>
                 </Link>
               }
             </div>
@@ -516,7 +499,7 @@ export default function Navbar() {
           {isSearchOpen && (
             <div
               id='mobile-search-panel'
-              className='border-t border-navy-700 pb-3 pt-3 animate-fadeIn lg:hidden'
+              className='border-t border-white/10 pb-3 pt-3 animate-fadeIn lg:hidden'
             >
               <StoreSearchAutocomplete
                 scope={navActive.gifting ? "gifting" : "shop"}
@@ -756,21 +739,15 @@ export default function Navbar() {
 
       {/* Mobile bottom navigation — solid bg (no backdrop-blur / alpha bg: avoids “white bar” + invisible white icons on iOS/WebKit) */}
       <nav
-        className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(0,0,0,0.45)] [color-scheme:dark]'
+        className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(20,25,47,0.55)] [color-scheme:dark]'
         aria-label='Primary'
       >
-        <div className='grid w-full grid-cols-6 max-w-xl mx-auto px-0.5 min-h-[3.25rem]'>
+        <div className='mx-auto grid min-h-[3.25rem] w-full max-w-xl grid-cols-6 px-0.5'>
           {mobileBottomNavItems.map(
             ({ id, label, Icon, href, activeKey, showCartBadge }) => {
               const isOn = navActive[activeKey];
-              const linkClass = cn(
-                "flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[3.25rem] min-w-0 text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-md",
-                isOn ? "text-white" : "text-white/90 hover:text-white",
-              );
-              const iconClass = cn(
-                "h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5 shrink-0",
-                isOn ? "text-brand-400" : "text-white/90",
-              );
+              const linkClass = mobileTabClass(isOn);
+              const iconClass = mobileTabIconClass(isOn);
               const cartAriaSuffix =
                 showCartBadge && itemCount > 0 ?
                   `, ${itemCount} item${itemCount === 1 ? "" : "s"} in cart`
@@ -790,7 +767,7 @@ export default function Navbar() {
                         strokeWidth={isOn ? 2.5 : 2}
                       />
                       {itemCount > 0 && (
-                        <span className='absolute -right-1.5 -top-1 min-w-[14px] h-3.5 px-0.5 bg-brand-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none border border-navy-900'>
+                        <span className='absolute -right-1.5 -top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full border border-navy-900 bg-brand-600 px-0.5 text-[8px] font-bold leading-none text-white'>
                           {itemCount > 9 ? "9+" : itemCount}
                         </span>
                       )}

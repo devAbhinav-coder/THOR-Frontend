@@ -9,6 +9,9 @@ import ProductCard from "@/components/product/ProductCard";
 import { ProductInfiniteGrid } from "@/components/product/ProductInfiniteGrid";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { getNextExcludeIdsParam } from "@/lib/infiniteScrollPagination";
+import { cn } from "@/lib/utils";
+import HomeSectionHeader from "@/components/home/HomeSectionHeader";
+import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
 const EXPLORE_PAGE_LIMIT = 8;
 
@@ -54,23 +57,14 @@ export default function ExploreCollection() {
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <section className='py-10 bg-[#FAF9F6]' style={{ contain: "layout" }}>
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-        <div className='mb-10 text-center'>
-          <div className='inline-flex items-center gap-3 text-brand-600'>
-            <span className='h-px w-12 bg-brand-200 sm:w-16' />
-            <p className='font-semibold uppercase tracking-[0.22em] text-[11px] sm:text-xs'>
-              Just Dropped
-            </p>
-            <span className='h-px w-12 bg-brand-200 sm:w-16' />
-          </div>
-          <h2 className='mt-3 text-3xl sm:text-5xl font-serif text-navy-900'>
-            Explore the Collection
-          </h2>
-          <p className='text-sm text-gray-500 mt-3 max-w-2xl mx-auto'>
-            Discover sarees that beautifully blend tradition with modern
-            elegance.
-          </p>
+    <section className={cn(homeSectionStyles.pageBg, homeSectionStyles.sectionPad)} style={{ contain: "layout" }}>
+      <div className={homeSectionStyles.container}>
+        <div className='mb-10'>
+          <HomeSectionHeader
+            eyebrow='Just Dropped'
+            title='Explore the Collection'
+            subtitle='Discover sarees that beautifully blend tradition with modern elegance.'
+          />
         </div>
 
         <ProductInfiniteGrid

@@ -8,6 +8,7 @@ import type { HomeGiftShowcaseCard, StorefrontSettings } from "@/types";
 import { cn } from "@/lib/utils";
 import { resolveHomeGiftShopButton } from "@/lib/homeGiftShopLink";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
+import { homeSectionStyles } from "@/lib/homeSectionStyles";
 import { Gift, Heart, Sparkles, Star } from "lucide-react";
 
 const ACCENT_BG: Record<string, string> = {
@@ -187,7 +188,7 @@ export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
       ref={sectionRef}
       data-nosnippet
       aria-label='Gifting collections'
-      className='relative bg-[#FAF9F6] w-full z-20 md:h-[calc(var(--card-count)*80vh+100vh)] py-12 md:py-0'
+      className={cn(homeSectionStyles.pageBg, "relative z-20 w-full py-12 md:h-[calc(var(--card-count)*80vh+100vh)] md:py-0")}
       style={{ "--card-count": cards.length } as React.CSSProperties}
     >
       <div
@@ -221,12 +222,12 @@ export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
           {/* Left Side: Sticky Title */}
           <div className='gift-title-container w-full md:w-5/12 flex flex-col justify-center text-center md:text-left z-10 pt-10 md:pt-0'>
             {section.headlineLine1 && (
-              <p className='text-lg font-bold  text-rose-500 sm:text-xl md:text-2xl mb-2 sm:mb-4 uppercase tracking-widest'>
+              <p className={cn(homeSectionStyles.eyebrow, "mb-2 text-sm sm:mb-4 sm:text-base md:text-lg")}>
                 {section.headlineLine1}
               </p>
             )}
             {section.headlineLine2 && (
-              <h2 className='font-sans text-4xl font-black leading-tight tracking-tight text-gray-900 sm:text-5xl lg:text-7xl'>
+              <h2 className={cn(homeSectionStyles.titleLg, "leading-tight tracking-tight")}>
                 {section.headlineLine2}
               </h2>
             )}
@@ -239,7 +240,7 @@ export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
             {section.socialHandle?.trim() && (
               <Link href='/gifting'>
                 <div className='mt-4 sm:mt-8 md:mt-12 flex justify-center md:justify-start'>
-                  <span className='inline-flex items-center rounded-full bg-white px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-gray-900/5 hover:bg-gray-50 transition'>
+                  <span className='inline-flex items-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-navy-900 shadow-sm ring-1 ring-navy-900/5 transition hover:bg-gray-50 sm:px-5 sm:py-2.5 sm:text-sm'>
                     {section.socialHandle.trim()}
                   </span>
                 </div>
@@ -282,7 +283,7 @@ export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
                       }
                     </div>
                     {card.title && (
-                      <h3 className='font-serif text-xl sm:text-3xl font-bold leading-tight text-gray-900 drop-shadow-sm mb-1 sm:mb-3'>
+                      <h3 className='mb-1 font-serif text-xl font-medium leading-tight text-navy-900 drop-shadow-sm sm:mb-3 sm:text-3xl'>
                         {card.title}
                       </h3>
                     )}

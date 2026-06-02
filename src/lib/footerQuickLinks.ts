@@ -3,22 +3,42 @@ export type FooterQuickLink = {
   href: string;
 };
 
-export const DEFAULT_FOOTER_QUICK_LINKS: FooterQuickLink[] = [
-  { label: "Home", href: "/" },
-  { label: "Shop Sarees", href: "/shop" },
-  { label: "About", href: "/about" },
-  { label: "Journal", href: "/blog" },
-  { label: "FAQ", href: "/faq" },
+/** Curatorial — brand & explore (support links live under Concierge). */
+export const DEFAULT_FOOTER_CURATORIAL_LINKS: FooterQuickLink[] = [
+  { label: "Our Story", href: "/about" },
+  { label: "Blog", href: "/blog" },
+  { label: "Shop", href: "/shop" },
   { label: "Gifting", href: "/gifting" },
-  { label: "Shipping", href: "/shipping" },
-  { label: "Returns", href: "/returns" },
 ];
 
-const ABOUT_LINK: FooterQuickLink = { label: "About", href: "/about" };
+const OUR_STORY_LINK: FooterQuickLink = {
+  label: "Our Story",
+  href: "/about",
+};
+
+const BLOG_LINK: FooterQuickLink = { label: "Blog", href: "/blog" };
+
+const CURATORIAL_ORDER = ["/about", "/blog", "/shop", "/gifting"];
+
+/** Paths reserved for Concierge — not shown in Curatorial. */
+const CONCIERGE_PATHS = new Set([
+  "/shipping",
+  "/returns",
+  "/privacy",
+  "/terms",
+  "/about",
+  "/faq",
+]);
+
+const LABEL_OVERRIDES: Record<string, string> = {
+  "/about": "Our Story",
+  "/blog": "Blog",
+};
 
 function normalizePath(href: string): string {
   const raw = String(href || "").trim();
   if (!raw) return "/";
+  if (/^(https?:|mailto:|tel:)/i.test(raw)) return raw;
   try {
     const url = new URL(raw.startsWith("/") ? raw : `/${raw}`, "https://dummy.local");
     return url.pathname.replace(/\/+$/, "") || "/";
@@ -27,27 +47,69 @@ function normalizePath(href: string): string {
   }
 }
 
-/** Ensures /about is always in footer quick links (admin API may omit it). */
-export function resolveFooterQuickLinks(
+function normalizeLabel(path: string, label: string): string {
+  const override = LABEL_OVERRIDES[path];
+  if (override) return override;
+  const trimmed = String(label || "").trim();
+  if (/^journal$/i.test(trimmed)) return "Blog";
+  if (/^about$/i.test(trimmed)) return "Our Story";
+  if (/^shop sarees$/i.test(trimmed)) return "Shop";
+  return trimmed || "Link";
+}
+
+function sortCuratorialLinks(links: FooterQuickLink[]): FooterQuickLink[] {
+  return [...links].sort((a, b) => {
+    const ai = CURATORIAL_ORDER.indexOf(normalizePath(a.href));
+    const bi = CURATORIAL_ORDER.indexOf(normalizePath(b.href));
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+}
+
+export function resolveFooterCuratorialLinks(
   apiLinks?: FooterQuickLink[] | null,
 ): FooterQuickLink[] {
-  const base =
+  const source =
     apiLinks?.length ?
       apiLinks.map((l) => ({
         label: String(l.label || "").trim() || "Link",
         href: String(l.href || "/").trim() || "/",
       }))
-    : [...DEFAULT_FOOTER_QUICK_LINKS];
+    : [...DEFAULT_FOOTER_CURATORIAL_LINKS];
 
-  const hasAbout = base.some((l) => normalizePath(l.href) === "/about");
-  if (hasAbout) return base;
+  const seen = new Set<string>();
+  const result: FooterQuickLink[] = [];
 
-  const shopIdx = base.findIndex((l) => {
-    const p = normalizePath(l.href);
-    return p === "/shop" || /shop/i.test(l.label);
-  });
-  const insertAt = shopIdx >= 0 ? shopIdx + 1 : Math.min(1, base.length);
-  const next = [...base];
-  next.splice(insertAt, 0, ABOUT_LINK);
-  return next;
+  for (const item of source) {
+    const path = normalizePath(item.href);
+    if (CONCIERGE_PATHS.has(path)) continue;
+    if (seen.has(path)) continue;
+    seen.add(path);
+    result.push({
+      href: item.href,
+      label: normalizeLabel(path, item.label),
+    });
+  }
+
+  if (!result.some((l) => normalizePath(l.href) === "/about")) {
+    result.unshift(OUR_STORY_LINK);
+  }
+
+  if (!result.some((l) => normalizePath(l.href) === "/blog")) {
+    const storyIdx = result.findIndex(
+      (l) => normalizePath(l.href) === "/about",
+    );
+    result.splice(storyIdx >= 0 ? storyIdx + 1 : 0, 0, BLOG_LINK);
+  }
+
+  return sortCuratorialLinks(result);
+}
+
+/** @deprecated Use resolveFooterCuratorialLinks */
+export const DEFAULT_FOOTER_QUICK_LINKS = DEFAULT_FOOTER_CURATORIAL_LINKS;
+
+/** @deprecated Use resolveFooterCuratorialLinks */
+export function resolveFooterQuickLinks(
+  apiLinks?: FooterQuickLink[] | null,
+): FooterQuickLink[] {
+  return resolveFooterCuratorialLinks(apiLinks);
 }

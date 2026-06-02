@@ -137,15 +137,17 @@ export default function GiftingPageClient({
         sortBy,
       ],
       queryFn: ({ pageParam }) => {
-        const { page, excludeIds } = (pageParam || { page: 1, excludeIds: "" }) as { page: number; excludeIds: string };
+        const { page, excludeIds } = (pageParam || {
+          page: 1,
+          excludeIds: "",
+        }) as { page: number; excludeIds: string };
         return giftingApi.getProducts({
           limit: 12,
           ...(activeOccasion !== "all" && { giftOccasion: activeOccasion }),
           ...(debouncedSearch && { search: debouncedSearch }),
-          ...(sortBy === "relevance" 
-              ? { isRandom: "true", ...(excludeIds ? { excludeIds } : {}) }
-              : { page }
-          ),
+          ...(sortBy === "relevance" ?
+            { isRandom: "true", ...(excludeIds ? { excludeIds } : {}) }
+          : { page }),
         });
       },
       getNextPageParam: (lastPage, allPages) =>
@@ -223,7 +225,7 @@ export default function GiftingPageClient({
       if (priceFilter === "above_7000") return p.price > 7000;
       return true;
     });
-    // Relevance is now truly random from the backend. 
+    // Relevance is now truly random from the backend.
     // We only client-sort for other filters.
     if (sortBy === "price_low") list.sort((a, b) => a.price - b.price);
     else if (sortBy === "price_high") list.sort((a, b) => b.price - a.price);
@@ -383,12 +385,14 @@ export default function GiftingPageClient({
                   activeOccasion === "all" && "opacity-100",
                 )}
               >
-                <div className={cn(
-                  "relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-full border bg-white grid place-items-center text-gray-500 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg",
-                  activeOccasion === "all" ?
-                    "border-brand-500 ring-4 ring-brand-100 shadow-xl scale-105 text-brand-600"
-                  : "border-gray-200 shadow-sm"
-                )}>
+                <div
+                  className={cn(
+                    "relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-full border bg-white grid place-items-center text-gray-500 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg",
+                    activeOccasion === "all" ?
+                      "border-brand-500 ring-4 ring-brand-100 shadow-xl scale-105 text-brand-600"
+                    : "border-gray-200 shadow-sm",
+                  )}
+                >
                   <Gift className='h-6 w-6 sm:h-7 sm:w-7' />
                 </div>
                 <p className='mt-2 block min-h-[2.5rem] w-full px-0.5 text-center text-[12px] font-medium leading-tight text-gray-700 line-clamp-2 group-hover:text-brand-600 transition-colors'>
@@ -749,12 +753,18 @@ export default function GiftingPageClient({
               ))}
               {isFetchingNextPage ?
                 Array.from({ length: 6 }).map((_, i) => (
-                  <GiftProductCardSkeleton key={`more-${products.length}-${i}`} />
+                  <GiftProductCardSkeleton
+                    key={`more-${products.length}-${i}`}
+                  />
                 ))
               : null}
             </div>
             {(hasNextPage || isFetchingNextPage) && (
-              <div ref={sentinelRef} className='h-px w-full shrink-0' aria-hidden />
+              <div
+                ref={sentinelRef}
+                className='h-px w-full shrink-0'
+                aria-hidden
+              />
             )}
             {!hasNextPage && !isFetchingNextPage && products.length > 0 && (
               <p className='mt-8 pb-8 text-center text-sm text-gray-600'>

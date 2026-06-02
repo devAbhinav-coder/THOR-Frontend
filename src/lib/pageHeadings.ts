@@ -35,6 +35,13 @@ export function resolveHomeHeroH1(slideTitle?: string | null): string {
   return t;
 }
 
+/** Visible hero headline — admin slide title as-is (no SEO suffix stacking). */
+export function getHeroSlideDisplayTitle(slideTitle?: string | null): string {
+  const t = String(slideTitle || "").trim();
+  if (!t || GENERIC_HOME_SLIDE_TITLES.has(t.toLowerCase())) return HOME_H1;
+  return t;
+}
+
 export function resolveShopBannerH1(options: {
   categoryName?: string | null;
   search?: string | null;

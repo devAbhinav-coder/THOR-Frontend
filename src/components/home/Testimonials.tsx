@@ -5,8 +5,11 @@ import Image from "next/image";
 import StarRating from "@/components/ui/StarRating";
 import { reviewApi } from "@/lib/api";
 import { Review } from "@/types";
+import { cn } from "@/lib/utils";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import HomeSectionHeader from "@/components/home/HomeSectionHeader";
+import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -85,22 +88,17 @@ export default function Testimonials() {
   if (visibleReviews.length === 0) return null;
 
   return (
-    <section ref={sectionRef} className='py-24 bg-[#FAF9F6] relative overflow-hidden'>
+    <section ref={sectionRef} className={cn(homeSectionStyles.pageBg, "relative overflow-hidden py-24")}>
       {/* Background Decor */}
-      <div className='pointer-events-none absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-200/30 rounded-full blur-[100px]' />
-      <div className='pointer-events-none absolute right-0 bottom-0 translate-x-1/2 translate-y-1/2 w-[600px] h-[600px]   bg-rose-200/30 rounded-full blur-[120px]' />
+      <div className='pointer-events-none absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-navy-200/25 rounded-full blur-[100px]' />
+      <div className='pointer-events-none absolute right-0 bottom-0 translate-x-1/2 translate-y-1/2 w-[600px] h-[600px] bg-brand-100/40 rounded-full blur-[120px]' />
 
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
-        <div className='text-center mb-16'>
-          <p className='text-rose-500 font-bold uppercase tracking-widest text-sm mb-3'>
-             <del>Customers</del> Family Love
-          </p>
-          {/* cut in customer and family */}
-          <h2 className='text-4xl sm:text-5xl font-serif font-bold text-gray-900'>
-            Real Stories, Real Smiles
-          </h2>
-          <div className='mt-6 mx-auto w-20 h-1 bg-gradient-to-r from-rose-400 to-amber-300 rounded-full' />
-        </div>
+      <div className={cn(homeSectionStyles.container, "relative z-10")}>
+        <HomeSectionHeader
+          className='mb-16'
+          eyebrow='Family Love'
+          title='Real Stories, Real Smiles'
+        />
 
         <div ref={containerRef} className='grid grid-cols-1 md:grid-cols-3 gap-8'>
           {visibleReviews.map((review, i) => {
@@ -131,14 +129,14 @@ export default function Testimonials() {
                           className='object-cover'
                         />
                       </div>
-                    : <div className='h-12 w-12 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0 shadow-sm border border-rose-200'>
-                        <span className='text-rose-600 font-bold text-lg'>
+                    : <div className='h-12 w-12 rounded-full bg-brand-50 flex items-center justify-center flex-shrink-0 shadow-sm border border-brand-100'>
+                        <span className='text-brand-600 font-semibold text-lg'>
                           {reviewerName.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     }
                     <div>
-                      <p className='font-bold text-gray-900'>{reviewerName}</p>
+                      <p className='font-semibold text-navy-900'>{reviewerName}</p>
                       <p className='text-sm text-gray-500 line-clamp-1'>
                         {productName}
                       </p>

@@ -56,9 +56,7 @@ export default function ShopHeroBanner({
       <div
         className={cn(
           "relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center",
-          compact ?
-            "py-5 sm:py-6 lg:py-7"
-          : "py-10 sm:py-14 lg:py-16",
+          compact ? "py-5 sm:py-6 lg:py-7" : "py-10 sm:py-14 lg:py-16",
         )}
       >
         <p
@@ -71,12 +69,14 @@ export default function ShopHeroBanner({
           )}
         >
           <Sparkles
-            className={cn("h-3.5 w-3.5", isImage ? "text-gold-300" : "text-brand-600")}
+            className={cn(
+              "h-3.5 w-3.5",
+              isImage ? "text-gold-300" : "text-brand-600",
+            )}
             aria-hidden
           />
           {content.eyebrow}
         </p>
-
         <h1 className='font-serif font-bold leading-[1.05] tracking-tight'>
           <span className='sr-only'>{content.h1Accessible}</span>
           <span
@@ -107,7 +107,7 @@ export default function ShopHeroBanner({
           </span>
         </h1>
 
-        <p
+        {/* <p
           className={cn(
             "leading-relaxed max-w-2xl mx-auto font-light",
             compact ?
@@ -117,37 +117,39 @@ export default function ShopHeroBanner({
           )}
         >
           {content.subtitle}
-        </p>
-
+        </p> */}
         {!(compact && isImage) && (
-        <ul
-          className={cn(
-            "flex flex-wrap items-center justify-center gap-2",
-            compact ? "mt-3 sm:gap-2" : "mt-6 sm:mt-8 sm:gap-3",
-          )}
-          aria-label='Shopping benefits'
-        >
-          {content.perks.map((perk, i) => {
-            const Icon = perkIcons[i % perkIcons.length];
-            return (
-              <li
-                key={perk}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] sm:text-xs font-semibold",
-                  isImage ?
-                    "bg-white/12 border border-white/20 text-white backdrop-blur-sm"
-                  : "bg-white/80 border border-[#ead9d4] text-navy-800 shadow-sm",
-                )}
-              >
-                <Icon
-                  className={cn("h-3.5 w-3.5 shrink-0", isImage ? "text-gold-300" : "text-brand-600")}
-                  aria-hidden
-                />
-                {perk}
-              </li>
-            );
-          })}
-        </ul>
+          <ul
+            className={cn(
+              "flex flex-wrap items-center justify-center gap-2",
+              compact ? "mt-3 sm:gap-2" : "mt-6 sm:mt-8 sm:gap-3",
+            )}
+            aria-label='Shopping benefits'
+          >
+            {content.perks.map((perk, i) => {
+              const Icon = perkIcons[i % perkIcons.length];
+              return (
+                <li
+                  key={perk}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] sm:text-xs font-semibold",
+                    isImage ?
+                      "bg-white/12 border border-white/20 text-white backdrop-blur-sm"
+                    : "bg-white/80 border border-[#ead9d4] text-navy-800 shadow-sm",
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      isImage ? "text-gold-300" : "text-brand-600",
+                    )}
+                    aria-hidden
+                  />
+                  {perk}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>
