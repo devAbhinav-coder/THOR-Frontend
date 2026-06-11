@@ -262,7 +262,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
           {promo.description ?
             <p
               className={cn(
-                "mt-4 max-w-md text-sm leading-relaxed text-white/88 sm:mt-5 sm:max-w-lg sm:text-base",
+                "mt-4 max-w-md text-sm leading-relaxed text-white/80 sm:mt-5 sm:max-w-lg sm:text-base",
                 playHeroEntrance && "motion-safe:animate-hero-caption-in",
               )}
               style={{ animationDelay: playHeroEntrance ? "220ms" : undefined }}
