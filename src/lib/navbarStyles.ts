@@ -61,7 +61,7 @@ export function navLuxuryDropdownPanelClass(
 }
 
 export const navLuxuryDropdownHeader =
-  "border-b border-[#c5a059]/20 bg-[#1a2b48] px-5 py-5 text-center";
+  "border-b border-[#c5a059]/20 bg-navy-900 px-5 py-5 text-center";
 
 export const navLuxuryDropdownNav = "bg-[#fcf9f8]";
 
@@ -76,6 +76,10 @@ export function navLuxuryDropdownItem(active = false) {
 
 export const navLuxuryDropdownFooter =
   "border-t border-[#c5a059]/20 bg-white px-5 py-3.5";
+
+/** Fixed-position panels (search autocomplete) — same shell, no open/close motion */
+export const navLuxuryDropdownPanelStatic =
+  "overflow-hidden rounded-none border border-[#c5a059]/35 bg-white shadow-[0_12px_32px_rgba(26,43,72,0.14)] animate-[fadeIn_0.2s_ease-out_both]";
 
 export function navUserMenuShellClass(open: boolean) {
   return navDropdownShellClass(open, "right");

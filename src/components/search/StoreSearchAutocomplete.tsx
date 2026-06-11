@@ -21,6 +21,13 @@ import {
   buildStoreSearchHref,
   type StoreSearchScope,
 } from "@/lib/storeSearchNav";
+import {
+  navDropdownAccent,
+  navLuxuryDropdownFooter,
+  navLuxuryDropdownHeader,
+  navLuxuryDropdownNav,
+  navLuxuryDropdownPanelStatic,
+} from "@/lib/navbarStyles";
 
 export type { StoreSearchScope };
 
@@ -166,7 +173,7 @@ function StoreSearchAutocomplete({
     width: number;
   } | null>(null);
 
-  const isLightPanel = variant === "gifting-inline";
+  const isLuxuryPanel = variant !== "gifting-inline";
 
   useEffect(() => {
     let cancelled = false;
@@ -365,7 +372,7 @@ function StoreSearchAutocomplete({
               onClick={onClear}
               className={cn(
                 "absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1",
-                isLightPanel ?
+                variant === "gifting-inline" ?
                   "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 : "text-white/45 hover:bg-navy-700 hover:text-white",
               )}
@@ -382,96 +389,150 @@ function StoreSearchAutocomplete({
           id={`${listId}-listbox`}
           role='listbox'
           className={cn(
-            "fixed z-[200] border shadow-xl overflow-hidden overscroll-contain",
-            isLightPanel ?
-              "border-gray-200 bg-white"
-            : "border-navy-600 bg-navy-900",
+            "fixed z-[200] overscroll-contain",
+            isLuxuryPanel ?
+              cn(navLuxuryDropdownPanelStatic, "min-w-[15.5rem]")
+            : "overflow-hidden border border-gray-200 bg-white shadow-xl",
           )}
           style={{
             top: panelBox.top,
             left: panelBox.left,
-            width: panelBox.width,
+            width: Math.max(panelBox.width, isLuxuryPanel ? 248 : 200),
           }}
           data-lenis-prevent
           onWheel={(e) => e.stopPropagation()}
         >
-          {suggestLoading ?
-            <div className='flex items-center justify-center gap-2 py-6 text-sm text-gray-500'>
-              <Loader2 className='h-4 w-4 animate-spin' />
-              Searching…
-            </div>
-          : <ul className='py-1'>
-              {suggestions.map((p) => {
-                const img = p.images?.[0]?.url;
-                return (
-                  <li key={p._id} role='option' className='px-1'>
-                    <Link
-                      href={`/shop/${encodeURIComponent(p.slug)}`}
-                      onClick={() => {
-                        setOpen(false);
-                        onNavigate?.();
-                      }}
-                      className={cn(
-                        "flex gap-3 px-2 py-2 text-left transition-colors",
-                        isLightPanel ? "hover:bg-[#fff8eb]" : "hover:bg-navy-800",
-                      )}
-                    >
-                      <div className='relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100'>
-                        {img ?
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={img}
-                            alt=''
-                            className='h-full w-full object-cover'
-                          />
-                        : null}
-                      </div>
-                      <div className='min-w-0 flex-1'>
-                        <p
-                          className={cn(
-                            "line-clamp-2 text-sm font-semibold",
-                            isLightPanel ? "text-gray-900" : "text-white",
-                          )}
+          {isLuxuryPanel ?
+            <>
+              <div className={navDropdownAccent} aria-hidden />
+              <div className={cn(navLuxuryDropdownHeader, "py-4")}>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#c5a059]">
+                  Search
+                </p>
+                <p className="mt-1 truncate font-serif text-base font-medium text-white/90">
+                  {inputValue.trim() || "Suggestions"}
+                </p>
+              </div>
+
+              <div className={navLuxuryDropdownNav}>
+                {suggestLoading ?
+                  <div className="flex items-center justify-center gap-2 px-5 py-8 text-[13px] text-[#1a2b48]/60">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#c5a059]" />
+                    Searching…
+                  </div>
+                : <ul>
+                    {suggestions.map((p) => {
+                      const img = p.images?.[0]?.url;
+                      return (
+                        <li
+                          key={p._id}
+                          role="option"
+                          className="border-b border-[#c5a059]/15 last:border-b-0"
                         >
-                          {p.name}
-                        </p>
-                        <p
-                          className={cn(
-                            "text-xs",
-                            isLightPanel ? "text-[#c5a059]" : "text-[#c5a059]",
-                          )}
+                          <Link
+                            href={`/shop/${encodeURIComponent(p.slug)}`}
+                            onClick={() => {
+                              setOpen(false);
+                              onNavigate?.();
+                            }}
+                            className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-white"
+                          >
+                            <div className="relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100">
+                              {img ?
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={img}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              : null}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-2 font-serif text-[14px] leading-snug text-[#1a2b48]">
+                                {p.name}
+                              </p>
+                              <p className="mt-0.5 text-[12px] font-medium text-[#c5a059]">
+                                {formatPrice(p.price)}
+                              </p>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                }
+              </div>
+
+              <div className={cn(navLuxuryDropdownFooter, "text-center")}>
+                <Link
+                  href={resultsHref}
+                  onClick={() => {
+                    setOpen(false);
+                    onNavigate?.();
+                  }}
+                  className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#c5a059] transition-colors hover:text-[#1a2b48]"
+                >
+                  See all matching products
+                </Link>
+              </div>
+            </>
+          : <>
+              {suggestLoading ?
+                <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching…
+                </div>
+              : <ul className="py-1">
+                  {suggestions.map((p) => {
+                    const img = p.images?.[0]?.url;
+                    return (
+                      <li key={p._id} role="option" className="px-1">
+                        <Link
+                          href={`/shop/${encodeURIComponent(p.slug)}`}
+                          onClick={() => {
+                            setOpen(false);
+                            onNavigate?.();
+                          }}
+                          className="flex gap-3 px-2 py-2 text-left transition-colors hover:bg-[#fff8eb]"
                         >
-                          {formatPrice(p.price)}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+                          <div className="relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100">
+                            {img ?
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={img}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            : null}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-2 text-sm font-semibold text-gray-900">
+                              {p.name}
+                            </p>
+                            <p className="text-xs text-[#c5a059]">
+                              {formatPrice(p.price)}
+                            </p>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              }
+              <div className="border-t border-gray-100 px-3 py-2 text-center text-[11px] text-gray-500">
+                <Link
+                  href={resultsHref}
+                  onClick={() => {
+                    setOpen(false);
+                    onNavigate?.();
+                  }}
+                  className="font-semibold text-[#c5a059] underline-offset-2 hover:underline"
+                >
+                  See all matching products
+                </Link>
+              </div>
+            </>
           }
-          <div
-            className={cn(
-              "border-t px-3 py-2 text-center text-[11px]",
-              isLightPanel ?
-                "border-gray-100 text-gray-500"
-              : "border-navy-700 text-white/60",
-            )}
-          >
-            <Link
-              href={resultsHref}
-              onClick={() => {
-                setOpen(false);
-                onNavigate?.();
-              }}
-              className={cn(
-                "font-semibold underline-offset-2 hover:underline",
-                isLightPanel ? "text-[#c5a059]" : "text-[#c5a059]",
-              )}
-            >
-              See all matching products
-            </Link>
-          </div>
         </div>
       : null}
     </div>
