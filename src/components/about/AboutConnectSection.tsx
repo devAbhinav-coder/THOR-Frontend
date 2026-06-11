@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Instagram, Mail, Phone } from "lucide-react";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { BRAND_NAME } from "@/lib/brandSeo";
+import { aboutPageStyles } from "@/lib/aboutPageStyles";
 import type { AboutVisualImage } from "@/components/about/aboutPageTypes";
 
 const INSTAGRAM_URL = "https://www.instagram.com/housofrani";
@@ -28,47 +29,49 @@ export default function AboutConnectSection({ galleryImage }: Props) {
         {/* Instagram — warm card, not navy block */}
         <div
           data-about-reveal
-          className='relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] ring-1 ring-stone-200/90 bg-white shadow-[0_24px_60px_-28px_rgba(20,25,47,0.12)]'
+          className="relative overflow-hidden bg-white shadow-[0_12px_40px_rgba(0,13,33,0.06)]"
         >
-          <div className='grid lg:grid-cols-2'>
+          <div className="grid lg:grid-cols-2">
             {galleryImage ?
-              <div className='relative aspect-[4/3] lg:aspect-auto lg:min-h-[320px] overflow-hidden group'>
-                {(
-                  typeof galleryImage.href === "string" &&
-                  galleryImage.href.trim().startsWith("/")
-                ) ?
-                  <Link
-                    href={galleryImage.href.trim()}
-                    className='absolute inset-0 z-[1] block'
-                    aria-label={`View ${galleryImage.caption || "saree"}`}
-                  >
-                    <span className='sr-only'>View product</span>
-                  </Link>
-                : null}
-                <Image
-                  src={galleryImage.src}
-                  alt={galleryImage.alt}
-                  fill
-                  sizes='(max-width: 1024px) 100vw, 50vw'
-                  className='object-cover transition-transform duration-500 group-hover:scale-105'
-                  loader={cloudinaryLoader}
-                />
-                {galleryImage.caption ?
-                  <p className='absolute bottom-0 inset-x-0 z-[2] bg-gradient-to-t from-navy-950/80 to-transparent px-4 py-3 text-xs text-white/90 line-clamp-2'>
-                    {galleryImage.caption}
-                  </p>
-                : null}
-                {(
-                  typeof galleryImage.href === "string" &&
-                  galleryImage.href.trim().startsWith("/")
-                ) ?
-                  <span className='absolute top-3 right-3 z-[2] rounded-full bg-white text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider'>
-                    View saree
-                  </span>
-                : null}
+              <div className={aboutPageStyles.frameLight}>
+                <div className="relative aspect-[4/3] lg:aspect-auto lg:min-h-[320px] overflow-hidden bg-gray-50 group">
+                  {(
+                    typeof galleryImage.href === "string" &&
+                    galleryImage.href.trim().startsWith("/")
+                  ) ?
+                    <Link
+                      href={galleryImage.href.trim()}
+                      className="absolute inset-0 z-[1] block"
+                      aria-label={`View ${galleryImage.caption || "saree"}`}
+                    >
+                      <span className="sr-only">View product</span>
+                    </Link>
+                  : null}
+                  <Image
+                    src={galleryImage.src}
+                    alt={galleryImage.alt}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    loader={cloudinaryLoader}
+                  />
+                  {galleryImage.caption ?
+                    <p className="absolute bottom-0 inset-x-0 z-[2] bg-gradient-to-t from-navy-950/80 to-transparent px-4 py-3 text-xs text-white/90 line-clamp-2">
+                      {galleryImage.caption}
+                    </p>
+                  : null}
+                  {(
+                    typeof galleryImage.href === "string" &&
+                    galleryImage.href.trim().startsWith("/")
+                  ) ?
+                    <span className="absolute top-3 right-3 z-[2] bg-white text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
+                      View saree
+                    </span>
+                  : null}
+                </div>
               </div>
             : <div
-                className='hidden lg:block bg-gradient-to-br from-brand-50 to-stone-100 min-h-[280px]'
+                className="hidden lg:block bg-gradient-to-br from-brand-50 to-stone-100 min-h-[280px]"
                 aria-hidden
               />
             }
@@ -104,7 +107,7 @@ export default function AboutConnectSection({ galleryImage }: Props) {
         {/* Contact strip — cream, not blue */}
         <div
           data-about-reveal
-          className='rounded-2xl sm:rounded-3xl border border-stone-200/80 bg-[#faf9f7] p-6 sm:p-8'
+          className="border border-gray-200/70 bg-[#faf9f7] p-6 sm:p-8"
         >
           <div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8'>
             <div className='sm:col-span-2 lg:col-span-1'>
@@ -118,9 +121,9 @@ export default function AboutConnectSection({ galleryImage }: Props) {
             </div>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className='group flex items-start gap-4 rounded-2xl bg-white p-5 ring-1 ring-stone-100 hover:ring-brand-200 transition-all'
+              className="group flex items-start gap-4 border border-gray-200/70 bg-white p-5 transition-colors hover:border-[#c5a059]/50"
             >
-              <span className='inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600'>
+              <span className="inline-flex h-10 w-10 items-center justify-center bg-brand-50 text-brand-600">
                 <Mail className='h-5 w-5' aria-hidden />
               </span>
               <div>
@@ -134,9 +137,9 @@ export default function AboutConnectSection({ galleryImage }: Props) {
             </a>
             <a
               href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`}
-              className='group flex items-start gap-4 rounded-2xl bg-white p-5 ring-1 ring-stone-100 hover:ring-brand-200 transition-all'
+              className="group flex items-start gap-4 border border-gray-200/70 bg-white p-5 transition-colors hover:border-[#c5a059]/50"
             >
-              <span className='inline-flex h-10 w-10 items-center justify-center rounded-xl bg-navy-900 text-white'>
+              <span className="inline-flex h-10 w-10 items-center justify-center bg-navy-900 text-white">
                 <Phone className='h-5 w-5' aria-hidden />
               </span>
               <div>

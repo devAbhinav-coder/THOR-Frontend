@@ -21,6 +21,7 @@ import {
   X,
   Megaphone,
   FileText,
+  Mail,
   Gift,
   RotateCcw,
   Shield,
@@ -95,7 +96,9 @@ const navSections: NavSection[] = [
     title: "Marketing & content",
     items: [
       { label: "Email campaigns", href: "/admin/emails", icon: Megaphone },
+      { label: "Journal subscribers", href: "/admin/newsletter", icon: Mail },
       { label: "Blogs", href: "/admin/blogs", icon: FileText },
+      { label: "Blog calendar", href: "/admin/blogs/calendar", icon: FileText },
     ],
   },
   {
@@ -327,9 +330,7 @@ export default function AdminLayout({
             >
               <Store className='h-4 w-4' strokeWidth={2.25} />
             </Link>
-            <div className='theme-dark text-white'>
-              <NotificationBell />
-            </div>
+            <NotificationBell variant="admin" />
             <button
               onClick={() => setIsMenuOpen((v) => !v)}
               className='flex h-9 w-9 items-center justify-center rounded-lg bg-gray-800/90 ring-1 ring-white/10'

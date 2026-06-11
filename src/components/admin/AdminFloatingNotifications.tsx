@@ -131,9 +131,7 @@ export default function AdminFloatingNotifications() {
         >
           <GripVertical className="h-4 w-4" aria-hidden />
         </button>
-        <div className="theme-dark text-white">
-          <NotificationBell align="right" />
-        </div>
+        <NotificationBell align="right" variant="admin" />
       </div>
     </div>
   );

@@ -644,6 +644,13 @@ export const adminStorefront = z.object({
   data: z.object({ settings: doc }),
 });
 
+export const looseDataResponse = z
+  .object({
+    status: z.string(),
+    data: z.unknown().optional(),
+  })
+  .passthrough();
+
 export const emptySuccess = statusStr;
 
 export const nullDataSuccess = z.object({ status: z.string(), data: z.null().optional() });
@@ -686,6 +693,41 @@ export const blogSingle = z.object({
   status: z.string(),
   data: z.object({ blog: doc, comments: z.array(doc).optional() }).passthrough().optional(),
 }).passthrough();
+
+export const newsletterSubscribeResponse = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z.object({ subscribed: z.boolean().optional() }).passthrough().optional(),
+  })
+  .passthrough();
+
+export const adminNewsletterSubscribersList = z.object({
+  status: z.string(),
+  pagination: z
+    .object({
+      currentPage: z.number(),
+      totalPages: z.number(),
+      total: z.number(),
+      hasNextPage: z.boolean().optional(),
+    })
+    .passthrough(),
+  data: z.object({
+    subscribers: z.array(
+      z
+        .object({
+          _id: z.string().optional(),
+          email: z.string(),
+          source: z.string().optional(),
+          isActive: z.boolean().optional(),
+          createdAt: z.string().optional(),
+          unsubscribedAt: z.string().nullable().optional(),
+        })
+        .passthrough(),
+    ),
+    activeCount: z.number().optional(),
+  }),
+});
 
 export const notificationsList = z.object({
   status: z.string(),
@@ -811,6 +853,9 @@ export const adminAiStatus = z.object({
     enabled: z.boolean(),
     model: z.string().optional(),
     provider: z.string().optional(),
+    blogEnabled: z.boolean().optional(),
+    blogProvider: z.enum(["gemini", "groq"]).optional(),
+    blogModel: z.string().optional(),
     features: z.array(z.string()).optional(),
   }),
 });
@@ -861,5 +906,50 @@ export const adminAiMarketingDraft = z.object({
   data: adminAiTextPayload.extend({
     subject: z.string().optional(),
     messageHtml: z.string().optional(),
+  }),
+});
+
+export const adminAiBlogCalendarPlan = z.object({
+  status: z.string(),
+  data: z.object({
+    summary: z.string(),
+    items: z.array(
+      z.object({
+        topic: z.string(),
+        keywords: z.array(z.string()),
+        category: z.string(),
+        plannedDate: z.string(),
+        notes: z.string(),
+        trendScore: z.number(),
+        trendReason: z.string(),
+        festivalHook: z.string().optional(),
+      }),
+    ),
+    model: z.string().optional(),
+    cached: z.boolean().optional(),
+    generatedAt: z.string().optional(),
+  }),
+});
+
+export const adminAiBlogDraft = z.object({
+  status: z.string(),
+  data: adminAiTextPayload.extend({
+    title: z.string().optional(),
+    slug: z.string().optional(),
+    excerpt: z.string().optional(),
+    content: z.string().optional(),
+    seoTitle: z.string().optional(),
+    seoDescription: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
+    category: z.string().optional(),
+    readingTimeMin: z.number().optional(),
+    suggestedImageCaptions: z.array(z.string()).optional(),
+    internalLinks: z
+      .array(z.object({ productSlug: z.string(), anchorText: z.string() }))
+      .optional(),
+    duplicateWarnings: z.array(z.string()).optional(),
+    titleOptions: z.array(z.string()).optional(),
+    keywordSuggestions: z.array(z.string()).optional(),
   }),
 });

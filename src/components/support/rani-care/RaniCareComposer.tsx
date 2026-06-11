@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoResizeTextarea } from "./useAutoResizeTextarea";
+import { raniComposerWrap, raniSendBtn } from "./raniCareHeritageTheme";
 
 type Props = {
   input: string;
@@ -57,52 +58,39 @@ export function RaniCareComposer({
         void sendMessage();
       }}
     >
-      <div
-        className={cn(
-          "relative flex rounded-2xl border border-gray-300 bg-gray-50/80",
-          "focus-within:bg-white focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/30",
-          "transition-colors",
-          disabled && "opacity-60",
-        )}
-      >
+      <div className={cn(raniComposerWrap, disabled && "opacity-60")}>
         <textarea
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder='Type a message'
+          placeholder="Type your message"
           rows={1}
           maxLength={500}
-          enterKeyHint='send'
-          autoComplete='off'
-          autoCorrect='on'
+          enterKeyHint="send"
+          autoComplete="off"
+          autoCorrect="on"
           spellCheck
-          aria-label='Message support'
+          aria-label="Message support"
           disabled={disabled}
           data-lenis-prevent
           className={cn(
             "rani-composer-input w-full min-h-[44px] max-h-24 resize-none bg-transparent",
-            "py-2.5 pl-3.5 pr-[3.25rem] text-sm text-gray-800 leading-snug",
-            "placeholder:text-gray-400",
-            "border-0 focus:outline-none focus:ring-0",
-            "overflow-y-auto scrollbar-hide",
-            "disabled:cursor-not-allowed",
+            "border-0 py-2.5 pl-3.5 pr-[3.25rem] text-sm leading-snug text-navy-900",
+            "placeholder:text-gray-400 focus:outline-none focus:ring-0",
+            "overflow-y-auto scrollbar-hide disabled:cursor-not-allowed",
           )}
         />
         <button
-          type='submit'
+          type="submit"
           disabled={!canSend}
           className={cn(
-            "absolute right-1.5 bottom-1.5",
-            "h-9 w-9 shrink-0 rounded-xl text-white",
-            "inline-flex items-center justify-center",
-            "bg-brand-600 hover:bg-brand-700 active:scale-95",
-            "disabled:opacity-35 disabled:cursor-not-allowed disabled:active:scale-100",
-            "transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1",
+            raniSendBtn,
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/40 focus-visible:ring-offset-1",
           )}
-          aria-label='Send message'
+          aria-label="Send message"
         >
-          <Send className='h-[17px] w-[17px] shrink-0' strokeWidth={2.25} aria-hidden />
+          <Send className="h-[17px] w-[17px] shrink-0" strokeWidth={2.25} aria-hidden />
         </button>
       </div>
     </form>

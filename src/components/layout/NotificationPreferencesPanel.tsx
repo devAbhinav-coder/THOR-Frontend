@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Settings2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   NotificationCategory,
@@ -45,7 +45,7 @@ export default function NotificationPreferencesPanel({
 
   const toggleCategory = (id: NotificationCategory) => {
     setMuted((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
     );
   };
 
@@ -59,45 +59,46 @@ export default function NotificationPreferencesPanel({
   };
 
   return (
-    <div className="flex-shrink-0 border-t border-gray-100 dark:border-neutral-800">
+    <div className="shrink-0 border-t border-[#c5a059]/15 bg-[#fafafa]">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-neutral-800/80"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-[#c5a059]/5"
         aria-expanded={open}
       >
-        <span className="flex items-center gap-1.5">
-          <Settings2 className="h-3.5 w-3.5" />
+        <span className="text-[13px] font-medium text-gray-700">
           Notification settings
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
-          {open ? "Hide" : "Show"}
-        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-[#c5a059] transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
       </button>
 
       {open && (
-        <div className="space-y-3 border-t border-gray-100 bg-gray-50/80 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/80">
-          {isLoading && !preferences ? (
-            <div className="flex items-center justify-center py-4 text-xs text-gray-500">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        <div className="space-y-3 border-t border-[#c5a059]/15 bg-white px-4 py-3">
+          {isLoading && !preferences ?
+            <div className="flex items-center justify-center py-4 text-[13px] text-gray-500">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#c5a059]" />
               Loading preferences…
             </div>
-          ) : (
-            <>
-              <label className="flex cursor-pointer items-center justify-between gap-2">
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
+          : <>
+              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-none border border-[#c5a059]/15 px-3 py-2.5">
+                <span className="text-[13px] text-gray-700">
                   Push notifications
                 </span>
                 <input
                   type="checkbox"
                   checked={pushOptIn}
                   onChange={(e) => setPushOptIn(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 rounded-none border-gray-300 accent-[#c5a059] text-[#c5a059] focus:ring-[#c5a059]/30"
                 />
               </label>
 
               <div>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                <p className="mb-2 text-[12px] font-medium text-gray-500">
                   Mute categories
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -107,10 +108,10 @@ export default function NotificationPreferencesPanel({
                       type="button"
                       onClick={() => toggleCategory(id)}
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors",
-                        muted.includes(id)
-                          ? "bg-gray-200 text-gray-600 line-through dark:bg-neutral-700 dark:text-gray-400"
-                          : "bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-neutral-800 dark:text-gray-200 dark:ring-neutral-600"
+                        "rounded-none px-2.5 py-1 text-[12px] font-medium transition-colors",
+                        muted.includes(id) ?
+                          "bg-gray-100 text-gray-400 line-through"
+                        : "bg-gray-50 text-gray-700 ring-1 ring-[#c5a059]/20 hover:bg-[#c5a059]/5 hover:text-[#c5a059]",
                       )}
                     >
                       {label}
@@ -120,7 +121,7 @@ export default function NotificationPreferencesPanel({
               </div>
 
               <div>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                <p className="mb-2 text-[12px] font-medium text-gray-500">
                   Quiet hours
                 </p>
                 <div className="flex items-center gap-2">
@@ -128,19 +129,19 @@ export default function NotificationPreferencesPanel({
                     type="time"
                     value={quietStart}
                     onChange={(e) => setQuietStart(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                    className="w-full rounded-none border border-gray-200 bg-white px-2.5 py-1.5 text-[13px] text-gray-700 focus:border-[#c5a059]/50 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/30"
                     aria-label="Quiet hours start"
                   />
-                  <span className="text-xs text-gray-400">to</span>
+                  <span className="text-[12px] text-gray-400">to</span>
                   <input
                     type="time"
                     value={quietEnd}
                     onChange={(e) => setQuietEnd(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                    className="w-full rounded-none border border-gray-200 bg-white px-2.5 py-1.5 text-[13px] text-gray-700 focus:border-[#c5a059]/50 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/30"
                     aria-label="Quiet hours end"
                   />
                 </div>
-                <p className="mt-1 text-[10px] text-gray-500">
+                <p className="mt-1.5 text-[12px] text-gray-500">
                   No push during this window (your timezone).
                 </p>
               </div>
@@ -149,19 +150,17 @@ export default function NotificationPreferencesPanel({
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-1.5 rounded-none bg-[#c5a059] px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSaving ? (
+                {isSaving ?
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Saving…
                   </>
-                ) : (
-                  "Save preferences"
-                )}
+                : "Save preferences"}
               </button>
             </>
-          )}
+          }
         </div>
       )}
     </div>

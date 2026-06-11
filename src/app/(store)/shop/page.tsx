@@ -1,8 +1,5 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
-import ShopClient from "@/components/shop/ShopClient";
-import ShopLoading from "./loading";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import type { Product } from "@/types";
@@ -141,14 +138,21 @@ export default async function ShopPage({
   searchParams: SearchParams;
 }) {
   const sp = await searchParams;
-  const categoryParam =
+  const categoriesRaw =
+    typeof sp.categories === "string" ? sp.categories.trim() : "";
+  const legacyCategory =
     typeof sp.category === "string" ? sp.category.trim() : "";
-  if (categoryParam) {
-    const categorySlug = toShopCategorySlug(categoryParam);
+  const categoryList = (categoriesRaw || legacyCategory)
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (categoryList.length === 1 && !sp.fabrics) {
+    const categorySlug = toShopCategorySlug(categoryList[0]);
     if (categorySlug) {
       const q = new URLSearchParams();
       for (const [key, value] of Object.entries(sp)) {
-        if (key === "category") continue;
+        if (key === "category" || key === "categories") continue;
         if (typeof value === "string" && value.trim()) q.set(key, value);
       }
       const qs = q.toString();
@@ -324,9 +328,6 @@ export default async function ShopPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionPageLd) }}
         />
       )}
-      <Suspense fallback={<ShopLoading />}>
-        <ShopClient />
-      </Suspense>
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { storefrontApi } from "@/lib/api";
@@ -9,25 +9,68 @@ import { cn } from "@/lib/utils";
 import { resolveHomeGiftShopButton } from "@/lib/homeGiftShopLink";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
-import { Gift, Heart, Sparkles, Star } from "lucide-react";
-
-const ACCENT_BG: Record<string, string> = {
-  rose: "bg-gradient-to-b from-rose-200 via-rose-100 to-rose-300",
-  amber: "bg-gradient-to-b from-amber-100 via-orange-50 to-amber-200",
-  sage: "bg-gradient-to-b from-emerald-100 via-teal-50 to-emerald-200",
-};
 
 type Props = {
-  /** SSR-prefetched storefront settings — eliminates the client-fetch + late mount that pushes 100vh+ of content into the layout (huge CLS). */
   initialSettings?: StorefrontSettings | null;
 };
+
+const ROTATE_MS = 4500;
+
+function splitTitle(title: string): { lead: string; accent: string | null } {
+  const parts = title.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { lead: title, accent: null };
+  return {
+    lead: parts.slice(0, -1).join(" "),
+    accent: parts[parts.length - 1] ?? null,
+  };
+}
+
+function ActiveGiftCta({ card }: { card: HomeGiftShowcaseCard }) {
+  const shop = resolveHomeGiftShopButton(card);
+
+  if (!shop) {
+    return (
+      <Link
+        href="/gifting"
+        className="inline-flex w-full items-center justify-center bg-navy-900 px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white transition-colors hover:bg-navy-800 sm:text-xs lg:w-auto"
+      >
+        Explore Gift Sets
+      </Link>
+    );
+  }
+
+  if (shop.kind === "coming_soon") {
+    return (
+      <span className="inline-flex w-full items-center justify-center border border-gray-200 bg-gray-50 px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-600 sm:text-xs lg:w-auto">
+        {shop.label}
+      </span>
+    );
+  }
+
+  const external = /^https?:\/\//i.test(shop.href);
+  const className =
+    "inline-flex w-full items-center justify-center bg-navy-900 px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white transition-all duration-500 hover:bg-navy-800 sm:text-xs lg:w-auto";
+
+  return external ?
+      <a
+        href={shop.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        {shop.label}
+      </a>
+    : <Link href={shop.href} className={className}>
+        {shop.label}
+      </Link>;
+}
 
 export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
   const [settings, setSettings] = useState<StorefrontSettings | null>(
     () => initialSettings ?? null,
   );
-  const sectionRef = useRef<HTMLElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [fadeReady, setFadeReady] = useState(true);
 
   useEffect(() => {
     if (initialSettings) return;
@@ -44,295 +87,177 @@ export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
   }, [initialSettings]);
 
   const section = settings?.homeGiftShowcase;
-  const rawCards = section?.cards || [];
-  const cards = rawCards.filter(
-    (c: HomeGiftShowcaseCard) =>
-      (c?.title && c.title.trim()) ||
-      (c?.description && c.description.trim()) ||
-      (c?.image && c.image.trim()),
+  const cards = useMemo(
+    () =>
+      (section?.cards || []).filter(
+        (c: HomeGiftShowcaseCard) =>
+          (c?.title && c.title.trim()) ||
+          (c?.description && c.description.trim()) ||
+          (c?.image && c.image.trim()),
+      ),
+    [section?.cards],
   );
 
-  useLayoutEffect(() => {
-    if (!section?.isActive || cards.length === 0) return;
-    if (typeof window === "undefined") return;
-    /** Skip the 100vh+ pinned scroll animation on phones (heavy paint, marginal benefit) and when the user prefers reduced motion. */
+  const imageCards = useMemo(
+    () => cards.filter((c) => c.image?.trim()),
+    [cards],
+  );
+
+  useEffect(() => {
+    if (imageCards.length <= 1) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (window.matchMedia("(max-width: 767px)").matches) return;
-
-    let cancelled = false;
-    let cleanup: (() => void) | null = null;
-
-    /** Lazy-load GSAP only when we're actually about to animate. Saves ~50kb on the initial JS for visitors who never reach this section. */
-    (async () => {
-      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
-        import("gsap"),
-        import("gsap/ScrollTrigger"),
-      ]);
-      if (cancelled) return;
-      gsap.registerPlugin(ScrollTrigger);
-
-      const ctx = gsap.context(() => {
-        const mm = gsap.matchMedia();
-
-      mm.add("(min-width: 768px)", () => {
-        const cardElements = gsap.utils.toArray<HTMLElement>(
-          ".gift-card-stack-item",
-        );
-
-        // Initial positioning: make it feel like they are coming from below
-        cardElements.forEach((card, index) => {
-          if (index === 0) {
-            // First card starts a bit lower so it can slide up into view
-            gsap.set(card, {
-              y: window.innerHeight * 0.4,
-              scale: 1,
-              opacity: 1,
-              zIndex: 1,
-            });
-          } else {
-            // Others start completely off-screen below
-            gsap.set(card, {
-              y: window.innerHeight + 200,
-              scale: 0.9,
-              opacity: 0,
-              zIndex: index + 1,
-            });
-          }
-        });
-
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top top",
-            end: "bottom bottom", // Scroll natively handles the duration based on section height
-            scrub: 1,
-          },
-        });
-
-        // Animate title drifting downwards as you scroll
-        tl.fromTo(
-          ".gift-title-container",
-          {
-            y: -80,
-            opacity: 1,
-          },
-          {
-            y: 120, // Moves down significantly
-            opacity: 1,
-            duration: cards.length * 1.5, // Spans the whole scroll
-            ease: "none",
-          },
-          0,
-        );
-
-        // Parallax moving background decor
-        for (let i = 1; i <= 12; i++) {
-          tl.to(
-            `.bg-decor-${i}`,
-            {
-              y: -200 - i * 30,
-              rotation: i % 2 === 0 ? 180 : -180,
-              duration: 4,
-              ease: "none",
-            },
-            0,
-          );
-        }
-
-        // First card slides to top position
-        tl.to(
-          cardElements[0],
-          {
-            y: 80, // Stops lower than before
-            duration: 1,
-            ease: "power2.out",
-          },
-          0,
-        );
-
-        // Animate each subsequent card sliding up and stacking
-        cardElements.forEach((card, index) => {
-          if (index === 0) return; // Handled above
-
-          const offset = 24; // Pixel offset for stacking effect
-
-          tl.to(
-            card,
-            {
-              y: 80 + index * offset, // Final piled position, lower on screen
-              scale: 1, // Full size when stacked
-              opacity: 1,
-              duration: 1.2,
-              ease: "power2.out",
-            },
-            index * 1.3, // Starts just after the previous card has fully settled
-          );
-        });
-      });
-      }, sectionRef);
-
-      cleanup = () => ctx.revert();
-      if (cancelled) cleanup();
-    })();
-
-    return () => {
-      cancelled = true;
-      cleanup?.();
-    };
-  }, [section?.isActive, cards.length]);
+    const timer = window.setInterval(() => {
+      setFadeReady(false);
+      window.setTimeout(() => {
+        setActiveIndex((prev) => (prev + 1) % imageCards.length);
+        setFadeReady(true);
+      }, 350);
+    }, ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [imageCards.length]);
 
   if (!section?.isActive || cards.length === 0) return null;
 
+  const { lead: titleLead, accent: titleAccent } = splitTitle(
+    section.headlineLine2 || "Gifting Studio",
+  );
+  const eyebrow = section.headlineLine1 || "The Art of Giving";
+
+  const features = cards
+    .filter((c) => c.title?.trim())
+    .slice(0, 3)
+    .map((c) => ({
+      title: c.title!.trim(),
+      description: c.description?.trim() || "",
+    }));
+
+  const slideIndex =
+    imageCards.length > 0 ? activeIndex % imageCards.length : 0;
+  const activeCard =
+    imageCards[slideIndex] ?? cards[activeIndex % cards.length] ?? cards[0];
+
   return (
     <section
-      ref={sectionRef}
-      data-nosnippet
-      aria-label='Gifting collections'
-      className={cn(homeSectionStyles.pageBg, "relative z-20 w-full py-12 md:h-[calc(var(--card-count)*80vh+100vh)] md:py-0")}
-      style={{ "--card-count": cards.length } as React.CSSProperties}
+      className={cn(homeSectionStyles.pageBg, "bg-gray-50/60 py-14 sm:py-20 lg:py-24")}
+      aria-label="Gifting collections"
     >
-      <div
-        ref={containerRef}
-        className='md:sticky top-0 left-0 w-full md:h-[100dvh] md:max-h-[1000px] md:min-h-[500px] overflow-hidden flex flex-col items-center justify-center'
-      >
-        <div className='w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col md:flex-row items-center justify-center gap-10 md:gap-16 pt-4 pb-4'>
-          {/* Moving Background Decor */}
-          <div className='pointer-events-none absolute inset-0 opacity-[0.25] overflow-hidden'>
-            <Gift className='bg-decor-1 absolute left-[8%] top-[10%] h-8 w-8 text-rose-400 opacity-60' />
-            <Heart className='bg-decor-2 absolute left-[15%] bottom-[15%] h-6 w-6 text-amber-400 opacity-60' />
-            <Sparkles className='bg-decor-3 absolute right-[10%] top-[20%] h-10 w-10 text-emerald-400 opacity-60' />
-            <Star className='bg-decor-4 absolute right-[8%] bottom-[15%] h-7 w-7 text-rose-300 opacity-60' />
+      <div className={homeSectionStyles.container}>
+        <div className="flex flex-col gap-10 lg:grid lg:grid-cols-2 lg:items-center lg:gap-14 xl:gap-20">
+          {/* Left — auto-fade image carousel */}
+          <div className="order-2 lg:order-1">
+            {imageCards.length > 0 ?
+              <div className="mx-auto w-full max-w-xl border border-[#c5a059]/75 bg-white p-3 shadow-[0_12px_40px_rgba(20,25,47,0.08)] sm:p-4 lg:mx-0">
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/25">
+                {imageCards.map((card, index) => (
+                  <div
+                    key={`${card.title}-${index}-slide`}
+                    className={cn(
+                      "absolute inset-0 transition-opacity duration-700 ease-in-out",
+                      index === slideIndex && fadeReady ?
+                        "opacity-100"
+                      : "opacity-0",
+                    )}
+                    aria-hidden={index !== slideIndex}
+                  >
+                    <Image
+                      src={card.image!}
+                      alt={card.title || "Gift collection"}
+                      fill
+                      loader={cloudinaryLoader}
+                      sizes="(max-width: 1024px) 90vw, 50vw"
+                      className="object-cover"
+                      loading={index === 0 ? "eager" : "lazy"}
+                      quality={75}
+                      priority={index === 0}
+                    />
+                    {card.title?.trim() ?
+                      <span className="absolute left-0 top-0 z-10 bg-navy-900 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-white sm:text-[10px]">
+                        {card.title.trim()}
+                      </span>
+                    : null}
+                  </div>
+                ))}
 
-            <Heart className='bg-decor-5 absolute left-[30%] top-[25%] h-5 w-5 text-rose-500 opacity-40' />
-            <Sparkles className='bg-decor-6 absolute right-[35%] bottom-[30%] h-6 w-6 text-amber-500 opacity-50' />
-            <Gift className='bg-decor-7 absolute left-[45%] bottom-[10%] h-9 w-9 text-rose-300 opacity-40' />
-            <Star className='bg-decor-8 absolute right-[25%] top-[8%] h-5 w-5 text-emerald-300 opacity-50' />
-
-            <Sparkles className='bg-decor-9 absolute left-[20%] top-[50%] h-7 w-7 text-amber-300 opacity-50' />
-            <Heart className='bg-decor-10 absolute right-[15%] top-[60%] h-8 w-8 text-rose-400 opacity-40' />
-            <Gift className='bg-decor-11 absolute left-[40%] top-[70%] h-6 w-6 text-emerald-400 opacity-60' />
-            <Star className='bg-decor-12 absolute right-[45%] top-[40%] h-9 w-9 text-rose-200 opacity-50' />
-
-            <Sparkles className='bg-decor-13 absolute left-[10%] bottom-[30%] h-7 w-7 text-amber-300 opacity-50' />
-            <Heart className='bg-decor-14 absolute right-[15%] top-[60%] h-8 w-8 text-rose-400 opacity-40' />
-            <Gift className='bg-decor-15 absolute left-[10%] top-[80%] h-6 w-6 text-emerald-400 opacity-60' />
-            <Star className='bg-decor-16 absolute right-[35%] top-[70%] h-9 w-9 text-rose-200 opacity-50' />
+                {imageCards.length > 1 && (
+                  <div className="absolute bottom-3 left-0 right-0 z-20 flex justify-center gap-2 sm:bottom-4">
+                    {imageCards.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        aria-label={`Show gift image ${index + 1}`}
+                        onClick={() => {
+                          setFadeReady(false);
+                          window.setTimeout(() => {
+                            setActiveIndex(index);
+                            setFadeReady(true);
+                          }, 200);
+                        }}
+                        className={cn(
+                          "h-1.5 rounded-full transition-all duration-300",
+                          index === slideIndex ?
+                            "w-6 bg-white"
+                          : "w-1.5 bg-white/50 hover:bg-white/80",
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+                </div>
+              </div>
+            : null}
           </div>
 
-          {/* Left Side: Sticky Title */}
-          <div className='gift-title-container w-full md:w-5/12 flex flex-col justify-center text-center md:text-left z-10 pt-10 md:pt-0'>
-            {section.headlineLine1 && (
-              <p className={cn(homeSectionStyles.eyebrow, "mb-2 text-sm sm:mb-4 sm:text-base md:text-lg")}>
-                {section.headlineLine1}
-              </p>
-            )}
-            {section.headlineLine2 && (
-              <h2 className={cn(homeSectionStyles.titleLg, "leading-tight tracking-tight")}>
-                {section.headlineLine2}
-              </h2>
-            )}
-            {section.description && (
-              <p className='mt-4 sm:mt-6 text-sm leading-relaxed text-gray-600 sm:text-base md:text-lg max-w-lg mx-auto md:mx-0'>
+          {/* Right — copy + synced CTA */}
+          <div className="order-1 text-center lg:order-2 lg:text-left">
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs">
+              {eyebrow}
+            </p>
+            <h2 className="mt-3 font-serif text-3xl font-medium leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]">
+              {titleAccent ?
+                <>
+                  {titleLead}{" "}
+                  <span className="italic text-navy-900">{titleAccent}</span>
+                </>
+              : titleLead}
+            </h2>
+            {section.description ?
+              <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-gray-600 sm:text-base lg:mx-0">
                 {section.description}
               </p>
-            )}
+            : null}
 
-            {section.socialHandle?.trim() && (
-              <Link href='/gifting'>
-                <div className='mt-4 sm:mt-8 md:mt-12 flex justify-center md:justify-start'>
-                  <span className='inline-flex items-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-navy-900 shadow-sm ring-1 ring-navy-900/5 transition hover:bg-gray-50 sm:px-5 sm:py-2.5 sm:text-sm'>
-                    {section.socialHandle.trim()}
-                  </span>
-                </div>
-              </Link>
-            )}
-          </div>
-
-          {/* Right Side: Stacked Cards */}
-          <div className='w-full md:w-6/12 relative md:h-[600px] flex flex-col md:block items-center md:perspective-[1200px] mt-2 md:mt-0'>
-            <div className='w-full max-w-[300px] sm:max-w-[340px] md:max-w-sm flex flex-col md:block gap-6 md:gap-0 relative md:h-[480px] mx-auto md:ml-auto md:mr-0'>
-              {cards.map((card, index) => {
-                const accent =
-                  card.accent && ACCENT_BG[card.accent] ? card.accent : "rose";
-
-                return (
-                  <div
-                    key={`${card.title}-${index}`}
-                    className={cn(
-                      "gift-card-stack-item flex flex-col rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 text-center shadow-lg md:shadow-2xl border border-white/60 md:will-change-transform",
-                      "relative md:absolute md:top-0 md:left-0 md:w-full md:h-full",
-                      ACCENT_BG[accent],
-                    )}
-                    style={{ transformOrigin: "top center" }}
-                  >
-                    <div className='group relative mx-auto mb-4 sm:mb-5 w-full h-[180px] sm:h-48 shrink-0 overflow-hidden rounded-[1rem] sm:rounded-[1.5rem] shadow-md border-2 border-white/50'>
-                      {card.image ?
-                        <Image
-                          src={card.image}
-                          alt={card.title || "Gift category"}
-                          fill
-                          loader={cloudinaryLoader}
-                          loading='lazy'
-                          quality={70}
-                          className='object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer'
-                          sizes='(max-width: 640px) 100vw, 320px'
-                        />
-                      : <div className='flex h-full w-full items-center justify-center bg-white/50 text-sm font-medium text-gray-500'>
-                          Add image
-                        </div>
-                      }
-                    </div>
-                    {card.title && (
-                      <h3 className='mb-1 font-serif text-xl font-medium leading-tight text-navy-900 drop-shadow-sm sm:mb-3 sm:text-3xl'>
-                        {card.title}
-                      </h3>
-                    )}
-                    {card.description && (
-                      <p className='line-clamp-2 sm:line-clamp-3 flex-1 text-[11px] sm:text-sm leading-snug sm:leading-relaxed text-gray-800 font-medium px-1 sm:px-2'>
-                        {card.description}
+            {features.length > 0 && (
+              <ul className="mx-auto mt-6 max-w-md space-y-3 text-left lg:mx-0 lg:max-w-none">
+                {features.map((item) => (
+                  <li key={item.title} className="flex gap-3">
+                    <span
+                      className="mt-1.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#c5a059]/60 text-[10px] text-[#c5a059]"
+                      aria-hidden
+                    >
+                      ✓
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-navy-900">
+                        {item.title}
                       </p>
-                    )}
-
-                    <div className='mt-auto flex flex-col gap-2 sm:gap-3 pt-2 sm:pt-6'>
-                      {(() => {
-                        const shop = resolveHomeGiftShopButton(card);
-                        if (!shop) return null;
-                        if (shop.kind === "coming_soon") {
-                          return (
-                            <span className='rounded-xl sm:rounded-2xl border border-white/70 bg-white/40 backdrop-blur-sm px-3 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm font-bold text-gray-900 shadow-sm'>
-                              {shop.label}
-                            </span>
-                          );
-                        }
-                        const external = /^https?:\/\//i.test(shop.href);
-                        return external ?
-                            <a
-                              href={shop.href}
-                              target='_blank'
-                              rel='noopener noreferrer'
-                              className='rounded-xl sm:rounded-2xl bg-white px-3 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm font-bold text-gray-900 shadow-lg ring-1 ring-gray-900/5 transition-all hover:scale-[1.02] active:scale-[0.98]'
-                            >
-                              {shop.label}
-                            </a>
-                          : <Link
-                              href={shop.href}
-                              className='rounded-xl sm:rounded-2xl bg-white px-3 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm font-bold text-gray-900 shadow-lg ring-1 ring-gray-900/5 transition-all hover:scale-[1.02] active:scale-[0.98]'
-                            >
-                              {shop.label}
-                            </Link>;
-                      })()}
-                      {card.giftButtonLink && (
-                        <Link
-                          href={card.giftButtonLink}
-                          className='rounded-lg sm:rounded-xl border-2 border-white/80 bg-transparent px-2 py-1.5 sm:px-2.5 sm:py-2 text-center text-[10px] sm:text-[11px] font-bold text-gray-900 transition hover:bg-white/15'
-                        >
-                          {card.giftButtonText || "Gifting"}
-                        </Link>
-                      )}
+                      {item.description ?
+                        <p className="mt-0.5 text-xs leading-relaxed text-gray-500 sm:text-sm">
+                          {item.description}
+                        </p>
+                      : null}
                     </div>
-                  </div>
-                );
-              })}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div
+              className={cn(
+                "mt-8 flex justify-center transition-opacity duration-500 lg:justify-start",
+                fadeReady ? "opacity-100" : "opacity-0",
+              )}
+            >
+              <ActiveGiftCta card={activeCard} />
             </div>
           </div>
         </div>

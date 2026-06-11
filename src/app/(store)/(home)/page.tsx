@@ -4,6 +4,7 @@ import HeroSection from "@/components/home/HeroSection";
 import {
   fetchHomeCategoryStats,
   fetchHomeFeaturedProducts,
+  fetchHomeLatestBlogs,
 } from "@/lib/storePrefetch";
 import {
   fetchStorefrontHeroSlides,
@@ -75,12 +76,13 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [heroSlides, categoryStats, featuredProducts, storefrontSettings] =
+  const [heroSlides, categoryStats, featuredProducts, storefrontSettings, latestBlogs] =
     await Promise.all([
       fetchStorefrontHeroSlides(),
       fetchHomeCategoryStats(),
       fetchHomeFeaturedProducts(),
       fetchStorefrontSettingsHome(),
+      fetchHomeLatestBlogs(3),
     ]);
 
   /**
@@ -286,7 +288,7 @@ export default async function HomePage() {
       <ExploreCollection />
       <HomeGiftShowcase initialSettings={storefrontSettings} />
       <WhyChooseUs />
-      <BlogBanner />
+      <BlogBanner initialBlogs={latestBlogs} />
       <Testimonials />
     </>
   );

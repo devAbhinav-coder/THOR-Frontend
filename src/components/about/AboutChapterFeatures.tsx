@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Feather, Leaf, Palette, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { aboutPageStyles } from "@/lib/aboutPageStyles";
 
 const FEATURES = [
   {
@@ -58,15 +59,15 @@ function PillarCard({
     <article
       onMouseEnter={onHover}
       className={cn(
-        "relative flex flex-col rounded-2xl p-5 sm:p-6",
-        "bg-white ring-1 ring-stone-200/90",
+        "relative flex flex-col p-5 sm:p-6",
+        "bg-white border border-gray-200/70",
         "transition-shadow duration-300",
-        isActive && "ring-brand-300 shadow-md",
+        isActive && "border-[#c5a059]/50 shadow-[0_10px_36px_rgba(0,13,33,0.06)]",
         className,
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-navy-900 text-white">
+        <span className="inline-flex h-9 w-9 items-center justify-center bg-navy-900 text-white">
           <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </span>
         <span
@@ -176,7 +177,7 @@ export default function AboutChapterFeatures() {
               >
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <span className="mt-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-[#faf9f7] text-navy-900">
+              <span className="mt-6 inline-flex h-10 w-10 items-center justify-center border border-gray-200/70 bg-[#faf9f7] text-navy-900">
                 <item.icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
               </span>
               <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-brand-600">
@@ -208,10 +209,7 @@ export default function AboutChapterFeatures() {
             </span>
             <span className="h-px flex-1 sm:w-16 bg-stone-300" aria-hidden />
           </div>
-          <Link
-            href="/shop"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-navy-900 text-white px-8 py-3.5 text-sm font-bold hover:bg-navy-800 transition-colors w-full sm:w-auto"
-          >
+          <Link href="/shop" className={cn(aboutPageStyles.ctaNavy, "w-full sm:w-auto")}>
             Explore the collection
             <ArrowUpRight className="h-4 w-4" />
           </Link>

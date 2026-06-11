@@ -1,6 +1,6 @@
-/** Shared home-page palette — hero (navy) + light sections stay in one family. */
+/** Shared home-page palette — hero (navy) + white content sections. */
 export const homeSectionStyles = {
-  pageBg: "bg-[#FAF9F6]",
+  pageBg: "bg-white",
   container: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
   sectionPad: "py-10 sm:py-14",
   eyebrow:

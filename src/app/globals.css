@@ -17,8 +17,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 229 32% 11%;
 
-    /* Primary = crimson red (#c41230) */
-    --primary: 349 82% 42%;
+    /* Primary = heritage gold (#c5a059) */
+    --primary: 40 48% 56%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary = Prussian blue #14192F */
@@ -29,15 +29,15 @@
     /* ~4.6:1 on white for body/secondary text (accessibility) */
     --muted-foreground: 220 9% 36%;
 
-    --accent: 349 60% 95%;
-    --accent-foreground: 349 82% 35%;
+    --accent: 40 45% 95%;
+    --accent-foreground: 40 48% 38%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 349 82% 42%;
+    --ring: 40 48% 56%;
     --radius: 0.5rem;
   }
 
@@ -48,19 +48,19 @@
     --card-foreground: 210 20% 95%;
     --popover: 229 36% 11%;
     --popover-foreground: 210 20% 95%;
-    --primary: 349 80% 55%;
+    --primary: 40 50% 62%;
     --primary-foreground: 0 0% 100%;
     --secondary: 229 38% 32%;
     --secondary-foreground: 0 0% 100%;
     --muted: 229 25% 18%;
     --muted-foreground: 220 10% 60%;
-    --accent: 349 30% 18%;
-    --accent-foreground: 349 70% 75%;
+    --accent: 40 35% 18%;
+    --accent-foreground: 40 45% 72%;
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 100%;
     --border: 229 25% 18%;
     --input: 229 25% 18%;
-    --ring: 349 80% 55%;
+    --ring: 40 50% 62%;
   }
 }
 
@@ -87,6 +87,18 @@
     width: 0;
     height: 0;
     background: transparent;
+  }
+
+  .account-border-elegant {
+    border-bottom: 1px solid rgba(18, 43, 89, 0.1);
+  }
+
+  .account-hero-gradient {
+    background: linear-gradient(
+        rgba(248, 249, 250, 0.92),
+        rgba(248, 249, 250, 0.78)
+      ),
+      linear-gradient(135deg, #e7e8e9 0%, #f3f4f5 50%, #edeeef 100%);
   }
 
   .skeleton {
@@ -116,12 +128,12 @@
     overflow: hidden;
   }
 
-  /* Prussian-to-crimson gradient (hero overlays & CTAs) */
+  /* Prussian-to-gold gradient (hero overlays & CTAs) */
   .gradient-brand {
-    background: linear-gradient(135deg, #0c1020 0%, var(--prussian-blue) 50%, #c41230 100%);
+    background: linear-gradient(135deg, #0c1020 0%, var(--prussian-blue) 50%, #c5a059 100%);
   }
   .gradient-hero {
-    background: linear-gradient(160deg, #0a0e1a 0%, var(--prussian-blue) 58%, #7d0b1f 100%);
+    background: linear-gradient(160deg, #0a0e1a 0%, var(--prussian-blue) 58%, #7d6234 100%);
   }
 
   /* Checkout empty cart — soft motion */
@@ -187,6 +199,32 @@
       opacity: 0.72;
     }
   }
+
+  /* Google OAuth — single button, full width, centered (no double wrapper border) */
+  .auth-google-slot {
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .auth-google-slot__btn,
+  .auth-google-slot > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+  .auth-google-slot iframe {
+    display: block !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+  }
+
   /* Opacity + transform only — `filter: blur` can inflate paint cost and
      contribute to jank / CLS on low-end devices during the hero entrance. */
   @keyframes hero-text-in {
@@ -248,27 +286,36 @@
     }
   }
 
-  /* react-hot-toast — premium micro-interaction */
+  /* react-hot-toast — heritage editorial micro-interaction */
   @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translateX(44px) scale(calc(var(--toast-stack-scale, 1) - 0.08));
-    }
-    72% {
-      opacity: 1;
-      transform: translateX(-3px) scale(calc(var(--toast-stack-scale, 1) + 0.012));
+      transform: translateX(28px) scale(calc(var(--toast-stack-scale, 1) - 0.04));
     }
     to {
       opacity: 1;
       transform: translateX(0) scale(var(--toast-stack-scale, 1));
     }
   }
+  @keyframes toast-progress {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
+    }
+  }
   .hor-toast-enter {
-    animation: slideIn 0.3s ease both;
-    box-shadow: var(--toast-stack-shadow, 0 10px 30px rgba(0, 0, 0, 0.08));
+    animation: slideIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+    box-shadow: var(--toast-stack-shadow, 0px 10px 25px rgba(26, 43, 72, 0.08));
+  }
+  .hor-toast-progress {
+    animation: toast-progress linear forwards;
+    transform-origin: left center;
   }
   @media (prefers-reduced-motion: reduce) {
-    .hor-toast-enter {
+    .hor-toast-enter,
+    .hor-toast-progress {
       animation: none;
     }
   }
@@ -305,11 +352,11 @@
   --swiper-wrapper-transition-timing-function: linear;
 }
 .swiper-pagination-bullet-active {
-  background-color: #c41230 !important;
+  background-color: #c5a059 !important;
 }
 .swiper-button-next,
 .swiper-button-prev {
-  color: #c41230 !important;
+  color: #c5a059 !important;
 }
 
 html.lenis,
@@ -386,5 +433,256 @@ html.lenis body {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+/* Home sections — scroll reveal */
+[data-home-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition:
+    opacity 0.62s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--home-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+[data-home-reveal].home-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-home-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Gold accent divider (wishlist, luxury sections) */
+.gold-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #c5a059, transparent);
+}
+
+/* Shop — expandable luxury filter panel */
+.luxury-filter-transition {
+  transition: max-height 0.5s cubic-bezier(0, 1, 0, 1);
+}
+.luxury-filter-transition.open {
+  max-height: 1200px;
+  transition: max-height 0.75s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .luxury-filter-transition,
+  .luxury-filter-transition.open {
+    transition: none;
+  }
+}
+
+/* Shop — dual-handle price range slider */
+.shop-price-range {
+  --shop-price-gold: #c5a059;
+  --thumb-size: 18px;
+  --thumb-r: calc(var(--thumb-size) / 2);
+  --range-min: 0;
+  --range-max: 100;
+  position: relative;
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+.shop-price-range__track {
+  position: absolute;
+  left: var(--thumb-r);
+  right: var(--thumb-r);
+  height: 4px;
+  border-radius: 9999px;
+  background: #e5e7eb;
+}
+.shop-price-range__fill {
+  position: absolute;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--shop-price-gold);
+  left: calc(
+    var(--thumb-r) + (100% - var(--thumb-size)) * var(--range-min) / 100
+  );
+  width: calc(
+    (100% - var(--thumb-size)) * (var(--range-max) - var(--range-min)) / 100
+  );
+}
+.shop-price-range__input {
+  position: absolute;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  appearance: none;
+  background: transparent;
+  top: 0;
+  z-index: 1;
+}
+.shop-price-range__input--min {
+  z-index: 3;
+}
+.shop-price-range__input--max {
+  z-index: 2;
+}
+.shop-price-range__input::-webkit-slider-runnable-track {
+  appearance: none;
+  background: transparent;
+  height: 4px;
+}
+.shop-price-range__input::-moz-range-track {
+  background: transparent;
+  height: 4px;
+  border: none;
+}
+.shop-price-range__input::-webkit-slider-thumb {
+  appearance: none;
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  margin-top: -7px;
+  cursor: pointer;
+}
+.shop-price-range__input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+.shop-price-range__input:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--shop-price-gold);
+  outline-offset: 2px;
+}
+.shop-price-range__input:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--shop-price-gold);
+  outline-offset: 2px;
+}
+
+/* ── Journal / Blog editorial ───────────────────────────────────── */
+.journal-editorial-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(3, 22, 50, 0.82) 0%,
+    rgba(3, 22, 50, 0) 62%
+  );
+}
+
+.journal-hover-lift {
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@media (hover: hover) {
+  .journal-hover-lift:hover {
+    transform: translateY(-8px);
+  }
+}
+
+.journal-article-body p:first-of-type::first-letter {
+  float: left;
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 5.5rem;
+  line-height: 0.8;
+  padding-top: 4px;
+  padding-right: 12px;
+  color: #031632;
+}
+
+.journal-article-body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.journal-article-body p {
+  font-size: 1.125rem;
+  line-height: 1.75;
+  margin-bottom: 1.5rem;
+  color: #031632;
+}
+
+.journal-article-body h2 {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 2rem;
+  font-weight: 600;
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
+  color: #031632;
+}
+
+.journal-article-body h3 {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.journal-article-body blockquote {
+  border-left: 2px solid #775a19;
+  padding-left: 2rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  margin: 3rem 0;
+  font-style: italic;
+}
+
+.journal-article-body blockquote p {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 1.5rem;
+  line-height: 1.6;
+  color: #775a19;
+  margin-bottom: 0;
+}
+
+.journal-article-body a {
+  color: #775a19;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.journal-article-body ul,
+.journal-article-body ol {
+  margin: 1.25rem 0 1.5rem 1.25rem;
+}
+
+.journal-article-body li {
+  margin-bottom: 0.5rem;
+  line-height: 1.7;
+}
+
+.journal-animate-reveal {
+  animation: journalReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes journalReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-hover-lift:hover {
+    transform: none;
+  }
+  .journal-animate-reveal {
+    animation: none;
   }
 }

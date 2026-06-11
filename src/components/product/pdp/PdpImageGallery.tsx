@@ -145,10 +145,10 @@ export function PdpImageGallery({
                 onMouseEnter={() => setSelectedImage(i)}
                 onClick={() => setSelectedImage(i)}
                 className={cn(
-                  "flex-shrink-0 w-full overflow-hidden rounded-xl border-2 transition-all duration-150 bg-gray-50",
+                  "flex-shrink-0 w-full overflow-hidden border-2 transition-all duration-150 bg-gray-50",
                   i === selectedImage ?
-                    "border-brand-600 ring-2 ring-brand-100"
-                  : "border-gray-200 hover:border-brand-400",
+                    "border-[#c5a059] ring-1 ring-[#c5a059]/30"
+                  : "border-gray-200 hover:border-[#c5a059]/50",
                 )}
                 style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
               >
@@ -170,13 +170,14 @@ export function PdpImageGallery({
         )}
 
         <div className='flex-1 min-w-0 space-y-3'>
-          <div
-            ref={pdpMainImageRef}
-            className='relative w-full overflow-hidden rounded-2xl bg-gray-50'
-            style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
-            onMouseMove={onPdpMainImageMouseMove}
-            onMouseLeave={onPdpMainImageMouseLeave}
-          >
+          <div className='border border-[#c5a059]/40 bg-white p-2 sm:p-2.5'>
+            <div
+              ref={pdpMainImageRef}
+              className='relative w-full overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/20'
+              style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
+              onMouseMove={onPdpMainImageMouseMove}
+              onMouseLeave={onPdpMainImageMouseLeave}
+            >
             {images[selectedImage]?.url ?
               <div className='absolute inset-0 z-0'>
                 <Image
@@ -201,7 +202,7 @@ export function PdpImageGallery({
               <div
                 ref={pdpLensBoxRef}
                 className={cn(
-                  "pointer-events-none absolute left-0 top-0 z-[7] hidden overflow-hidden rounded-xl border-2 border-white shadow-2xl ring-2 ring-black/15 lg:block",
+                  "pointer-events-none absolute left-0 top-0 z-[7] hidden overflow-hidden border-2 border-[#c5a059]/40 bg-white shadow-2xl lg:block",
                   "will-change-transform [backface-visibility:hidden]",
                   "transition-opacity duration-200 ease-out",
                   pdpLensVisible ? "opacity-100" : "opacity-0",
@@ -241,13 +242,13 @@ export function PdpImageGallery({
 
             <div className='pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5'>
               {isFeatured && (
-                <span className='text-xs font-bold bg-white text-gold-500 px-2.5 py-1 rounded-full shadow flex items-center gap-1'>
-                  <Star className='w-3 h-3 fill-gold-500 ' />
+                <span className='flex items-center gap-1 bg-[#c5a059] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow'>
+                  <Star className='h-3 w-3 fill-white' />
                   Editor&apos;s Pick
                 </span>
               )}
               {isOutOfStock && (
-                <span className='text-xs font-semibold bg-gray-800/80 text-white px-2.5 py-1 rounded-full'>
+                <span className='bg-navy-900/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white'>
                   Sold Out
                 </span>
               )}
@@ -314,6 +315,7 @@ export function PdpImageGallery({
               </>
             )}
           </div>
+          </div>
 
           {images.length > 1 && (
             <div
@@ -326,10 +328,10 @@ export function PdpImageGallery({
                   type='button'
                   onClick={() => setSelectedImage(i)}
                   className={cn(
-                    "flex-shrink-0 w-14 overflow-hidden rounded-lg border-2 transition-all bg-gray-50",
+                    "flex-shrink-0 w-14 overflow-hidden border-2 transition-all bg-gray-50",
                     i === selectedImage ?
-                      "border-brand-600 ring-2 ring-brand-200"
-                    : "border-transparent hover:border-brand-400",
+                      "border-[#c5a059] ring-1 ring-[#c5a059]/30"
+                    : "border-gray-200 hover:border-[#c5a059]/50",
                   )}
                   style={{
                     aspectRatio: isGiftMarketingContext ? "1/1" : "3/4",

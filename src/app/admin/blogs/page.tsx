@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, Eye, Heart } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Eye, Heart, Calendar, BarChart3, MousePointerClick } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { blogApi } from '@/lib/api';
@@ -22,6 +22,16 @@ export default function AdminBlogsPage() {
       return res;
     },
   });
+
+  const { data: analyticsRes } = useQuery({
+    queryKey: ['blog-analytics'],
+    queryFn: () => blogApi.getAnalytics(),
+  });
+
+  const analytics = (analyticsRes?.data ?? undefined) as {
+    summary?: { totalViews?: number; totalShopClicks?: number; clickThroughRate?: number; published?: number };
+    topByShopClicks?: Array<{ title: string; slug: string; shopClickCount?: number; viewCount?: number }>;
+  } | undefined;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => blogApi.delete(id),
@@ -45,13 +55,42 @@ export default function AdminBlogsPage() {
           <h1 className="text-2xl font-bold text-gray-900 font-serif">Manage Blogs</h1>
           <p className="text-sm text-gray-500 mt-1">Create, edit, and manage your journal entries.</p>
         </div>
-        <Link
-          href="/admin/blogs/new"
-          className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" /> New Blog
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/blogs/calendar"
+            className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            <Calendar className="w-4 h-4" /> Calendar
+          </Link>
+          <Link
+            href="/admin/blogs/new"
+            className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" /> New Blog
+          </Link>
+        </div>
       </div>
+
+      {analytics?.summary && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-gray-500 uppercase font-semibold"><BarChart3 className="w-4 h-4" /> Published</div>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{analytics.summary.published ?? 0}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-gray-500 uppercase font-semibold"><Eye className="w-4 h-4" /> Total views</div>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{analytics.summary.totalViews ?? 0}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-gray-500 uppercase font-semibold"><MousePointerClick className="w-4 h-4" /> Shop clicks</div>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{analytics.summary.totalShopClicks ?? 0}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="text-xs text-gray-500 uppercase font-semibold">Blog → shop CTR</div>
+            <p className="text-2xl font-bold text-emerald-700 mt-1">{analytics.summary.clickThroughRate ?? 0}%</p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
@@ -72,9 +111,11 @@ export default function AdminBlogsPage() {
             <thead className="bg-gray-50 text-gray-700 uppercase text-xs font-semibold">
               <tr>
                 <th className="px-6 py-4">Blog Post</th>
+                <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Author</th>
                 <th className="px-6 py-4">Stats</th>
+                <th className="px-6 py-4">Shop clicks</th>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -82,13 +123,13 @@ export default function AdminBlogsPage() {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     Loading blogs...
                   </td>
                 </tr>
               ) : data?.data?.blogs?.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     No blog posts found.
                   </td>
                 </tr>
@@ -111,6 +152,11 @@ export default function AdminBlogsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <span className="text-xs text-gray-600 capitalize">
+                        {(blog.category || 'journal').replace(/-/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${blog.isPublished ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10'}`}>
                         {blog.isPublished ? 'Published' : 'Draft'}
                       </span>
@@ -125,6 +171,9 @@ export default function AdminBlogsPage() {
                         <span className="flex items-center gap-1" title="Views"><Eye className="w-3.5 h-3.5" />{blog.viewCount}</span>
                         <span className="flex items-center gap-1 text-rose-500" title="Likes"><Heart className="w-3.5 h-3.5" />{blog.likes?.length || 0}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-gray-600">
+                      {blog.shopClickCount ?? 0}
                     </td>
                     <td className="px-6 py-4 text-xs">
                       {new Date(blog.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

@@ -18,6 +18,8 @@ import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { BRAND_NAME } from "@/lib/brandSeo";
 import { cn } from "@/lib/utils";
 import { useAboutReveal } from "@/hooks/useAboutReveal";
+import { aboutPageStyles } from "@/lib/aboutPageStyles";
+import type { AboutImageSurface } from "@/lib/aboutPageStyles";
 import type {
   AboutInternalLink,
   AboutPageVisuals,
@@ -53,31 +55,45 @@ function productHref(href: unknown): string | undefined {
 function AboutVisualFrame({
   img,
   className,
+  innerClassName,
   priority,
   sizes,
   showViewLabel = false,
+  surface = "light",
+  fill = false,
 }: {
   img: AboutVisualImage | null | undefined;
   className?: string;
+  innerClassName?: string;
   priority?: boolean;
   sizes: string;
   showViewLabel?: boolean;
+  surface?: AboutImageSurface;
+  fill?: boolean;
 }) {
   const src = typeof img?.src === "string" ? img.src.trim() : "";
   if (!src) return null;
 
   const href = productHref(img?.href);
   const alt = img?.alt || `${BRAND_NAME} — handcrafted sarees`;
+  const frameClass =
+    surface === "light" ? aboutPageStyles.frameLight : aboutPageStyles.frameDark;
 
   const inner = (
-    <>
+    <div
+      className={cn(
+        "relative overflow-hidden bg-gray-50",
+        fill ? "absolute inset-0" : "w-full",
+        innerClassName,
+      )}
+    >
       <Image
         src={src}
         alt={alt}
         fill
         priority={priority}
         sizes={sizes}
-        className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+        className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
         loader={cloudinaryLoader}
       />
       {img?.caption ? (
@@ -86,24 +102,29 @@ function AboutVisualFrame({
         </figcaption>
       ) : null}
       {showViewLabel && href ? (
-        <span className="absolute top-3 right-3 z-10 rounded-full bg-white/95 text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="absolute top-3 right-3 z-10 bg-white/95 text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
           View saree
         </span>
       ) : null}
-    </>
+    </div>
   );
 
-  const figureClass = cn("relative overflow-hidden block", className);
+  const outerClass = cn(
+    "relative block",
+    frameClass,
+    fill && "h-full",
+    className,
+  );
 
   if (href) {
     return (
-      <Link href={href} className={cn(figureClass, "group")}>
+      <Link href={href} className={cn(outerClass, "group")}>
         {inner}
       </Link>
     );
   }
 
-  return <figure className={figureClass}>{inner}</figure>;
+  return <figure className={outerClass}>{inner}</figure>;
 }
 
 export default function AboutPageClient({
@@ -146,7 +167,7 @@ export default function AboutPageClient({
           aria-hidden
         />
         <div
-          className="absolute inset-0 z-[1] opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_20%_20%,rgba(196,18,48,0.35),transparent_50%)]"
+          className="absolute inset-0 z-[1] opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_20%_20%,rgba(197,160,89,0.35),transparent_50%)]"
           aria-hidden
         />
 
@@ -163,7 +184,7 @@ export default function AboutPageClient({
           </nav>
 
           <div data-about-reveal className="max-w-5xl">
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 backdrop-blur-md px-4 py-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-brand-200 mb-8">
+            <p className="inline-flex items-center gap-2 border border-white/15 bg-white/5 backdrop-blur-md px-4 py-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-brand-200 mb-8">
               <Sparkles className="h-3.5 w-3.5 text-brand-400" aria-hidden />
               Our story · Since day one
             </p>
@@ -188,18 +209,12 @@ export default function AboutPageClient({
               meaning. At {BRAND_NAME}, that belief is not just a philosophy. It
               is the very thread the brand was built on.
             </p>
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link
-                href="/shop"
-                className="group inline-flex items-center gap-2 rounded-full bg-brand-600 px-8 py-4 text-sm font-bold text-white shadow-[0_0_40px_-8px_rgba(196,18,48,0.8)] hover:bg-brand-500 transition-all"
-              >
+            <div className="mt-10 flex flex-wrap gap-3 sm:gap-4">
+              <Link href="/shop" className={aboutPageStyles.ctaGold}>
                 Shop the collection
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
-                href="/blog"
-                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/5 backdrop-blur px-8 py-4 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
-              >
+              <Link href="/blog" className={aboutPageStyles.ctaOutlineOnDark}>
                 Read the journal
               </Link>
             </div>
@@ -227,7 +242,7 @@ export default function AboutPageClient({
           className="relative py-20 sm:py-32"
           aria-labelledby="about-dream-heading"
         >
-          <div className="absolute inset-0 bg-[#faf9f7] text-navy-900 rounded-t-[2.5rem] sm:rounded-t-[3.5rem]" />
+          <div className="absolute inset-0 bg-[#faf9f7] text-navy-900" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-12 gap-12 lg:gap-6 items-start">
               <div data-about-reveal className="lg:col-span-5">
@@ -271,13 +286,12 @@ export default function AboutPageClient({
             </div>
 
             {dreamBanner ? (
-              <div
-                data-about-reveal-scale
-                className="mt-16 sm:mt-20 group relative aspect-[21/9] sm:aspect-[2.4/1] rounded-3xl overflow-hidden ring-1 ring-stone-200/80 shadow-2xl"
-              >
+              <div data-about-reveal-scale>
                 <AboutVisualFrame
                   img={dreamBanner}
-                  className="absolute inset-0"
+                  surface="light"
+                  className="mt-16 sm:mt-20 shadow-[0_12px_40px_rgba(0,13,33,0.06)]"
+                  innerClassName="aspect-[21/9] sm:aspect-[2.4/1]"
                   sizes="100vw"
                 />
               </div>
@@ -311,7 +325,7 @@ export default function AboutPageClient({
                     key={`${img.src}-${idx}`}
                     data-about-reveal-scale
                     className={cn(
-                      "relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-white/10",
+                      "relative",
                       idx === 0 && "col-span-2 md:col-span-7 md:row-span-2 min-h-[280px] md:min-h-[420px]",
                       idx === 1 && "col-span-1 md:col-span-5 min-h-[180px]",
                       idx === 2 && "col-span-1 md:col-span-5 min-h-[180px]",
@@ -321,6 +335,8 @@ export default function AboutPageClient({
                   >
                     <AboutVisualFrame
                       img={img}
+                      surface="dark"
+                      fill
                       className="absolute inset-0"
                       sizes="(max-width: 768px) 50vw, 33vw"
                       showViewLabel={Boolean(img.href)}
@@ -340,13 +356,12 @@ export default function AboutPageClient({
           <div className="absolute inset-0 bg-gradient-to-br from-brand-950/40 via-navy-950 to-navy-950" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-14 items-center">
             {intention ? (
-              <div
-                data-about-reveal-scale
-                className="group relative aspect-[3/4] max-w-md mx-auto lg:mx-0 rounded-[2rem] overflow-hidden ring-1 ring-white/15 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.6)]"
-              >
+              <div data-about-reveal-scale>
                 <AboutVisualFrame
                   img={intention}
-                  className="absolute inset-0"
+                  surface="dark"
+                  className="max-w-md mx-auto lg:mx-0 shadow-[0_20px_40px_rgba(3,22,50,0.25)]"
+                  innerClassName="aspect-[3/4]"
                   sizes="(max-width: 1024px) 90vw, 40vw"
                   showViewLabel={Boolean(intention.href)}
                 />
@@ -403,28 +418,30 @@ export default function AboutPageClient({
                   All sarees <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <ul className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              <ul className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                 {products.map((p) => (
                   <li key={p.slug} data-about-reveal>
                     <Link
                       href={p.href}
-                      className="group block rounded-2xl overflow-hidden bg-white ring-1 ring-stone-100 hover:ring-brand-200 transition-all hover:shadow-xl"
+                      className="group flex h-full flex-col border border-[#c5a059]/75 bg-white transition-colors duration-300 hover:border-[#c5a059] hover:shadow-[0_10px_36px_rgba(0,13,33,0.06)]"
                     >
-                      <div className="relative aspect-[3/4] overflow-hidden">
-                        <Image
-                          src={p.image}
-                          alt={`${p.name} — shop at ${BRAND_NAME}`}
-                          fill
-                          sizes="(max-width: 768px) 50vw, 25vw"
-                          className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          loader={cloudinaryLoader}
-                        />
+                      <div className="p-1 sm:p-2">
+                        <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/20">
+                          <Image
+                            src={p.image}
+                            alt={`${p.name} — shop at ${BRAND_NAME}`}
+                            fill
+                            sizes="(max-width: 768px) 50vw, 25vw"
+                            className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                            loader={cloudinaryLoader}
+                          />
+                        </div>
                       </div>
-                      <div className="p-4">
-                        <p className="font-serif font-bold text-navy-900 line-clamp-2 group-hover:text-brand-600 transition-colors">
+                      <div className="px-3 pb-4 pt-0 sm:px-4 sm:pb-5">
+                        <p className="font-serif font-medium text-navy-900 line-clamp-2 group-hover:text-brand-600 transition-colors sm:text-lg">
                           {p.name}
                         </p>
-                        <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-brand-600">
+                        <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c5a059] sm:text-[11px]">
                           View saree <ArrowUpRight className="h-3.5 w-3.5" />
                         </span>
                       </div>
@@ -468,18 +485,12 @@ export default function AboutPageClient({
               Explore the collection at {BRAND_NAME} and find the story that is
               yours to wear.
             </p>
-            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/shop"
-                className="inline-flex min-w-[220px] items-center justify-center gap-2 rounded-full bg-white text-navy-900 px-10 py-4 text-sm font-bold hover:bg-brand-50 transition-colors"
-              >
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+              <Link href="/shop" className={cn(aboutPageStyles.ctaWhite, "min-w-[220px]")}>
                 <ShoppingBag className="h-4 w-4" aria-hidden />
                 Explore the collection
               </Link>
-              <Link
-                href="/gifting"
-                className="inline-flex min-w-[220px] items-center justify-center gap-2 rounded-full border border-white/30 px-10 py-4 text-sm font-bold hover:bg-white/10 transition-colors"
-              >
+              <Link href="/gifting" className={cn(aboutPageStyles.ctaOutlineOnDark, "min-w-[220px]")}>
                 <Gift className="h-4 w-4" aria-hidden />
                 Shop gifting
               </Link>

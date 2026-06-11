@@ -24,5 +24,8 @@ export type AdminAiStatus = {
   enabled: boolean;
   model?: string;
   provider?: string;
+  blogEnabled?: boolean;
+  blogProvider?: "gemini" | "groq";
+  blogModel?: string;
   features?: string[];
 };

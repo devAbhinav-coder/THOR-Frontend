@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Sparkles } from "lucide-react";
+import { Check, Loader2, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import conveyorBeltGif from "@/assets/conveyor-belt.gif";
-import shoppingBagGif from "@/assets/shopping-bag.gif";
+import {
+  heritageOverlayBody,
+  heritageOverlayCard,
+  heritageOverlayEyebrow,
+  heritageOverlayIconBox,
+  heritageOverlayTitle,
+  heritageOverlayVeil,
+} from "@/components/checkout/checkoutHeritageTheme";
 
 type Props = {
   /** When set, shows full-screen confirmation then navigates to this order */
@@ -15,9 +20,15 @@ type Props = {
   isOpen?: boolean;
 };
 
+type Phase = "processing" | "confirmed";
+
+const STEPS: { id: Phase; label: string }[] = [
+  { id: "processing", label: "Processing" },
+  { id: "confirmed", label: "Confirmed" },
+];
+
 /**
- * Post-checkout transition: full-screen confirmation before navigating to order details.
- * Respects prefers-reduced-motion (shorter, simpler).
+ * Post-checkout transition — matches cart/checkout heritage empty-state UI.
  */
 export default function OrderPlacementSuccessOverlay({
   orderId,
@@ -25,7 +36,7 @@ export default function OrderPlacementSuccessOverlay({
 }: Props) {
   const router = useRouter();
   const isVisible = Boolean(isOpen ?? orderId);
-  const [phase, setPhase] = useState<"packing" | "ready">("packing");
+  const [phase, setPhase] = useState<Phase>("processing");
   const [barFill, setBarFill] = useState(false);
   const [entered, setEntered] = useState(false);
 
@@ -45,32 +56,33 @@ export default function OrderPlacementSuccessOverlay({
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    setPhase("packing");
+    setPhase("processing");
     setBarFill(false);
     setEntered(false);
     const rafEnter = requestAnimationFrame(() => setEntered(true));
     const rafBar = requestAnimationFrame(() => setBarFill(true));
 
-    let t1: number | null = null;
-    let t2: number | null = null;
+    let confirmTimer: number | null = null;
+    let redirectTimer: number | null = null;
+
     if (orderId) {
-      t1 = window.setTimeout(
-        () => setPhase("ready"),
-        reduceMotion ? 260 : 1050,
+      confirmTimer = window.setTimeout(
+        () => setPhase("confirmed"),
+        reduceMotion ? 320 : 1200,
       );
-      t2 = window.setTimeout(
+      redirectTimer = window.setTimeout(
         () => {
           router.push(`/dashboard/orders/${encodeURIComponent(orderId)}`);
         },
-        reduceMotion ? 1000 : 3200,
+        reduceMotion ? 1200 : 3600,
       );
     }
 
     return () => {
       cancelAnimationFrame(rafEnter);
       cancelAnimationFrame(rafBar);
-      if (t1) window.clearTimeout(t1);
-      if (t2) window.clearTimeout(t2);
+      if (confirmTimer) window.clearTimeout(confirmTimer);
+      if (redirectTimer) window.clearTimeout(redirectTimer);
     };
   }, [isVisible, orderId, router]);
 
@@ -79,160 +91,150 @@ export default function OrderPlacementSuccessOverlay({
   const prefersReducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const barMs = prefersReducedMotion ? 300 : 1200;
+  const barMs = prefersReducedMotion ? 360 : 1400;
+  const isConfirmed = phase === "confirmed";
+
+  const title =
+    isConfirmed ? "Order Confirmed"
+    : orderId ? "Confirming Your Order"
+    : "Processing Your Order";
+
+  const description =
+    isConfirmed ?
+      "Thank you for your purchase. We are taking you to your order details."
+    : orderId ?
+      "Securing your payment and reserving your heritage piece…"
+    : "Please wait while we prepare and place your order…";
+
+  const statusLabel =
+    isConfirmed ? "Redirecting to your order"
+    : orderId ? "Almost there"
+    : "Please wait";
 
   return (
     <div
-      className='fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6'
-      role='dialog'
-      aria-modal='true'
-      aria-labelledby='order-success-title'
-      aria-describedby='order-success-desc'
+      className={heritageOverlayVeil}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="order-success-title"
+      aria-describedby="order-success-desc"
+      aria-busy={!isConfirmed}
     >
       <div
         className={cn(
-          "absolute inset-0 bg-navy-950/65 backdrop-blur-md transition-opacity duration-500",
-          entered ? "opacity-100" : "opacity-0",
-        )}
-        aria-hidden
-      />
-      <div
-        className={cn(
-          "relative w-full max-w-[min(100%,24rem)] overflow-hidden rounded-3xl border border-white/30 bg-gradient-to-b from-white to-gray-50/95 px-6 py-9 text-center shadow-[0_25px_80px_-20px_rgba(15,23,42,0.45)] sm:px-10 sm:py-11",
+          heritageOverlayCard,
           "transition-all duration-500 ease-out",
           entered ?
             "translate-y-0 scale-100 opacity-100"
-          : "translate-y-6 scale-[0.96] opacity-0",
+          : "translate-y-3 scale-[0.98] opacity-0",
         )}
       >
-        {/* soft accent */}
         <div
-          className='pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand-400/15 blur-2xl'
-          aria-hidden
-        />
-        <div
-          className='pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-gold-400/10 blur-2xl'
+          className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-navy-900 via-[#c5a059] to-navy-900"
           aria-hidden
         />
 
-        {phase === "ready" && !prefersReducedMotion && (
-          <>
-            <Sparkles
-              className='pointer-events-none absolute right-6 top-6 h-4 w-4 text-brand-400/80 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-500'
-              aria-hidden
-            />
-            <Sparkles
-              className='pointer-events-none absolute bottom-8 left-5 h-3 w-3 text-gold-500/70 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in duration-700'
-              aria-hidden
-            />
-          </>
-        )}
+        <nav
+          className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1"
+          aria-label="Order progress"
+        >
+          {STEPS.map((step, index) => {
+            const isActive = phase === step.id;
+            const isDone = step.id === "processing" && isConfirmed;
+            return (
+              <div key={step.id} className="flex items-center gap-2">
+                {index > 0 ?
+                  <span className="text-gray-300" aria-hidden>
+                    ·
+                  </span>
+                : null}
+                <span
+                  className={cn(
+                    "text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors sm:text-[11px]",
+                    isActive || isDone ?
+                      "text-navy-900"
+                    : "text-gray-400",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mr-1.5 inline-block tabular-nums",
+                      isActive || isDone ? "text-[#c5a059]" : "text-gray-300",
+                    )}
+                  >
+                    0{index + 1}
+                  </span>
+                  {step.label}
+                </span>
+              </div>
+            );
+          })}
+        </nav>
 
         <div
           className={cn(
-            "relative mx-auto mb-6 flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full transition-all duration-500 ease-out",
-            phase === "ready" ?
-              "bg-emerald-50 ring-[3px] ring-emerald-200/90 shadow-lg shadow-emerald-900/10"
-            : "bg-brand-50 ring-2 ring-brand-100",
+            heritageOverlayIconBox,
+            "transition-colors duration-500",
+            isConfirmed && "border-[#c5a059]/45 bg-[#fff8eb]",
           )}
         >
-          {phase === "ready" ?
+          {isConfirmed ?
             <Check
-              key='check'
-              className={cn(
-                "h-9 w-9 text-emerald-600",
-                !prefersReducedMotion &&
-                  "motion-safe:animate-in motion-safe:zoom-in-95 motion-safe:duration-300",
-              )}
-              strokeWidth={2.75}
+              className="h-7 w-7 text-[#c5a059]"
+              strokeWidth={2}
               aria-hidden
             />
-          : <Loader2
-              key='load'
-              className='h-9 w-9 text-brand-600 animate-spin motion-reduce:animate-none'
+          : orderId ?
+            <Loader2
+              className="h-7 w-7 animate-spin text-navy-900 motion-reduce:animate-none"
+              aria-hidden
+            />
+          : <ShoppingBag
+              className="h-7 w-7 text-[#c5a059]"
+              strokeWidth={1.25}
               aria-hidden
             />
           }
         </div>
 
-        <h2
-          id='order-success-title'
-          className={cn(
-            "font-serif text-xl font-bold tracking-tight text-navy-900 sm:text-2xl",
-            phase === "ready" &&
-              !prefersReducedMotion &&
-              "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-400",
-          )}
-        >
-          {phase === "ready" ? "Order confirmed" : "Processing your order"}
+        <p className={heritageOverlayEyebrow}>The House of Rani</p>
+
+        <h2 id="order-success-title" className={cn(heritageOverlayTitle, "mt-3")}>
+          {title}
         </h2>
-        <p
-          id='order-success-desc'
-          className={cn(
-            "mt-2.5 text-sm leading-relaxed text-gray-600",
-            phase === "ready" ? "text-gray-600" : "text-gray-500",
-            phase === "ready" &&
-              !prefersReducedMotion &&
-              "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-400 motion-safe:delay-75",
-          )}
-        >
-          {phase === "ready" ?
-            "Redirecting to your order details..."
-          : "Please wait while we process your order..."}
+
+        <div className="gold-divider mx-auto my-5 w-16 sm:my-6" aria-hidden />
+
+        <p id="order-success-desc" className={heritageOverlayBody}>
+          {description}
         </p>
 
-        {phase === "packing" && (
-          <div className='mt-5 rounded-2xl border border-gray-200 bg-white/90 p-3.5'>
-            <div className='mx-auto h-20 w-28 overflow-hidden rounded-xl ring-1 ring-gray-100'>
-              <Image
-                src={conveyorBeltGif}
-                alt='Conveyor running'
-                width={112}
-                height={80}
-                className='h-full w-full object-cover'
-                unoptimized
-                priority
-              />
-            </div>
+        <div className="mx-auto mt-8 max-w-xs">
+          <div className="h-1 w-full overflow-hidden bg-gray-100">
+            <div
+              className={cn(
+                "h-full bg-gradient-to-r from-navy-900 via-[#c5a059] to-navy-900",
+                prefersReducedMotion ? "transition-none" : (
+                  "transition-[width] ease-out"
+                ),
+                isConfirmed && "opacity-90",
+              )}
+              style={{
+                width:
+                  isConfirmed ? "100%"
+                  : barFill ?
+                    orderId ?
+                      "72%"
+                    : "45%"
+                  : "0%",
+                transitionDuration: `${barMs}ms`,
+              }}
+            />
           </div>
-        )}
-
-        {phase === "ready" && (
-          <div className='mt-5 flex flex-col items-center'>
-            <div className='h-20 w-20 overflow-hidden rounded-2xl ring-1 ring-emerald-100'>
-              <Image
-                src={shoppingBagGif}
-                alt='Order confirmed'
-                width={80}
-                height={80}
-                className='h-full w-full object-cover'
-                unoptimized
-                priority
-              />
-            </div>
-            <p className='mt-2 text-xs font-semibold text-emerald-700'>
-              Order confirmed successfully.
-            </p>
-          </div>
-        )}
-
-        <div className='mt-7 h-2 w-full overflow-hidden rounded-full bg-gray-100/90 ring-1 ring-gray-200/60'>
-          <div
-            className={cn(
-              "h-full rounded-full bg-gradient-to-r from-brand-500 via-brand-500 to-emerald-500",
-              prefersReducedMotion ? "transition-none" : (
-                "transition-[width] ease-out"
-              ),
-            )}
-            style={{
-              width: barFill ? "100%" : "0%",
-              transitionDuration: `${barMs}ms`,
-            }}
-          />
+          <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+            {statusLabel}
+          </p>
         </div>
-        <p className='mt-4 text-[11px] font-medium uppercase tracking-[0.2em] text-gray-400'>
-          {phase === "ready" ? "Success" : "Processing"}
-        </p>
       </div>
     </div>
   );

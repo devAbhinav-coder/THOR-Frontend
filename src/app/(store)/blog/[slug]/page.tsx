@@ -15,12 +15,24 @@ export default async function BlogDetailPage({ params }: Props) {
   if (!data?.blog) notFound();
 
   const postUrl = `${SITE_URL}/blog/${encodeURIComponent(data.blog.slug)}`;
+  const plainWords = plainBlogExcerpt(data.blog.content, 50000)
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+  const relatedProducts = (data.blog.relatedProductIds || []).filter(
+    (p): p is { _id: string; name: string; slug: string } =>
+      typeof p === "object" && p !== null && "slug" in p && Boolean(p.slug),
+  );
+
   const blogPostingLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     "@id": `${postUrl}#article`,
-    headline: data.blog.title,
-    description: plainBlogExcerpt(data.blog.content, 180),
+    headline: data.blog.seoTitle || data.blog.title,
+    description:
+      data.blog.seoDescription ||
+      data.blog.excerpt ||
+      plainBlogExcerpt(data.blog.content, 180),
     image: (data.blog.images || []).map((img) => img.url).filter(Boolean),
     datePublished: data.blog.createdAt,
     dateModified: data.blog.updatedAt || data.blog.createdAt,
@@ -39,7 +51,19 @@ export default async function BlogDetailPage({ params }: Props) {
     },
     mainEntityOfPage: postUrl,
     url: postUrl,
+    keywords: [...(data.blog.keywords || []), ...(data.blog.tags || [])].join(", "),
+    articleSection: data.blog.category || "Journal",
+    wordCount: plainWords,
     inLanguage: "en-IN",
+    ...(relatedProducts.length > 0 ?
+      {
+        about: relatedProducts.slice(0, 4).map((p) => ({
+          "@type": "Product",
+          name: p.name,
+          url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
+        })),
+      }
+    : {}),
   };
 
   return (

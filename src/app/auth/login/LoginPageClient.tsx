@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthNavLink from "@/components/auth/AuthNavLink";
+import AuthGoogleButton from "@/components/auth/AuthGoogleButton";
+import AuthLegalNotice from "@/components/auth/AuthLegalNotice";
 import {
   AuthFormRoot,
   AuthFormHeader,
@@ -10,15 +12,14 @@ import {
   AuthFormFooter,
   AuthBackButton,
 } from "@/components/auth/AuthFormChrome";
-import { authLinkText, authGhostBtn } from "@/lib/authFormShell";
+import AuthField from "@/components/auth/AuthField";
+import { authLinkText, authGhostBtn, authPrimaryBtn } from "@/lib/authFormShell";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
-import { GoogleLogin } from "@react-oauth/google";
+import { Eye, EyeOff, Mail } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { authApi } from "@/lib/api";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
@@ -68,10 +69,6 @@ export default function LoginPageClient({
   onForgotPassword,
 }: LoginPageClientProps = {}) {
   const [showPassword, setShowPassword] = useState(false);
-  /** GSI re-inits on every `width` change — render only after mount so width is stable (fixes first-click failures). */
-  const [googleUiReady, setGoogleUiReady] = useState(false);
-  const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
-  const googleButtonHostRef = useRef<HTMLDivElement | null>(null);
   const { login, loginWithGoogle, loginWithOtp, isLoading } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -204,47 +201,13 @@ export default function LoginPageClient({
     }
   };
 
-  const updateGoogleButtonWidth = useCallback(() => {
-    const hostWidth = googleButtonHostRef.current?.clientWidth || 0;
-    setGoogleButtonWidth(Math.max(230, hostWidth || 320));
-  }, []);
-
-  useEffect(() => {
-    updateGoogleButtonWidth();
-    setGoogleUiReady(true);
-  }, [updateGoogleButtonWidth]);
-
-  useEffect(() => {
-    if (!googleUiReady) return;
-    const host = googleButtonHostRef.current;
-    if (!host || typeof window === "undefined") return;
-    const observer = new ResizeObserver(() => updateGoogleButtonWidth());
-    observer.observe(host);
-    const onResize = () => updateGoogleButtonWidth();
-    window.addEventListener("resize", onResize);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", onResize);
-    };
-  }, [googleUiReady, updateGoogleButtonWidth]);
-
   const googleBlock =
     googleClientId ?
-      <div ref={googleButtonHostRef} className="w-full overflow-hidden min-h-[40px]">
-        {googleUiReady ?
-          <GoogleLogin
-            theme="outline"
-            size="large"
-            width={googleButtonWidth}
-            text="continue_with"
-            shape="rectangular"
-            logo_alignment="center"
-            use_fedcm_for_button={false}
-            onSuccess={(cred) => void handleGoogle(cred.credential)}
-            onError={() => toast.error("Google sign-in was cancelled or failed.")}
-          />
-        : null}
-      </div>
+      <AuthGoogleButton
+        mode="login"
+        onSuccess={(credential) => void handleGoogle(credential)}
+        onError={() => toast.error("Google sign-in was cancelled or failed.")}
+      />
     : null;
 
   if (loginMode === "otp") {
@@ -259,8 +222,9 @@ export default function LoginPageClient({
               subtitle={`Code sent to ${otpEmail}`}
               icon={<Mail className="h-5 w-5" />}
             />
-            <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-3">
-              <Input
+            <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-4">
+              <AuthField
+                embedded={embedded}
                 {...otpCodeForm.register("otp")}
                 inputMode="numeric"
                 autoComplete="one-time-code"
@@ -284,11 +248,11 @@ export default function LoginPageClient({
                 type="submit"
                 variant="brand"
                 size="lg"
-                className="w-full"
+                className={authPrimaryBtn()}
                 loading={isLoading}
                 disabled={otpVerifyCooldownSec > 0}
               >
-                {otpVerifyCooldownSec > 0 ? `Sign in in ${otpVerifyCooldownSec}s` : "Sign in"}
+                {otpVerifyCooldownSec > 0 ? `Sign in in ${otpVerifyCooldownSec}s` : "Enter the House"}
               </Button>
               <AuthBackButton
                 embedded={embedded}
@@ -324,16 +288,17 @@ export default function LoginPageClient({
             title="Email sign-in code"
             subtitle="We will send a one-time 6-digit code"
           />
-          <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-3">
-            <Input
+          <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-4">
+            <AuthField
+              embedded={embedded}
               {...otpEmailForm.register("email")}
               type="email"
-              label="Email"
-              placeholder="you@example.com"
+              label="Email address"
+              placeholder="your@email.com"
               error={otpEmailForm.formState.errors.email?.message}
               autoComplete="email"
             />
-            <Button type="submit" variant="brand" size="lg" className="w-full" loading={otpSending}>
+            <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={otpSending}>
               Send code
             </Button>
             <AuthBackButton embedded={embedded} onClick={() => setLoginMode("password")}>
@@ -350,43 +315,57 @@ export default function LoginPageClient({
   return (
     <>
       <AuthFormRoot embedded={embedded}>
-        <AuthFormHeader
-          embedded={embedded}
-          title="Sign in to The House of Rani"
-          subtitle={embedded ? undefined : "Sign in to continue shopping"}
-        />
+        {!embedded && (
+          <AuthFormHeader
+            embedded={embedded}
+            title="Sign in to The House of Rani"
+            subtitle="Sign in to continue shopping"
+          />
+        )}
 
         {googleBlock}
         {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          <Input
+          <AuthField
+            embedded={embedded}
             {...register("email")}
             type="email"
-            label="Email"
-            placeholder="you@example.com"
+            label="Email address"
+            placeholder="your@email.com"
             error={errors.email?.message}
             autoComplete="email"
           />
-          <div className="relative">
-            <Input
-              {...register("password")}
-              type={showPassword ? "text" : "password"}
-              label="Password"
-              placeholder="Your password"
-              error={errors.password?.message}
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          <div className="flex items-center justify-between gap-2 pt-0.5">
+          <AuthField
+            embedded={embedded}
+            {...register("password")}
+            type={showPassword ? "text" : "password"}
+            label="Password"
+            placeholder="Your password"
+            error={errors.password?.message}
+            autoComplete="current-password"
+            labelAction={
+              <AuthNavLink
+                embedded={embedded}
+                onNavigate={onForgotPassword}
+                href="/auth/forgot-password"
+                className={authLinkText(embedded)}
+              >
+                Forgot?
+              </AuthNavLink>
+            }
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-1 text-gray-400 transition-colors hover:text-navy-900"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
+          />
+          <div className="flex items-center justify-start pt-0.5">
             <button
               type="button"
               onClick={() => setLoginMode("otp")}
@@ -394,32 +373,39 @@ export default function LoginPageClient({
             >
               Use email code instead
             </button>
-            <AuthNavLink
-              embedded={embedded}
-              onNavigate={onForgotPassword}
-              href="/auth/forgot-password"
-              className={authLinkText(embedded)}
-            >
-              Forgot password?
-            </AuthNavLink>
           </div>
-          <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
-            <LogIn className="h-4 w-4 mr-2" />
-            Sign in
+          <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
+            Enter the House
           </Button>
         </form>
 
         <AuthFormFooter embedded={embedded}>
-          Don&apos;t have an account?{" "}
-          <AuthNavLink
-            embedded={embedded}
-            onNavigate={onSwitchToSignup}
-            href="/auth/signup"
-            className={authLinkText(embedded)}
-          >
-            Create one
-          </AuthNavLink>
+          {embedded ?
+            <>
+              Not yet part of our legacy?{" "}
+              <AuthNavLink
+                embedded={embedded}
+                onNavigate={onSwitchToSignup}
+                href="/auth/signup"
+                className={authLinkText(embedded)}
+              >
+                Create Account
+              </AuthNavLink>
+            </>
+          : <>
+              Don&apos;t have an account?{" "}
+              <AuthNavLink
+                embedded={embedded}
+                onNavigate={onSwitchToSignup}
+                href="/auth/signup"
+                className={authLinkText(embedded)}
+              >
+                Create one
+              </AuthNavLink>
+            </>
+          }
         </AuthFormFooter>
+        <AuthLegalNotice mode="signin" />
       </AuthFormRoot>
       <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
     </>

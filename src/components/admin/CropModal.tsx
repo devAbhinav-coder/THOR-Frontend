@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Cropper, { Area } from "react-easy-crop";
 import { X, Crop as CropIcon } from "lucide-react";
 
@@ -9,6 +10,8 @@ interface CropModalProps {
   originalFile: File;
   onClose: () => void;
   onCropComplete: (croppedBlob: Blob | File) => void;
+  defaultAspect?: number;
+  queueLabel?: string;
 }
 
 const ASPECT_RATIOS = [
@@ -19,38 +22,77 @@ const ASPECT_RATIOS = [
   { label: "Free (Any)", value: undefined },
 ];
 
-export default function CropModal({ imageSrc, originalFile, onClose, onCropComplete }: CropModalProps) {
+const CROP_AREA_HEIGHT = "min(52vh, 500px)";
+
+export default function CropModal({
+  imageSrc,
+  originalFile,
+  onClose,
+  onCropComplete,
+  defaultAspect = 4 / 3,
+  queueLabel,
+}: CropModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [aspect, setAspect] = useState<number | undefined>(4 / 3);
+  const [aspect, setAspect] = useState<number | undefined>(defaultAspect);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cropperReady, setCropperReady] = useState(false);
 
-  const onCropChange = (location: { x: number; y: number }) => {
-    setCrop(location);
-  };
+  useEffect(() => {
+    setMounted(true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
 
-  const onZoomChange = (zoomValue: number) => {
-    setZoom(zoomValue);
-  };
+  useEffect(() => {
+    setAspect(defaultAspect);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+    setCropperReady(false);
+  }, [imageSrc, defaultAspect]);
 
   const onCropCompleteEvent = useCallback(
     (_croppedArea: Area, croppedAreaPx: Area) => {
       setCroppedAreaPixels(croppedAreaPx);
     },
-    []
+    [],
   );
 
+  const onMediaLoaded = useCallback(() => {
+    setCropperReady(true);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+  }, []);
+
+  const handleAspectChange = (value: number | undefined) => {
+    setAspect(value);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+  };
+
   const createCroppedImage = async () => {
-    if (!croppedAreaPixels) return;
+    if (!croppedAreaPixels) {
+      onCropComplete(originalFile);
+      return;
+    }
     setIsProcessing(true);
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
       if (croppedBlob) {
         onCropComplete(croppedBlob);
+      } else {
+        onCropComplete(originalFile);
       }
     } catch (e) {
       console.error(e);
+      onCropComplete(originalFile);
     } finally {
       setIsProcessing(false);
     }
@@ -60,48 +102,92 @@ export default function CropModal({ imageSrc, originalFile, onClose, onCropCompl
     onCropComplete(originalFile);
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-2 sm:p-4 bg-black/95 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in duration-300">
+  if (!mounted) return null;
+
+  const modal = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/75"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="crop-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-          <div className="flex flex-col">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <CropIcon className="w-5 h-5 text-brand-600" /> Adjust Image Shape
+          <div className="flex flex-col min-w-0">
+            <h3
+              id="crop-modal-title"
+              className="font-bold text-gray-900 flex items-center gap-2"
+            >
+              <CropIcon className="w-5 h-5 text-brand-600 shrink-0" />
+              Adjust Image Shape
             </h3>
-            <p className="text-xs text-gray-500 font-medium">Drag to reposition. Select an aspect ratio below to fit the layout.</p>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              Drag to reposition · pinch or slider to zoom · pick aspect ratio below
+              {queueLabel ? ` · ${queueLabel}` : ""}
+            </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+            className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors shrink-0"
+            aria-label="Close crop dialog"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        
-        <div className="relative w-full flex-1 min-h-[50vh] sm:min-h-[60vh] bg-[#0a0f1c] touch-none">
+
+        <div
+          className="relative w-full bg-[#111827] touch-none shrink-0"
+          style={{ height: CROP_AREA_HEIGHT, minHeight: 320 }}
+        >
           <Cropper
+            key={`${imageSrc}-${aspect ?? "free"}`}
             image={imageSrc}
             crop={crop}
             zoom={zoom}
             aspect={aspect}
-            onCropChange={onCropChange}
+            onCropChange={setCrop}
             onCropComplete={onCropCompleteEvent}
-            onZoomChange={onZoomChange}
-            showGrid={true}
-            style={{ containerStyle: { width: '100%', height: '100%' } }}
+            onZoomChange={setZoom}
+            onMediaLoaded={onMediaLoaded}
+            showGrid
+            zoomWithScroll
+            restrictPosition={false}
+            objectFit="contain"
+            style={{
+              containerStyle: {
+                width: "100%",
+                height: "100%",
+                position: "relative",
+              },
+              cropAreaStyle: {
+                border: "2px solid rgba(255,255,255,0.85)",
+              },
+            }}
           />
+          {!cropperReady && (
+            <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm">
+              Loading image…
+            </div>
+          )}
         </div>
 
-        {/* Aspect Ratio Selector */}
         <div className="p-3 bg-white border-b border-gray-100 flex gap-2 overflow-x-auto shrink-0 no-scrollbar">
           {ASPECT_RATIOS.map((ratio) => (
             <button
               key={ratio.label}
-              onClick={() => setAspect(ratio.value)}
+              type="button"
+              onClick={() => handleAspectChange(ratio.value)}
               className={`whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-full border transition-colors ${
-                aspect === ratio.value
-                  ? "bg-brand-600 border-brand-600 text-white"
-                  : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                aspect === ratio.value ?
+                  "bg-brand-600 border-brand-600 text-white"
+                : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               }`}
             >
               {ratio.label}
@@ -111,53 +197,57 @@ export default function CropModal({ imageSrc, originalFile, onClose, onCropCompl
 
         <div className="p-4 sm:p-5 bg-gray-50 flex flex-col sm:flex-row items-center gap-4 justify-between shrink-0">
           <div className="flex items-center gap-3 w-full max-w-sm">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Zoom</span>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0">
+              Zoom
+            </span>
             <input
               type="range"
               value={zoom}
               min={1}
               max={3}
               step={0.05}
-              aria-labelledby="Zoom"
-              onChange={(e) => {
-                setZoom(Number(e.target.value));
-              }}
+              aria-label="Zoom"
+              onChange={(e) => setZoom(Number(e.target.value))}
               className="w-full accent-brand-600"
             />
           </div>
-          
-          <div className="flex flex-col sm:flex-row justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+
+          <div className="flex flex-col sm:flex-row justify-end gap-3 w-full sm:w-auto">
             <button
-               onClick={useOriginalFile}
-               className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 shadow-sm transition-colors w-full sm:w-auto order-3 sm:order-1"
-               title="Use the original photo without any cropping"
+              type="button"
+              onClick={useOriginalFile}
+              className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 shadow-sm transition-colors w-full sm:w-auto"
+              title="Use the original photo without any cropping"
             >
-               Skip Crop
+              Skip Crop
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors w-full sm:w-auto order-2"
+              className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors w-full sm:w-auto"
             >
-              Cancel 
+              Cancel
             </button>
             <button
+              type="button"
               onClick={createCroppedImage}
               disabled={isProcessing}
-              className="px-6 py-2.5 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition-all disabled:opacity-50 w-full sm:w-auto order-1 sm:order-3"
+              className="px-6 py-2.5 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition-all disabled:opacity-50 w-full sm:w-auto"
             >
-              {isProcessing ? "Processing..." : "Crop & Save"}
+              {isProcessing ? "Processing…" : "Crop & Save"}
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
 
-// Utility function to crop canvas
 async function getCroppedImg(
   imageSrc: string,
-  pixelCrop: Area
+  pixelCrop: Area,
 ): Promise<Blob | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
@@ -177,7 +267,7 @@ async function getCroppedImg(
     0,
     0,
     pixelCrop.width,
-    pixelCrop.height
+    pixelCrop.height,
   );
 
   return new Promise((resolve) => {
@@ -192,7 +282,7 @@ function createImage(url: string): Promise<HTMLImageElement> {
     const image = new Image();
     image.addEventListener("load", () => resolve(image));
     image.addEventListener("error", (error) => reject(error));
-    image.setAttribute("crossOrigin", "anonymous"); 
+    image.setAttribute("crossOrigin", "anonymous");
     image.src = url;
   });
 }

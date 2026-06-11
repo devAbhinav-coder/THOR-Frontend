@@ -1,63 +1,36 @@
-import { ProductCardSkeleton, Skeleton } from "@/components/ui/SkeletonLoader";
+import { Skeleton } from "@/components/ui/SkeletonLoader";
+import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkeleton";
 
 export default function ShopPageSkeleton() {
   return (
-    <div>
-      {/* Banner area (matches ShopClient top banner section) */}
-      <div className='max-w-[1800px] mx-auto px-2 sm:px-4'>
-        <div className='relative overflow-hidden rounded-none sm:rounded-2xl'>
-          <Skeleton className='h-[140px] sm:h-[220px] lg:h-[230px] w-full rounded-none sm:rounded-2xl' />
+    <div className="bg-white pb-12 pt-6 sm:pt-8 lg:pb-16 lg:pt-10">
+      <section className="mb-6 px-4 sm:mb-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-3 sm:space-y-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-3 w-10 rounded" />
+            <Skeleton className="h-3 w-3 rounded" />
+            <Skeleton className="h-3 w-10 rounded" />
+            <Skeleton className="h-3 w-3 rounded" />
+            <Skeleton className="h-3 w-24 rounded" />
+          </div>
+          <Skeleton className="h-8 w-2/3 max-w-sm rounded-md sm:h-9" />
+        </div>
+      </section>
+
+      <div className="mb-10 border-y border-gray-100 sm:mb-12">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <Skeleton className="h-4 w-24 rounded" />
+          <Skeleton className="h-4 w-36 rounded" />
         </div>
       </div>
 
-      {/* Breadcrumb + Heading + Sort row */}
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5'>
-        <div className='flex items-center gap-2'>
-          <Skeleton className='h-3 w-10 rounded' />
-          <Skeleton className='h-3 w-3 rounded' />
-          <Skeleton className='h-3 w-10 rounded' />
-          <Skeleton className='h-3 w-3 rounded' />
-          <Skeleton className='h-3 w-28 rounded' />
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 items-stretch gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 [&>*]:h-full [&>*]:min-h-0">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ShopCollectionCardSkeleton key={i} />
+          ))}
         </div>
-
-        <div className='mt-4 mb-2 sm:mb-3 flex flex-wrap items-end justify-between gap-3'>
-          <div className='space-y-2'>
-            <Skeleton className='h-7 w-44 sm:w-56 rounded-lg' />
-            <Skeleton className='h-4 w-28 rounded' />
-          </div>
-          <div className='flex items-center gap-2'>
-            <Skeleton className='h-10 w-24 rounded-xl lg:hidden' />
-            <Skeleton className='h-10 w-44 rounded-xl' />
-          </div>
-        </div>
-      </div>
-
-      {/* Filters + Grid */}
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-7'>
-        <div className='lg:flex lg:items-start lg:gap-6'>
-          {/* Desktop sidebar */}
-          <aside className='hidden lg:block lg:w-64 lg:min-w-64 space-y-5 pr-2 sticky top-20'>
-            <Skeleton className='h-4 w-24 rounded' />
-            {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className='h-9 w-full rounded-lg' />
-            ))}
-            <div className='space-y-3'>
-              <Skeleton className='h-4 w-20 rounded' />
-              <Skeleton className='h-9 w-full rounded-lg' />
-              <Skeleton className='h-9 w-full rounded-lg' />
-            </div>
-          </aside>
-
-          <div className='w-full min-w-0 lg:flex-1 lg:min-h-[70vh] lg:-mt-1 space-y-5'>
-            <div className='grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5 items-stretch [&>*]:h-full [&>*]:min-h-0'>
-              {Array.from({ length: 12 }).map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
-

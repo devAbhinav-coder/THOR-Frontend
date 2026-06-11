@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Tag } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperType } from "swiper";
 import { Autoplay } from "swiper/modules";
@@ -14,13 +14,10 @@ import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { Category } from "@/types";
 import { cn } from "@/lib/utils";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
-import HomeSectionHeader from "@/components/home/HomeSectionHeader";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
 import "swiper/css";
 import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
-
-const TRANSITION_MS = 5200;
 
 const FALLBACK_IMAGES: Record<string, string> = {
   saree: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85",
@@ -47,11 +44,51 @@ function sortSareeFirst(a: Category, b: Category): number {
 }
 
 type CategorySectionProps = {
-  /** Server-prefetched list; `null` = prefetch failed, client will fetch. */
   initialCategories?: (Category & { productCount: number })[] | null;
 };
 
-/* ── Main Section ────────────────────────────────────────── */
+function CategoryCard({
+  cat,
+  index,
+}: {
+  cat: Category & { productCount: number };
+  index: number;
+}) {
+  const imgSrc = getImageForCategory(cat);
+
+  return (
+    <Link href={buildShopCategoryHref(cat)} className='group block w-full'>
+      <div className='border border-[#c5a059]/35 bg-white lg:border-[#c5a059]/50'>
+        <div
+          className='relative overflow-hidden bg-gray-100'
+          style={{ aspectRatio: "3/4" }}
+        >
+          <Image
+            src={imgSrc}
+            alt={`Shop ${cat.name} collection`}
+            fill
+            loader={cloudinaryLoader}
+            sizes='(max-width: 1024px) 82vw, 25vw'
+            className='object-cover transition-transform duration-700 group-hover:scale-[1.03]'
+            priority={index === 0}
+            loading={index === 0 ? "eager" : "lazy"}
+            quality={index === 0 ? 72 : 65}
+            decoding={index === 0 ? "sync" : "async"}
+          />
+
+          {/* Bottom-center overlay — mobile & laptop */}
+          <div className='absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent' />
+          <div className='absolute inset-x-0 bottom-0 px-4 pb-4 text-center sm:pb-5 lg:pb-6'>
+            <h3 className='text-[11px] font-semibold uppercase tracking-[0.18em] text-white sm:text-xs lg:text-[11px]'>
+              {cat.name}
+            </h3>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function CategorySection({
   initialCategories,
 }: CategorySectionProps = {}) {
@@ -108,13 +145,20 @@ export default function CategorySection({
     setIsSwiperLocked(swiper.isLocked);
   }, []);
 
-  const handleSwiperLock = useCallback(() => {
-    setIsSwiperLocked(true);
-  }, []);
+  const handleSwiperLock = useCallback(() => setIsSwiperLocked(true), []);
+  const handleSwiperUnlock = useCallback(() => setIsSwiperLocked(false), []);
 
-  const handleSwiperUnlock = useCallback(() => {
-    setIsSwiperLocked(false);
-  }, []);
+  const handleSlidePrev = useCallback(() => {
+    if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
+      swiperReady.slidePrev();
+    }
+  }, [swiperReady, isSwiperLocked]);
+
+  const handleSlideNext = useCallback(() => {
+    if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
+      swiperReady.slideNext();
+    }
+  }, [swiperReady, isSwiperLocked]);
 
   const pauseAuto = useCallback(() => {
     if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
@@ -134,18 +178,16 @@ export default function CategorySection({
     return (
       <section className={cn(homeSectionStyles.pageBg, "py-16")}>
         <div className={homeSectionStyles.container}>
-          <HomeSectionHeader
-            className='mb-6'
-            align='left'
-            eyebrow='Explore Collections'
-            title={
-              <>
-                Shop by <span className='italic text-brand-700'>Category</span>
-              </>
-            }
-          />
-          <div className='flex flex-col items-start gap-3 py-12'>
-            <Tag className='w-12 h-12 text-gray-300' />
+          <div className='mb-6 text-center lg:text-left'>
+            <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs'>
+              Explore Collections
+            </p>
+            <h2 className='mt-3 font-serif text-3xl font-medium italic leading-tight text-navy-900 sm:text-4xl'>
+              Shop by Category
+            </h2>
+          </div>
+          <div className='flex flex-col items-center gap-3 py-12 lg:items-start'>
+            <Tag className='h-12 w-12 text-gray-300' />
             <p className='text-sm text-gray-400'>
               No categories available yet.
             </p>
@@ -156,29 +198,59 @@ export default function CategorySection({
   }
 
   return (
-    <section className={cn(homeSectionStyles.pageBg, "py-12 sm:py-14")}>
-      <div className='max-w-7xl mx-auto px-2 sm:px-6 lg:px-8'>
-        <div className='mb-8 sm:mb-10'>
-          <HomeSectionHeader
-            eyebrow='Explore Collections'
-            title={
-              <>
-                Shop by <span className='text-brand-700'>Category</span>
-              </>
-            }
-          />
+    <section
+      className={cn(homeSectionStyles.pageBg, "py-12 sm:py-14 lg:py-16")}
+    >
+      <div className='mx-auto max-w-7xl px-3 sm:px-6 lg:px-8'>
+        {/* Header — centered mobile, row laptop */}
+        <div className='mb-8 flex flex-col items-center gap-4 px-1 sm:mb-10 lg:flex-row lg:items-end lg:justify-between lg:px-0'>
+          <div className='text-center lg:text-left'>
+            <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs'>
+              Explore Collections
+            </p>
+            <h2 className='mt-3 font-serif text-3xl font-medium italic leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15] lg:not-italic'>
+              Shop by <span className='lg:italic'>Category</span>
+            </h2>
+          </div>
+          <Link
+            href='/shop'
+            className='shrink-0 text-[11px] font-medium uppercase tracking-[0.22em] text-[#c5a059] underline decoration-[#c5a059]/60 underline-offset-[6px] transition-colors hover:text-navy-900 hover:decoration-navy-900 sm:text-xs'
+          >
+            View All
+          </Link>
         </div>
 
         <div
-          className={`relative overflow-hidden rounded-[30px] px-2 py-3 sm:px-3 sm:py-4 min-h-[380px] sm:min-h-[460px] lg:min-h-[510px] ${
-            isSwiperLocked ? "[&_.swiper-wrapper]:justify-center" : ""
-          }`}
+          className={cn(
+            "relative min-h-[360px] overflow-hidden sm:min-h-[420px] lg:min-h-[480px]",
+            isSwiperLocked && "[&_.swiper-wrapper]:justify-center",
+          )}
           onMouseEnter={pauseAuto}
           onMouseLeave={resumeAuto}
           onPointerDown={pauseAuto}
           onPointerUp={resumeAuto}
           onPointerCancel={resumeAuto}
         >
+          {!isSwiperLocked && (
+            <>
+              <button
+                type="button"
+                onClick={handleSlidePrev}
+                className="absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-navy-900 shadow-md transition-colors hover:bg-white sm:left-1 sm:h-10 sm:w-10"
+                aria-label="Previous categories"
+              >
+                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleSlideNext}
+                className="absolute right-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-navy-900 shadow-md transition-colors hover:bg-white sm:right-1 sm:h-10 sm:w-10"
+                aria-label="Next categories"
+              >
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            </>
+          )}
           <style jsx global>{`
             .category-collection-swiper .swiper-wrapper {
               transition-timing-function: linear !important;
@@ -190,7 +262,7 @@ export default function CategorySection({
             onLock={handleSwiperLock}
             onUnlock={handleSwiperUnlock}
             slidesPerView='auto'
-            spaceBetween={16}
+            spaceBetween={12}
             speed={8000}
             autoplay={
               isSwiperLocked ? false : (
@@ -206,64 +278,21 @@ export default function CategorySection({
             watchOverflow
             grabCursor
             className='category-collection-swiper relative z-10 !pb-1'
-            slidesOffsetBefore={4}
-            slidesOffsetAfter={4}
+            slidesOffsetBefore={0}
+            slidesOffsetAfter={0}
+            breakpoints={{
+              0: { spaceBetween: 12 },
+              1024: { spaceBetween: 16 },
+            }}
           >
-            {filteredCategories.map((cat, index) => {
-              const imgSrc = getImageForCategory(cat);
-              return (
-                <SwiperSlide
-                  key={cat._id}
-                  className='!w-[270px] sm:!w-[330px] lg:!w-[370px]'
-                >
-                  <Link
-                    href={buildShopCategoryHref(cat)}
-                    className='group block w-full'
-                  >
-                    <div
-                      className={`relative overflow-hidden rounded-2xl transition-transform duration-500 ${
-                        index % 2 === 0 ?
-                          "lg:rotate-[-0.6deg] group-hover:rotate-0"
-                        : "lg:rotate-[0.6deg] group-hover:rotate-0"
-                      }`}
-                      style={{ aspectRatio: "3/4", background: "#f0ebe4" }}
-                    >
-                      <Image
-                        src={imgSrc}
-                        alt={`Shop ${cat.name} collection`}
-                        fill
-                        loader={cloudinaryLoader}
-                        sizes='(max-width: 640px) 270px, (max-width: 1024px) 330px, 370px'
-                        className='object-contain transition-transform duration-700 group-hover:scale-102'
-                        // Only the very first card is above the fold; the
-                        // earlier `index < 4` value flagged 4 images as LCP
-                        // candidates and competed for bandwidth.
-                        priority={index === 0}
-                        loading={index === 0 ? "eager" : "lazy"}
-                        quality={index === 0 ? 72 : 65}
-                        decoding={index === 0 ? "sync" : "async"}
-                      />
-                      <div className='absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/45 to-transparent' />
-                      <div className='absolute bottom-0 left-0 right-0 p-4 sm:p-5'>
-                        <h3 className='text-white font-serif font-medium text-2xl leading-tight'>
-                          {cat.name}
-                        </h3>
-                        {/* {cat.productCount > 0 && (
-                          <p className='text-white/80 text-[11px] mt-1 tracking-[0.14em] uppercase'>
-                            {cat.productCount}+ Designs
-                          </p>
-                        )} */}
-                        {/* {cat.productCount === 0 && (
-                          <p className='text-white/55 text-xs mt-0.5 tracking-wide'>
-                            Coming soon
-                          </p>
-                        )} */}
-                      </div>
-                    </div>
-                  </Link>
-                </SwiperSlide>
-              );
-            })}
+            {filteredCategories.map((cat, index) => (
+              <SwiperSlide
+                key={cat._id}
+                className='!w-[78vw] sm:!w-[300px] lg:!w-[calc((100%-3rem)/4)] lg:max-w-[300px]'
+              >
+                <CategoryCard cat={cat} index={index} />
+              </SwiperSlide>
+            ))}
           </Swiper>
         </div>
       </div>

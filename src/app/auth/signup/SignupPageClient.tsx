@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthNavLink from "@/components/auth/AuthNavLink";
+import AuthGoogleButton from "@/components/auth/AuthGoogleButton";
+import AuthLegalNotice from "@/components/auth/AuthLegalNotice";
 import {
   AuthFormRoot,
   AuthFormHeader,
@@ -12,16 +13,15 @@ import {
   AuthBackButton,
   AuthStepBar,
 } from "@/components/auth/AuthFormChrome";
-import { authLinkText } from "@/lib/authFormShell";
+import AuthField from "@/components/auth/AuthField";
+import { authLinkText, authPrimaryBtn } from "@/lib/authFormShell";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { Eye, EyeOff, UserPlus, Mail } from "lucide-react";
-import { GoogleLogin } from "@react-oauth/google";
+import { Eye, EyeOff, Mail } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
 import AuthPendingOverlay from "@/components/auth/AuthPendingOverlay";
@@ -80,9 +80,6 @@ export default function SignupPageClient({
   onSwitchToLogin,
 }: SignupPageClientProps = {}) {
   const [showPassword, setShowPassword] = useState(false);
-  const [googleUiReady, setGoogleUiReady] = useState(false);
-  const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
-  const googleButtonHostRef = useRef<HTMLDivElement | null>(null);
   const [wizardStep, setWizardStep] = useState<"details" | "password" | "otp">(
     "details",
   );
@@ -177,30 +174,6 @@ export default function SignupPageClient({
     }
   };
 
-  const updateGoogleButtonWidth = useCallback(() => {
-    const hostWidth = googleButtonHostRef.current?.clientWidth || 0;
-    setGoogleButtonWidth(Math.max(230, hostWidth || 320));
-  }, []);
-
-  useEffect(() => {
-    updateGoogleButtonWidth();
-    setGoogleUiReady(true);
-  }, [updateGoogleButtonWidth]);
-
-  useEffect(() => {
-    if (!googleUiReady) return;
-    const host = googleButtonHostRef.current;
-    if (!host || typeof window === "undefined") return;
-    const observer = new ResizeObserver(() => updateGoogleButtonWidth());
-    observer.observe(host);
-    const onResize = () => updateGoogleButtonWidth();
-    window.addEventListener("resize", onResize);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", onResize);
-    };
-  }, [googleUiReady, updateGoogleButtonWidth]);
-
   const onContinueDetails = async () => {
     const ok = await form.trigger(["name", "email", "phone"]);
     if (ok) setWizardStep("password");
@@ -211,40 +184,12 @@ export default function SignupPageClient({
 
   const googleBlock =
     googleClientId ?
-      <div ref={googleButtonHostRef} className="w-full overflow-hidden min-h-[40px]">
-        {googleUiReady ?
-          <GoogleLogin
-            theme="outline"
-            size="large"
-            width={googleButtonWidth}
-            text="signup_with"
-            shape="rectangular"
-            logo_alignment="center"
-            use_fedcm_for_button={false}
-            onSuccess={(cred) => void handleGoogle(cred.credential)}
-            onError={() => toast.error("Google sign-up was cancelled or failed.")}
-          />
-        : null}
-      </div>
+      <AuthGoogleButton
+        mode="signup"
+        onSuccess={(credential) => void handleGoogle(credential)}
+        onError={() => toast.error("Google sign-up was cancelled or failed.")}
+      />
     : null;
-
-  const termsLine = (
-    <p className="mt-4 text-center text-[10px] leading-snug text-gray-400">
-      By signing up you agree to our{" "}
-      <Link href="/terms" className="text-gray-500 hover:text-brand-600 hover:underline">
-        Terms
-      </Link>
-      ,{" "}
-      <Link href="/privacy" className="text-gray-500 hover:text-brand-600 hover:underline">
-        Privacy
-      </Link>
-      , and{" "}
-      <Link href="/returns" className="text-gray-500 hover:text-brand-600 hover:underline">
-        Returns
-      </Link>
-      .
-    </p>
-  );
 
   if (wizardStep === "otp") {
     const isPending = isLoading;
@@ -259,7 +204,8 @@ export default function SignupPageClient({
             icon={<Mail className="h-5 w-5" />}
           />
           <form onSubmit={otpForm.handleSubmit(onSubmitOtp)} className="space-y-3">
-            <Input
+            <AuthField
+              embedded={embedded}
               {...otpForm.register("otp")}
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -268,7 +214,7 @@ export default function SignupPageClient({
               placeholder="000000"
               error={otpForm.formState.errors.otp?.message}
             />
-            <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
+            <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
               Verify & create account
             </Button>
             <OtpResendCooldown email={pendingEmail} type="signup" />
@@ -304,25 +250,27 @@ export default function SignupPageClient({
             subtitle="Choose a strong password to finish setup"
           />
           <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-3">
-            <div className="relative">
-              <Input
-                {...form.register("password")}
-                type={showPassword ? "text" : "password"}
-                label="Password"
-                placeholder="Min. 8 characters"
-                error={form.formState.errors.password?.message}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <Input
+            <AuthField
+              embedded={embedded}
+              {...form.register("password")}
+              type={showPassword ? "text" : "password"}
+              label="Password"
+              placeholder="Min. 8 characters"
+              error={form.formState.errors.password?.message}
+              autoComplete="new-password"
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="p-1 text-gray-400 transition-colors hover:text-navy-900"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
+            />
+            <AuthField
+              embedded={embedded}
               {...form.register("confirmPassword")}
               type="password"
               label="Confirm password"
@@ -330,8 +278,7 @@ export default function SignupPageClient({
               error={form.formState.errors.confirmPassword?.message}
               autoComplete="new-password"
             />
-            <Button type="submit" variant="brand" size="lg" className="w-full" loading={isLoading}>
-              <UserPlus className="h-4 w-4 mr-2" />
+            <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
               Send verification code
             </Button>
             <AuthBackButton embedded={embedded} onClick={() => setWizardStep("details")}>
@@ -352,46 +299,51 @@ export default function SignupPageClient({
   return (
     <>
       <AuthFormRoot embedded={embedded}>
-        {embedded ? <AuthStepBar total={3} current={stepIndex} /> : null}
-        <AuthFormHeader
-          embedded={embedded}
-          title="Create your House of Rani account"
-          subtitle={embedded ? undefined : "Join us — verify your email to finish"}
-        />
+        {!embedded && <AuthStepBar total={3} current={stepIndex} />}
+
+        {!embedded && (
+          <AuthFormHeader
+            embedded={embedded}
+            title="Create your House of Rani account"
+            subtitle="Join us — verify your email to finish"
+          />
+        )}
 
         {googleBlock}
         {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}
 
-        <div className="space-y-3">
-          <Input
+        <div className="space-y-2.5">
+          <AuthField
+            embedded={embedded}
             {...form.register("name")}
             label="Full name"
             placeholder="Your name"
             error={form.formState.errors.name?.message}
             autoComplete="name"
           />
-          <Input
+          <AuthField
+            embedded={embedded}
             {...form.register("email")}
             type="email"
-            label="Email"
-            placeholder="you@example.com"
+            label="Email address"
+            placeholder="your@email.com"
             error={form.formState.errors.email?.message}
             autoComplete="email"
           />
-          <Input
+          <AuthField
+            embedded={embedded}
             {...form.register("phone")}
             type="tel"
-            label="Mobile (India)"
+            label="Mobile"
             placeholder="10-digit number"
             error={form.formState.errors.phone?.message}
             maxLength={10}
-            hint="For order updates & delivery"
           />
           <Button
             type="button"
             variant="brand"
             size="lg"
-            className="w-full"
+            className={authPrimaryBtn()}
             onClick={() => void onContinueDetails()}
           >
             Continue
@@ -399,17 +351,17 @@ export default function SignupPageClient({
         </div>
 
         <AuthFormFooter embedded={embedded}>
-          Already have an account?{" "}
+          Already part of our legacy?{" "}
           <AuthNavLink
             embedded={embedded}
             onNavigate={onSwitchToLogin}
             href="/auth/login"
             className={authLinkText(embedded)}
           >
-            Sign in
+            Sign In
           </AuthNavLink>
         </AuthFormFooter>
-        {termsLine}
+        <AuthLegalNotice mode="signup" />
       </AuthFormRoot>
       <AuthPendingOverlay
         active={isPending}

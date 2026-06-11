@@ -1,36 +1,33 @@
 import { Skeleton } from "@/components/ui/SkeletonLoader";
 
 const CARD_CLASS =
-  "w-[270px] shrink-0 sm:w-[330px] lg:w-[370px]";
+  "w-[78vw] shrink-0 sm:w-[300px] lg:w-[calc((100%-3rem)/4)] lg:max-w-[300px]";
 
-/** Matches `CategorySection` header + swiper cards. */
 export default function CategorySectionSkeleton() {
   return (
-    <section className="bg-[#FAF9F6] py-12 sm:py-14">
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        
-        {/* Centered Header matching real component */}
-        <div className="mb-8 sm:mb-10 text-center flex flex-col items-center">
-          <div className="inline-flex items-center gap-3">
-            <span className="h-px w-12 bg-gray-200 sm:w-16" />
-            <Skeleton className="h-3 w-32 rounded-full sm:h-3.5" />
-            <span className="h-px w-12 bg-gray-200 sm:w-16" />
+    <section className="bg-white py-12 sm:py-14 lg:py-16">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col items-center gap-4 px-1 sm:mb-10 lg:flex-row lg:items-end lg:justify-between lg:px-0">
+          <div className="text-center lg:text-left">
+            <Skeleton className="mx-auto h-3 w-36 rounded-full lg:mx-0 sm:h-3.5" />
+            <Skeleton className="mx-auto mt-4 h-8 w-56 rounded-lg lg:mx-0 sm:h-12 sm:w-72" />
           </div>
-          <Skeleton className="mt-4 h-8 w-64 rounded-lg sm:h-12 sm:w-96" />
+          <Skeleton className="h-3 w-16 rounded-full" />
         </div>
 
-        {/* Card Row */}
-        <div className="flex gap-4 overflow-x-hidden pb-1 px-2 sm:px-0">
+        <div className="flex gap-3 overflow-x-hidden pb-1 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className={CARD_CLASS}>
-              <div
-                className="relative overflow-hidden rounded-2xl bg-[#f0ebe4]"
-                style={{ aspectRatio: "3/4" }}
-              >
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/25 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 space-y-2 p-4 sm:p-5">
-                  <Skeleton className="h-6 w-3/4 rounded-md bg-white/50" />
-                  <Skeleton className="h-3 w-1/3 rounded-md bg-white/40" />
+              <div className="border border-[#c5a059]/30 bg-white p-2">
+                <div
+                  className="relative overflow-hidden bg-gray-100"
+                  style={{ aspectRatio: "3/4" }}
+                >
+                  <Skeleton className="absolute inset-0 rounded-none border-0" />
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 px-4 pb-4 text-center sm:pb-5">
+                    <Skeleton className="mx-auto h-3 w-2/3 rounded-md bg-white/50" />
+                  </div>
                 </div>
               </div>
             </div>

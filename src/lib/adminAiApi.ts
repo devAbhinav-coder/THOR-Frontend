@@ -97,6 +97,34 @@ export const adminAiApi = {
       schemas.adminAiMarketingDraft,
     ),
 
+  planBlogCalendar: (body: {
+    weeks?: number;
+    postsPerWeek?: number;
+    focus?: string;
+    regenerate?: boolean;
+  }) =>
+    unwrapAxios(
+      "admin.ai.blogCalendar",
+      api.post("/admin/ai/blog-calendar/plan", body, { timeout: AI_TIMEOUT }),
+      schemas.adminAiBlogCalendarPlan,
+    ),
+
+  draftBlogPost: (body: {
+    topic: string;
+    keywords?: string[];
+    category?: string;
+    tone?: string;
+    targetLength?: "short" | "medium" | "long";
+    linkProductIds?: string[];
+    includeProductLinks?: boolean;
+    regenerate?: boolean;
+  }) =>
+    unwrapAxios(
+      "admin.ai.draftBlog",
+      api.post("/admin/ai/draft/blog", body, { timeout: AI_TIMEOUT }),
+      schemas.adminAiBlogDraft,
+    ),
+
   askStore: (
     question: string,
     history?: Array<{ role: "user" | "assistant"; content: string }>,

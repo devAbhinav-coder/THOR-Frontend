@@ -10,7 +10,8 @@ import {
   AuthBackButton,
   AuthStepBar,
 } from '@/components/auth/AuthFormChrome';
-import { authLinkText } from '@/lib/authFormShell';
+import AuthField from '@/components/auth/AuthField';
+import { authLinkText, authPrimaryBtn } from '@/lib/authFormShell';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +19,6 @@ import { Eye, EyeOff, KeyRound, ArrowLeft } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
 import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
 import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
@@ -172,35 +172,37 @@ export default function ForgotPasswordClient({
           embedded={embedded}
           title="Set a new password"
           subtitle={`For ${email}`}
-          icon={<KeyRound className="h-5 w-5" />}
+          icon={embedded ? undefined : <KeyRound className="h-5 w-5" />}
         />
-        <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-3">
-          <div className="relative">
-            <Input
-              {...resetForm.register('newPassword')}
-              type={showPwd ? 'text' : 'password'}
-              label="New password"
-              error={resetForm.formState.errors.newPassword?.message}
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-              aria-label={showPwd ? 'Hide password' : 'Show password'}
-            >
-              {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
+        <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
+          <AuthField
+            embedded={embedded}
+            {...resetForm.register('newPassword')}
+            type={showPwd ? 'text' : 'password'}
+            label="New password"
+            error={resetForm.formState.errors.newPassword?.message}
+            autoComplete="new-password"
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPwd(!showPwd)}
+                className="p-1 text-gray-400 transition-colors hover:text-navy-900"
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+              >
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
+          />
           <PasswordStrengthMeter password={newPasswordWatch || ''} />
-          <Input
+          <AuthField
+            embedded={embedded}
             {...resetForm.register('confirmPassword')}
             type="password"
             label="Confirm new password"
             error={resetForm.formState.errors.confirmPassword?.message}
             autoComplete="new-password"
           />
-          <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
+          <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
             Update password & sign in
           </Button>
           <AuthBackButton embedded={embedded} onClick={() => setStep('otp')}>
@@ -220,8 +222,9 @@ export default function ForgotPasswordClient({
           title="Enter verification code"
           subtitle={`Sent to ${email}`}
         />
-        <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-3">
-          <Input
+        <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
+          <AuthField
+            embedded={embedded}
             {...otpForm.register('otp')}
             inputMode="numeric"
             maxLength={6}
@@ -245,7 +248,7 @@ export default function ForgotPasswordClient({
             type="submit"
             variant="brand"
             size="lg"
-            className="w-full"
+            className={authPrimaryBtn()}
             loading={loading}
             disabled={verifyCooldownSec > 0}
           >
@@ -262,21 +265,24 @@ export default function ForgotPasswordClient({
   return (
     <AuthFormRoot embedded={embedded}>
       {embedded ? <AuthStepBar total={3} current={stepIndex} /> : null}
-      <AuthFormHeader
-        embedded={embedded}
-        title="Reset your password"
-        subtitle={embedded ? undefined : "We will email you a secure 6-digit code"}
-      />
-      <form onSubmit={emailForm.handleSubmit(onSendCode)} className="space-y-3">
-        <Input
+      {!embedded && (
+        <AuthFormHeader
+          embedded={embedded}
+          title="Reset your password"
+          subtitle="We will email you a secure 6-digit code"
+        />
+      )}
+      <form onSubmit={emailForm.handleSubmit(onSendCode)} className="space-y-4">
+        <AuthField
+          embedded={embedded}
           {...emailForm.register('email')}
           type="email"
-          label="Email"
-          placeholder="you@example.com"
+          label="Email address"
+          placeholder="your@email.com"
           error={emailForm.formState.errors.email?.message}
           autoComplete="email"
         />
-        <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
+        <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
           Send code
         </Button>
       </form>

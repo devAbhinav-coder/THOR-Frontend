@@ -7,9 +7,9 @@
  * because those URLs vary by account or change more often than Razorpay.
  */
 
-/** https://checkout.razorpay.com/v1/checkout.js — verified 2026-05-21 */
+/** https://checkout.razorpay.com/v1/checkout.js — verified 2026-06-11 */
 export const RAZORPAY_CHECKOUT_JS_INTEGRITY =
-  "sha384-cRvOViSPAHa0c3URJm6Z6t/6Laq4cbVwnP/+cZpsCt8O4KxzZ0sfs7ZGlVNfKHuy";
+  "sha384-GhsbifIunpkc+86jD9UsOYrz9J/NErn5qoTc6Bw/OfNHbL4HIWeDxj9fOQ6FMu+x";
 
 /** https://connect.facebook.net/en_US/fbevents.js — verified 2026-05-21 */
 export const FB_EVENTS_JS_INTEGRITY_DEFAULT =

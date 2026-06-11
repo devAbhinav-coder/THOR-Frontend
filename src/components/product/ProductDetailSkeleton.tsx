@@ -39,19 +39,21 @@ export function ProductDetailSkeleton() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-[3/4] w-full overflow-hidden rounded-xl"
+                  className="aspect-[3/4] w-full overflow-hidden border-2 border-gray-200 bg-gray-50"
                 >
-                  <Skeleton className="h-full w-full rounded-xl border-0" />
+                  <Skeleton className="h-full w-full border-0 rounded-none" />
                 </div>
               ))}
             </div>
 
             <div className="min-w-0 flex-1 space-y-3">
-              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-gray-50">
-                <Skeleton className="absolute inset-0 rounded-2xl border-0" />
-                <div className="pointer-events-none absolute top-3 right-3 z-10 flex flex-col gap-2">
-                  <Skeleton className="h-9 w-9 shrink-0 rounded-full shadow-sm" />
-                  <Skeleton className="h-9 w-9 shrink-0 rounded-full shadow-sm" />
+              <div className="border border-[#c5a059]/40 bg-white p-2 sm:p-2.5">
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/20">
+                  <Skeleton className="absolute inset-0 border-0 rounded-none" />
+                  <div className="pointer-events-none absolute top-3 right-3 z-10 flex flex-col gap-2">
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-full shadow-sm" />
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-full shadow-sm" />
+                  </div>
                 </div>
               </div>
 
@@ -59,9 +61,9 @@ export function ProductDetailSkeleton() {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
-                    className="aspect-[3/4] w-14 shrink-0 overflow-hidden rounded-lg"
+                    className="aspect-[3/4] w-14 shrink-0 overflow-hidden border-2 border-gray-200 bg-gray-50"
                   >
-                    <Skeleton className="h-full w-full rounded-lg border-0" />
+                    <Skeleton className="h-full w-full border-0 rounded-none" />
                   </div>
                 ))}
               </div>

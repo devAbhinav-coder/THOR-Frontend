@@ -619,6 +619,24 @@ export interface HomeGiftShowcase {
   cards?: HomeGiftShowcaseCard[];
 }
 
+export interface HomeEditorialGalleryTile {
+  image?: string;
+  imagePublicId?: string;
+  link?: string;
+  alt?: string;
+}
+
+/** Home — editorial image grid below mid-page promo hero */
+export interface HomeEditorialGallery {
+  eyebrow?: string;
+  title?: string;
+  subtitle?: string;
+  ctaText?: string;
+  ctaLink?: string;
+  isActive?: boolean;
+  tiles?: HomeEditorialGalleryTile[];
+}
+
 export interface StorefrontSettings {
   announcementMessages: string[];
   heroSlides: HeroSlide[];
@@ -677,6 +695,8 @@ export interface StorefrontSettings {
   }>;
   /** Home — above Why Choose Us */
   homeGiftShowcase?: HomeGiftShowcase;
+  /** Home — editorial gallery below promo hero */
+  homeEditorialGallery?: HomeEditorialGallery;
   footer: {
     description?: string;
     contactAddress?: string;
@@ -691,10 +711,32 @@ export interface StorefrontSettings {
   };
 }
 
+export type BlogImageLayout =
+  | "hero"
+  | "wide"
+  | "portrait"
+  | "square"
+  | "inline"
+  | "split";
+
+/** Where the image appears — admin controls placement. */
+export type BlogImagePlacement = "cover" | "article" | "gallery";
+
 export interface BlogImage {
   url: string;
   publicId: string;
   caption?: string;
+  layout?: BlogImageLayout;
+  placement?: BlogImagePlacement;
+}
+
+export interface BlogRelatedProduct {
+  _id: string;
+  name: string;
+  slug: string;
+  price?: number;
+  shortDescription?: string;
+  images?: { url: string; alt?: string }[];
 }
 
 export interface Blog {
@@ -707,6 +749,34 @@ export interface Blog {
   likes: string[];
   isPublished: boolean;
   viewCount: number;
+  excerpt?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  keywords?: string[];
+  tags?: string[];
+  category?: string;
+  relatedProductIds?: BlogRelatedProduct[] | string[];
+  readingTimeMin?: number;
+  aiGenerated?: boolean;
+  aiPromptSnapshot?: string;
+  scheduledPublishAt?: string | null;
+  shopClickCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BlogContentPlanStatus = "planned" | "drafted" | "published" | "skipped";
+
+export interface BlogContentPlan {
+  _id: string;
+  topic: string;
+  keywords: string[];
+  category: string;
+  plannedDate: string;
+  status: BlogContentPlanStatus;
+  notes?: string;
+  blog?: { _id: string; title: string; slug: string; isPublished?: boolean } | string;
+  createdBy?: { name: string };
   createdAt: string;
   updatedAt: string;
 }

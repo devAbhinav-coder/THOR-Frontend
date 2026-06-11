@@ -44,11 +44,15 @@ type Variant = "nav-dark" | "nav-mobile" | "gifting-inline";
 type Props = {
   scope: StoreSearchScope;
   variant: Variant;
+  /** Distinguishes desktop vs mobile navbar instances for focus targeting */
+  searchInstance?: "desktop" | "mobile";
   /** URL search param to sync when route changes (navbar) */
   urlSearch?: string;
   /** Controlled value (e.g. gifting page) */
   value?: string;
   onValueChange?: (v: string) => void;
+  /** Called after navigating to search results */
+  onNavigate?: () => void;
   /** Input max length (gifting page may use longer queries) */
   maxLen?: number;
   className?: string;
@@ -113,9 +117,11 @@ async function fetchSuggestions(
 function StoreSearchAutocomplete({
   scope,
   variant,
+  searchInstance,
   urlSearch = "",
   value: controlledValue,
   onValueChange,
+  onNavigate,
   maxLen = DEFAULT_MAX_LEN,
   className,
   inputClassName,
@@ -201,9 +207,10 @@ function StoreSearchAutocomplete({
       const q = inputValue.trim().slice(0, maxLen);
       if (!q.length) return;
       setOpen(false);
+      onNavigate?.();
       router.push(buildStoreSearchHref(scope, inputValue, maxLen));
     },
-    [router, scope, inputValue, maxLen],
+    [router, scope, inputValue, maxLen, onNavigate],
   );
 
   const onClear = useCallback(() => {
@@ -294,16 +301,16 @@ function StoreSearchAutocomplete({
   const inputBase =
     variant === "nav-dark" ?
       cn(
-        "w-full rounded-xl border border-navy-600/80 bg-navy-800/90 py-2 pl-9 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24",
+        "w-full rounded-none border border-navy-600/80 bg-navy-800/90 py-2 pl-9 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24",
         inputValue ? "pr-9" : "pr-3",
       )
     : variant === "nav-mobile" ?
-      "w-full rounded-xl border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand-600/35 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24"
-    : "w-full rounded-xl border border-amber-200/80 bg-white py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-500 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden";
+      "w-full rounded-none border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24"
+    : "w-full rounded-none border border-gray-200/80 bg-white py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-500 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/20 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden";
 
   const iconLeft =
     variant === "gifting-inline" ?
-      "left-3 text-amber-700"
+      "left-3 text-[#c5a059]"
     : "left-3 text-white/35";
 
   return (
@@ -342,7 +349,12 @@ function StoreSearchAutocomplete({
             aria-autocomplete='list'
             role='combobox'
             {...(variant === "nav-dark" || variant === "nav-mobile" ?
-              { "data-navbar-search-input": true }
+              {
+                "data-navbar-search-input": true,
+                ...(searchInstance ?
+                  { "data-navbar-search-instance": searchInstance }
+                : {}),
+              }
             : {})}
             placeholder={placeholderText}
             className={cn(inputBase, inputClassName)}
@@ -370,7 +382,7 @@ function StoreSearchAutocomplete({
           id={`${listId}-listbox`}
           role='listbox'
           className={cn(
-            "fixed z-[200] rounded-2xl border shadow-xl overflow-hidden overscroll-contain",
+            "fixed z-[200] border shadow-xl overflow-hidden overscroll-contain",
             isLightPanel ?
               "border-gray-200 bg-white"
             : "border-navy-600 bg-navy-900",
@@ -395,15 +407,16 @@ function StoreSearchAutocomplete({
                   <li key={p._id} role='option' className='px-1'>
                     <Link
                       href={`/shop/${encodeURIComponent(p.slug)}`}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        setOpen(false);
+                        onNavigate?.();
+                      }}
                       className={cn(
-                        "flex gap-3 rounded-xl px-2 py-2 text-left transition-colors",
-                        isLightPanel ? "hover:bg-brand-50" : (
-                          "hover:bg-navy-800"
-                        ),
+                        "flex gap-3 px-2 py-2 text-left transition-colors",
+                        isLightPanel ? "hover:bg-[#fff8eb]" : "hover:bg-navy-800",
                       )}
                     >
-                      <div className='relative h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100'>
+                      <div className='relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100'>
                         {img ?
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -425,7 +438,7 @@ function StoreSearchAutocomplete({
                         <p
                           className={cn(
                             "text-xs",
-                            isLightPanel ? "text-brand-700" : "text-brand-300",
+                            isLightPanel ? "text-[#c5a059]" : "text-[#c5a059]",
                           )}
                         >
                           {formatPrice(p.price)}
@@ -447,10 +460,13 @@ function StoreSearchAutocomplete({
           >
             <Link
               href={resultsHref}
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
               className={cn(
                 "font-semibold underline-offset-2 hover:underline",
-                isLightPanel ? "text-brand-700" : "text-brand-300",
+                isLightPanel ? "text-[#c5a059]" : "text-[#c5a059]",
               )}
             >
               See all matching products

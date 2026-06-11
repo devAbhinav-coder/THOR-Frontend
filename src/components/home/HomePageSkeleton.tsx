@@ -1,5 +1,6 @@
 import HeroSectionSkeleton from "@/components/home/HeroSectionSkeleton";
 import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
+import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkeleton";
 import { ProductCardSkeleton, Skeleton } from "@/components/ui/SkeletonLoader";
 
 function SectionHeaderSkeleton({
@@ -31,26 +32,55 @@ function SectionHeaderSkeleton({
 
 function PromoBannerSkeleton() {
   return (
-    <section className="bg-[#faf9f7] py-10 sm:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl border border-gray-100 bg-gradient-to-br from-white via-white to-brand-50/80 p-6 shadow-sm sm:p-10">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl flex-1 space-y-2 sm:space-y-3">
-              <Skeleton className="h-3 w-40 rounded-full" />
-              <Skeleton className="h-8 w-full max-w-md rounded-lg sm:h-10" />
-              <Skeleton className="h-4 w-full max-w-lg rounded-md" />
-              <Skeleton className="hidden h-4 max-w-md rounded-md sm:block" />
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Skeleton className="h-11 w-full rounded-2xl sm:w-44" />
-              <Skeleton className="h-11 w-full rounded-2xl sm:w-36" />
-            </div>
+    <section className="bg-white">
+      <Skeleton className="min-h-[420px] w-full rounded-none border-0 sm:min-h-[460px] lg:min-h-[520px]" />
+
+      <div className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 sm:pt-12 lg:px-8 lg:pt-14">
+        <div className="mb-6 flex flex-col items-center gap-3 text-center sm:mb-8 lg:flex-row lg:items-end lg:justify-between lg:text-left">
+          <div className="w-full lg:w-auto">
+            <Skeleton className="mx-auto h-3 w-28 rounded-full lg:mx-0" />
+            <Skeleton className="mx-auto mt-3 h-8 w-56 rounded-lg lg:mx-0 sm:h-10 sm:w-72" />
+            <Skeleton className="mx-auto mt-2 h-4 w-full max-w-md rounded-md lg:mx-0" />
           </div>
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-[72px] rounded-2xl" />
-            ))}
+          <Skeleton className="h-3 w-20 rounded-full" />
+        </div>
+      </div>
+
+      <div className="flex gap-3 overflow-hidden px-4 pb-1 md:hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="w-[78vw] shrink-0 border border-[#c5a059]/30 bg-white p-2 sm:w-[300px]">
+            <Skeleton className="aspect-[3/4] w-full rounded-none border-0" />
           </div>
+        ))}
+      </div>
+
+      <div className="mx-auto hidden max-w-7xl gap-3 px-4 pb-2 sm:px-6 md:grid md:grid-cols-2 lg:gap-4 lg:px-8">
+        <div className="border border-[#c5a059]/30 bg-white p-2.5">
+          <Skeleton className="min-h-[300px] rounded-none border-0 lg:min-h-[380px]" />
+        </div>
+        <div className="grid min-h-[300px] grid-cols-2 gap-3 lg:min-h-[380px] lg:gap-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="border border-[#c5a059]/30 bg-white p-2.5">
+              <Skeleton className="h-full min-h-[140px] rounded-none border-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+        <div className="mb-8 text-center sm:mb-10">
+          <Skeleton className="mx-auto h-3 w-36 rounded-full" />
+          <Skeleton className="mx-auto mt-3 h-9 w-64 rounded-lg sm:h-10 sm:w-80" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="border border-[#c5a059]/30 bg-white px-6 py-6 sm:px-7 sm:py-7">
+              <Skeleton className="mb-4 h-2.5 w-8 rounded-full" />
+              <Skeleton className="h-5 w-3/4 rounded-md" />
+              <Skeleton className="mt-3 h-4 w-full rounded-md" />
+              <Skeleton className="mt-2 h-4 w-5/6 rounded-md" />
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -59,7 +89,7 @@ function PromoBannerSkeleton() {
 
 function WhyChooseUsSkeleton() {
   return (
-    <section className="bg-[#FAF9F6] py-16 md:py-24">
+    <section className="bg-white py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Full-width Centered Header */}
@@ -104,49 +134,49 @@ export default function HomePageSkeleton() {
       <HeroSectionSkeleton />
       <CategorySectionSkeleton />
 
-      <section className="bg-[#FAF9F6] py-2 sm:py-6">
-        <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
-          <SectionHeaderSkeleton eyebrowW="w-36 sm:w-44" titleW="w-56 sm:w-80" />
-          <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <section className="bg-[#000d21] py-14 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-10 sm:mb-14">
+            <Skeleton className="h-3 w-36 rounded-full bg-white/10" />
+            <Skeleton className="mt-4 h-10 w-64 rounded-lg bg-white/10 sm:h-12 sm:w-80" />
+          </div>
+          <div className="flex gap-3 overflow-hidden pb-1 sm:gap-4 lg:gap-5">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="min-w-[130px] max-w-[130px] shrink-0 sm:min-w-[240px] sm:max-w-[240px] lg:min-w-[260px] lg:max-w-[260px]"
-              >
-                <ProductCardSkeleton />
+              <div key={i} className="w-[calc(50%-0.375rem)] shrink-0 sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.9375rem)] flex h-full flex-col border-[3px] border-white bg-white">
+                <Skeleton className="aspect-square w-full rounded-none border-0 bg-gray-100" />
+                <div className="flex flex-col items-center px-3 py-4">
+                  <Skeleton className="h-4 w-4/5 rounded-md" />
+                  <Skeleton className="mt-2 h-2.5 w-2/3 rounded-md" />
+                  <Skeleton className="mt-3 h-4 w-20 rounded-md" />
+                </div>
               </div>
             ))}
-          </div>
-          <div className="mt-8 flex justify-center sm:mt-10 sm:hidden">
-            <Skeleton className="h-12 w-56 rounded-lg" />
           </div>
         </div>
       </section>
 
       <PromoBannerSkeleton />
 
-      <section className="bg-[#FAF9F6] py-10">
+      <section className="bg-white py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeaderSkeleton
-            eyebrowW="w-28"
-            titleW="w-64 sm:w-96"
-            withDescription
-          />
-          <div className="grid grid-cols-2 items-stretch gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4 [&>*]:h-full [&>*]:min-h-0">
+          <div className="mb-8 text-center sm:mb-12">
+            <Skeleton className="mx-auto h-3 w-24 rounded-full" />
+            <Skeleton className="mx-auto mt-4 h-10 w-64 rounded-lg sm:h-12 sm:w-80" />
+            <Skeleton className="mx-auto mt-4 h-4 w-full max-w-xl rounded-md" />
+          </div>
+          <div className="grid grid-cols-2 gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8">
             {Array.from({ length: 8 }).map((_, i) => (
-              <ProductCardSkeleton key={i} />
+              <ShopCollectionCardSkeleton key={i} />
             ))}
           </div>
-          <div className="mt-8 flex justify-center sm:mt-10 sm:hidden">
-            <Skeleton className="h-12 w-56 rounded-lg" />
-          </div>
+          <Skeleton className="mx-auto mt-10 h-14 w-full max-w-sm rounded-none" />
         </div>
       </section>
 
       <WhyChooseUsSkeleton />
 
       {/* HomeGiftShowcase Skeleton */}
-      <section className="bg-[#FAF9F6] py-16 sm:py-24">
+      <section className="bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:gap-16">
             
@@ -170,7 +200,7 @@ export default function HomePageSkeleton() {
       </section>
 
       {/* Testimonials Skeleton */}
-      <section className="bg-[#FAF9F6] py-16 sm:py-24">
+      <section className="bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center sm:mb-14">
             <Skeleton className="mx-auto mb-3 h-3 w-28 rounded-full" />

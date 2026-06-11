@@ -39,7 +39,7 @@ export function useAdminAiStatus() {
 
   const refresh = useCallback(async () => {
     statusPromise = null;
-    statusCache = null;
+    statusCache = null; // force refetch so blogEnabled is never stale
     setLoading(true);
     try {
       const r = await adminAiApi.getStatus();
@@ -59,10 +59,13 @@ export function useAdminAiStatus() {
 export function aiErrorMessage(err: unknown): string {
   const msg = (err as { message?: string })?.message;
   if (msg?.includes("503") || msg?.toLowerCase().includes("not configured")) {
-    return "AI is off — add GROQ_API_KEY on the server.";
+    return "Blog AI off — backend .env mein GEMINI_API_KEY add karo.";
   }
-  if (msg?.includes("429") || msg?.toLowerCase().includes("limit")) {
-    return "AI limit reached — try again in an hour.";
+  if (msg?.includes("429") || msg?.toLowerCase().includes("rate limit")) {
+    return "AI rate limit — 30-60 sec wait karo, phir Regenerate dabao.";
+  }
+  if (msg?.includes("502") || msg?.toLowerCase().includes("blog draft fail")) {
+    return "Draft empty aaya — thoda wait karke Regenerate try karo.";
   }
   return msg || "AI request failed.";
 }

@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
 import { cn } from "@/lib/utils";
-import ProductCard from "@/components/product/ProductCard";
-import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
-import HomeSectionHeader from "@/components/home/HomeSectionHeader";
+import FeaturedProductCard from "@/components/home/FeaturedProductCard";
+import FeaturedProductCardSkeleton from "@/components/home/FeaturedProductCardSkeleton";
+import HorizontalScrollRow from "@/components/ui/HorizontalScrollRow";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
+
+const FEATURED_CARD_CLASS =
+  "w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.9375rem)]";
 
 type FeaturedProductsProps = {
   /** Server-prefetched; `null` = prefetch failed, client will fetch. */
@@ -47,47 +49,51 @@ export default function FeaturedProducts({
 
   return (
     <section
-      className={cn(homeSectionStyles.pageBg, "py-2 sm:py-6")}
-      aria-labelledby='featured-products-heading'
+      className="bg-[#000d21] py-14 sm:py-20 lg:py-24"
+      aria-labelledby="featured-products-heading"
     >
       <div className={homeSectionStyles.container}>
-        <div className='mb-6 sm:mb-10'>
-          <HomeSectionHeader
-            id='featured-products-heading'
-            eyebrow='Handpicked for You'
-            title='Featured Products'
-          />
+        <div className="mb-10 flex flex-col gap-6 sm:mb-14 sm:flex-row sm:items-end sm:justify-between">
+          <div className="text-left">
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs">
+              Curated Selection
+            </p>
+            <h2
+              id="featured-products-heading"
+              className="mt-3 font-serif text-3xl font-medium leading-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]"
+            >
+              Featured Masterpieces
+            </h2>
+          </div>
+
+          <Link
+            href="/shop?isFeatured=true"
+            className="shrink-0 self-start text-[11px] font-medium uppercase tracking-[0.22em] text-white underline decoration-white/80 underline-offset-[6px] transition-colors hover:text-[#c5a059] hover:decoration-[#c5a059] sm:self-auto sm:text-xs"
+          >
+            View All Works
+          </Link>
         </div>
 
-        <div className='grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 place-items-center'>
+        <HorizontalScrollRow
+          variant="dark"
+          className={cn(
+            isLoading && "min-h-[280px] sm:min-h-[360px]",
+          )}
+          innerClassName="items-stretch [&>*]:h-full [&>*]:min-h-0"
+        >
           {isLoading ?
             [...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className='w-full max-w-[210px] sm:max-w-[250px] lg:max-w-[280px]'
-              >
-                <ProductCardSkeleton />
+              <div key={i} className={FEATURED_CARD_CLASS}>
+                <FeaturedProductCardSkeleton />
               </div>
             ))
-          : products.slice(0, 4).map((product) => (
-              <div
-                key={product._id}
-                className='w-full max-w-[210px] sm:max-w-[250px] lg:max-w-[280px]'
-              >
-                <ProductCard product={product} className='w-full' />
+          : products.map((product) => (
+              <div key={product._id} className={FEATURED_CARD_CLASS}>
+                <FeaturedProductCard product={product} />
               </div>
             ))
           }
-        </div>
-
-        <div className='mt-10 text-center'>
-          <Link
-            href='/shop?isFeatured=true'
-            className='inline-flex items-center gap-2 px-6 py-3 border-2 border-brand-600 text-brand-600 rounded-lg font-medium hover:bg-brand-50 transition-colors'
-          >
-            Explore Featured <ArrowRight className='h-4 w-4' />
-          </Link>
-        </div>
+        </HorizontalScrollRow>
       </div>
     </section>
   );

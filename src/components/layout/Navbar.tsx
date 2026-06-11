@@ -32,6 +32,8 @@ import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
+import NavProfileDropdown from "@/components/layout/NavProfileDropdown";
+import NavShopDropdown from "@/components/layout/NavShopDropdown";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
 import {
@@ -39,19 +41,21 @@ import {
   type StoreNavActive,
 } from "@/hooks/useStoreNavActive";
 import { useAuthModal } from "@/hooks/useAuthModal";
+import { useNavDropdown } from "@/hooks/useNavDropdown";
 import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 import {
   mobileTabClass,
   mobileTabIconClass,
   navAnnouncementShell,
   navAnnouncementText,
+  navAvatarButton,
+  navAvatarRing,
   navBadgeCount,
-  navDropdownItem,
-  navDropdownPanel,
   navIconButton,
   navLinkClass,
   navSearchInputClass,
   navShellClass,
+  navUserMenuShellClass,
 } from "@/lib/navbarStyles";
 
 type MobileBottomItem = {
@@ -66,8 +70,9 @@ type MobileBottomItem = {
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const shopMenu = useNavDropdown();
+  const userMenu = useNavDropdown();
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -143,8 +148,9 @@ export default function Navbar() {
 
   useEffect(() => {
     setIsMenuOpen(false);
-    setIsUserMenuOpen(false);
-  }, [pathname]);
+    shopMenu.close();
+    userMenu.close();
+  }, [pathname, shopMenu.close, userMenu.close]);
 
   const urlSearchForNav = useMemo(() => {
     if (pathname.startsWith("/shop") || pathname.startsWith("/gifting")) {
@@ -167,20 +173,39 @@ export default function Navbar() {
 
   const handleLogout = useCallback(async () => {
     await logout();
-    setIsUserMenuOpen(false);
-  }, [logout]);
+    userMenu.close();
+  }, [logout, userMenu.close]);
 
   const focusStoreSearch = useCallback(() => {
     if (typeof document === "undefined") return;
-    const el = document.querySelector<HTMLInputElement>(
-      "[data-navbar-search-input]",
-    );
-    if (window.matchMedia("(min-width: 1024px)").matches) {
-      el?.focus();
-    } else {
-      setIsSearchOpen(true);
-      queueMicrotask(() => el?.focus());
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (isDesktop) {
+      document
+        .querySelector<HTMLInputElement>(
+          '[data-navbar-search-input][data-navbar-search-instance="desktop"]',
+        )
+        ?.focus({ preventScroll: true });
+      return;
     }
+    setIsSearchOpen(true);
+    queueMicrotask(() => {
+      document
+        .querySelector<HTMLInputElement>(
+          '#mobile-search-panel [data-navbar-search-input][data-navbar-search-instance="mobile"]',
+        )
+        ?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  const openMobileSearch = useCallback(() => {
+    setIsSearchOpen(true);
+    queueMicrotask(() => {
+      document
+        .querySelector<HTMLInputElement>(
+          '#mobile-search-panel [data-navbar-search-input][data-navbar-search-instance="mobile"]',
+        )
+        ?.focus({ preventScroll: true });
+    });
   }, []);
 
   useEffect(() => {
@@ -306,31 +331,36 @@ export default function Navbar() {
                 Home
               </Link>
 
-              <div className='relative group'>
+              <div
+                ref={shopMenu.containerRef}
+                className='relative'
+                {...shopMenu.zoneProps}
+              >
                 <button
                   type='button'
                   className={navLinkClass(navActive.shop)}
                   aria-label='Shop categories'
                   aria-haspopup='menu'
+                  aria-expanded={shopMenu.isOpen}
+                  onClick={shopMenu.handleTriggerClick}
                 >
                   <span className='inline-flex items-center gap-1'>
-                    Shop <ChevronDown className='h-3.5 w-3.5 opacity-70' aria-hidden />
+                    Shop{" "}
+                    <ChevronDown
+                      className={cn(
+                        "h-3.5 w-3.5 opacity-70 transition-transform duration-300 ease-out",
+                        shopMenu.isOpen && "rotate-180",
+                      )}
+                      aria-hidden
+                    />
                   </span>
                 </button>
-                <div className={navDropdownPanel}>
-                  <Link href='/shop' className={navDropdownItem}>
-                    All Sarees
-                  </Link>
-                  {navCategories.map((cat) => (
-                    <Link
-                      key={cat._id}
-                      href={buildShopCategoryHref(cat)}
-                      className={navDropdownItem}
-                    >
-                      {cat.name}
-                    </Link>
-                  ))}
-                </div>
+                <NavShopDropdown
+                  isOpen={shopMenu.isOpen}
+                  pathname={pathname}
+                  categories={navCategories}
+                  onNavigate={shopMenu.close}
+                />
               </div>
 
               <Link href='/gifting' className={navLinkClass(navActive.gifting)}>
@@ -354,6 +384,7 @@ export default function Navbar() {
               <StoreSearchAutocomplete
                 scope={navActive.gifting ? "gifting" : "shop"}
                 variant='nav-dark'
+                searchInstance='desktop'
                 urlSearch={urlSearchForNav}
                 inputClassName={navSearchInputClass}
               />
@@ -363,7 +394,7 @@ export default function Navbar() {
             <div className='flex items-center justify-end gap-0.5 sm:gap-1 shrink-0'>
               {isAuthedStable && (
                 <Link
-                  href='/dashboard/wishlist'
+                  href='/wishlist'
                   className={cn(navIconButton, "relative")}
                   aria-label='Wishlist'
                 >
@@ -391,7 +422,10 @@ export default function Navbar() {
 
               <button
                 type='button'
-                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                onClick={() => {
+                  if (isSearchOpen) setIsSearchOpen(false);
+                  else openMobileSearch();
+                }}
                 className={cn(navIconButton, "lg:hidden")}
                 aria-label={isSearchOpen ? "Close search" : "Open search"}
                 aria-expanded={isSearchOpen}
@@ -400,19 +434,23 @@ export default function Navbar() {
                 <Search className='h-5 w-5' aria-hidden='true' />
               </button>
 
-              {isAuthedStable && <NotificationBell />}
+              {isAuthedStable && <NotificationBell variant="navbar" />}
 
               {isAuthedStable ?
-                <div className='hidden lg:block relative'>
+                <div
+                  ref={userMenu.containerRef}
+                  className='relative hidden lg:block'
+                  {...userMenu.zoneProps}
+                >
                   <button
                     type='button'
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className='flex items-center gap-2 rounded-full p-1.5 text-white/85 transition-colors duration-200 hover:bg-navy-800 hover:text-white'
+                    onClick={userMenu.handleTriggerClick}
+                    className={navAvatarButton}
                     aria-label='Account menu'
-                    aria-expanded={isUserMenuOpen}
+                    aria-expanded={userMenu.isOpen}
                     aria-haspopup='menu'
                   >
-                    <div className='h-8 w-8 rounded-full bg-navy-700 border-2 border-brand-600 flex items-center justify-center overflow-hidden'>
+                    <div className={navAvatarRing}>
                       {user?.avatar ?
                         <Image
                           src={user.avatar}
@@ -424,7 +462,7 @@ export default function Navbar() {
                           className='h-full w-full object-cover'
                         />
                       : <span
-                          className='text-white font-semibold text-sm'
+                          className='text-sm font-semibold text-white'
                           aria-hidden='true'
                         >
                           {String(user?.name || "U")
@@ -435,48 +473,23 @@ export default function Navbar() {
                     </div>
                   </button>
 
-                  {isUserMenuOpen && (
-                    <div className='absolute right-0 top-full mt-2 min-w-[220px] rounded-xl border border-navy-700 bg-navy-950 p-2 shadow-2xl animate-fadeIn'>
-                      <div className='mb-1 border-b border-navy-800 px-3 py-2'>
-                        <p className='truncate text-sm font-medium text-white'>
-                          {user?.name}
-                        </p>
-                        <p className='truncate text-xs text-white/55'>
-                          {user?.email}
-                        </p>
-                      </div>
-                      <Link
-                        href='/dashboard'
-                        prefetch
-                        className='flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/80 transition-colors hover:bg-navy-800/80 hover:text-white'
-                      >
-                        <LayoutDashboard className='h-4 w-4' /> My Account
-                      </Link>
-                      <Link
-                        href='/dashboard/orders'
-                        prefetch
-                        className='flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/80 transition-colors hover:bg-navy-800/80 hover:text-white'
-                      >
-                        <Package className='h-4 w-4' /> My Orders
-                      </Link>
-                      {user?.role === "admin" && (
-                        <Link
-                          href='/admin'
-                          prefetch
-                          className='flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gold-300 transition-colors hover:bg-navy-800/80 hover:text-gold-200'
-                        >
-                          <Shield className='h-4 w-4' /> Admin Panel
-                        </Link>
-                      )}
-                      <button
-                        type='button'
-                        onClick={handleLogout}
-                        className='flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-300 transition-colors hover:bg-navy-800/80 hover:text-brand-200'
-                      >
-                        <LogOut className='h-4 w-4' /> Sign Out
-                      </button>
-                    </div>
-                  )}
+                  <div
+                    className={navUserMenuShellClass(userMenu.isOpen)}
+                    aria-hidden={!userMenu.isOpen}
+                  >
+                    <NavProfileDropdown
+                      isOpen={userMenu.isOpen}
+                      pathname={pathname}
+                      user={{
+                        name: user?.name,
+                        email: user?.email,
+                        avatar: user?.avatar,
+                        role: user?.role,
+                      }}
+                      onLogout={handleLogout}
+                      onNavigate={userMenu.close}
+                    />
+                  </div>
                 </div>
               : <Link
                   href={authHref("login")}
@@ -504,7 +517,9 @@ export default function Navbar() {
               <StoreSearchAutocomplete
                 scope={navActive.gifting ? "gifting" : "shop"}
                 variant='nav-mobile'
+                searchInstance='mobile'
                 urlSearch={urlSearchForNav}
+                onNavigate={() => setIsSearchOpen(false)}
               />
             </div>
           )}
@@ -538,7 +553,7 @@ export default function Navbar() {
               <button
                 type='button'
                 onClick={() => setIsMenuOpen(false)}
-                className='p-2 text-white/50 hover:text-white bg-navy-800/50 hover:bg-navy-800 rounded-xl transition-all'
+                className='p-2 text-white/50 transition-colors hover:bg-navy-800 hover:text-white'
                 aria-label='Close menu'
               >
                 <X className='h-5 w-5' />
@@ -551,9 +566,9 @@ export default function Navbar() {
                 <Link
                   onClick={() => setIsMenuOpen(false)}
                   href='/'
-                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                  className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                  <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <Home className='w-4 h-4' />
                   </div>
                   Home
@@ -561,9 +576,9 @@ export default function Navbar() {
                 <Link
                   onClick={() => setIsMenuOpen(false)}
                   href='/shop'
-                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                  className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                  <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <Store className='w-4 h-4' />
                   </div>
                   All Sarees
@@ -571,9 +586,9 @@ export default function Navbar() {
                 <Link
                   onClick={() => setIsMenuOpen(false)}
                   href='/shop?sort=-createdAt'
-                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                  className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
-                  <div className='p-2 rounded-xl bg-gold-400/10 text-gold-400 group-hover:bg-gold-500 group-hover:text-white transition-colors'>
+                  <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <Package className='w-4 h-4' />
                   </div>
                   New Arrivals
@@ -581,9 +596,9 @@ export default function Navbar() {
                 <Link
                   onClick={() => setIsMenuOpen(false)}
                   href='/gifting'
-                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                  className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
-                  <div className='p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors'>
+                  <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <Gift className='w-4 h-4' />
                   </div>
                   Bespoke Gifting
@@ -592,22 +607,23 @@ export default function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                   href='/blog'
                   className={cn(
-                    "flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group",
-                    pathname.startsWith("/blog") && "bg-navy-800/80",
+                    "group flex items-center gap-3.5 border px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:bg-navy-900",
+                    pathname.startsWith("/blog") ?
+                      "border-[#c5a059]/50 bg-navy-900"
+                    : "border-transparent hover:border-[#c5a059]/40",
                   )}
                 >
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                  <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <LayoutDashboard className='w-4 h-4' />
                   </div>
                   The Rani Blog
                 </Link>
-                {/* about */}
                 <Link
                   onClick={() => setIsMenuOpen(false)}
                   href='/about'
-                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                  className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                  <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <Shield className='w-4 h-4' />
                   </div>
                   About
@@ -615,9 +631,9 @@ export default function Navbar() {
                 <Link
                   onClick={() => setIsMenuOpen(false)}
                   href='/faq'
-                  className='flex items-center gap-3.5 px-3 py-3 text-sm font-bold text-white hover:bg-navy-800/80 rounded-2xl transition-all group'
+                  className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
-                  <div className='p-2 rounded-xl bg-white/5 text-brand-300 group-hover:bg-brand-500 group-hover:text-white transition-colors'>
+                  <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <Shield className='w-4 h-4' />
                   </div>
                   FAQ
@@ -627,7 +643,7 @@ export default function Navbar() {
               {/* Categories */}
               {navCategories.length > 0 && (
                 <div>
-                  <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>
+                  <p className='mb-3 px-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#c5a059]'>
                     Curated Collections
                   </p>
                   <div className='space-y-0.5'>
@@ -636,7 +652,7 @@ export default function Navbar() {
                         key={cat._id}
                         onClick={() => setIsMenuOpen(false)}
                         href={buildShopCategoryHref(cat)}
-                        className='block px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-navy-800/60 rounded-xl transition-colors'
+                        className='block border-l-2 border-transparent px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                       >
                         {cat.name}
                       </Link>
@@ -647,52 +663,59 @@ export default function Navbar() {
 
               {/* Account Section */}
               <div className='pb-6'>
-                <p className='px-4 mb-3 text-[10px] font-black text-white/30 uppercase tracking-widest'>
+                <p className='mb-3 px-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#c5a059]'>
                   Your Account
                 </p>
                 {isAuthedStable ?
-                  <div className='space-y-1 bg-navy-900/50 p-2 rounded-3xl border border-navy-800/50'>
+                  <div className='space-y-0.5 border border-navy-800 bg-navy-900/50 p-1'>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
                       href='/dashboard'
-                      className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                      className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <User className='w-4 h-4 text-white/40' /> Dashboard
+                      <User className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Dashboard
                     </Link>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
                       href='/dashboard/orders'
-                      className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                      className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <Package className='w-4 h-4 text-white/40' /> My Orders
+                      <Package className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> My Orders
+                    </Link>
+                    <Link
+                      onClick={() => setIsMenuOpen(false)}
+                      href='/cart'
+                      className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
+                    >
+                      <ShoppingBag className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Cart
                     </Link>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
                       href='/dashboard/gifting'
-                      className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                      className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <Gift className='w-4 h-4 text-white/40' /> Custom Gifting
+                      <Gift className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Custom Gifting
                     </Link>
 
                     {user?.role === "admin" && (
                       <Link
                         onClick={() => setIsMenuOpen(false)}
                         href='/admin'
-                        className='flex items-center gap-3 px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                        className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c5a059] transition-colors hover:border-[#c5a059] hover:bg-navy-900'
                       >
-                        <Shield className='w-4 h-4 text-white/40' /> Admin Panel
+                        <Shield className='w-4 h-4 shrink-0' /> Admin Panel
                       </Link>
                     )}
                     <Link
                       onClick={() => setIsMenuOpen(false)}
-                      href='/dashboard/wishlist'
-                      className='flex items-center justify-between px-3 py-3 text-sm font-medium text-white/80 hover:text-white hover:bg-navy-800 rounded-2xl transition-colors'
+                      href='/wishlist'
+                      className='flex items-center justify-between border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
                       <span className='flex items-center gap-3'>
-                        <Heart className='w-4 h-4 text-white/40' /> Wishlist
+                        <Heart className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Wishlist
                       </span>
                       {wishlistProducts.length > 0 && (
-                        <span className='bg-brand-500/20 text-brand-300 text-[10px] font-bold px-2 py-0.5 rounded-full'>
+                        <span className='bg-[#c5a059]/15 px-2 py-0.5 text-[10px] font-bold text-[#c5a059]'>
                           {wishlistProducts.length}
                         </span>
                       )}
@@ -700,17 +723,17 @@ export default function Navbar() {
                     <button
                       type='button'
                       onClick={handleLogout}
-                      className='w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/20 border border-transparent rounded-2xl transition-all'
+                      className='flex w-full items-center gap-3 border-l-2 border-transparent px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c5a059] transition-colors hover:border-[#c5a059] hover:bg-navy-900'
                     >
-                      <LogOut className='w-4 h-4' /> Sign Out
+                      <LogOut className='w-4 h-4 shrink-0' /> Sign Out
                     </button>
                   </div>
-                : <div className='flex gap-2.5 mt-2'>
+                : <div className='mt-2 flex gap-2.5'>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
                       href={authHref("login")}
                       scroll={false}
-                      className='flex-1 py-3 text-xs font-bold text-white bg-navy-800 border border-navy-700 hover:bg-navy-700 hover:border-navy-600 rounded-2xl text-center transition-all shadow-sm'
+                      className='flex-1 border border-navy-700 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:border-[#c5a059]/50 hover:text-[#c5a059]'
                     >
                       Sign In
                     </Link>
@@ -718,7 +741,7 @@ export default function Navbar() {
                       onClick={() => setIsMenuOpen(false)}
                       href={authHref("signup")}
                       scroll={false}
-                      className='flex-1 py-3 text-xs font-bold bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white rounded-2xl text-center shadow-lg shadow-brand-900/40 transition-all'
+                      className='flex-1 bg-[#c5a059] py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#b8924d]'
                     >
                       Create Account
                     </Link>
@@ -728,13 +751,6 @@ export default function Navbar() {
             </nav>
           </div>
         </div>
-      )}
-
-      {isUserMenuOpen && (
-        <div
-          className='fixed inset-0 z-30'
-          onClick={() => setIsUserMenuOpen(false)}
-        />
       )}
 
       {/* Mobile bottom navigation — solid bg (no backdrop-blur / alpha bg: avoids “white bar” + invisible white icons on iOS/WebKit) */}

@@ -223,6 +223,11 @@ function mergeOptimisticCart(
   };
 }
 
+export type AddToCartOptions = {
+  /** Override success toast; `false` suppresses the default "Added to cart!" message. */
+  successToast?: string | false;
+};
+
 interface CartState {
   cart: Cart | null;
   isLoading: boolean;
@@ -236,6 +241,7 @@ interface CartState {
     customFieldAnswers?: Array<{ label: string; value: string }>,
     /** When set, cart badge + drawer update immediately (then server confirms) */
     product?: Product,
+    options?: AddToCartOptions,
   ) => Promise<void>;
    updateItem: (cartItemId: string, quantity: number) => Promise<void>;
    removeItem: (cartItemId: string) => Promise<void>;
@@ -243,6 +249,8 @@ interface CartState {
    applyCoupon: (code: string) => Promise<void>;
    removeCoupon: () => Promise<void>;
    resetCart: () => void;
+   /** After checkout: bust server cache, sync empty cart, clear coupon storage. */
+   purgeCartAfterCheckout: () => Promise<void>;
  }
  
  export const useCartStore = create<CartState>((set, get) => ({
@@ -257,10 +265,20 @@ interface CartState {
      try {
        const body = await cartApi.get();
        const cart = body.data.cart;
+       const hasItems = (cart?.items?.length ?? 0) > 0;
        set({
-         cart,
-         itemCount: cart?.items?.reduce((acc: number, item: CartItem) => acc + item.quantity, 0) || 0,
-         appliedCouponCode: resolveAppliedCouponCode(cart, previousCode),
+         cart: hasItems ? cart : null,
+         itemCount:
+           hasItems ?
+             cart!.items.reduce(
+               (acc: number, item: CartItem) => acc + item.quantity,
+               0,
+             )
+           : 0,
+         appliedCouponCode:
+           hasItems ?
+             resolveAppliedCouponCode(cart, previousCode)
+           : null,
        });
      } catch {
        // silent fail
@@ -269,7 +287,7 @@ interface CartState {
      }
    },
  
-   addToCart: async (productId, variant, quantity, customFieldAnswers, product) => {
+   addToCart: async (productId, variant, quantity, customFieldAnswers, product, options) => {
      const key = cartAddKey(productId, variant.sku, customFieldAnswers);
      if (addCartInFlight.has(key)) return;
 
@@ -306,7 +324,10 @@ interface CartState {
         itemCount: cart.items.reduce((acc: number, item: CartItem) => acc + item.quantity, 0),
         appliedCouponCode: resolveAppliedCouponCode(cart, get().appliedCouponCode),
       });
-      toast.success('Added to cart!');
+      const toastMsg = options?.successToast;
+      if (toastMsg !== false) {
+        toast.success(toastMsg ?? 'Added to cart!');
+      }
     } catch (err: unknown) {
       if (product) {
         set({ cart: previousCart, itemCount: previousCount });
@@ -360,7 +381,7 @@ interface CartState {
     const previousCart = get().cart;
     if (!previousCart) return;
 
-    // Optimistic removal
+    const isLastItem = previousCart.items.length === 1;
     const nextItems = previousCart.items.filter(
       (it) => it.cartItemId !== cartItemId,
     );
@@ -372,27 +393,70 @@ interface CartState {
       total: Math.max(0, nextSubtotal - (previousCart.discount || 0)),
     };
 
+    const applyRemovedCart = (cart: Cart | null | undefined) => {
+      const hasItems = (cart?.items?.length ?? 0) > 0;
+      set({
+        cart: hasItems ? cart! : null,
+        itemCount:
+          hasItems ?
+            cart!.items.reduce(
+              (acc: number, item: CartItem) => acc + item.quantity,
+              0,
+            )
+          : 0,
+        appliedCouponCode:
+          hasItems ?
+            resolveAppliedCouponCode(cart, get().appliedCouponCode)
+          : null,
+      });
+      if (!hasItems) writeStoredCouponCode(null);
+    };
+
     set({
-      cart: optimisticCart,
-      itemCount: nextItems.reduce((acc, it) => acc + it.quantity, 0),
+      cart: isLastItem ? null : optimisticCart,
+      itemCount: isLastItem ? 0 : nextItems.reduce((acc, it) => acc + it.quantity, 0),
+      ...(isLastItem ? { appliedCouponCode: null } : {}),
     });
 
-    try {
-      const body = await cartApi.remove(cartItemId);
-      const cart = body.data.cart;
-      set({
-        cart,
-        itemCount: cart.items.reduce((acc: number, item: CartItem) => acc + item.quantity, 0),
-        appliedCouponCode: resolveAppliedCouponCode(cart, get().appliedCouponCode),
-      });
-      toast.success("Item removed from cart");
-    } catch {
-      // Rollback
+    const rollback = () => {
       set({
         cart: previousCart,
         itemCount: previousCart.items.reduce((acc, it) => acc + it.quantity, 0),
+        appliedCouponCode: resolveAppliedCouponCode(
+          previousCart,
+          get().appliedCouponCode,
+        ),
       });
-      toast.error("Failed to remove item");
+    };
+
+    try {
+      const body = await cartApi.remove(cartItemId);
+      applyRemovedCart(body.data.cart);
+      toast.success("Item removed from cart");
+    } catch (err: unknown) {
+      const error = err as CartApiError;
+      if (error.status === 409) {
+        try {
+          await get().fetchCart();
+          const body = await cartApi.remove(cartItemId);
+          applyRemovedCart(body.data.cart);
+          toast.success("Item removed from cart");
+          return;
+        } catch (retryErr: unknown) {
+          await get().fetchCart();
+          const st = get().cart;
+          if (!st?.items?.length) {
+            toast.success("Item removed from cart");
+            return;
+          }
+          rollback();
+          const retryError = retryErr as CartApiError;
+          toast.error(retryError.message || "Failed to remove item");
+          return;
+        }
+      }
+      rollback();
+      toast.error(error.message || "Failed to remove item");
     }
   },
 
@@ -448,10 +512,36 @@ interface CartState {
   },
 
   resetCart: () => {
-    const { cart } = get();
-    if (cart) {
-      writeStoredCouponCode(null);
-      set({ cart: null, itemCount: 0, appliedCouponCode: null });
+    writeStoredCouponCode(null);
+    set({ cart: null, itemCount: 0, appliedCouponCode: null });
+  },
+
+  purgeCartAfterCheckout: async () => {
+    writeStoredCouponCode(null);
+    set({ cart: null, itemCount: 0, appliedCouponCode: null });
+    try {
+      await cartApi.clear();
+    } catch {
+      /* cart may already be removed server-side during checkout */
+    }
+    try {
+      const body = await cartApi.get();
+      const cart = body.data.cart;
+      const hasItems = (cart?.items?.length ?? 0) > 0;
+      set({
+        cart: hasItems ? cart : null,
+        itemCount:
+          hasItems ?
+            cart!.items.reduce(
+              (acc: number, item: CartItem) => acc + item.quantity,
+              0,
+            )
+          : 0,
+        appliedCouponCode:
+          hasItems ? resolveAppliedCouponCode(cart, null) : null,
+      });
+    } catch {
+      /* keep local empty */
     }
   },
 }));

@@ -8,7 +8,6 @@ import {
   Mail,
   PhoneCall,
   RotateCcw,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -18,6 +17,16 @@ import { RaniCareFab } from "./RaniCareFab";
 import { RaniCareMessageRow } from "./RaniCareMessageRow";
 import { RaniCareTypingIndicator } from "./RaniCareTypingIndicator";
 import { STARTER_PROMPTS } from "./constants";
+import {
+  raniBodyBg,
+  raniChip,
+  raniEyebrow,
+  raniHeader,
+  raniHeaderAccent,
+  raniHeaderBtn,
+  raniIconBox,
+  raniPanel,
+} from "./raniCareHeritageTheme";
 import { useChatScroll } from "./useChatScroll";
 import { useNewMessageIds } from "./useNewMessageIds";
 import { useRaniCareChat } from "./useRaniCareChat";
@@ -66,80 +75,68 @@ export function RaniCareChatPanel(props: ChatProps) {
     <>
       {open && (
         <button
-          type='button'
-          aria-label='Close support chat'
+          type="button"
+          aria-label="Close support chat"
           className={cn(
-            "fixed inset-0 z-[94] bg-navy-900/25 backdrop-blur-[3px]",
-            "animate-in fade-in duration-200 motion-reduce:animate-none",
-            "lg:hidden",
+            "fixed inset-0 z-[94] bg-[#14192f]/40 backdrop-blur-[6px]",
+            "animate-in fade-in duration-200 motion-reduce:animate-none lg:hidden",
           )}
           onClick={closePanel}
         />
       )}
 
-      <div className='fixed right-3 sm:right-4 z-[95] flex flex-col items-end gap-1.5 sm:gap-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-5'>
+      <div className="fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] right-3 z-[95] flex flex-col items-end gap-1.5 sm:bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] sm:right-4 sm:gap-2 lg:bottom-5">
         {open && (
           <div
             data-lenis-prevent
             data-rani-care
-            role='dialog'
-            aria-label='Rani Care support chat'
-            aria-modal='true'
+            role="dialog"
+            aria-label="Rani Care support chat"
+            aria-modal="true"
             className={cn(
-              "w-[calc(100vw-1.25rem)] sm:w-[408px] max-w-[408px]",
-              "h-[min(80vh,700px)] sm:h-[min(700px,80vh)]",
-              "flex flex-col mb-3 overflow-hidden",
-              "rounded-[1.35rem] border border-white/20",
-              "bg-white/95 backdrop-blur-xl",
-              "shadow-[0_24px_60px_-12px_rgba(20,25,47,0.35)]",
+              raniPanel,
+              "mb-3 flex h-[min(80vh,700px)] w-[calc(100vw-1.25rem)] max-w-[408px] flex-col sm:h-[min(700px,80vh)] sm:w-[408px]",
               isClosing ?
                 "animate-rani-panel-out motion-reduce:animate-none"
               : "animate-rani-panel-in motion-reduce:animate-none",
             )}
           >
-            <header
-              className={cn(
-                "shrink-0 text-white px-4 py-3 relative overflow-hidden",
-                "bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900",
-              )}
-            >
-              <div className='flex items-center justify-between gap-2'>
-                <div className='flex items-center gap-2.5 min-w-0'>
-                  <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-gold-300/30'>
-                    <Sparkles className='h-4 w-4 text-gold-300' />
+            <header className={raniHeader}>
+              <span className={raniHeaderAccent} aria-hidden />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className={raniIconBox}>
+                    <Bot className="h-4 w-4 text-[#c5a059]" />
                   </span>
-                  <div className='min-w-0'>
-                    <p className='text-[10px] uppercase tracking-widest text-gold-300/90 font-semibold'>
-                      Rani Care
-                    </p>
-                    <h3 className='text-sm font-bold truncate'>Support</h3>
+                  <div className="min-w-0">
+                    <p className={raniEyebrow}>Rani Care</p>
+                    <h3 className="truncate font-serif text-sm font-semibold text-white">
+                      Heritage Concierge
+                    </h3>
                   </div>
                 </div>
-                <div className='flex items-center gap-1 shrink-0'>
+                <div className="flex shrink-0 items-center gap-1">
                   <button
-                    type='button'
+                    type="button"
                     onClick={() => setShowClearConfirm(true)}
-                    className='h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 inline-flex items-center justify-center transition-colors'
-                    aria-label='Clear chat'
+                    className={raniHeaderBtn}
+                    aria-label="Clear chat"
                   >
-                    <Trash2 className='h-3.5 w-3.5' />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                   <button
-                    type='button'
+                    type="button"
                     onClick={closePanel}
-                    className='h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 inline-flex items-center justify-center transition-colors'
-                    aria-label='Close chat'
+                    className={raniHeaderBtn}
+                    aria-label="Close chat"
                   >
-                    <X className='h-4 w-4' />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-              <div className='mt-2 flex items-center gap-1.5 pl-[2.75rem]'>
-                <span className='relative flex h-2 w-2 shrink-0'>
-                  <span className='absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50 animate-ping motion-reduce:animate-none' />
-                  <span className='relative h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30' />
-                </span>
-                <span className='text-[11px] text-white/85'>
+              <div className="mt-2 flex items-center gap-1.5 pl-[2.75rem]">
+                <span className="h-2 w-2 shrink-0 bg-[#c5a059]" aria-hidden />
+                <span className="text-[11px] uppercase tracking-[0.14em] text-white/75">
                   Online · replies in seconds
                 </span>
               </div>
@@ -148,25 +145,23 @@ export function RaniCareChatPanel(props: ChatProps) {
             {showClearConfirm && (
               <div
                 className={cn(
-                  "shrink-0 px-3 py-2.5 bg-amber-50 border-b border-amber-100",
+                  "shrink-0 border-b border-gray-200 bg-white px-3 py-2.5",
                   "animate-in slide-in-from-top-2 duration-200 motion-reduce:animate-none",
                 )}
               >
-                <p className='text-amber-950 font-medium text-[13px]'>
-                  Clear chat?
-                </p>
-                <div className='mt-2 flex gap-2'>
+                <p className="text-[13px] font-medium text-navy-900">Clear this conversation?</p>
+                <div className="mt-2 flex gap-2">
                   <button
-                    type='button'
+                    type="button"
                     onClick={() => clearChat(true)}
-                    className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-900 text-white hover:bg-amber-950'
+                    className="bg-navy-900 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-navy-800"
                   >
                     Clear
                   </button>
                   <button
-                    type='button'
+                    type="button"
                     onClick={() => setShowClearConfirm(false)}
-                    className='text-xs px-3 py-1.5 rounded-lg border border-amber-200 text-amber-900 hover:bg-amber-100/80'
+                    className="border border-gray-300 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-navy-900 transition-colors hover:border-[#c5a059]/50"
                   >
                     Cancel
                   </button>
@@ -176,29 +171,35 @@ export function RaniCareChatPanel(props: ChatProps) {
 
             <div
               ref={scrollRef}
-              className='flex-1 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y px-3 py-3 bg-[#f4f6fa] scrollbar-hide'
+              className={cn(
+                "flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3 scrollbar-hide touch-pan-y",
+                raniBodyBg,
+              )}
             >
-              <div className='space-y-3'>
+              <div className="space-y-3">
                 {messages.length === 0 && !typing && (
                   <div
                     className={cn(
-                      "rounded-2xl border border-dashed border-gray-300/80 bg-white px-4 py-4 text-center",
+                      "border border-dashed border-gray-300 bg-white px-4 py-4 text-center",
                       "animate-rani-msg-bot motion-reduce:animate-none",
                     )}
                   >
-                    <div className='mx-auto h-10 w-10 rounded-xl bg-brand-50 flex items-center justify-center mb-2'>
-                      <Bot className='h-5 w-5 text-brand-600' />
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center border border-[#c5a059]/30 bg-[#f8f9fa]">
+                      <Bot className="h-5 w-5 text-[#c5a059]" />
                     </div>
-                    <p className='text-sm font-semibold text-gray-800'>
-                      What do you need?
+                    <p className="font-serif text-sm font-semibold text-navy-900">
+                      How may we assist you?
                     </p>
-                    <div className='mt-3 flex flex-wrap justify-center gap-1.5'>
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Orders, delivery, returns, or styling guidance.
+                    </p>
+                    <div className="mt-3 flex flex-wrap justify-center gap-1.5">
                       {STARTER_PROMPTS.map((s, i) => (
                         <button
                           key={s.value}
-                          type='button'
+                          type="button"
                           onClick={() => void handleAction(s.value)}
-                          className='text-xs px-2.5 py-1.5 rounded-full font-medium border border-brand-200/80 text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors'
+                          className={raniChip}
                           style={{ animationDelay: `${80 + i * 40}ms` }}
                         >
                           {s.label}
@@ -226,11 +227,11 @@ export function RaniCareChatPanel(props: ChatProps) {
                   <RaniCareTypingIndicator loadingOrders={loadingOrders} />
                 )}
 
-                <div ref={endRef} className='h-px shrink-0' aria-hidden />
+                <div ref={endRef} className="h-px shrink-0" aria-hidden />
               </div>
             </div>
 
-            <footer className='shrink-0 px-3 py-2.5 border-t border-gray-200/90 bg-white'>
+            <footer className="shrink-0 border-t border-gray-200 bg-white px-3 py-2.5">
               <RaniCareComposer
                 input={input}
                 setInput={setInput}
@@ -238,20 +239,20 @@ export function RaniCareChatPanel(props: ChatProps) {
                 disabled={composerBusy}
                 focusOnMount={open}
               />
-              <div className='mt-2 flex items-center justify-end gap-3 text-[10px] text-gray-400'>
+              <div className="mt-2 flex items-center justify-end gap-3 text-[10px] uppercase tracking-[0.12em] text-gray-400">
                 <button
-                  type='button'
+                  type="button"
                   onClick={() => setShowClearConfirm(true)}
-                  className='inline-flex items-center gap-0.5 hover:text-gray-600'
+                  className="inline-flex items-center gap-0.5 transition-colors hover:text-navy-900"
                 >
-                  <RotateCcw className='h-3 w-3' />
+                  <RotateCcw className="h-3 w-3" />
                   Clear
                 </button>
                 <Link
-                  href='/dashboard/orders'
-                  className='inline-flex items-center gap-0.5 text-brand-600 hover:text-brand-700 font-medium'
+                  href="/dashboard/orders"
+                  className="inline-flex items-center gap-0.5 font-semibold text-[#c5a059] transition-colors hover:text-[#b8924d]"
                 >
-                  Orders <ExternalLink className='h-3 w-3' />
+                  Orders <ExternalLink className="h-3 w-3" />
                 </Link>
               </div>
             </footer>
@@ -261,22 +262,22 @@ export function RaniCareChatPanel(props: ChatProps) {
         {!open && <RaniCareFab onOpen={() => setOpen(true)} />}
 
         {open && (
-          <div className='mt-2 flex items-center justify-between px-1 text-xs text-gray-500 max-w-[408px] w-full'>
-            <div className='flex items-center gap-3'>
+          <div className="mt-2 flex w-full max-w-[408px] items-center justify-between px-1 text-[10px] uppercase tracking-[0.12em] text-gray-500">
+            <div className="flex items-center gap-3">
               <a
-                className='inline-flex items-center gap-1 hover:text-brand-700'
+                className="inline-flex items-center gap-1 transition-colors hover:text-[#c5a059]"
                 href={`tel:${contactPhone.replace(/\s+/g, "")}`}
               >
-                <PhoneCall className='h-3.5 w-3.5' /> Call
+                <PhoneCall className="h-3.5 w-3.5" /> Call
               </a>
               <a
-                className='inline-flex items-center gap-1 hover:text-brand-700'
+                className="inline-flex items-center gap-1 transition-colors hover:text-[#c5a059]"
                 href={`mailto:${contactEmail}`}
               >
-                <Mail className='h-3.5 w-3.5' /> Email
+                <Mail className="h-3.5 w-3.5" /> Email
               </a>
             </div>
-            <Link className='hover:text-brand-700' href='/privacy'>
+            <Link className="transition-colors hover:text-[#c5a059]" href="/privacy">
               Privacy
             </Link>
           </div>

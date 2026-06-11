@@ -1,4 +1,4 @@
-import type { Category, Product } from "@/types";
+import type { Blog, Category, Product } from "@/types";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 
 /** Categories with counts for home “Browse by Category” — avoids a client-only skeleton flash. */
@@ -18,6 +18,29 @@ export async function fetchHomeCategoryStats(): Promise<
     };
     const list = json?.data?.categories;
     return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Latest published blogs for home Heritage Stories — hides section when empty. */
+export async function fetchHomeLatestBlogs(limit = 3): Promise<Blog[] | null> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  try {
+    const res = await fetch(
+      `${base}/blogs?limit=${limit}&page=1&sort=-createdAt`,
+      {
+        next: { revalidate: 300 },
+        headers: { Accept: "application/json" },
+      },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { blogs?: Blog[] } };
+    const list = json?.data?.blogs;
+    return Array.isArray(list) ?
+        list.filter((b) => b?.slug && b?.title && b.isPublished !== false)
+      : null;
   } catch {
     return null;
   }

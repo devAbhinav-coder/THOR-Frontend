@@ -10,6 +10,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { aboutPageStyles } from "@/lib/aboutPageStyles";
 import type { AboutInternalLink } from "@/components/about/aboutPageTypes";
 
 type TabId = "shop" | "discover" | "help";
@@ -55,7 +56,7 @@ export default function AboutExploreHub({
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
           data-about-reveal
-          className="rounded-[2rem] sm:rounded-[2.75rem] bg-white ring-1 ring-stone-200/80 shadow-[0_40px_80px_-40px_rgba(20,25,47,0.15)] overflow-hidden"
+          className="border border-[#c5a059]/35 bg-white shadow-[0_12px_40px_rgba(0,13,33,0.06)] overflow-hidden"
         >
           {/* Header band */}
           <div className="relative px-6 sm:px-10 pt-10 sm:pt-12 pb-8 border-b border-stone-100 bg-gradient-to-br from-[#faf9f7] via-white to-brand-50/30">
@@ -75,10 +76,7 @@ export default function AboutExploreHub({
                   styling — so you never lose the thread.
                 </p>
               </div>
-              <Link
-                href="/shop"
-                className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-navy-900 text-navy-900 px-6 py-3 text-sm font-bold hover:bg-navy-900 hover:text-white transition-colors shrink-0 self-start lg:self-auto"
-              >
+              <Link href="/shop" className={aboutPageStyles.ctaOutlineNavy}>
                 <Grid3X3 className="h-4 w-4" aria-hidden />
                 View all sarees
               </Link>
@@ -103,10 +101,10 @@ export default function AboutExploreHub({
                     id={`about-tab-btn-${tab.id}`}
                     onClick={() => setActive(tab.id)}
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300",
+                      "inline-flex items-center gap-2 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition-all duration-300 sm:text-[11px]",
                       isActive
-                        ? "bg-navy-900 text-white shadow-md"
-                        : "bg-stone-100 text-stone-600 hover:bg-stone-200/80",
+                        ? "bg-navy-900 text-white"
+                        : "border border-gray-200/70 bg-white text-stone-600 hover:border-[#c5a059]/50 hover:text-navy-900",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" aria-hidden />
@@ -143,7 +141,7 @@ export default function AboutExploreHub({
                         <li key={linkKey(link)}>
                           <Link
                             href={link.href}
-                            className="group inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50/80 px-4 py-2.5 text-sm font-semibold text-navy-900 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 transition-all"
+                            className="group inline-flex items-center gap-2 border border-gray-200/70 bg-white px-4 py-2.5 text-sm font-medium text-navy-900 transition-colors hover:border-[#c5a059]/50 hover:text-[#c5a059]"
                           >
                             {link.label}
                             <ArrowUpRight className="h-3.5 w-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -153,7 +151,7 @@ export default function AboutExploreHub({
                       <li>
                         <Link
                           href="/shop"
-                          className="inline-flex items-center gap-2 rounded-full bg-navy-900 text-white px-4 py-2.5 text-sm font-bold hover:bg-navy-800 transition-colors"
+                          className={cn(aboutPageStyles.ctaNavy, "px-4 py-2.5 text-[11px]")}
                         >
                           All collections
                           <ArrowUpRight className="h-3.5 w-3.5" />
@@ -192,10 +190,10 @@ function ExploreLinkCard({
     <Link
       href={link.href}
       className={cn(
-        "group relative flex flex-col justify-between overflow-hidden rounded-2xl p-5 sm:p-6 h-full min-h-[120px]",
-        "ring-1 ring-stone-100 bg-gradient-to-br from-white to-stone-50/80",
-        "transition-all duration-500 hover:ring-brand-200 hover:shadow-lg hover:-translate-y-0.5",
-        featured && "sm:min-h-[140px] bg-gradient-to-br from-navy-900 to-navy-800 ring-navy-800 text-white",
+        "group relative flex flex-col justify-between overflow-hidden p-5 sm:p-6 h-full min-h-[120px]",
+        "border border-gray-200/70 bg-white",
+        "transition-all duration-300 hover:border-[#c5a059]/50 hover:shadow-[0_10px_36px_rgba(0,13,33,0.06)]",
+        featured && "sm:min-h-[140px] border-navy-900 bg-navy-900 text-white hover:border-navy-800",
       )}
     >
       <span
@@ -227,10 +225,10 @@ function ExploreLinkCard({
         </div>
         <span
           className={cn(
-            "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300",
+            "inline-flex h-9 w-9 shrink-0 items-center justify-center transition-colors duration-300",
             featured
-              ? "bg-white/10 text-white group-hover:bg-white group-hover:text-navy-900"
-              : "bg-stone-100 text-stone-500 group-hover:bg-brand-600 group-hover:text-white",
+              ? "border border-white/20 bg-white/10 text-white group-hover:bg-white group-hover:text-navy-900"
+              : "border border-gray-200/70 bg-[#faf9f7] text-stone-500 group-hover:border-[#c5a059]/50 group-hover:bg-[#c5a059] group-hover:text-white",
           )}
         >
           <ArrowUpRight className="h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />

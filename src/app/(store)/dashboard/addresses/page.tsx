@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, MapPin, Home, Briefcase } from 'lucide-react';
+import { Plus, Home, Briefcase, MapPin } from 'lucide-react';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authApi } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
+import { AccountFormField } from '@/components/dashboard/account/AccountFormField';
+import { Address } from '@/types';
 
 const addressSchema = z.object({
   name: z.string().min(2, 'Full name is required').max(80, 'Name is too long'),
@@ -23,10 +23,8 @@ const addressSchema = z.object({
       return !!pn && pn.isValid() && pn.country === 'IN';
     }, 'Enter a valid Indian mobile number'),
   label: z.string().default('Home'),
-  /** House / flat / building */
   house: z.string().max(120, 'House / flat / building is too long').optional(),
   street: z.string().min(5, 'Street / area is required'),
-  /** Nearby landmark, optional */
   landmark: z.string().max(160, 'Landmark is too long').optional(),
   city: z.string().min(2, 'City required'),
   state: z.string().min(2, 'State required'),
@@ -36,40 +34,89 @@ const addressSchema = z.object({
 
 type AddressForm = z.infer<typeof addressSchema>;
 
+function formatAddressLine(addr: Address): string {
+  const parts = [
+    addr.house,
+    addr.street,
+    addr.landmark ? `Near ${addr.landmark}` : null,
+    `${addr.city}, ${addr.state} — ${addr.pincode}`,
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
 export default function AddressesPage() {
   const { user, setUser } = useAuthStore();
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AddressForm>({
     resolver: zodResolver(addressSchema),
-    defaultValues: { name: user?.name || '', phone: user?.phone || '', label: 'Home', isDefault: false },
+    defaultValues: {
+      name: user?.name || '',
+      phone: user?.phone || '',
+      label: 'Home',
+      isDefault: false,
+    },
   });
+
+  const openAddForm = () => {
+    setEditingId(null);
+    reset({
+      name: user?.name || '',
+      phone: user?.phone || '',
+      label: 'Home',
+      house: '',
+      street: '',
+      landmark: '',
+      city: '',
+      state: '',
+      pincode: '',
+      isDefault: false,
+    });
+    setIsAdding(true);
+  };
+
+  const openEditForm = (addr: Address) => {
+    setEditingId(addr._id || null);
+    reset({
+      name: addr.name,
+      phone: addr.phone.replace(/^\+91/, ''),
+      label: addr.label,
+      house: addr.house || '',
+      street: addr.street,
+      landmark: addr.landmark || '',
+      city: addr.city,
+      state: addr.state,
+      pincode: addr.pincode,
+      isDefault: addr.isDefault,
+    });
+    setIsAdding(true);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  };
+
+  const cancelForm = () => {
+    setIsAdding(false);
+    setEditingId(null);
+    reset();
+  };
 
   const onSubmit = async (data: AddressForm) => {
     setIsSaving(true);
     try {
-          const normalizedPhone =
+      const normalizedPhone =
         parsePhoneNumberFromString(data.phone.replace(/\s+/g, ''), 'IN')?.number || data.phone;
+
+      if (editingId) {
+        await authApi.removeAddress(editingId);
+      }
+
       const res = await authApi.addAddress({ ...data, phone: normalizedPhone });
       setUser({ ...user!, addresses: res.data.addresses });
-      toast.success('Address added');
-      setIsAdding(false);
-      reset({
-        name: user?.name || '',
-        phone: user?.phone || '',
-        label: 'Home',
-        house: '',
-        street: '',
-        landmark: '',
-        city: '',
-        state: '',
-        pincode: '',
-        isDefault: false,
-      });
+      toast.success(editingId ? 'Address updated' : 'Address saved');
+      cancelForm();
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || 'Failed to add address');
+      toast.error((err as { message?: string }).message || 'Failed to save address');
     } finally {
       setIsSaving(false);
     }
@@ -81,113 +128,166 @@ export default function AddressesPage() {
       const res = await authApi.removeAddress(addressId);
       setUser({ ...user!, addresses: res.data.addresses });
       toast.success('Address removed');
+      if (editingId === addressId) cancelForm();
     } catch {
       toast.error('Failed to remove address');
     }
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="font-semibold text-gray-900 text-lg">My Addresses</h2>
-        <Button variant="brand" size="sm" onClick={() => setIsAdding(true)}>
-          <Plus className="h-4 w-4 mr-1" /> Add Address
-        </Button>
-      </div>
+    <div className="flex flex-col gap-account-stack-lg pb-6">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl md:text-4xl text-account-primary">Shipping Addresses</h1>
+          <p className="text-sm text-account-on-surface-variant mt-2 max-w-xl">
+            Manage your preferred delivery destinations for your bespoke collections and seasonal pieces.
+          </p>
+        </div>
+        {!isAdding && (
+          <button
+            type="button"
+            onClick={openAddForm}
+            className="inline-flex items-center justify-center gap-2 bg-account-primary text-white px-5 py-3 text-[11px] font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0"
+          >
+            <Plus className="h-4 w-4" /> Add Address
+          </button>
+        )}
+      </header>
 
       {user?.addresses.length === 0 && !isAdding && (
-        <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-          <MapPin className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">No saved addresses yet.</p>
+        <div className="bg-account-surface-container-lowest border border-account-outline-variant/30 p-12 text-center">
+          <MapPin className="h-10 w-10 text-account-outline-variant mx-auto mb-3" />
+          <p className="text-account-on-surface-variant">No saved addresses yet.</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {user?.addresses.map((addr) => (
-          <div key={addr._id} className={`bg-white rounded-2xl border p-4 relative shadow-sm ${addr.isDefault ? 'border-brand-300' : 'border-gray-100'}`}>
-            {addr.isDefault && (
-              <span className="absolute top-3 right-3 text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-medium">Default</span>
-            )}
-            <p className="font-medium text-gray-900 text-sm mb-1 inline-flex items-center gap-1.5">
-              {addr.label.toLowerCase().includes('office') ? <Briefcase className="h-3.5 w-3.5 text-gray-500" /> : <Home className="h-3.5 w-3.5 text-gray-500" />}
-              {addr.label}
-            </p>
-            <p className="text-sm text-gray-700">{addr.name} · {addr.phone}</p>
-            {addr.house && <p className="text-sm text-gray-600">{addr.house}</p>}
-            <p className="text-sm text-gray-600">{addr.street}</p>
-            {addr.landmark && <p className="text-sm text-gray-500">Landmark: {addr.landmark}</p>}
-            <p className="text-sm text-gray-600">{addr.city}, {addr.state} — {addr.pincode}</p>
-            <p className="text-sm text-gray-500">{addr.country}</p>
-            <button
-              onClick={() => removeAddress(addr._id!)}
-              className="mt-3 flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Remove
-            </button>
-          </div>
-        ))}
-      </div>
+      {!!user?.addresses.length && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-account-gutter">
+          {user.addresses.map((addr) => {
+            const isOffice = addr.label.toLowerCase().includes('office');
+            return (
+              <article
+                key={addr._id}
+                className="bg-account-surface-container-lowest border border-account-outline-variant/30 p-6 shadow-account-paper relative"
+              >
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isOffice ? (
+                      <Briefcase className="h-4 w-4 text-account-secondary shrink-0" />
+                    ) : (
+                      <Home className="h-4 w-4 text-account-secondary shrink-0" />
+                    )}
+                    <h3 className="font-serif text-lg text-account-primary truncate">{addr.name}</h3>
+                  </div>
+                  {addr.isDefault && (
+                    <span className="shrink-0 bg-account-secondary-container text-account-on-secondary-container px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest">
+                      Default
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-account-on-surface-variant leading-relaxed mb-3">
+                  {formatAddressLine(addr)}
+                </p>
+                <p className="text-sm text-account-primary font-medium mb-6">{addr.phone}</p>
+                <div className="flex items-center justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => openEditForm(addr)}
+                    className="text-[11px] font-semibold uppercase tracking-widest text-account-secondary hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeAddress(addr._id!)}
+                    className="text-[11px] font-semibold uppercase tracking-widest text-red-600 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
       {isAdding && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-sm">
-          <h3 className="font-semibold text-gray-900 mb-4">Add New Address</h3>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                {...register('name')}
-                label="Full Name"
-                placeholder="e.g. Rani Sharma"
-                error={errors.name?.message}
-              />
-              <Input
-                {...register('phone')}
+        <section className="bg-account-surface-container-lowest border border-account-outline-variant/30 p-6 md:p-8">
+          <div className="mb-8">
+            <h2 className="font-serif text-2xl text-account-primary">
+              {editingId ? 'Edit Destination' : 'New Destination'}
+            </h2>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-account-on-surface-variant mt-1">
+              Specify atelier delivery coordinates
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-8">
+              <AccountFormField label="Full Name" error={errors.name?.message} {...register('name')} />
+              <AccountFormField
                 label="Mobile Number"
-                placeholder="e.g. 9876543210"
-                error={errors.phone?.message}
                 inputMode="tel"
+                error={errors.phone?.message}
+                {...register('phone')}
               />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Input
-                {...register('label')}
-                label="Label"
-                placeholder="Home / Office"
-                error={errors.label?.message}
-              />
-              <Input
-                {...register('house')}
-                label="House / Flat / Building"
-                placeholder="e.g. B-203, Tower 4"
+              <AccountFormField
+                label="Apt / House / Villa No."
                 error={errors.house?.message}
+                {...register('house')}
               />
-              <Input
-                {...register('landmark')}
+              <AccountFormField
                 label="Landmark (optional)"
-                placeholder="e.g. Near City Mall"
                 error={errors.landmark?.message}
+                {...register('landmark')}
               />
             </div>
-            <Input
-              {...register('street')}
-              label="Street & Area"
-              placeholder="Street name, locality / sector"
+            <AccountFormField
+              label="Street & Locality"
               error={errors.street?.message}
+              {...register('street')}
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input {...register('city')} label="City" error={errors.city?.message} />
-              <Input {...register('state')} label="State" error={errors.state?.message} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-8">
+              <AccountFormField label="City" error={errors.city?.message} {...register('city')} />
+              <AccountFormField label="State" error={errors.state?.message} {...register('state')} />
+              <AccountFormField
+                label="Pincode"
+                maxLength={6}
+                error={errors.pincode?.message}
+                className="sm:col-span-2 lg:col-span-1"
+                {...register('pincode')}
+              />
             </div>
-            <Input {...register('pincode')} label="Pincode" maxLength={6} error={errors.pincode?.message} />
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" {...register('isDefault')} className="rounded text-brand-600" />
-              <span className="text-sm text-gray-700">Set as default address</span>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                {...register('isDefault')}
+                className="h-4 w-4 rounded border-account-outline-variant text-account-primary focus:ring-account-secondary"
+              />
+              <span className="text-sm text-account-on-surface-variant">Set as default shipping address</span>
             </label>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button type="submit" variant="brand" loading={isSaving} className="w-full sm:w-auto">Save Address</Button>
-              <Button type="button" variant="outline" onClick={() => { setIsAdding(false); reset(); }} className="w-full sm:w-auto">Cancel</Button>
+
+            <input type="hidden" {...register('label')} />
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="bg-account-primary text-white px-8 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] hover:opacity-90 disabled:opacity-60"
+              >
+                {isSaving ? 'Saving…' : 'Save Address'}
+              </button>
+              <button
+                type="button"
+                onClick={cancelForm}
+                className="border border-account-outline-variant text-account-primary px-8 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] hover:bg-account-surface-container transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </form>
-        </div>
+        </section>
       )}
     </div>
   );

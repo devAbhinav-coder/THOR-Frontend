@@ -2,12 +2,34 @@
 
 import { useEffect, useId } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BRAND_NAME } from "@/lib/brandSeo";
+import type { AuthModalView } from "@/lib/authModal";
+import {
+  AUTH_HERO_IMAGE,
+  authBackdrop,
+  authFooterLinks,
+  authFormPanel,
+  authGoldRule,
+  authHeroPanel,
+  authModalEyebrow,
+  authModalShell,
+  authModalTitleDesktop,
+  authModalTitleMobile,
+} from "@/lib/authHeritageTheme";
+
+const MOBILE_HEADINGS: Record<AuthModalView, string> = {
+  login: "Sign In",
+  signup: "Create Account",
+  forgot: "Reset Password",
+};
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  view?: AuthModalView;
   title?: string;
   subtitle?: string;
   children: React.ReactNode;
@@ -17,7 +39,8 @@ type Props = {
 export default function AuthModal({
   open,
   onClose,
-  title = "Account",
+  view = "login",
+  title = "Welcome Back",
   subtitle,
   children,
   className,
@@ -40,66 +63,112 @@ export default function AuthModal({
 
   if (!open) return null;
 
+  const mobileHeading = MOBILE_HEADINGS[view];
+
   return (
     <div
-      className='fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4'
-      role='presentation'
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 lg:p-6"
+      role="presentation"
     >
       <button
-        type='button'
-        className='absolute inset-0 bg-navy-950/55 backdrop-blur-[10px]'
-        aria-label='Close dialog'
+        type="button"
+        className={authBackdrop}
+        aria-label="Close dialog"
         onClick={onClose}
       />
+
       <div
-        role='dialog'
-        aria-modal='true'
+        role="dialog"
+        aria-modal="true"
         aria-labelledby={titleId}
-        className={cn(
-          "relative z-10 flex w-full max-h-[94dvh] sm:max-h-[min(90dvh,640px)] flex-col",
-          "sm:max-w-[400px] sm:rounded-2xl rounded-t-2xl",
-          "bg-[#faf9f7] shadow-2xl shadow-navy-950/25 ring-1 ring-black/[0.06]",
-          "animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200",
-          className,
-        )}
+        className={cn(authModalShell, className)}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className='shrink-0 flex items-start justify-between gap-3 px-5 pt-5 pb-3'>
-          <div className='min-w-0 flex-1'>
-            <div className='flex items-center gap-2.5 mb-2'>
-              <Image
-                src='/logoNew.png'
-                alt=''
-                width={88}
-                height={28}
-                className='h-7 w-auto object-contain opacity-90'
-                aria-hidden
-              />
-            </div>
-            <h2
-              id={titleId}
-              className='font-serif text-xl font-bold text-navy-900 tracking-tight'
-            >
-              {title}
-            </h2>
-            {subtitle ?
-              <p className='mt-0.5 text-sm text-gray-500 leading-snug'>
-                {subtitle}
-              </p>
-            : null}
+        {/* Desktop heritage hero */}
+        <div className={authHeroPanel} aria-hidden>
+          <Image
+            src={AUTH_HERO_IMAGE}
+            alt=""
+            fill
+            priority
+            sizes="420px"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-navy-950/95 via-navy-950/35 to-navy-950/20" />
+          <div className="absolute inset-x-0 bottom-0 p-8">
+            <p className={authModalEyebrow}>Heritage Craft</p>
+            <p className="mt-2 font-serif text-3xl font-semibold leading-tight text-white">
+              The Art of the Drape
+            </p>
           </div>
-          <button
-            type='button'
-            onClick={onClose}
-            className='shrink-0 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-navy-900 transition-colors -mr-1 -mt-1'
-            aria-label='Close'
-          >
-            <X className='h-5 w-5' aria-hidden />
-          </button>
         </div>
 
-        <div className='flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-0'>
-          {children}
+        <div className={authFormPanel}>
+          <div className="shrink-0 border-b border-gray-100 px-5 pb-3 pt-4 sm:px-7 sm:pt-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-col items-center text-center lg:mb-3 lg:items-start lg:text-left">
+                  <Image
+                    src="/logoNew.png"
+                    alt={BRAND_NAME}
+                    width={120}
+                    height={36}
+                    className="h-7 w-auto object-contain opacity-95 sm:h-8"
+                  />
+                </div>
+
+                <h2
+                  id={titleId}
+                  className={cn(
+                    authModalTitleMobile,
+                    "text-[1.5rem] sm:text-[1.65rem] lg:hidden",
+                  )}
+                >
+                  {mobileHeading}
+                </h2>
+                <div className={cn(authGoldRule, "mt-2 lg:hidden")} aria-hidden />
+
+                <h2
+                  className={cn(authModalTitleDesktop, "hidden lg:block")}
+                >
+                  {title}
+                </h2>
+                {subtitle ?
+                  <p className="mt-1.5 hidden text-sm leading-snug text-gray-500 lg:block">
+                    {subtitle}
+                  </p>
+                : null}
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 p-1.5 text-gray-400 transition-colors hover:text-navy-900"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 scrollbar-hide sm:px-7 sm:py-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {children}
+          </div>
+
+          <div className="hidden shrink-0 border-t border-gray-100 px-8 py-4 lg:block">
+            <div className="flex items-center justify-center gap-6">
+              {authFooterLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={onClose}
+                  className="text-[9px] font-semibold uppercase tracking-[0.24em] text-gray-400 transition-colors hover:text-[#c5a059]"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -6,17 +6,14 @@ import {
   useEffect,
   useLayoutEffect,
   useCallback,
-  type ReactElement,
 } from "react";
 import { createPortal } from "react-dom";
 import {
   Bell,
   Check,
-  Trash2,
   Loader2,
-  PackageOpen,
-  AlertCircle,
-  Info,
+  MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationApi } from "@/lib/api";
@@ -36,38 +33,67 @@ import {
   invalidateNotifications,
 } from "@/lib/notificationCache";
 import type { NotificationsListResponse } from "@/types/notifications";
+import {
+  navBadgeCount,
+  navDropdownAccent,
+  navIconButton,
+} from "@/lib/navbarStyles";
+
+const notifActionItemClass =
+  "flex w-full items-center gap-2.5 border-l-2 border-transparent px-3 py-2.5 text-left text-[13px] text-gray-700 transition-colors hover:border-[#c5a059] hover:bg-[#c5a059]/5 hover:text-gray-900 disabled:opacity-60";
+const notifActionIconClass = "h-3.5 w-3.5 shrink-0 text-[#c5a059]";
 
 const TOAST_CLEAR = "notif-clear-all";
 const TOAST_MARK_READ = "notif-mark-all-read";
 
-const NOTIFICATION_TYPE_ICONS: Record<string, ReactElement> = {
-  order: <PackageOpen className="w-5 h-5 text-blue-500" />,
-  alert: <AlertCircle className="w-5 h-5 text-red-500" />,
-};
-
-function notificationTypeIcon(type: string): ReactElement {
-  return (
-    NOTIFICATION_TYPE_ICONS[type] ?? (
-      <Info className="w-5 h-5 text-emerald-500" />
-    )
-  );
-}
-
-const PANEL_WIDTH = 384; // matches max-w-96
-const PANEL_MARGIN = 12; // mt-3
+const PANEL_WIDTH = 380;
+const PANEL_MARGIN = 10;
 const PANEL_MAX_HEIGHT = 520;
 const VIEWPORT_GAP = 8;
 const PANEL_FLIP_THRESHOLD = 320;
 
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m`;
+
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d`;
+
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function triggerClassForVariant(variant: "navbar" | "admin" | "default") {
+  if (variant === "navbar") {
+    return cn(navIconButton, "relative");
+  }
+  if (variant === "admin") {
+    return cn(
+      "relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+    );
+  }
+  return "relative rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-200";
+}
+
 export default function NotificationBell({
   align = "right",
   onOpenChange,
+  variant = "default",
 }: {
   align?: "left" | "right";
-  /** Fires when the dropdown opens/closes — e.g. keep parent sidebar expanded while interacting. */
   onOpenChange?: (open: boolean) => void;
+  variant?: "navbar" | "admin" | "default";
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const [panelPos, setPanelPos] = useState<{
     top: number;
     left: number;
@@ -92,6 +118,18 @@ export default function NotificationBell({
     isSaving: preferencesSaving,
     updatePreferences,
   } = useNotificationPreferences(isAuthedStable && !!user);
+
+  const closePanel = useCallback(() => {
+    setIsOpen(false);
+    setShowActions(false);
+  }, []);
+
+  const togglePanel = useCallback(() => {
+    setIsOpen((open) => {
+      if (open) setShowActions(false);
+      return !open;
+    });
+  }, []);
 
   const updatePanelPosition = useCallback(() => {
     const btn = triggerRef.current?.querySelector("button");
@@ -120,7 +158,6 @@ export default function NotificationBell({
     setPanelPos({ top, left, width });
   }, [align]);
 
-  /** Keep TanStack Query hooks contiguous (before layout/DOM effects) — avoids hook-order issues with HMR / strict mode. */
   const { data } = useQuery({
     queryKey: queryKeys.notifications,
     queryFn: () => notificationApi.getAll({ limit: 50 }),
@@ -140,7 +177,7 @@ export default function NotificationBell({
     onError: (_err, _id, ctx) => {
       restoreNotificationsCache(
         queryClient,
-        ctx?.snapshot as NotificationsListResponse | undefined
+        ctx?.snapshot as NotificationsListResponse | undefined,
       );
     },
     onSettled: () => invalidateNotifications(queryClient),
@@ -156,12 +193,13 @@ export default function NotificationBell({
     onSuccess: () => {
       toast.dismiss(TOAST_MARK_READ);
       toast.success("All marked as read");
+      setShowActions(false);
     },
     onError: (err: { message?: string }, _v, ctx) => {
       toast.dismiss(TOAST_MARK_READ);
       restoreNotificationsCache(
         queryClient,
-        ctx?.snapshot as NotificationsListResponse | undefined
+        ctx?.snapshot as NotificationsListResponse | undefined,
       );
       toast.error(err?.message || "Could not update notifications.");
     },
@@ -178,13 +216,13 @@ export default function NotificationBell({
     onSuccess: () => {
       toast.dismiss(TOAST_CLEAR);
       toast.success("All notifications cleared");
-      setIsOpen(false);
+      closePanel();
     },
     onError: (err: { message?: string }, _v, ctx) => {
       toast.dismiss(TOAST_CLEAR);
       restoreNotificationsCache(
         queryClient,
-        ctx?.snapshot as NotificationsListResponse | undefined
+        ctx?.snapshot as NotificationsListResponse | undefined,
       );
       toast.error(err?.message || "Could not clear notifications.");
     },
@@ -195,6 +233,7 @@ export default function NotificationBell({
     mutationFn: () => notificationApi.sendTestPushToSelf(),
     onSuccess: () => {
       toast.success("Test push sent. Check your browser/device notifications.");
+      setShowActions(false);
     },
     onError: (err: { message?: string }) => {
       toast.error(err?.message || "Could not send test push.");
@@ -203,7 +242,7 @@ export default function NotificationBell({
 
   const handleNotificationClick = (id: string, isRead: boolean) => {
     if (!isRead) markAsReadMutation.mutate(id);
-    setIsOpen(false);
+    closePanel();
   };
 
   useLayoutEffect(() => {
@@ -211,7 +250,6 @@ export default function NotificationBell({
       setPanelPos(null);
       return;
     }
-    // First pass uses fallback size, second pass repositions with measured panel height.
     updatePanelPosition();
     const raf = requestAnimationFrame(() => updatePanelPosition());
     return () => cancelAnimationFrame(raf);
@@ -233,19 +271,30 @@ export default function NotificationBell({
   }, [isOpen]);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const t = event.target as Node;
+    if (!isOpen) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
       if (
-        triggerRef.current?.contains(t) ||
-        panelRef.current?.contains(t)
+        triggerRef.current?.contains(target) ||
+        panelRef.current?.contains(target)
       ) {
         return;
       }
-      setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+      closePanel();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closePanel();
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isOpen, closePanel]);
 
   useEffect(() => {
     if (!isAuthedStable || !user) return;
@@ -254,7 +303,13 @@ export default function NotificationBell({
 
   if (!isAuthedStable || !user) return null;
 
-  const dropdown = isOpen &&
+  const badgeClass =
+    variant === "navbar" ? navBadgeCount : (
+      "absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#eb5757] px-0.5 text-[9px] font-semibold leading-none text-white ring-2 ring-white"
+    );
+
+  const dropdown =
+    isOpen &&
     panelPos &&
     typeof document !== "undefined" &&
     createPortal(
@@ -267,96 +322,119 @@ export default function NotificationBell({
           width: panelPos.width,
           zIndex: 10050,
         }}
-        className="flex max-h-[min(80vh,520px)] min-h-0 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)] ring-1 ring-black/5 animate-in slide-in-from-top-2 duration-200 dark:bg-neutral-900 dark:ring-white/10"
+        className="flex max-h-[min(80vh,520px)] min-h-0 flex-col overflow-hidden rounded-none border border-[#c5a059]/25 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.12)] animate-[fadeIn_0.2s_ease-out_both]"
+        role="dialog"
+        aria-label="Notifications"
       >
-        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-gray-100 bg-white px-5 py-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <h3 className="shrink-0 text-base font-bold text-gray-900 dark:text-white">
-            Notifications
-          </h3>
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            {notificationPermission === "default" && (
-              <button
-                type="button"
-                onClick={() => void requestBrowserPermission()}
-                className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100"
-              >
-                Enable alerts
-              </button>
-            )}
-            {user?.role === "admin" && (
-              <button
-                type="button"
-                onClick={() => sendTestPushMutation.mutate()}
-                disabled={sendTestPushMutation.isPending}
-                className="flex items-center gap-1 rounded-full bg-purple-50 px-2 py-1.5 text-xs font-semibold text-purple-700 transition-colors hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sendTestPushMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Sending…
-                  </>
-                ) : (
-                  "Test push"
+        <div className={navDropdownAccent} aria-hidden />
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#c5a059]/15 px-4 py-3">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold tracking-tight text-gray-900">
+              Inbox
+            </h3>
+            {unreadCount > 0 ?
+              <p className="text-[12px] text-gray-500">
+                {unreadCount} unread
+              </p>
+            : <p className="text-[12px] text-gray-500">You&apos;re all caught up</p>}
+          </div>
+
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowActions((open) => !open)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-none text-gray-500 transition-colors hover:bg-[#c5a059]/10 hover:text-[#c5a059]"
+              aria-label="Notification actions"
+              aria-expanded={showActions}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+
+            {showActions ?
+              <div className="absolute right-0 top-[calc(100%+4px)] z-10 min-w-[12rem] overflow-hidden rounded-none border border-[#c5a059]/25 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+                <div className={navDropdownAccent} aria-hidden />
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllAsReadMutation.mutate()}
+                    disabled={markAllAsReadMutation.isPending}
+                    className={notifActionItemClass}
+                  >
+                    {markAllAsReadMutation.isPending ?
+                      <Loader2 className={cn(notifActionIconClass, "animate-spin")} />
+                    : <Check className={notifActionIconClass} />}
+                    Mark all as read
+                  </button>
                 )}
-              </button>
-            )}
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={() => markAllAsReadMutation.mutate()}
-                disabled={markAllAsReadMutation.isPending}
-                className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1.5 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {markAllAsReadMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Check className="h-3 w-3" />
+                {notifications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clearAllMutation.mutate()}
+                    disabled={clearAllMutation.isPending}
+                    className={notifActionItemClass}
+                  >
+                    {clearAllMutation.isPending ?
+                      <Loader2 className={cn(notifActionIconClass, "animate-spin")} />
+                    : <Trash2 className={notifActionIconClass} />}
+                    Clear all
+                  </button>
                 )}
-                {markAllAsReadMutation.isPending ? "Working…" : "Mark read"}
-              </button>
-            )}
-            {notifications.length > 0 && (
-              <button
-                type="button"
-                onClick={() => clearAllMutation.mutate()}
-                disabled={clearAllMutation.isPending}
-                className="flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {clearAllMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3 w-3" />
+                {notificationPermission === "default" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void requestBrowserPermission();
+                      setShowActions(false);
+                    }}
+                    className={notifActionItemClass}
+                  >
+                    <Bell className={notifActionIconClass} />
+                    Enable alerts
+                  </button>
                 )}
-                {clearAllMutation.isPending ? "Clearing…" : "Clear all"}
-              </button>
-            )}
+                {user?.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => sendTestPushMutation.mutate()}
+                    disabled={sendTestPushMutation.isPending}
+                    className={notifActionItemClass}
+                  >
+                    {sendTestPushMutation.isPending ?
+                      <Loader2 className={cn(notifActionIconClass, "animate-spin")} />
+                    : <Bell className={notifActionIconClass} />}
+                    Send test push
+                  </button>
+                )}
+              </div>
+            : null}
           </div>
         </div>
+
         {notificationPermission === "denied" && (
-          <div className="border-b border-amber-100 bg-amber-50 px-5 py-2 text-[11px] text-amber-700">
-            Browser alerts are blocked for this site. Enable notifications from
-            browser settings.
+          <div className="border-b border-amber-100 bg-amber-50 px-4 py-2.5 text-[12px] leading-snug text-amber-800">
+            Browser alerts are blocked. Enable notifications in your browser
+            settings.
           </div>
         )}
 
         <div
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-gray-50/30 [scrollbar-gutter:stable] dark:bg-neutral-900/50"
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-white scrollbar-hide touch-pan-y"
           data-lenis-prevent
+          onClick={() => setShowActions(false)}
         >
-          {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-50">
-                <Bell className="h-7 w-7 text-gray-300" />
+          {notifications.length === 0 ?
+            <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-none border border-[#c5a059]/20 bg-[#c5a059]/5 text-[#c5a059]">
+                <Bell className="h-5 w-5" strokeWidth={1.5} />
               </div>
-              <p className="text-sm font-bold text-gray-900 dark:text-neutral-100">
-                All caught up!
+              <p className="text-[14px] font-medium text-gray-900">
+                No notifications yet
               </p>
-              <p className="mt-1 text-xs text-gray-500">
-                You have no new notifications.
+              <p className="mt-1 max-w-[16rem] text-[13px] leading-relaxed text-gray-500">
+                Updates about your orders and account will show up here.
               </p>
             </div>
-          ) : (
-            <div className="flex flex-col">
+          : <div className="flex flex-col">
               {notifications.map(
                 (n: {
                   _id: string;
@@ -375,73 +453,48 @@ export default function NotificationBell({
                       handleNotificationClick(n._id, !!n.isRead);
                     }}
                     className={cn(
-                      "group relative flex items-start gap-3 border-b border-gray-100 p-2 transition-colors last:border-0 hover:bg-gray-50 dark:hover:bg-neutral-800/80",
-                      !n.isRead
-                        ? "bg-white dark:bg-neutral-900"
-                        : "bg-gray-50/50 opacity-75 hover:opacity-100 dark:bg-neutral-900/50",
+                      "group relative flex items-start gap-3 border-b border-gray-100 px-4 py-3 transition-colors last:border-0 hover:bg-[#c5a059]/5",
+                      !n.isRead && "bg-[#fafafa]",
                     )}
                   >
-                    {!n.isRead && (
-                      <div className="absolute bottom-0 left-0 top-0 w-1 bg-brand-500" />
-                    )}
-
-                    <div
-                      className={cn(
-                        "mt-0.5 flex-shrink-0 rounded-full p-2.5",
-                        !n.isRead
-                          ? "bg-brand-50 text-brand-600"
-                          : "bg-gray-100 text-gray-500",
-                      )}
-                    >
-                      {notificationTypeIcon(n.type || "system")}
+                    {!n.isRead ?
+                      <div
+                        className="absolute bottom-0 left-0 top-0 w-[2px] bg-[#c5a059]"
+                        aria-hidden
+                      />
+                    : null}
+                    <div className="mt-1.5 flex w-2 shrink-0 justify-center">
+                      {!n.isRead ?
+                        <span className="h-2 w-2 rounded-none bg-[#c5a059]" />
+                      : <span className="h-2 w-2 bg-transparent" />}
                     </div>
 
-                    <div className="min-w-0 flex-1 pr-2">
-                      <div className="mb-1 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
                         <p
                           className={cn(
-                            "text-sm leading-snug",
-                            !n.isRead
-                              ? "font-bold text-gray-900 dark:text-white"
-                              : "font-semibold text-gray-600 dark:text-gray-300",
+                            "text-[14px] leading-snug text-gray-900",
+                            !n.isRead ? "font-semibold" : "font-medium",
                           )}
                         >
                           {n.title}
                         </p>
-                        <span className="flex-shrink-0 whitespace-nowrap pt-0.5 text-[10px] font-semibold text-gray-400">
-                          {n.createdAt
-                            ? new Date(n.createdAt).toLocaleDateString(
-                                undefined,
-                                { month: "short", day: "numeric" },
-                              )
-                            : ""}
+                        <span className="shrink-0 pt-0.5 text-[12px] text-gray-400">
+                          {formatRelativeTime(n.createdAt)}
                         </span>
                       </div>
-                      <p
-                        className={cn(
-                          "line-clamp-2 text-xs leading-relaxed",
-                          !n.isRead
-                            ? "font-medium text-gray-600 dark:text-gray-400"
-                            : "text-gray-500 dark:text-gray-500",
-                        )}
-                      >
-                        {n.message}
-                      </p>
+                      {n.message ?
+                        <p className="mt-0.5 line-clamp-2 text-[13px] leading-relaxed text-gray-500">
+                          {n.message}
+                        </p>
+                      : null}
                     </div>
                   </Link>
                 ),
               )}
             </div>
-          )}
+          }
         </div>
-
-        {notifications.length > 0 && (
-          <div className="flex flex-shrink-0 items-center justify-center border-t border-gray-100 bg-gray-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              End of notifications
-            </span>
-          </div>
-        )}
 
         <NotificationPreferencesPanel
           preferences={preferences}
@@ -463,15 +516,23 @@ export default function NotificationBell({
     <div className="relative" ref={triggerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-full p-2 text-primary/80 transition-colors hover:bg-neutral-100 focus:outline-none active:scale-95 dark:hover:bg-neutral-800"
+        onClick={(event) => {
+          event.stopPropagation();
+          togglePanel();
+        }}
+        className={triggerClassForVariant(variant)}
         aria-label="Notifications"
         aria-expanded={isOpen}
-        aria-haspopup="true"
+        aria-haspopup="dialog"
       >
-        <Bell className="h-6 w-6" strokeWidth={1.5} />
+        <Bell
+          className={cn(
+            variant === "navbar" ? "h-5 w-5" : "h-[1.125rem] w-[1.125rem]",
+          )}
+          strokeWidth={variant === "navbar" ? 1.75 : 1.5}
+        />
         {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow ring-2 ring-white dark:ring-neutral-900">
+          <span className={badgeClass}>
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

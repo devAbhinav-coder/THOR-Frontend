@@ -22,10 +22,7 @@ type Props = {
   announcementMessages?: readonly string[];
 };
 
-function HeroSection({
-  initialSlides,
-  announcementMessages = [],
-}: Props) {
+function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
   const slides = initialSlides;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -142,9 +139,9 @@ function HeroSection({
                   fetchPriority={i === 0 ? "high" : "low"}
                   decoding={i === 0 ? "sync" : "async"}
                   loading={i === 0 ? "eager" : "lazy"}
-                  sizes="100vw"
+                  sizes='100vw'
                   quality={i === 0 ? 68 : 62}
-                  className="object-cover object-[center_top]"
+                  className='object-cover object-[center_top]'
                 />
               : null}
             </div>
@@ -153,7 +150,7 @@ function HeroSection({
 
         <div className={heroLayout.overlay} aria-hidden />
         <div
-          className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-navy-950/70 via-transparent to-transparent"
+          className='pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-navy-950/70 via-transparent to-transparent'
           aria-hidden
         />
 
@@ -170,7 +167,7 @@ function HeroSection({
                   {badge ?
                     <span
                       key={`badge-${currentSlide}`}
-                      className="motion-safe:animate-hero-copy-in inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]"
+                      className='motion-safe:animate-hero-copy-in inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]'
                     >
                       {badge}
                     </span>
@@ -191,7 +188,7 @@ function HeroSection({
                 </div>
               )}
 
-              <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-white/90 sm:text-[11px]">
+              <p className='text-[10px] font-medium uppercase tracking-[0.32em] text-white/90 sm:text-[11px]'>
                 The House of Rani
               </p>
               <div
@@ -202,7 +199,7 @@ function HeroSection({
               <div className={cn(heroLayout.titleSlot, "overflow-hidden")}>
                 <h1
                   key={`title-${currentSlide}`}
-                  className="motion-safe:animate-hero-copy-in font-serif text-xl font-medium leading-[1.14] tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.1] [text-shadow:0_2px_24px_rgba(0,0,0,0.5)]"
+                  className='motion-safe:animate-hero-copy-in font-serif text-xl font-medium leading-[1.14] tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.1] [text-shadow:0_2px_24px_rgba(0,0,0,0.5)]'
                 >
                   {headline}
                 </h1>
@@ -215,7 +212,7 @@ function HeroSection({
                   {description ?
                     <p
                       key={`desc-${currentSlide}`}
-                      className="motion-safe:animate-hero-copy-in max-w-lg text-xs font-light leading-relaxed text-[#ece8e3] line-clamp-2 sm:text-sm sm:line-clamp-3 [text-shadow:0_1px_18px_rgba(0,0,0,0.55)]"
+                      className='motion-safe:animate-hero-copy-in max-w-lg text-xs font-light leading-relaxed text-[#ece8e3] line-clamp-2 sm:text-sm sm:line-clamp-3 [text-shadow:0_1px_18px_rgba(0,0,0,0.55)]'
                     >
                       {description}
                     </p>
@@ -226,7 +223,7 @@ function HeroSection({
               <div className={heroLayout.ctaSlot}>
                 <div
                   key={`cta-${currentSlide}`}
-                  className="motion-safe:animate-hero-copy-in flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8"
+                  className='motion-safe:animate-hero-copy-in flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8'
                 >
                   <Link
                     href={slide.ctaLink || "/shop"}
@@ -236,7 +233,7 @@ function HeroSection({
                   </Link>
                   <Link
                     href={slide.secondaryCtaLink || "/gifting"}
-                    className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white sm:text-xs"
+                    className='text-[11px] font-medium uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white sm:text-xs'
                   >
                     {slide.secondaryCtaText || "Curated gifting"}
                   </Link>
@@ -251,7 +248,7 @@ function HeroSection({
             <div className={heroLayout.offerStrip}>
               <p
                 key={announcementIndex}
-                className="motion-safe:animate-hero-copy-in text-center text-[10px] font-medium uppercase tracking-[0.2em] text-gold-200/95 sm:text-[11px]"
+                className='motion-safe:animate-hero-copy-in text-center text-[10px] font-medium uppercase tracking-[0.2em] text-gold-200/95 sm:text-[11px]'
               >
                 {offers[announcementIndex]}
               </p>
@@ -261,14 +258,14 @@ function HeroSection({
           <div className={heroLayout.footer}>
             <div className={heroLayout.footerRow}>
               <ul
-                className="flex flex-wrap gap-x-5 gap-y-1.5 text-[10px] uppercase tracking-[0.18em] text-white/80 sm:gap-x-6 sm:text-[11px]"
-                aria-label="Shopping benefits"
+                className='flex flex-wrap gap-x-5 gap-y-1.5 text-[10px] uppercase tracking-[0.18em] text-white/80 sm:gap-x-6 sm:text-[11px]'
+                aria-label='Shopping benefits'
               >
                 {TRUST_SIGNALS.map((signal, i) => (
-                  <li key={signal} className="inline-flex items-center gap-5">
+                  <li key={signal} className='inline-flex items-center gap-5'>
                     {i > 0 && (
                       <span
-                        className="hidden h-3 w-px bg-white/30 sm:inline-block"
+                        className='hidden h-3 w-px bg-white/30 sm:inline-block'
                         aria-hidden
                       />
                     )}
@@ -279,35 +276,35 @@ function HeroSection({
 
               {slides.length > 1 && (
                 <div
-                  className="flex shrink-0 items-center gap-3"
-                  role="tablist"
-                  aria-label="Hero slides"
+                  className='flex shrink-0 items-center gap-3'
+                  role='tablist'
+                  aria-label='Hero slides'
                 >
-                  <span className="text-[10px] tabular-nums tracking-[0.2em] text-white/70">
+                  <span className='text-[10px] tabular-nums tracking-[0.2em] text-white/70'>
                     {String(currentSlide + 1).padStart(2, "0")}
-                    <span className="mx-1.5 text-white/40">/</span>
+                    <span className='mx-1.5 text-white/40'>/</span>
                     {String(slides.length).padStart(2, "0")}
                   </span>
-                  <div className="flex gap-1.5">
+                  <div className='flex gap-1.5'>
                     {slides.map((s, i) => {
                       const isActive = i === currentSlide;
                       return (
                         <button
                           key={i}
-                          type="button"
-                          role="tab"
+                          type='button'
+                          role='tab'
                           aria-selected={isActive}
                           aria-current={isActive ? "true" : undefined}
                           aria-label={`Show slide ${i + 1} of ${slides.length}${s.title ? `: ${s.title}` : ""}`}
                           onClick={() => goToSlide(i)}
-                          className="group relative h-7 w-7 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 sm:h-8 sm:w-8"
+                          className='group relative h-7 w-7 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 sm:h-8 sm:w-8'
                         >
                           <span
                             className={cn(
                               "absolute left-1/2 top-1/2 block h-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/45 transition-[width,background-color] duration-500",
-                              isActive ?
-                                "w-8 bg-gold-200"
-                              : "w-3 group-hover:w-5 group-hover:bg-white/70",
+                              isActive ? "w-8 bg-gold-200" : (
+                                "w-3 group-hover:w-5 group-hover:bg-white/70"
+                              ),
                             )}
                           />
                         </button>

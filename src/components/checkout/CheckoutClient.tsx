@@ -17,18 +17,13 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  BadgePercent,
   Banknote,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Home,
-  ArrowRight,
   Loader2,
-  MapPin,
   Minus,
-  Package,
-  Pencil,
   Plus,
   RotateCcw,
   Shield,
@@ -46,7 +41,6 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { authApi, couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
 import { cartLineReactKey } from "@/lib/cartLineKey";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Coupon, Order } from "@/types";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
@@ -54,6 +48,8 @@ import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
 import type { CheckoutDisplayItem } from "@/types/checkoutDisplay";
 import {
   getRazorpayConstructor,
+  RAZORPAY_THEME_COLOR,
+  type RazorpayInstance,
   type RazorpaySuccessPayload,
 } from "@/lib/razorpayTypes";
 import { toCheckoutRowDisplay, type CheckoutRowDisplay } from "@/lib/checkoutDisplayHelpers";
@@ -61,6 +57,12 @@ import type { CartItem } from "@/types";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import OrderPlacementSuccessOverlay from "@/components/checkout/OrderPlacementSuccessOverlay";
+import {
+  heritageCta,
+  heritagePageBg,
+  heritageSectionCard,
+  heritageSummaryCard,
+} from "@/components/checkout/checkoutHeritageTheme";
 import { trackPurchase, trackInitiateCheckout } from "@/lib/metaPixel";
 import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
@@ -179,6 +181,106 @@ const INDIAN_STATES = [
   "Ladakh",
 ];
 
+type ReviewAddressDisplay = {
+  name: string;
+  phone: string;
+  house?: string;
+  street: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  pincode: string;
+};
+
+function CheckoutReviewRecap({
+  address,
+  paymentMethod,
+  onEditAddress,
+  onEditPayment,
+  className,
+}: {
+  address: ReviewAddressDisplay;
+  paymentMethod: "cod" | "razorpay";
+  onEditAddress: () => void;
+  onEditPayment: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <h2 className='mb-5 font-serif text-2xl font-medium text-navy-900 sm:mb-6 sm:text-3xl'>
+        Review Your Order
+      </h2>
+      <div className='space-y-4'>
+        <div className='flex items-start justify-between gap-4 border border-gray-200/70 bg-white p-5'>
+          <div className='min-w-0'>
+            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
+              Shipping Address
+            </p>
+            <p className='mt-2 font-medium text-navy-900'>
+              {address.name || "—"}
+            </p>
+            <p className='mt-1 text-xs leading-relaxed text-gray-600 sm:text-sm'>
+              {address.house && (
+                <>
+                  {address.house}
+                  <br />
+                </>
+              )}
+              {address.street || "—"}
+              {address.landmark && (
+                <>
+                  <br />
+                  Near {address.landmark}
+                </>
+              )}
+              <br />
+              {address.city}
+              {address.city && address.state ? ", " : ""}
+              {address.state} {address.pincode}
+            </p>
+            {address.phone && (
+              <p className='mt-3 text-sm text-gray-600'>{address.phone}</p>
+            )}
+          </div>
+          <button
+            type='button'
+            onClick={onEditAddress}
+            className='shrink-0 border-b border-[#c5a059] pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] hover:text-navy-900'
+          >
+            Edit
+          </button>
+        </div>
+        <div className='flex items-start justify-between gap-4 border border-gray-200/70 bg-white p-5'>
+          <div className='min-w-0'>
+            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
+              Payment Method
+            </p>
+            <p className='mt-2 flex items-center gap-2 font-medium text-navy-900'>
+              {paymentMethod === "razorpay" ? (
+                <Wallet className='h-4 w-4 shrink-0 text-[#c5a059]' />
+              ) : (
+                <Banknote className='h-4 w-4 shrink-0 text-[#c5a059]' />
+              )}
+              <span className='text-sm sm:text-base'>
+                {paymentMethod === "razorpay"
+                  ? "Pay online (UPI, cards & net banking)"
+                  : `Cash on delivery (${formatPrice(COD_HANDLING_FEE)} handling fee)`}
+              </span>
+            </p>
+          </div>
+          <button
+            type='button'
+            onClick={onEditPayment}
+            className='shrink-0 border-b border-[#c5a059] pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] hover:text-navy-900'
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CheckoutClient() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   /** Default open so mobile users always see qty/delete without an extra tap. */
@@ -199,9 +301,8 @@ export default function CheckoutClient() {
   const [showShippingForm, setShowShippingForm] = useState(false);
   const shippingFieldsRef = useRef<HTMLDivElement>(null);
   const didInitDefaultSavedAddress = useRef(false);
-  /** Mobile & tablet: step 1 address → 2 payment → 3 review & pay */
-  const [mobileCheckoutStep, setMobileCheckoutStep] = useState(1);
-  const [isCheckoutNarrow, setIsCheckoutNarrow] = useState(false);
+  /** Step 1 shipping → 2 payment → 3 review & place order (all screen sizes) */
+  const [checkoutStep, setCheckoutStep] = useState(1);
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<
     "cod" | "razorpay"
   >("cod");
@@ -222,15 +323,6 @@ export default function CheckoutClient() {
     });
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 1023px)");
-    const sync = () => setIsCheckoutNarrow(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
   // Custom Order support
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
@@ -243,7 +335,7 @@ export default function CheckoutClient() {
     fetchCart,
     applyCoupon,
     removeCoupon,
-    resetCart,
+    purgeCartAfterCheckout,
     appliedCouponCode,
     updateItem,
     removeItem,
@@ -270,6 +362,13 @@ export default function CheckoutClient() {
   });
 
   const watchedStreet = watch("street");
+  const watchedName = watch("name");
+  const watchedPhone = watch("phone");
+  const watchedHouse = watch("house");
+  const watchedLandmark = watch("landmark");
+  const watchedCity = watch("city");
+  const watchedState = watch("state");
+  const watchedPincode = watch("pincode");
   const showManualAddressPreview =
     !showShippingForm &&
     !selectedAddressId &&
@@ -463,7 +562,58 @@ export default function CheckoutClient() {
     hasTrackedCheckout.current = true;
   }, [total, existingOrder, buyNowItem, cart?.items]);
 
-  const showMobileCheckoutWizard = isCheckoutNarrow && !existingOrder;
+  const showCheckoutWizard = !existingOrder;
+
+  const reviewAddressDisplay = useMemo((): ReviewAddressDisplay => {
+    const saved =
+      selectedAddressId && user?.addresses ?
+        user.addresses.find((a) => a._id === selectedAddressId)
+      : undefined;
+    if (saved) {
+      return {
+        name: saved.name || user?.name || "",
+        phone: saved.phone || user?.phone || "",
+        house: saved.house,
+        street: saved.street,
+        landmark: saved.landmark,
+        city: saved.city,
+        state: saved.state,
+        pincode: saved.pincode,
+      };
+    }
+    return {
+      name: watchedName || user?.name || "",
+      phone: watchedPhone || user?.phone || "",
+      house: watchedHouse,
+      street: watchedStreet || "",
+      landmark: watchedLandmark,
+      city: watchedCity || "",
+      state: watchedState || "",
+      pincode: watchedPincode || "",
+    };
+  }, [
+    selectedAddressId,
+    user?.addresses,
+    user?.name,
+    user?.phone,
+    watchedName,
+    watchedPhone,
+    watchedHouse,
+    watchedStreet,
+    watchedLandmark,
+    watchedCity,
+    watchedState,
+    watchedPincode,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [checkoutStep]);
+
+  useEffect(() => {
+    if (checkoutStep === 3) setShowItems(true);
+  }, [checkoutStep]);
 
   const applySelectedCoupon = useCallback(
     async (code: string) => {
@@ -625,31 +775,33 @@ export default function CheckoutClient() {
     }
   }, [getValues, isAuthenticated, selectedAddressId, setUser, trigger, user]);
 
-  const goToMobilePaymentStep = useCallback(async () => {
+  const goToPaymentStep = useCallback(async () => {
     const ok = await validateAddressFields();
     if (!ok) return;
-    setMobileCheckoutStep(2);
+    setCheckoutStep(2);
   }, [validateAddressFields]);
 
-  const goToMobileReviewStep = useCallback(() => {
-    setMobileCheckoutStep(3);
-  }, []);
+  const goToReviewStep = useCallback(async () => {
+    const ok = await validateAddressFields();
+    if (!ok) return;
+    setCheckoutStep(3);
+  }, [validateAddressFields]);
 
-  const goToMobileStep = useCallback(
+  const goToCheckoutStep = useCallback(
     async (targetStep: 1 | 2 | 3) => {
       if (targetStep === 1) {
-        setMobileCheckoutStep(1);
+        setCheckoutStep(1);
         return;
       }
       if (targetStep === 2) {
-        await goToMobilePaymentStep();
+        await goToPaymentStep();
         return;
       }
       const ok = await validateAddressFields();
       if (!ok) return;
-      setMobileCheckoutStep(3);
+      setCheckoutStep(3);
     },
-    [goToMobilePaymentStep, validateAddressFields],
+    [goToPaymentStep, validateAddressFields],
   );
 
   const openNewAddressForm = useCallback(() => {
@@ -709,6 +861,52 @@ export default function CheckoutClient() {
     return `Add ${formatPrice(SHIPPING_THRESHOLD - subtotalAfterDiscount)} more for FREE shipping`;
   }, [cart, subtotalAfterDiscount, buyNowItem, existingOrder]);
 
+  const finalizeSuccessfulOrder = useCallback(
+    async (order: Order) => {
+      trackPurchase(order);
+      trackGaPurchase(order);
+      if (buyNowItem) {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+        }
+        setBuyNowItem(null);
+      } else {
+        await purgeCartAfterCheckout();
+      }
+      setPendingOrderSuccessId(order._id);
+      setIsPlacingOrder(false);
+    },
+    [buyNowItem, purgeCartAfterCheckout],
+  );
+
+  const recoverFromAbortedPayment = useCallback(
+    (opts?: { message?: string; asError?: boolean }) => {
+      setIsPlacingOrder(false);
+      void fetchCart().catch(() => {});
+      const msg =
+        opts?.message ??
+        "Payment was not completed. You can try again when ready.";
+      if (opts?.asError) toast.error(msg);
+      else toast(msg, { duration: 5000 });
+    },
+    [fetchCart],
+  );
+
+  const bindRazorpayEvents = useCallback(
+    (rzp: RazorpayInstance) => {
+      rzp.on("payment.failed", (response) => {
+        recoverFromAbortedPayment({
+          message:
+            response.error?.description ||
+            response.error?.reason ||
+            "Payment failed. Please try again.",
+          asError: true,
+        });
+      });
+    },
+    [recoverFromAbortedPayment],
+  );
+
   const onSubmit = useCallback(
     async (addressData: AddressForm) => {
       setIsPlacingOrder(true);
@@ -742,6 +940,7 @@ export default function CheckoutClient() {
             description: `Order ${existingOrder.orderNumber}`,
             order_id: razorpayOrder.id,
             handler: async (response: RazorpaySuccessPayload) => {
+              setIsPlacingOrder(true);
               try {
                 const verifyRes = await orderApi.verifyPayment({
                   orderId: existingOrder._id,
@@ -749,26 +948,38 @@ export default function CheckoutClient() {
                   razorpayPaymentId: response.razorpay_payment_id,
                   razorpaySignature: response.razorpay_signature,
                 });
-                setPendingOrderSuccessId(verifyRes.data.order._id);
+                holdPlacingUntilOverlay = true;
+                await finalizeSuccessfulOrder(verifyRes.data.order);
               } catch (err: unknown) {
                 const msg =
                   err instanceof Error ?
                     err.message
                   : "Payment verification failed";
                 toast.error(msg);
+                await fetchCart().catch(() => {});
+                setIsPlacingOrder(false);
               }
+            },
+            modal: {
+              ondismiss: () => {
+                recoverFromAbortedPayment({
+                  message:
+                    "Payment window closed. You can complete payment from your order details.",
+                });
+              },
             },
             prefill: {
               name: addressData.name,
               email: user?.email,
               contact: normalizedPhone,
             },
-            theme: { color: "#e8604c" },
+            theme: { color: RAZORPAY_THEME_COLOR },
           };
 
           const RazorpayCtor = getRazorpayConstructor();
           if (!RazorpayCtor) throw new Error("Razorpay SDK not available");
           const rzp = new RazorpayCtor(options);
+          bindRazorpayEvents(rzp);
           rzp.open();
         } else {
           const idempotencyKey =
@@ -870,20 +1081,8 @@ export default function CheckoutClient() {
                       razorpayPaymentId: response.razorpay_payment_id,
                       razorpaySignature: response.razorpay_signature,
                     });
-                    
-                    trackPurchase(verifyRes.data.order);
-                    trackGaPurchase(verifyRes.data.order);
-
-                    if (buyNowItem) {
-                      if (typeof window !== "undefined") {
-                        sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
-                      }
-                      setBuyNowItem(null);
-                    } else {
-                      resetCart();
-                    }
                     holdPlacingUntilOverlay = true;
-                    setPendingOrderSuccessId(verifyRes.data.order._id);
+                    await finalizeSuccessfulOrder(verifyRes.data.order);
                   } catch (err: unknown) {
                     const msg =
                       err instanceof Error ?
@@ -891,19 +1090,17 @@ export default function CheckoutClient() {
                       : "Payment verification failed";
                     toast.error(msg);
                     await fetchCart().catch(() => {});
-                  } finally {
                     setIsPlacingOrder(false);
                   }
                 },
                 modal: {
                   ondismiss: () => {
-                    void fetchCart().catch(() => {});
-                    toast(
-                      checkoutIntentId ?
-                        "Payment was not completed. You can try again when ready."
-                      : "Payment window closed. You can complete payment from your order details.",
-                      { duration: 5000 },
-                    );
+                    recoverFromAbortedPayment({
+                      message:
+                        checkoutIntentId ?
+                          "Payment was not completed. You can try again when ready."
+                        : "Payment window closed. You can complete payment from your order details.",
+                    });
                   },
                 },
                 prefill: {
@@ -911,7 +1108,7 @@ export default function CheckoutClient() {
                   email: user?.email,
                   contact: normalizedPhone,
                 },
-                theme: { color: "#e8604c" },
+                theme: { color: RAZORPAY_THEME_COLOR },
               };
 
               const RazorpayCtor = getRazorpayConstructor();
@@ -920,26 +1117,15 @@ export default function CheckoutClient() {
                 return;
               }
               const rzp = new RazorpayCtor(options);
+              bindRazorpayEvents(rzp);
               rzp.open();
             };
 
             openRazorpay();
           } else {
             const { order } = res.data;
-            
-            trackPurchase(order);
-            trackGaPurchase(order);
-
-            if (buyNowItem) {
-              if (typeof window !== "undefined") {
-                sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
-              }
-              setBuyNowItem(null);
-            } else {
-              resetCart();
-            }
             holdPlacingUntilOverlay = true;
-            setPendingOrderSuccessId(order._id);
+            await finalizeSuccessfulOrder(order);
           }
         }
       } catch (err: unknown) {
@@ -953,10 +1139,12 @@ export default function CheckoutClient() {
       existingOrder,
       buyNowItem,
       user?.email,
-      resetCart,
       fetchCart,
       buyNowCouponCode,
       paymentMethodForApi,
+      finalizeSuccessfulOrder,
+      recoverFromAbortedPayment,
+      bindRazorpayEvents,
     ],
   );
 
@@ -1061,9 +1249,17 @@ export default function CheckoutClient() {
 
   if (!isAuthenticated || isOrderLoading)
     return (
-      <div className='max-w-7xl mx-auto px-4 py-24 text-center'>
-        <Loader2 className='h-10 w-10 text-brand-500 animate-spin mx-auto mb-4' />
-        <p className='text-gray-500'>Preparing checkout...</p>
+      <div
+        className={cn(
+          "flex min-h-[50vh] flex-col items-center justify-center px-4 py-24",
+          heritagePageBg,
+        )}
+      >
+        <Loader2
+          className='mx-auto mb-4 h-10 w-10 animate-spin text-[#c5a059]'
+          aria-hidden
+        />
+        <p className='text-sm text-gray-600'>Preparing checkout…</p>
       </div>
     );
 
@@ -1074,78 +1270,32 @@ export default function CheckoutClient() {
     !pendingOrderSuccessId
   ) {
     return (
-      <div className='relative min-h-[min(85vh,780px)] w-full overflow-hidden bg-[#faf9f7]'>
-        <div
-          className='pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-[#b02a37]/[0.09] blur-3xl animate-pulse'
-          aria-hidden
-        />
-        <div
-          className='pointer-events-none absolute -right-24 bottom-16 h-72 w-72 rounded-full bg-gold-300/25 blur-3xl animate-pulse [animation-delay:1.2s]'
-          aria-hidden
-        />
-
-        <div className='relative mx-auto flex min-h-[min(85vh,780px)] max-w-lg flex-col items-center justify-center px-4 py-14 sm:py-20'>
-          <div
-            className={cn(
-              "w-full max-w-md rounded-[1.75rem] border border-gray-200/80 bg-white p-8 text-center shadow-[0_20px_50px_-20px_rgba(15,23,42,0.12)] sm:p-10",
-              "transition-transform duration-300 ease-out hover:scale-[1.02]",
-              "animate-in fade-in slide-in-from-bottom-4 duration-500",
-            )}
-          >
-            <div className='mx-auto mb-7 flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-2xl bg-gradient-to-b from-rose-50/95 to-white ring-1 ring-rose-100/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'>
-              <ShoppingBag
-                className='h-11 w-11 text-[#b02a37] animate-checkout-empty-wiggle'
-                strokeWidth={1.25}
-                aria-hidden
-              />
-            </div>
-
-            <h2 className='font-serif text-2xl font-bold tracking-tight text-navy-900 sm:text-[1.65rem]'>
-              Your cart is empty
-            </h2>
-            <p className='mx-auto mt-3 max-w-sm text-sm font-normal leading-relaxed text-gray-500'>
-              Discover pieces you love — add them to your bag and they&apos;ll
-              show up here when you&apos;re ready to checkout.
-            </p>
-
-            <div className='mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-3'>
-              <Button
-                asChild
-                variant='brand'
-                size='xl'
-                className='group h-12 min-w-0 flex-1 rounded-2xl px-6 text-sm font-bold shadow-md shadow-red-900/10 transition-all duration-200 hover:bg-brand-700 sm:h-12 sm:min-w-[11rem] sm:flex-initial'
-              >
-                <Link
-                  href='/shop'
-                  className='inline-flex items-center justify-center gap-2'
-                >
-                  Continue shopping
-                  <ArrowRight className='h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5' />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant='brand-outline'
-                size='xl'
-                className='group h-12 min-w-0 flex-1 rounded-2xl px-6 text-sm font-semibold transition-colors duration-200 hover:bg-rose-50/80 sm:h-12 sm:min-w-[11rem] sm:flex-initial'
-              >
-                <Link
-                  href='/'
-                  className='inline-flex items-center justify-center gap-2'
-                >
-                  <Home className='h-4 w-4 shrink-0 text-brand-600' />
-                  Back to home
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <p className='mt-8 text-center text-xs font-medium text-emerald-700/90 animate-in fade-in duration-500 [animation-delay:150ms] [animation-fill-mode:both]'>
-            <span className='inline-flex items-center justify-center gap-1.5'>
-              <Shield className='h-3.5 w-3.5 shrink-0 stroke-[1.75]' />
-              Secure checkout when you&apos;re ready
-            </span>
+      <div
+        className={cn(
+          "flex min-h-[min(70vh,calc(100dvh-14rem))] flex-col items-center justify-center px-4 py-12 sm:py-16",
+          heritagePageBg,
+        )}
+      >
+        <div className='w-full max-w-md border border-gray-200/80 bg-white px-6 py-10 text-center sm:px-10 sm:py-14'>
+          <ShoppingBag
+            className='mx-auto mb-6 h-10 w-10 text-[#c5a059]'
+            strokeWidth={1.25}
+            aria-hidden
+          />
+          <h1 className='mb-3 font-serif text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl'>
+            Checkout
+          </h1>
+          <div className='gold-divider mx-auto mb-5 w-16' aria-hidden />
+          <p className='mb-8 text-sm leading-relaxed text-gray-600 sm:text-base'>
+            Your bag is empty. Add pieces you love, then return here to complete
+            your order.
           </p>
+          <Link
+            href='/shop'
+            className='inline-block border-b border-navy-900 pb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900 transition-colors hover:border-[#c5a059] hover:text-[#c5a059]'
+          >
+            Explore Collections
+          </Link>
         </div>
       </div>
     );
@@ -1169,8 +1319,6 @@ export default function CheckoutClient() {
       ]
     : cart?.items || [];
 
-  const checkoutAccent = "text-[#b02a37]";
-  const checkoutRing = "ring-[#b02a37]";
   const scrollToShippingFields = () => {
     shippingFieldsRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -1179,129 +1327,138 @@ export default function CheckoutClient() {
   };
 
   return (
-    <div className='w-full min-w-0 overflow-x-hidden bg-[#faf9f7]'>
+    <div className={cn("w-full min-w-0 overflow-x-hidden", heritagePageBg)}>
       <OrderPlacementSuccessOverlay
         isOpen={isPlacingOrder || Boolean(pendingOrderSuccessId)}
         orderId={pendingOrderSuccessId}
       />
-      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-8 box-border min-w-0 animate-in fade-in duration-500'>
-        <header className='mb-2 lg:mb-10'>
-          <h1 className='text-[2.1rem] sm:text-[2.35rem] font-serif font-black text-navy-900 tracking-tight leading-tight'>
+      <div className='mx-auto box-border min-w-0 max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-12'>
+        <header className='mb-8 lg:mb-10'>
+          <h1 className='font-serif text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl lg:text-5xl'>
             Checkout
           </h1>
-          <p className='mt-1 text-[13px] sm:text-base text-gray-500 max-w-2xl'>
+          <p className='mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-base'>
             Secure checkout.{" "}
-            {existingOrder ?
-              "Complete your payment to confirm this order."
-            : "Cash on delivery is available for your order."}
+            {existingOrder
+              ? "Complete your payment to confirm this order."
+              : "Cash on delivery is available for your order."}
           </p>
         </header>
 
-        {showMobileCheckoutWizard && (
-          <div
-            className='mb-2 rounded-2xl border border-gray-200/80 bg-white p-1.5 shadow-sm sm:p-5 lg:hidden overflow-hidden'
+        {showCheckoutWizard && (
+          <nav
+            className='relative mb-8 flex items-center justify-between lg:hidden'
             aria-label='Checkout steps'
           >
-            <div className='flex items-center'>
-              {(
-                [
-                  { step: 1, label: "Shipping" },
-                  { step: 2, label: "Payment" },
-                  { step: 3, label: "Review" },
-                ] as const
-              ).map(({ step, label }, idx) => (
-                <Fragment key={step}>
-                  <button
-                    type='button'
-                    onClick={() => void goToMobileStep(step)}
-                    className={cn(
-                      "min-w-0 flex-1 h-[54px] rounded-xl border px-2 py-1 text-center transition-all duration-250",
-                      mobileCheckoutStep >= step ?
-                        "border-[#b02a37]/35 bg-red-50/60 shadow-sm"
-                      : "border-gray-200 bg-white hover:border-gray-300",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "mx-auto flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black transition-colors duration-250",
-                        mobileCheckoutStep >= step ?
-                          "bg-[#b02a37] text-white shadow"
-                        : "bg-gray-200 text-gray-500",
-                      )}
-                    >
-                      {step}
-                    </div>
-                    <p
-                      className={cn(
-                        "mt-2 text-[9px] font-bold uppercase leading-tight tracking-[0.07em] text-gray-600",
-                        mobileCheckoutStep === step && "text-[#b02a37]",
-                      )}
-                    >
-                      {label}
-                    </p>
-                  </button>
-
-                  {idx < 2 && (
-                    <div className='mx-1 w-6 shrink-0'>
-                      <div className='h-0.5 w-full rounded-full bg-gray-200 overflow-hidden'>
-                        <div
-                          className='h-full rounded-full bg-[#b02a37] transition-all duration-300'
-                          style={{
-                            width: mobileCheckoutStep > step ? "100%" : "0%",
-                          }}
-                        />
-                      </div>
-                    </div>
+            <div className='absolute left-0 top-4 -z-10 h-px w-full bg-gray-200' />
+            {(
+              [
+                { step: 1, label: "Shipping" },
+                { step: 2, label: "Payment" },
+                { step: 3, label: "Review" },
+              ] as const
+            ).map(({ step, label }) => (
+              <button
+                key={step}
+                type='button'
+                onClick={() => void goToCheckoutStep(step)}
+                className='flex flex-col items-center bg-[#f8f9fa] px-2'
+              >
+                <span
+                  className={cn(
+                    "mb-1 flex h-8 w-8 items-center justify-center text-[11px] font-semibold",
+                    checkoutStep >= step
+                      ? "bg-navy-900 text-white"
+                      : "border border-gray-300 text-gray-400",
                   )}
-                </Fragment>
-              ))}
-            </div>
-          </div>
+                >
+                  {step}
+                </span>
+                <span
+                  className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide text-navy-900",
+                    checkoutStep < step && "opacity-40",
+                  )}
+                >
+                  {label}
+                </span>
+              </button>
+            ))}
+          </nav>
+        )}
+
+        {showCheckoutWizard && (
+          <nav
+            className='mb-8 hidden items-center gap-10 border-b border-gray-200/70 lg:flex xl:gap-14'
+            aria-label='Checkout progress'
+          >
+            {(
+              [
+                { step: 1, label: "Shipping" },
+                { step: 2, label: "Payment" },
+                { step: 3, label: "Review" },
+              ] as const
+            ).map(({ step, label }) => (
+              <button
+                key={step}
+                type='button'
+                onClick={() => void goToCheckoutStep(step)}
+                className={cn(
+                  "flex items-center gap-2 pb-4 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors",
+                  checkoutStep === step
+                    ? "border-b-2 border-navy-900 text-navy-900"
+                    : checkoutStep > step
+                      ? "border-b-2 border-transparent text-navy-900/70 hover:text-navy-900"
+                      : "border-b-2 border-transparent text-gray-400 opacity-50",
+                )}
+              >
+                <span className='text-[10px] tracking-widest'>
+                  {String(step).padStart(2, "0")}
+                </span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
         )}
 
         <form
           className='min-w-0'
           onSubmit={(e) => {
-            if (showMobileCheckoutWizard && mobileCheckoutStep < 3) {
+            if (showCheckoutWizard && checkoutStep < 3) {
               e.preventDefault();
               return;
             }
             void handleSubmit(onSubmit)(e);
           }}
         >
-          <div className='grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-8 xl:gap-10 min-w-0 items-start'>
-            <div className='lg:col-span-7 space-y-6 min-w-0'>
-              {(!showMobileCheckoutWizard || mobileCheckoutStep === 1) && (
-                <section className='rounded-2xl bg-white p-4 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
-                  <div className='flex items-center gap-2.5 mb-6'>
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-xl bg-red-50",
-                        checkoutAccent,
-                      )}
-                    >
-                      <MapPin className='h-5 w-5' strokeWidth={2} />
-                    </div>
-                    <h2 className='text-lg sm:text-xl font-bold text-navy-900'>
-                      Shipping address
-                    </h2>
-                  </div>
+          <div className='grid min-w-0 grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-8'>
+            <div
+              className={cn(
+                "min-w-0 space-y-8 lg:col-span-8",
+                showCheckoutWizard && checkoutStep === 3 && "hidden lg:block",
+              )}
+            >
+              {(!showCheckoutWizard || checkoutStep === 1) && (
+                <section className={heritageSectionCard}>
+                  <h2 className='mb-6 font-serif text-2xl font-medium text-navy-900 sm:text-3xl'>
+                    Shipping Address
+                  </h2>
 
-                  <div className='mb-2 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3'>
-                    <p className='text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold'>
+                  <div className='mb-6 border border-gray-200/70 bg-[#f8f9fa] px-4 py-3 sm:px-5'>
+                    <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
                       Email
                     </p>
-                    <p className='mt-1 text-sm font-semibold text-gray-900 break-all'>
+                    <p className='mt-1 break-all text-sm font-medium text-navy-900'>
                       {user?.email || "—"}
                     </p>
                   </div>
 
                   {showManualAddressPreview && (
-                    <div className='mb-2 rounded-2xl border-2 border-[#b02a37]/40 bg-red-50/40 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300'>
+                    <div className='relative mb-6 border-2 border-navy-900 bg-[#f8f9fa] p-5 sm:p-6'>
                       <div className='flex items-start justify-between gap-3'>
                         <div className='min-w-0'>
-                          <p className='flex items-center gap-2 text-sm font-black text-navy-900'>
-                            <Home className='h-4 w-4 shrink-0 text-[#b02a37]' />
+                          <p className='flex items-center gap-2 text-sm font-semibold text-navy-900'>
+                            <Home className='h-4 w-4 shrink-0 text-[#c5a059]' />
                             New address
                           </p>
                           <p className='mt-1 text-sm text-gray-700'>
@@ -1339,9 +1496,8 @@ export default function CheckoutClient() {
                               }),
                             );
                           }}
-                          className='inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#b02a37]/35 bg-white px-3 py-1.5 text-xs font-bold text-[#b02a37] shadow-sm transition hover:bg-red-50'
+                          className='shrink-0 border-b border-[#c5a059] pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] transition-colors hover:text-navy-900'
                         >
-                          <Pencil className='h-3.5 w-3.5' />
                           Edit
                         </button>
                       </div>
@@ -1349,23 +1505,19 @@ export default function CheckoutClient() {
                   )}
 
                   {user?.addresses && user.addresses.length > 0 && (
-                    <div className='mb-2'>
-                      <p className='text-sm font-bold text-navy-900 mb-3'>
+                    <div className='mb-6'>
+                      <p className='mb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500'>
                         Saved addresses
                       </p>
-                      <div className='space-y-3'>
+                      <div className='grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6'>
                         {(user.addresses || []).map((addr) => (
                           <div key={addr._id} className='relative'>
                             <label
                               className={cn(
-                                "flex items-start gap-3 rounded-2xl border-2 p-4 pr-24 cursor-pointer transition-all duration-300",
-                                selectedAddressId === addr._id ?
-                                  cn(
-                                    "border-[#b02a37] bg-red-50/50 shadow-sm",
-                                    checkoutRing,
-                                    "ring-1",
-                                  )
-                                : "border-gray-200 hover:border-gray-300 bg-white",
+                                "address-card block cursor-pointer border p-6 transition-all duration-300 sm:p-8",
+                                selectedAddressId === addr._id
+                                  ? "border-2 border-navy-900 bg-[#f8f9fa]"
+                                  : "border border-gray-200/70 bg-white hover:border-[#c5a059]/50",
                               )}
                             >
                               <input
@@ -1377,58 +1529,69 @@ export default function CheckoutClient() {
                                   loadAddress(addr._id!);
                                   setShowShippingForm(false);
                                 }}
-                                className='mt-1 h-4 w-4 accent-[#b02a37]'
+                                className='sr-only'
                               />
-                              <div className='min-w-0 flex-1 text-sm'>
-                                <p className='flex items-center gap-2 font-bold text-navy-900'>
-                                  <Home className='h-4 w-4 shrink-0 opacity-70' />
-                                  {addr.label || "Address"}
+                              {selectedAddressId === addr._id && (
+                                <CheckCircle2
+                                  className='absolute right-4 top-4 h-5 w-5 fill-[#c5a059] text-[#c5a059]'
+                                  aria-hidden
+                                />
+                              )}
+                              <div className='min-w-0 pr-6 text-sm'>
+                                <h3 className='font-serif text-lg font-medium text-navy-900'>
+                                  {addr.name}
+                                </h3>
+                                <p className='mt-2 leading-relaxed text-gray-600'>
+                                  {addr.street}
+                                  <br />
+                                  {addr.city}, {addr.state} {addr.pincode}
+                                  <br />
+                                  India
                                 </p>
-                                <p className='mt-1 text-gray-600'>
-                                  {addr.name} · {addr.phone}
-                                </p>
-                                <p className='mt-1 text-gray-600 leading-relaxed'>
-                                  {addr.street}, {addr.city}, {addr.state}{" "}
-                                  {addr.pincode}
+                                <p className='mt-4 text-gray-600'>
+                                  {addr.phone}
                                 </p>
                               </div>
                             </label>
-                            <button
-                              type='button'
-                              onClick={() => {
-                                loadAddress(addr._id!);
-                                setShowShippingForm(true);
-                                requestAnimationFrame(() =>
-                                  scrollToShippingFields(),
-                                );
-                              }}
-                              className='absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[#b02a37]/30 bg-white px-3 py-1.5 text-xs font-bold text-[#b02a37] shadow-sm transition hover:bg-red-50'
-                            >
-                              <Pencil className='h-3.5 w-3.5' />
-                              Edit
-                            </button>
-                            <button
-                              type='button'
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!addr._id) return;
-                                void removeSavedAddress(addr._id);
-                              }}
-                              className='absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 shadow-sm transition hover:bg-red-50'
-                            >
-                              <Trash2 className='h-3.5 w-3.5' />
-                            </button>
+                            <div className='mt-3 flex gap-4 px-1'>
+                              <button
+                                type='button'
+                                onClick={() => {
+                                  loadAddress(addr._id!);
+                                  setShowShippingForm(true);
+                                  requestAnimationFrame(() =>
+                                    scrollToShippingFields(),
+                                  );
+                                }}
+                                className='text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] hover:underline'
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type='button'
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (!addr._id) return;
+                                  void removeSavedAddress(addr._id);
+                                }}
+                                className='text-[10px] font-semibold uppercase tracking-wide text-gray-400 hover:text-red-600'
+                              >
+                                Remove
+                              </button>
+                            </div>
                           </div>
                         ))}
-                        <button
-                          type='button'
-                          onClick={() => openNewAddressForm()}
-                          className='text-sm font-bold text-[#b02a37] hover:text-[#8f222c] transition-colors'
-                        >
-                          + Add new address
-                        </button>
                       </div>
+                      <button
+                        type='button'
+                        onClick={() => openNewAddressForm()}
+                        className='mt-6 w-full border-2 border-dashed border-gray-300 py-8 transition-all hover:border-[#c5a059] hover:bg-[#fff8eb]/40'
+                      >
+                        <span className='text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500'>
+                          + Add New Address
+                        </span>
+                      </button>
                     </div>
                   )}
 
@@ -1436,12 +1599,12 @@ export default function CheckoutClient() {
                     ref={shippingFieldsRef}
                     id='checkout-shipping-fields'
                     className={cn(
-                      "scroll-mt-28 space-y-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50/30 p-4 sm:p-5 transition-all duration-300",
+                      "scroll-mt-28 space-y-4 border border-dashed border-gray-300 bg-[#f8f9fa]/50 p-4 transition-all duration-300 sm:p-5",
                       !showShippingForm && "hidden",
                     )}
                     aria-hidden={!showShippingForm}
                   >
-                    <p className='text-xs font-bold uppercase tracking-widest text-gray-400'>
+                    <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
                       {selectedAddressId ? "Edit address" : "Delivery details"}
                     </p>
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
@@ -1510,10 +1673,10 @@ export default function CheckoutClient() {
                           {...register("state")}
                           aria-invalid={errors.state ? true : undefined}
                           className={cn(
-                            "w-full h-10 px-3 border rounded-xl text-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#b02a37]/30 bg-white",
-                            errors.state ?
-                              "border-red-500 focus:ring-red-500/40"
-                            : "border-input",
+                            "h-10 w-full rounded-none border bg-white px-3 text-sm transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/40",
+                            errors.state
+                              ? "border-red-500 focus:ring-red-500/40"
+                              : "border-gray-300",
                           )}
                         >
                           <option value=''>Select state</option>
@@ -1542,99 +1705,111 @@ export default function CheckoutClient() {
                       error={errors.pincode?.message}
                       autoComplete='postal-code'
                     />
-                    <Button
+                    <button
                       type='button'
-                      variant='outline'
-                      className='w-full rounded-xl border-[#b02a37]/40 font-bold text-[#b02a37] hover:bg-red-50'
+                      className={cn(heritageCta, "mt-2")}
                       onClick={() => void confirmShippingForm()}
                     >
-                      Save &amp; use this address
-                    </Button>
+                      Save &amp; Use This Address
+                    </button>
                   </div>
-                  {showMobileCheckoutWizard && mobileCheckoutStep === 1 && (
-                    <div className='mt-6 lg:hidden'>
-                      <Button
+
+                  <section className='mt-8 border-t border-gray-200/70 pt-8'>
+                    <h2 className='mb-4 font-serif text-2xl font-medium text-navy-900 sm:mb-6 sm:text-3xl'>
+                      Shipping Method
+                    </h2>
+                    <div className='flex items-center justify-between border border-gray-200/70 bg-white p-5 sm:p-6'>
+                      <div className='flex items-center gap-4'>
+                        <div className='flex h-5 w-5 items-center justify-center rounded-full border-2 border-navy-900'>
+                          <div className='h-2.5 w-2.5 rounded-full bg-navy-900' />
+                        </div>
+                        <div>
+                          <p className='text-sm font-semibold text-navy-900'>
+                            Standard Delivery
+                          </p>
+                          <p className='mt-0.5 text-xs text-gray-500'>
+                            Arrives in 5–7 business days across India.
+                          </p>
+                        </div>
+                      </div>
+                      <span className='text-xs font-bold uppercase tracking-wide text-[#c5a059]'>
+                        {shippingCharge === 0 ? "Complimentary" : formatPrice(shippingCharge)}
+                      </span>
+                    </div>
+                  </section>
+
+                  {showCheckoutWizard && checkoutStep === 1 && (
+                    <div className='mt-8 lg:hidden'>
+                      <button
                         type='button'
-                        variant='brand'
-                        size='xl'
-                        className='h-12 w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] text-base font-black shadow-lg'
-                        onClick={() => void goToMobilePaymentStep()}
+                        className={heritageCta}
+                        onClick={() => void goToPaymentStep()}
                       >
-                        Continue to payment
-                        <ArrowRight className='ml-2 h-4 w-4' aria-hidden />
-                      </Button>
+                        Continue to Payment
+                      </button>
                     </div>
                   )}
                 </section>
               )}
 
-              {(!showMobileCheckoutWizard || mobileCheckoutStep === 2) && (
-                <section className='rounded-2xl bg-white p-4 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
-                  <div className='flex items-center gap-2.5 mb-5'>
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-xl bg-red-50",
-                        checkoutAccent,
-                      )}
-                    >
-                      <Truck className='h-5 w-5' strokeWidth={2} />
-                    </div>
-                    <h2 className='text-lg sm:text-xl font-bold text-navy-900'>
-                      Payment method
-                    </h2>
-                  </div>
+              {(!showCheckoutWizard || checkoutStep === 2) && (
+                <section className={heritageSectionCard}>
+                  <h2 className='mb-6 font-serif text-2xl font-medium text-navy-900 sm:text-3xl'>
+                    Payment Method
+                  </h2>
 
-                  {existingOrder ?
-                    <div className='rounded-2xl border-2 border-[#b02a37]/25 bg-gradient-to-br from-red-50/80 to-white p-5 transition-transform duration-300'>
+                  {existingOrder ? (
+                    <div className='border border-[#c5a059]/30 bg-[#fff8eb]/50 p-5 sm:p-6'>
                       <div className='flex items-start gap-3'>
-                        <CheckCircle2 className='h-6 w-6 text-[#b02a37] shrink-0 mt-0.5' />
+                        <CheckCircle2 className='mt-0.5 h-6 w-6 shrink-0 text-[#c5a059]' />
                         <div>
-                          <p className='font-bold text-navy-900'>
+                          <p className='font-semibold text-navy-900'>
                             Complete payment
                           </p>
-                          <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
+                          <p className='mt-1 text-sm leading-relaxed text-gray-600'>
                             You&apos;ll finish payment on the next step after
                             placing your order. Secure processing only.
                           </p>
                         </div>
                       </div>
                     </div>
-                  : <>
+                  ) : (
+                    <>
                       <button
                         type='button'
                         onClick={() => setCheckoutPaymentMethod("razorpay")}
                         className={cn(
-                          "mb-3 w-full rounded-2xl border-2 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-5 text-left shadow-sm transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-1",
-                          checkoutPaymentMethod === "razorpay" ?
-                            "border-emerald-600 ring-2 ring-emerald-500/25"
-                          : "border-gray-200 hover:border-emerald-400/50",
+                          "mb-4 w-full border p-5 text-left transition-all duration-300 sm:p-6",
+                          checkoutPaymentMethod === "razorpay"
+                            ? "border-2 border-navy-900 bg-[#f8f9fa]"
+                            : "border-gray-200/70 bg-white hover:border-[#c5a059]/50",
                         )}
                       >
-                        <div className='flex items-start gap-3'>
+                        <div className='flex items-start gap-4'>
                           <div
                             className={cn(
-                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-md",
-                              checkoutPaymentMethod === "razorpay" ?
-                                "bg-emerald-600 text-white"
-                              : "bg-white text-emerald-600 ring-1 ring-gray-200",
+                              "flex h-10 w-10 shrink-0 items-center justify-center",
+                              checkoutPaymentMethod === "razorpay"
+                                ? "bg-navy-900 text-white"
+                                : "border border-gray-200 text-navy-900",
                             )}
                           >
                             <Wallet className='h-5 w-5' />
                           </div>
                           <div className='min-w-0 flex-1'>
-                            <p className='font-bold text-navy-900'>
+                            <p className='font-semibold text-navy-900'>
                               Pay online
                             </p>
-                            <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
-                              UPI, cards &amp; net banking. No Extra Charges.
+                            <p className='mt-1 text-sm leading-relaxed text-gray-600'>
+                              UPI, cards &amp; net banking. No extra charges.
                             </p>
                           </div>
                           <CheckCircle2
                             className={cn(
-                              "h-6 w-6 shrink-0",
-                              checkoutPaymentMethod === "razorpay" ?
-                                "text-emerald-600"
-                              : "text-gray-300",
+                              "h-5 w-5 shrink-0",
+                              checkoutPaymentMethod === "razorpay"
+                                ? "text-[#c5a059]"
+                                : "text-gray-300",
                             )}
                           />
                         </div>
@@ -1644,111 +1819,140 @@ export default function CheckoutClient() {
                         type='button'
                         onClick={() => setCheckoutPaymentMethod("cod")}
                         className={cn(
-                          "w-full rounded-2xl border-2 bg-gradient-to-br from-red-50 via-white to-red-50/30 p-5 text-left shadow-sm transition-all duration-300 hover:shadow-md animate-in fade-in zoom-in-95",
-                          checkoutPaymentMethod === "cod" ?
-                            "border-[#b02a37] ring-2 ring-[#b02a37]/20"
-                          : "border-gray-200 hover:border-[#b02a37]/40",
+                          "w-full border p-5 text-left transition-all duration-300 sm:p-6",
+                          checkoutPaymentMethod === "cod"
+                            ? "border-2 border-navy-900 bg-[#f8f9fa]"
+                            : "border-gray-200/70 bg-white hover:border-[#c5a059]/50",
                         )}
                       >
-                        <div className='flex items-start gap-3'>
-                          <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#b02a37] text-white shadow-md'>
+                        <div className='flex items-start gap-4'>
+                          <div className='flex h-10 w-10 shrink-0 items-center justify-center bg-[#c5a059] text-white'>
                             <Banknote className='h-5 w-5' />
                           </div>
                           <div className='min-w-0 flex-1'>
-                            <p className='font-bold text-navy-900'>
+                            <p className='font-semibold text-navy-900'>
                               Cash on delivery (COD)
                             </p>
-                            <p className='text-sm text-gray-600 mt-1 leading-relaxed'>
+                            <p className='mt-1 text-sm leading-relaxed text-gray-600'>
                               Pay when your order arrives. A one-time{" "}
                               <span className='font-semibold text-navy-900'>
-                                {formatPrice(COD_HANDLING_FEE)} COD fee .
+                                {formatPrice(COD_HANDLING_FEE)} COD fee
                               </span>
+                              .
                             </p>
                           </div>
                           <CheckCircle2
                             className={cn(
-                              "h-6 w-6 shrink-0",
-                              checkoutPaymentMethod === "cod" ? "text-[#b02a37]"
-                              : "text-gray-300",
+                              "h-5 w-5 shrink-0",
+                              checkoutPaymentMethod === "cod"
+                                ? "text-[#c5a059]"
+                                : "text-gray-300",
                             )}
                           />
                         </div>
                       </button>
                     </>
-                  }
-                  {showMobileCheckoutWizard && mobileCheckoutStep === 2 && (
-                    <div className='mt-2 flex flex-col gap-3 lg:hidden'>
-                      <Button
+                  )}
+                  {showCheckoutWizard && checkoutStep === 2 && (
+                    <div className='mt-8 flex flex-col gap-3 lg:hidden'>
+                      <button
                         type='button'
-                        variant='outline'
-                        className='h-11 w-full rounded-xl border-gray-200 font-bold'
-                        onClick={() => setMobileCheckoutStep(1)}
+                        className='h-11 w-full border border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
+                        onClick={() => setCheckoutStep(1)}
                       >
-                        Back to shipping
-                      </Button>
-                      <Button
+                        Back to Shipping
+                      </button>
+                      <button
                         type='button'
-                        variant='brand'
-                        size='xl'
-                        className='h-12 w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] text-base font-black shadow-lg'
-                        onClick={goToMobileReviewStep}
+                        className={heritageCta}
+                        onClick={() => void goToReviewStep()}
                       >
-                        Review order &amp; pay
-                        <ArrowRight className='ml-2 h-4 w-4' aria-hidden />
-                      </Button>
+                        Review Order &amp; Pay
+                      </button>
                     </div>
                   )}
                 </section>
               )}
+
+              {showCheckoutWizard && checkoutStep === 3 && (
+                <section className={cn(heritageSectionCard, "hidden lg:block")}>
+                  <CheckoutReviewRecap
+                    address={reviewAddressDisplay}
+                    paymentMethod={checkoutPaymentMethod}
+                    onEditAddress={() => setCheckoutStep(1)}
+                    onEditPayment={() => setCheckoutStep(2)}
+                  />
+                </section>
+              )}
             </div>
 
-            {/* Summary + coupons: visible on all steps (mobile) so apply / View all always work; navbar is z-50 so coupon modal uses a portal */}
-            {(!showMobileCheckoutWizard || mobileCheckoutStep === 3) && (
-              <div className='lg:col-span-5 min-w-0 animate-in fade-in slide-in-from-right-2 lg:slide-in-from-right-0'>
-                <div className='rounded-2xl bg-white p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100/90 lg:sticky lg:top-24 min-w-0 max-w-full transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'>
-                  {showMobileCheckoutWizard && mobileCheckoutStep === 3 && (
-                    <Button
-                      type='button'
-                      variant='ghost'
-                      className='mb-2 -ml-1 h-10 px-2 text-sm font-bold text-gray-600 hover:text-gray-900 lg:hidden'
-                      onClick={() => setMobileCheckoutStep(2)}
-                    >
-                      ← Back to payment
-                    </Button>
+            <div
+              className={cn(
+                "min-w-0 lg:col-span-4",
+                showCheckoutWizard && checkoutStep < 3 && "order-2 lg:order-none",
+              )}
+            >
+                <div
+                  className={cn(
+                    heritageSummaryCard,
+                    "lg:sticky lg:top-28",
+                    showCheckoutWizard &&
+                      checkoutStep === 3 &&
+                      "flex flex-col border-0 bg-transparent p-0 shadow-none lg:border lg:border-gray-200/70 lg:bg-white lg:p-8 lg:shadow-[0px_20px_40px_rgba(3,22,50,0.04)]",
                   )}
-                  {/* Coupons (shown above order items) */}
-                  <div className='mb-5 pb-5 border-b border-gray-100 min-w-0'>
-                    <div className='flex items-center justify-between gap-2 mb-3 min-w-0'>
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <BadgePercent className='h-5 w-5 text-brand-600 shrink-0' />
-                        <h2 className='text-lg font-semibold text-gray-900 truncate'>
-                          Coupons
-                        </h2>
-                      </div>
+                >
+                  {showCheckoutWizard && checkoutStep === 3 && (
+                    <>
+                      <button
+                        type='button'
+                        className='mb-5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 transition-colors hover:text-navy-900 lg:hidden'
+                        onClick={() => setCheckoutStep(2)}
+                      >
+                        ← Back to Payment
+                      </button>
+                      <CheckoutReviewRecap
+                        className='mb-8 border-b border-gray-200/70 pb-8 lg:hidden'
+                        address={reviewAddressDisplay}
+                        paymentMethod={checkoutPaymentMethod}
+                        onEditAddress={() => setCheckoutStep(1)}
+                        onEditPayment={() => setCheckoutStep(2)}
+                      />
+                    </>
+                  )}
+
+                  <div
+                    className={cn(
+                      "mb-6 min-w-0 border-b border-gray-200/70 pb-6",
+                      checkoutStep === 3 && "order-2 border-b-0 pb-0 pt-6",
+                    )}
+                  >
+                    <div className='mb-4 flex min-w-0 items-center justify-between gap-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
+                        Promotional Code
+                      </p>
                       {eligibleCoupons.length > 2 && (
                         <button
                           type='button'
                           onClick={() => setIsAllCouponsOpen(true)}
-                          className='text-sm font-semibold text-brand-600 hover:text-brand-700 shrink-0'
+                          className='shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] hover:text-navy-900'
                         >
                           View all
                         </button>
                       )}
                     </div>
 
-                    {hasAppliedCoupon ?
-                      <div className='rounded-xl border border-green-200 bg-green-50 p-3 min-w-0 space-y-3'>
+                    {hasAppliedCoupon ? (
+                      <div className='min-w-0 space-y-3 border border-[#c5a059]/35 bg-[#fff8eb]/40 p-3 sm:p-4'>
                         <CouponAppliedBanner
+                          variant='heritage'
                           code={activeCouponCode}
                           savedAmount={activeCouponDiscount}
                           eligibleCoupons={eligibleCoupons}
-                          helperText="The discount is reflected in your order total below."
+                          helperText='The discount is reflected in your order total below.'
                         />
-                        <Button
+                        <button
                           type='button'
-                          variant='outline'
-                          size='sm'
-                          className='w-full border-red-200/80 text-red-700 hover:bg-red-50 hover:text-red-800'
+                          className='w-full border border-gray-200 py-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500 transition-colors hover:border-[#c5a059]/50 hover:bg-white hover:text-navy-900 disabled:opacity-50'
                           disabled={couponBusy}
                           onClick={async () => {
                             setCouponBusy(true);
@@ -1759,10 +1963,11 @@ export default function CheckoutClient() {
                             }
                           }}
                         >
-                          {couponBusy ? "Removing…" : "Remove coupon"}
-                        </Button>
+                          {couponBusy ? "Removing…" : "Remove Coupon"}
+                        </button>
                       </div>
-                    : <div className='flex flex-col gap-2 sm:flex-row sm:items-stretch min-w-0'>
+                    ) : (
+                      <div className='flex min-w-0 flex-col gap-2 sm:flex-row sm:items-stretch'>
                         <input
                           value={couponCode}
                           onChange={(e) =>
@@ -1770,12 +1975,11 @@ export default function CheckoutClient() {
                           }
                           placeholder='Enter coupon code'
                           autoComplete='off'
-                          className='min-w-0 w-full h-11 px-4 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#b02a37]/35'
+                          className='h-10 min-w-0 w-full border border-gray-300 bg-white px-3 text-sm focus:border-[#c5a059]/60 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/30'
                         />
-                        <Button
+                        <button
                           type='button'
-                          variant='brand'
-                          className='w-full sm:w-auto shrink-0 sm:min-w-[5.5rem] h-11 rounded-xl bg-[#b02a37] hover:bg-[#8f222c] border-0 shadow-md transition-transform active:scale-[0.98]'
+                          className='h-10 shrink-0 bg-[#c5a059] px-4 text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d] disabled:opacity-50 sm:min-w-[5.5rem]'
                           disabled={couponBusy || !couponCode.trim()}
                           onClick={async () => {
                             if (!couponCode.trim()) return;
@@ -1791,28 +1995,29 @@ export default function CheckoutClient() {
                           }}
                         >
                           Apply
-                        </Button>
+                        </button>
                       </div>
-                    }
+                    )}
 
-                    {isLoadingCoupons ?
-                      <div className='text-sm text-gray-500 mt-3'>
+                    {isLoadingCoupons ? (
+                      <p className='mt-3 text-xs text-gray-500'>
                         Loading available offers…
-                      </div>
-                    : eligibleCoupons.length === 0 ?
-                      <div className='text-sm text-gray-500 mt-3'>
+                      </p>
+                    ) : eligibleCoupons.length === 0 ? (
+                      <p className='mt-3 text-xs text-gray-500'>
                         No coupons are available for this order.
-                      </div>
-                    : <div className='grid grid-cols-1 gap-2 mt-3 min-w-0'>
+                      </p>
+                    ) : (
+                      <div className='mt-3 grid min-w-0 grid-cols-1 gap-2'>
                         {eligibleCoupons.slice(0, 2).map((c) => (
                           <button
                             key={c._id}
                             type='button'
                             disabled={hasAppliedCoupon || couponBusy}
                             title={
-                              hasAppliedCoupon ?
-                                "Remove your current coupon to use another"
-                              : undefined
+                              hasAppliedCoupon
+                                ? "Remove your current coupon to use another"
+                                : undefined
                             }
                             onClick={async () => {
                               try {
@@ -1822,42 +2027,47 @@ export default function CheckoutClient() {
                               }
                             }}
                             className={cn(
-                              "text-left p-3 rounded-xl border border-gray-200 transition-all min-w-0",
-                              hasAppliedCoupon || couponBusy ?
-                                "opacity-50 cursor-not-allowed"
-                              : "hover:border-brand-300 hover:bg-brand-50",
+                              "min-w-0 border border-[#c5a059]/20 p-3 text-left transition-all",
+                              hasAppliedCoupon || couponBusy
+                                ? "cursor-not-allowed opacity-50"
+                                : "hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/50",
                             )}
                           >
                             <CouponOfferPreview coupon={c} />
                           </button>
                         ))}
                       </div>
-                    }
+                    )}
                   </div>
 
+                  <div
+                    className={cn(
+                      checkoutStep === 3 && "order-1 border-t border-gray-200/70 pt-6",
+                    )}
+                  >
                   <button
                     type='button'
-                    className='flex items-center justify-between w-full mb-3 lg:cursor-default min-w-0 gap-2 group'
+                    className='group mb-4 flex w-full min-w-0 items-center justify-between gap-2 lg:cursor-default'
                     onClick={() => setShowItems(!showItems)}
                   >
-                    <div className='flex items-center gap-2 min-w-0 flex-wrap'>
-                      <Package className='h-5 w-5 text-[#b02a37] shrink-0 transition-transform group-hover:scale-105' />
-                      <h2 className='text-lg font-bold text-navy-900 truncate text-left'>
-                        Order summary · {checkoutItems.length}{" "}
-                        {checkoutItems.length === 1 ? "item" : "items"}
-                      </h2>
-                      {buyNowItem && !existingOrder && (
-                        <span className='inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#b02a37] border border-[#b02a37]/20'>
-                          Quick buy
-                        </span>
-                      )}
-                    </div>
-                    <span className='lg:hidden text-gray-400'>
-                      {showItems ?
+                    <h2 className='truncate text-left font-serif text-xl font-medium uppercase tracking-widest text-navy-900'>
+                      Order Summary
+                    </h2>
+                    <span className='text-gray-400 lg:hidden'>
+                      {showItems ? (
                         <ChevronUp className='h-4 w-4' />
-                      : <ChevronDown className='h-4 w-4' />}
+                      ) : (
+                        <ChevronDown className='h-4 w-4' />
+                      )}
                     </span>
                   </button>
+                  <p className='-mt-2 mb-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400'>
+                    {checkoutItems.length}{" "}
+                    {checkoutItems.length === 1 ? "item" : "items"}
+                    {buyNowItem && !existingOrder && (
+                      <span className='ml-2 text-[#c5a059]'>· Quick buy</span>
+                    )}
+                  </p>
 
                   <div
                     className={cn(
@@ -1912,9 +2122,9 @@ export default function CheckoutClient() {
                       return (
                         <div
                           key={rowKey}
-                          className='flex items-stretch gap-3 min-w-0 rounded-2xl border border-gray-100 bg-gray-50/40 p-3 transition-all duration-300 hover:bg-gray-50 animate-in fade-in slide-in-from-bottom-1'
+                          className='flex min-w-0 items-center gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0'
                         >
-                          <div className='relative h-[4.5rem] w-[3.75rem] shrink-0 self-start overflow-hidden rounded-xl bg-white shadow-inner ring-1 ring-black/5'>
+                          <div className='relative h-24 w-20 shrink-0 overflow-hidden bg-gray-100 sm:h-28 sm:w-24'>
                             <Image
                               src={thumb}
                               alt={row.name || "Product"}
@@ -1923,20 +2133,24 @@ export default function CheckoutClient() {
                               className='object-cover'
                             />
                             {!cartLine && !buyNowItem && (
-                              <span className='absolute bottom-1 right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#b02a37] px-1 text-[10px] font-bold text-white shadow'>
+                              <span className='absolute bottom-1 right-1 flex h-5 min-w-[1.25rem] items-center justify-center bg-navy-900 px-1 text-[10px] font-bold text-white'>
                                 {row.quantity}
                               </span>
                             )}
                           </div>
-                          <div className='min-w-0 flex-1'>
-                            <p className='text-sm font-bold text-navy-900 line-clamp-2 leading-snug'>
-                              {row.name || "Product"}
-                            </p>
-                            <p className='text-xs text-gray-500 mt-0.5'>
-                              {[row.variant?.size, row.variant?.color]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
+                          <div className='flex min-w-0 flex-1 flex-col justify-between py-1'>
+                            <div>
+                              <p className='line-clamp-2 font-serif text-base font-medium leading-snug text-navy-900'>
+                                {row.name || "Product"}
+                              </p>
+                              <p className='mt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500'>
+                                Qty: {row.quantity}
+                                {[row.variant?.size, row.variant?.color]
+                                  .filter(Boolean)
+                                  .length > 0 &&
+                                  ` · ${[row.variant?.size, row.variant?.color].filter(Boolean).join(" · ")}`}
+                              </p>
+                            </div>
                             {(row.customFieldAnswers?.length ?? 0) > 0 && (
                               <div className='mt-1.5 grid grid-cols-1 gap-1'>
                                 {(row.customFieldAnswers || []).map(
@@ -1971,7 +2185,7 @@ export default function CheckoutClient() {
                                                 className='object-cover'
                                               />
                                             </span>
-                                            <span className='font-semibold text-[#b02a37]'>
+                                            <span className='font-semibold text-[#c5a059]'>
                                               View
                                             </span>
                                           </a>
@@ -2076,8 +2290,8 @@ export default function CheckoutClient() {
                               </div>
                             )}
                           </div>
-                          <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch py-0.5'>
-                            <p className='text-sm font-bold text-navy-900 tabular-nums text-right leading-tight'>
+                          <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch'>
+                            <p className='font-serif text-base font-medium tabular-nums text-[#c5a059]'>
                               {formatPrice(row.price * row.quantity)}
                             </p>
                             {showRemovableLine && (
@@ -2107,15 +2321,15 @@ export default function CheckoutClient() {
                     })}
                   </div>
 
-                  <div className='border-t border-gray-100 pt-5 space-y-2.5 text-sm'>
+                  <div className='space-y-3 border-t border-gray-200/70 py-6 text-sm'>
                     <div className='flex justify-between text-gray-600'>
                       <span>Subtotal</span>
-                      <span className='font-medium tabular-nums'>
+                      <span className='tabular-nums text-navy-900'>
                         {formatPrice(subtotal)}
                       </span>
                     </div>
                     {discount > 0 && (
-                      <div className='flex justify-between text-emerald-600'>
+                      <div className='flex justify-between text-[#c5a059]'>
                         <span>Discount</span>
                         <span className='font-semibold tabular-nums'>
                           − {formatPrice(discount)}
@@ -2123,21 +2337,18 @@ export default function CheckoutClient() {
                       </div>
                     )}
                     <div className='flex justify-between gap-3 text-gray-600'>
-                      <span className='min-w-0'>
-                        Shipping
-                        <span className='block text-[10px] font-normal text-gray-400 mt-0.5'>
-                          Below {formatPrice(SHIPPING_THRESHOLD)} order value
-                        </span>
-                      </span>
+                      <span className='min-w-0'>Shipping</span>
                       <span
                         className={cn(
-                          "shrink-0 font-semibold tabular-nums text-right",
-                          shippingCharge === 0 && "text-emerald-600",
+                          "shrink-0 text-right text-xs font-bold uppercase tracking-wide",
+                          shippingCharge === 0
+                            ? "text-[#c5a059]"
+                            : "text-navy-900",
                         )}
                       >
-                        {shippingCharge === 0 ?
-                          "FREE"
-                        : formatPrice(shippingCharge)}
+                        {shippingCharge === 0
+                          ? "Complimentary"
+                          : formatPrice(shippingCharge)}
                       </span>
                     </div>
                     {codFee > 0 && (
@@ -2161,9 +2372,13 @@ export default function CheckoutClient() {
                         </span>
                       </div>
                     )}
-                    <div className='flex justify-between border-t border-gray-100 pt-3 text-base font-black text-navy-900'>
-                      <span>Total</span>
-                      <span className='tabular-nums'>{formatPrice(total)}</span>
+                    <div className='flex justify-between border-t border-navy-900/10 pt-4'>
+                      <span className='font-serif text-lg font-medium uppercase tracking-tight text-navy-900'>
+                        Grand Total
+                      </span>
+                      <span className='font-serif text-xl font-semibold tabular-nums text-navy-900'>
+                        {formatPrice(total)}
+                      </span>
                     </div>
                     {(shippingCharge > 0 || codFee > 0) && (
                       <p className='text-[10px] text-gray-500 mt-2 leading-snug'>
@@ -2179,61 +2394,86 @@ export default function CheckoutClient() {
                       </p>
                     )}
                   </div>
+                  </div>
 
-                  {(!showMobileCheckoutWizard || mobileCheckoutStep === 3) && (
+                  {showCheckoutWizard && checkoutStep === 1 && (
+                    <button
+                      type='button'
+                      className={cn(
+                        heritageCta,
+                        "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)]",
+                      )}
+                      onClick={() => void goToPaymentStep()}
+                    >
+                      Proceed to Payment
+                    </button>
+                  )}
+
+                  {showCheckoutWizard && checkoutStep === 2 && (
+                    <div className='mt-6 space-y-3'>
+                      <button
+                        type='button'
+                        className='h-11 w-full border border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
+                        onClick={() => setCheckoutStep(1)}
+                      >
+                        Back to Shipping
+                      </button>
+                      <button
+                        type='button'
+                        className={cn(
+                          heritageCta,
+                          "shadow-[0px_20px_40px_rgba(3,22,50,0.08)]",
+                        )}
+                        onClick={() => void goToReviewStep()}
+                      >
+                        Review Order &amp; Pay
+                      </button>
+                    </div>
+                  )}
+
+                  <div
+                    className={cn(checkoutStep === 3 && "order-3")}
+                  >
+                  {(!showCheckoutWizard || checkoutStep === 3) && (
                     <>
-                      <Button
+                      {showCheckoutWizard && (
+                        <button
+                          type='button'
+                          className='mb-3 hidden w-full text-[11px] font-semibold uppercase tracking-wide text-gray-500 transition-colors hover:text-navy-900 lg:block'
+                          onClick={() => setCheckoutStep(2)}
+                        >
+                          ← Back to Payment
+                        </button>
+                      )}
+                      <button
                         type='submit'
-                        variant='brand'
-                        size='xl'
-                        className='w-full mt-6 h-14 text-center whitespace-normal leading-snug px-3 max-w-full rounded-2xl bg-[#b02a37] hover:bg-[#8f222c] border-0 text-base font-black shadow-lg shadow-red-900/15 transition-all duration-300 hover:shadow-xl hover:shadow-red-900/20 active:scale-[0.99]'
+                        className={cn(
+                          heritageCta,
+                          "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)]",
+                        )}
                         disabled={isPlacingOrder}
                       >
-                        {existingOrder ?
-                          `Pay now — ${formatPrice(total)}`
-                        : checkoutPaymentMethod === "razorpay" ?
-                          `Pay securely — ${formatPrice(total)}`
-                        : `Place order — ${formatPrice(total)}`}
-                      </Button>
+                        {isPlacingOrder
+                          ? "Placing order…"
+                          : existingOrder
+                            ? `Confirm & Pay — ${formatPrice(total)}`
+                            : checkoutPaymentMethod === "razorpay"
+                              ? `Confirm & Pay — ${formatPrice(total)}`
+                              : `Confirm & Place Order — ${formatPrice(total)}`}
+                      </button>
 
-                      <div className='mt-6 grid grid-cols-3 gap-2 text-center'>
-                        {(
-                          [
-                            { Icon: Shield, label: "Secure checkout" },
-                            { Icon: Truck, label: "Free delivery*" },
-                            { Icon: RotateCcw, label: "Easy returns" },
-                          ] as const
-                        ).map(({ Icon, label }) => (
-                          <div
-                            key={label}
-                            className='rounded-xl border border-gray-100 bg-gray-50/80 px-1 py-3 transition hover:border-[#b02a37]/25'
-                          >
-                            <Icon className='mx-auto h-5 w-5 text-[#b02a37]/90' />
-                            <p className='mt-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500 leading-tight'>
-                              {label}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      <p className='text-[10px] text-center text-gray-400 mt-1'>
-                        *Where applicable per policy
-                      </p>
-
-                      <p className='text-xs text-gray-500 text-center mt-4 leading-relaxed'>
-                        {offerText}
-                      </p>
-                      <p className='text-[11px] text-gray-400 text-center mt-2'>
+                      <p className='mt-3 text-center text-[11px] text-gray-400'>
                         By placing this order, you agree to our{" "}
                         <Link
                           href='/terms'
-                          className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
+                          className='font-semibold text-[#c5a059] underline-offset-2 hover:underline'
                         >
                           terms
                         </Link>{" "}
                         and{" "}
                         <Link
                           href='/privacy'
-                          className='text-[#b02a37] font-semibold underline-offset-2 hover:underline'
+                          className='font-semibold text-[#c5a059] underline-offset-2 hover:underline'
                         >
                           privacy policy
                         </Link>
@@ -2241,17 +2481,35 @@ export default function CheckoutClient() {
                       </p>
                     </>
                   )}
-                  {showMobileCheckoutWizard &&
-                    mobileCheckoutStep < 3 &&
-                    !existingOrder && (
-                      <p className='mt-6 text-center text-xs text-gray-500'>
-                        Continue the steps above — you can place your order on
-                        the last step.
-                      </p>
-                    )}
+
+                  <div className='mt-8 grid grid-cols-3 gap-2 text-center'>
+                    {(
+                      [
+                        { Icon: Shield, label: "Secure Checkout" },
+                        { Icon: Truck, label: "Free Delivery" },
+                        { Icon: RotateCcw, label: "Easy Returns" },
+                      ] as const
+                    ).map(({ Icon, label }) => (
+                      <div
+                        key={label}
+                        className='flex flex-col items-center px-1 py-2'
+                      >
+                        <Icon className='mx-auto mb-2 h-5 w-5 text-[#c5a059]' />
+                        <p className='text-[9px] font-semibold uppercase leading-tight tracking-tight text-gray-500'>
+                          {label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {offerText && (
+                    <p className='mt-4 text-center text-xs leading-relaxed text-gray-500'>
+                      {offerText}
+                    </p>
+                  )}
+                  </div>
                 </div>
               </div>
-            )}
           </div>
         </form>
 
@@ -2265,13 +2523,13 @@ export default function CheckoutClient() {
                 role='presentation'
                 onClick={() => setIsAllCouponsOpen(false)}
               />
-              <div className='relative w-full max-w-[100vw] sm:max-w-lg min-w-0 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden'>
-                <div className='p-4 border-b border-gray-100 flex items-center justify-between min-w-0 gap-2'>
+              <div className='relative max-h-[80vh] w-full min-w-0 max-w-[100vw] overflow-hidden bg-white shadow-2xl sm:max-w-lg'>
+                <div className='flex min-w-0 items-center justify-between gap-2 border-b border-gray-100 p-4 sm:p-5'>
                   <div className='min-w-0'>
-                    <p className='text-xs uppercase tracking-widest text-gray-400 font-semibold'>
-                      Promotional codes
+                    <p className='text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400'>
+                      Promotional Codes
                     </p>
-                    <h3 className='text-lg font-bold text-gray-900 truncate'>
+                    <h3 className='truncate font-serif text-lg font-medium text-navy-900'>
                       Available for your order
                     </h3>
                   </div>
@@ -2301,10 +2559,10 @@ export default function CheckoutClient() {
                         }
                       }}
                       className={cn(
-                        "w-full min-w-0 text-left p-3 rounded-xl border border-gray-200 transition-all",
-                        hasAppliedCoupon || couponBusy ?
-                          "opacity-50 cursor-not-allowed"
-                        : "hover:border-brand-300 hover:bg-brand-50",
+                        "w-full min-w-0 border border-gray-200 p-3 text-left transition-all",
+                        hasAppliedCoupon || couponBusy
+                          ? "cursor-not-allowed opacity-50"
+                          : "hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/50",
                       )}
                     >
                       <CouponOfferPreview coupon={coupon} />

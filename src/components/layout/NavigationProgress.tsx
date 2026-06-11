@@ -96,7 +96,7 @@ export function NavigationProgress() {
       aria-busy
       aria-label="Loading page"
     >
-      <div className="h-full w-2/5 max-w-[200px] bg-gradient-to-r from-brand-600 to-brand-400 shadow-[0_0_12px_rgba(196,18,48,0.45)] animate-nav-indeterminate" />
+      <div className="h-full w-2/5 max-w-[200px] bg-gradient-to-r from-brand-600 to-brand-400 shadow-[0_0_12px_rgba(197,160,89,0.45)] animate-nav-indeterminate" />
     </div>
   );
 }

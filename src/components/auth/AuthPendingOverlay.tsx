@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, ShieldCheck } from "lucide-react";
+import {
+  authBackdrop,
+  authModalEyebrow,
+  authModalTitleDesktop,
+} from "@/lib/authHeritageTheme";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -12,7 +17,6 @@ type Props = {
 
 /**
  * Full-screen auth transition overlay for login/signup/OTP steps.
- * Keeps users informed so they do not feel stuck on the same form.
  */
 export default function AuthPendingOverlay({
   active,
@@ -34,34 +38,35 @@ export default function AuthPendingOverlay({
 
   return (
     <div
-      className='fixed inset-0 z-[160] flex items-center justify-center p-4'
-      role='status'
-      aria-live='polite'
-      aria-busy='true'
+      className="fixed inset-0 z-[260] flex items-center justify-center p-4"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
       aria-label={title}
     >
-      <div className='absolute inset-0 bg-navy-950/70 backdrop-blur-sm' aria-hidden />
+      <div className={authBackdrop} aria-hidden />
       <div
         className={cn(
-          "relative w-full max-w-sm rounded-2xl border border-white/20 bg-white/95 p-6 text-center shadow-[0_24px_70px_-20px_rgba(15,23,42,0.48)]",
+          "relative w-full max-w-sm border border-gray-200/80 bg-[#faf9f7] px-6 py-10 text-center shadow-[0_24px_70px_-20px_rgba(20,25,47,0.35)]",
           "transition-all duration-300 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95",
         )}
       >
-        <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 ring-1 ring-brand-100'>
-          <Loader2 className='h-7 w-7 animate-spin text-brand-600' strokeWidth={2.2} />
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center border border-[#c5a059]/30 bg-white">
+          <Loader2 className="h-7 w-7 animate-spin text-[#c5a059]" strokeWidth={2.2} />
         </div>
-        <p className='text-[15px] font-semibold text-navy-900'>{title}</p>
-        <p className='mt-1.5 text-sm leading-relaxed text-gray-600'>{description}</p>
+        <p className={authModalEyebrow}>Secure session</p>
+        <p className={cn(authModalTitleDesktop, "mt-2 text-xl")}>{title}</p>
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">{description}</p>
 
-        <div className='mt-4 h-1.5 w-full overflow-hidden rounded-full bg-gray-100'>
-          <div className='h-full w-full animate-[auth-pending-bar_1.2s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-brand-500 via-brand-400 to-emerald-500' />
+        <div className="mt-5 h-0.5 w-full overflow-hidden bg-gray-100">
+          <div className="h-full w-1/3 animate-[auth-pending-bar_1.2s_ease-in-out_infinite] bg-[#c5a059]" />
         </div>
 
-        <p className='mt-3 inline-flex items-center justify-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-gray-400'>
-          <ShieldCheck className='h-3.5 w-3.5' /> Secure authentication
+        <p className="mt-4 inline-flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+          <ShieldCheck className="h-3.5 w-3.5" /> Secure authentication
         </p>
         {showSlowHint && (
-          <p className='mt-2 text-xs text-gray-500'>
+          <p className="mt-2 text-xs text-gray-500">
             This is taking a bit longer than usual. Please stay on this page.
           </p>
         )}
@@ -69,4 +74,3 @@ export default function AuthPendingOverlay({
     </div>
   );
 }
-

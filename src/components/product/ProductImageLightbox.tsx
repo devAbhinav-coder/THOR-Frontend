@@ -232,9 +232,9 @@ export default function ProductImageLightbox({
               type='button'
               onClick={() => go(i)}
               className={cn(
-                "relative h-16 w-12 shrink-0 overflow-hidden rounded-lg border-2 bg-gray-100 transition-all",
+                "relative h-16 w-12 shrink-0 overflow-hidden border-2 bg-gray-100 transition-all",
                 i === idx ?
-                  "border-brand-500 ring-2 ring-brand-200"
+                  "border-[#c5a059] ring-1 ring-[#c5a059]/30"
                 : "border-gray-200",
               )}
             >
@@ -260,10 +260,10 @@ export default function ProductImageLightbox({
               type='button'
               onClick={() => go(i)}
               className={cn(
-                "relative w-full overflow-hidden rounded-xl border-2 bg-white/10 transition-all",
+                "relative w-full overflow-hidden border-2 bg-white/10 transition-all",
                 isSquareAspect ? "aspect-square" : "aspect-[3/4]",
                 i === idx ?
-                  "border-brand-400 ring-2 ring-brand-300/40"
+                  "border-[#c5a059] ring-1 ring-[#c5a059]/40"
                 : "border-white/20 hover:border-white/50",
               )}
             >
@@ -292,7 +292,7 @@ export default function ProductImageLightbox({
           <div
             ref={mainRef}
             className={cn(
-              "relative w-full max-w-2xl overflow-hidden rounded-2xl bg-gray-100 sm:bg-white/5 ring-1 ring-black/5 sm:ring-white/10",
+              "relative w-full max-w-2xl overflow-hidden border-2 border-[#c5a059]/40 bg-gray-100 sm:bg-white/5",
               aspectClass,
               "max-h-[min(78vh,900px)] min-[1100px]:max-h-[85vh] min-[1100px]:min-w-0 min-[1100px]:flex-1",
               !coarsePointer ? "cursor-crosshair" : "cursor-default",

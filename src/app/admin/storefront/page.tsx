@@ -6,6 +6,7 @@ import { adminApi, categoryApi, giftingApi } from '@/lib/api';
 import {
   Category,
   HeroSlide,
+  HomeEditorialGalleryTile,
   HomeGiftShowcaseCard,
   HomeGiftShopLinkMode,
   StorefrontSettings,
@@ -56,6 +57,7 @@ export default function AdminStorefrontPage() {
   const [giftingHeroFiles, setGiftingHeroFiles] = useState<Record<number, File | null>>({});
   const [giftingSecondaryFiles, setGiftingSecondaryFiles] = useState<Record<number, File | null>>({});
   const [homeGiftCardFiles, setHomeGiftCardFiles] = useState<Record<number, File | null>>({});
+  const [homeEditorialTileFiles, setHomeEditorialTileFiles] = useState<Record<number, File | null>>({});
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>("announcement");
@@ -95,6 +97,12 @@ export default function AdminStorefrontPage() {
 
   const serializeSettingsForSave = (s: StorefrontSettings) => {
     const sb = s.shopBanner;
+    const editorialTiles = padHomeEditorialTiles(s.homeEditorialGallery?.tiles).map(
+      (tile) => ({
+        ...tile,
+        imagePublicId: tile.imagePublicId ?? undefined,
+      }),
+    );
     return JSON.stringify({
       ...s,
       shopBanner: sb
@@ -105,6 +113,9 @@ export default function AdminStorefrontPage() {
             rightImagePublicId: sb.rightImagePublicId ?? undefined,
           }
         : sb,
+      homeEditorialGallery: s.homeEditorialGallery
+        ? { ...s.homeEditorialGallery, tiles: editorialTiles }
+        : { isActive: true, tiles: editorialTiles },
     });
   };
 
@@ -132,6 +143,9 @@ export default function AdminStorefrontPage() {
       Object.entries(homeGiftCardFiles).forEach(([index, file]) => {
         if (file) fd.append(`homeGiftCardImage_${index}`, file);
       });
+      Object.entries(homeEditorialTileFiles).forEach(([index, file]) => {
+        if (file) fd.append(`homeEditorialTileImage_${index}`, file);
+      });
       const saved = await adminApi.updateStorefrontSettings(fd);
       if (saved.data?.settings) {
         setSettings(saved.data.settings as StorefrontSettings);
@@ -147,6 +161,7 @@ export default function AdminStorefrontPage() {
       setGiftingHeroFiles({});
       setGiftingSecondaryFiles({});
       setHomeGiftCardFiles({});
+      setHomeEditorialTileFiles({});
       toast.success('Storefront settings updated');
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Failed to save settings');
@@ -177,6 +192,16 @@ export default function AdminStorefrontPage() {
       return prev;
     });
   };
+  const padHomeEditorialTiles = (
+    tiles: HomeEditorialGalleryTile[] | undefined,
+  ): HomeEditorialGalleryTile[] => {
+    const base = [...(tiles || [])];
+    while (base.length < 3) {
+      base.push({ image: "", link: "", alt: "" });
+    }
+    return base.slice(0, 3);
+  };
+
   const padHomeGiftCards = (cards: HomeGiftShowcaseCard[] | undefined): HomeGiftShowcaseCard[] => {
     const accents: ('rose' | 'amber' | 'sage')[] = ['rose', 'amber', 'sage'];
     const base = [...(cards || [])];
@@ -514,7 +539,7 @@ export default function AdminStorefrontPage() {
       </span>
       <div>
         <h2 className="font-semibold text-gray-900 text-sm">Mid-Page Promo Banner</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Full-width promotional banner shown in the middle of the homepage</p>
+        <p className="text-xs text-gray-500 mt-0.5">Promo hero, editorial image grid, and perks on the homepage</p>
       </div>
     </div>
     <span className="shrink-0 text-gray-400">{activeSection === "promo" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
@@ -649,6 +674,247 @@ export default function AdminStorefrontPage() {
         }
         placeholder="Perks comma separated"
       />
+
+      <div className="mt-6 rounded-xl border border-rose-100 bg-rose-50/40 p-4 space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Editorial image grid</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Shown below the promo hero on the homepage. Upload only the images you want — empty slots stay hidden. Each tile can link anywhere.
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={settings.homeEditorialGallery?.isActive !== false}
+            onChange={(e) =>
+              setSettings((p) =>
+                p
+                  ? {
+                      ...p,
+                      homeEditorialGallery: {
+                        ...p.homeEditorialGallery,
+                        isActive: e.target.checked,
+                        tiles: padHomeEditorialTiles(p.homeEditorialGallery?.tiles),
+                      },
+                    }
+                  : p,
+              )
+            }
+          />
+          Show editorial gallery on homepage
+        </label>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            className={inputCls}
+            value={settings.homeEditorialGallery?.eyebrow || ""}
+            onChange={(e) =>
+              setSettings((p) =>
+                p
+                  ? {
+                      ...p,
+                      homeEditorialGallery: {
+                        ...p.homeEditorialGallery,
+                        eyebrow: e.target.value,
+                        tiles: padHomeEditorialTiles(p.homeEditorialGallery?.tiles),
+                      },
+                    }
+                  : p,
+              )
+            }
+            placeholder="Eyebrow (e.g. Editorial Edit)"
+          />
+          <input
+            className={inputCls}
+            value={settings.homeEditorialGallery?.title || ""}
+            onChange={(e) =>
+              setSettings((p) =>
+                p
+                  ? {
+                      ...p,
+                      homeEditorialGallery: {
+                        ...p.homeEditorialGallery,
+                        title: e.target.value,
+                        tiles: padHomeEditorialTiles(p.homeEditorialGallery?.tiles),
+                      },
+                    }
+                  : p,
+              )
+            }
+            placeholder="Section title"
+          />
+          <input
+            className={inputCls}
+            value={settings.homeEditorialGallery?.subtitle || ""}
+            onChange={(e) =>
+              setSettings((p) =>
+                p
+                  ? {
+                      ...p,
+                      homeEditorialGallery: {
+                        ...p.homeEditorialGallery,
+                        subtitle: e.target.value,
+                        tiles: padHomeEditorialTiles(p.homeEditorialGallery?.tiles),
+                      },
+                    }
+                  : p,
+              )
+            }
+            placeholder="Section subtitle (optional)"
+          />
+          <input
+            className={inputCls}
+            value={settings.homeEditorialGallery?.ctaText || ""}
+            onChange={(e) =>
+              setSettings((p) =>
+                p
+                  ? {
+                      ...p,
+                      homeEditorialGallery: {
+                        ...p.homeEditorialGallery,
+                        ctaText: e.target.value,
+                        tiles: padHomeEditorialTiles(p.homeEditorialGallery?.tiles),
+                      },
+                    }
+                  : p,
+              )
+            }
+            placeholder="Header link text (e.g. Shop Now)"
+          />
+          <input
+            className={inputCls}
+            value={settings.homeEditorialGallery?.ctaLink || ""}
+            onChange={(e) =>
+              setSettings((p) =>
+                p
+                  ? {
+                      ...p,
+                      homeEditorialGallery: {
+                        ...p.homeEditorialGallery,
+                        ctaLink: e.target.value,
+                        tiles: padHomeEditorialTiles(p.homeEditorialGallery?.tiles),
+                      },
+                    }
+                  : p,
+              )
+            }
+            placeholder="Header link URL (e.g. /shop)"
+          />
+        </div>
+
+        {padHomeEditorialTiles(settings.homeEditorialGallery?.tiles).map((tile, index) => {
+          const tileLabels = [
+            "Large left image (desktop layout)",
+            "Top right image",
+            "Bottom right image",
+          ];
+          return (
+            <div key={index} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+              <p className="text-sm font-semibold text-gray-800">{tileLabels[index]}</p>
+              <ImageUploader
+                maxFiles={1}
+                aspectRatio="3:4"
+                maxSizeMB={5}
+                existingImages={
+                  homeEditorialTileFiles[index] ? [] : tile.image ? [tile.image] : []
+                }
+                onRemoveExisting={() => {
+                  setSettings((p) => {
+                    if (!p) return p;
+                    const tiles = padHomeEditorialTiles(p.homeEditorialGallery?.tiles);
+                    tiles[index] = {
+                      ...tiles[index],
+                      image: "",
+                      imagePublicId: undefined,
+                    };
+                    return {
+                      ...p,
+                      homeEditorialGallery: { ...p.homeEditorialGallery, tiles },
+                    };
+                  });
+                  setHomeEditorialTileFiles((prev) => ({ ...prev, [index]: null }));
+                }}
+                onChange={(files) =>
+                  setHomeEditorialTileFiles((prev) => ({
+                    ...prev,
+                    [index]: files[0] || null,
+                  }))
+                }
+                label="Tile image (3:4)"
+                hint="Save to upload. Remove to clear — old file is deleted from Cloudinary on save."
+              />
+              {tile.image && !homeEditorialTileFiles[index] && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-red-600 hover:text-red-700"
+                  onClick={() => {
+                    setSettings((p) => {
+                      if (!p) return p;
+                      const tiles = padHomeEditorialTiles(p.homeEditorialGallery?.tiles);
+                      tiles[index] = {
+                        ...tiles[index],
+                        image: "",
+                        imagePublicId: undefined,
+                      };
+                      return {
+                        ...p,
+                        homeEditorialGallery: { ...p.homeEditorialGallery, tiles },
+                      };
+                    });
+                    setHomeEditorialTileFiles((prev) => ({ ...prev, [index]: null }));
+                  }}
+                >
+                  Remove current image
+                </button>
+              )}
+              {homeEditorialTileFiles[index] && (
+                <button
+                  type="button"
+                  className="text-xs text-gray-600 hover:text-gray-800"
+                  onClick={() =>
+                    setHomeEditorialTileFiles((prev) => ({ ...prev, [index]: null }))
+                  }
+                >
+                  Discard newly selected file
+                </button>
+              )}
+              <input
+                className={inputCls}
+                value={tile.link || ""}
+                onChange={(e) =>
+                  setSettings((p) => {
+                    if (!p) return p;
+                    const tiles = padHomeEditorialTiles(p.homeEditorialGallery?.tiles);
+                    tiles[index] = { ...tiles[index], link: e.target.value };
+                    return {
+                      ...p,
+                      homeEditorialGallery: { ...p.homeEditorialGallery, tiles },
+                    };
+                  })
+                }
+                placeholder="Tile link (e.g. /shop?category=Sarees)"
+              />
+              <input
+                className={inputCls}
+                value={tile.alt || ""}
+                onChange={(e) =>
+                  setSettings((p) => {
+                    if (!p) return p;
+                    const tiles = padHomeEditorialTiles(p.homeEditorialGallery?.tiles);
+                    tiles[index] = { ...tiles[index], alt: e.target.value };
+                    return {
+                      ...p,
+                      homeEditorialGallery: { ...p.homeEditorialGallery, tiles },
+                    };
+                  })
+                }
+                placeholder="Image alt text (accessibility)"
+              />
+            </div>
+          );
+        })}
+      </div>
 
     </div>
   )}

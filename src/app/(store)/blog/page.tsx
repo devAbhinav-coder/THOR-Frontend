@@ -5,7 +5,7 @@ import { getSiteUrl } from "@/lib/siteUrl";
 const SITE_URL = getSiteUrl();
 
 export default async function BlogListingPage() {
-  const listing = await fetchBlogsListingServer(1, 12);
+  const listing = await fetchBlogsListingServer(1, 8);
   const blogs = listing?.blogs ?? [];
 
   const itemListLd =
@@ -22,7 +22,7 @@ export default async function BlogListingPage() {
           position: idx + 1,
           url: `${SITE_URL}/blog/${encodeURIComponent(b.slug)}`,
           name: b.title,
-          description: plainBlogExcerpt(b.content, 160),
+          description: (b.excerpt || plainBlogExcerpt(b.content, 160)),
         })),
       }
     : null;

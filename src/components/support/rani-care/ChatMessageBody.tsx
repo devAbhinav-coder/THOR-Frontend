@@ -17,7 +17,7 @@ export function ChatMessageBody({
             key={i}
             className={cn(
               "font-semibold",
-              variant === "user" ? "text-white" : "text-gray-900",
+              variant === "user" ? "text-white" : "text-navy-900",
             )}
           >
             {seg.text}

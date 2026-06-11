@@ -231,8 +231,12 @@ export const productApi = {
     unwrapAxios("products.featured", api.get("/products/featured"), schemas.productsFeatured),
   getByCategory: (category: string, params?: Record<string, string | number>) =>
     unwrapAxios("products.byCategory", api.get(`/products/category/${category}`, { params }), schemas.productsPaginated),
-  getFilterOptions: () =>
-    unwrapAxios("products.filters", api.get("/products/filters"), schemas.filterOptions),
+  getFilterOptions: (params?: { category?: string }) =>
+    unwrapAxios(
+      "products.filters",
+      api.get("/products/filters", { params }),
+      schemas.filterOptions,
+    ),
   create: (
     data: FormData,
     opts?: { onUploadProgress?: (percent: number) => void },
@@ -484,6 +488,17 @@ export const adminApi = {
       "admin.offlineCustomers",
       api.get("/admin/offline-customers", { params }),
       schemas.adminOfflineCustomersList,
+    ),
+  getNewsletterSubscribers: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    active?: "true" | "false" | "all";
+  }) =>
+    unwrapAxios(
+      "admin.newsletterSubscribers",
+      api.get("/admin/newsletter-subscribers", { params }),
+      schemas.adminNewsletterSubscribersList,
     ),
   getUserDirectoryStats: () =>
     unwrapAxios("admin.userDirectoryStats", api.get("/admin/users/stats"), schemas.adminUserDirectoryStats),
@@ -738,22 +753,91 @@ export const blogApi = {
     unwrapAxios("blogs.getAll", api.get("/blogs", { params }), schemas.blogsPaginated),
   getBySlug: (slug: string) => 
     unwrapAxios("blogs.getBySlug", api.get(`/blogs/${slug}`), schemas.blogSingle),
+  getRelated: (slug: string) =>
+    unwrapAxios("blogs.getRelated", api.get(`/blogs/${slug}/related`), schemas.blogsPaginated),
+  trackShopClick: (slug: string, productSlug?: string) =>
+    unwrapAxios(
+      "blogs.trackShopClick",
+      api.post(`/blogs/${slug}/track-shop-click`, { productSlug }),
+      schemas.successData,
+    ),
+  getAnalytics: () =>
+    unwrapAxios("blogs.analytics", api.get("/blogs/admin/analytics"), schemas.looseDataResponse),
   like: (id: string) => 
     unwrapAxios("blogs.like", api.post(`/blogs/${id}/like`), schemas.successData),
   addComment: (id: string, content: string) => 
     unwrapAxios("blogs.addComment", api.post(`/blogs/${id}/comments`, { content }), schemas.successData),
   getAdminAll: (params?: Record<string, string | number>) => 
     unwrapAxios("blogs.getAdminAll", api.get("/blogs/admin/all", { params }), schemas.blogsPaginated),
-  create: (data: FormData) => 
-    unwrapAxios("blogs.create", api.post("/blogs", data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.blogSingle),
-  update: (id: string, data: FormData) => 
-    unwrapAxios("blogs.update", api.patch(`/blogs/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.blogSingle),
+  create: (
+    data: FormData,
+    opts?: { onUploadProgress?: (percent: number) => void },
+  ) =>
+    unwrapAxios(
+      "blogs.create",
+      api.post("/blogs", data, {
+        timeout: 120_000,
+        onUploadProgress: (e) => {
+          if (e.total && opts?.onUploadProgress) {
+            opts.onUploadProgress(Math.round((e.loaded * 100) / e.total));
+          }
+        },
+      }),
+      schemas.blogSingle,
+    ),
+  update: (
+    id: string,
+    data: FormData,
+    opts?: { onUploadProgress?: (percent: number) => void },
+  ) =>
+    unwrapAxios(
+      "blogs.update",
+      api.patch(`/blogs/${id}`, data, {
+        timeout: 120_000,
+        onUploadProgress: (e) => {
+          if (e.total && opts?.onUploadProgress) {
+            opts.onUploadProgress(Math.round((e.loaded * 100) / e.total));
+          }
+        },
+      }),
+      schemas.blogSingle,
+    ),
   delete: (id: string) => 
     unwrapAxios("blogs.delete", api.delete(`/blogs/${id}`), schemas.successData),
   deleteImage: (id: string, publicId: string) => 
-    unwrapAxios("blogs.deleteImage", api.delete(`/blogs/${id}/images/${publicId}`), schemas.successData),
+    unwrapAxios(
+      "blogs.deleteImage",
+      api.delete(`/blogs/${id}/images/${encodeURIComponent(publicId)}`),
+      schemas.successData,
+    ),
   deleteComment: (id: string, commentId: string) => 
     unwrapAxios("blogs.deleteComment", api.delete(`/blogs/${id}/comments/${commentId}`), schemas.successData),
+};
+
+export const newsletterApi = {
+  subscribe: (email: string, source: "blog_listing" | "blog_detail" = "blog_listing") =>
+    unwrapAxios(
+      "newsletter.subscribe",
+      api.post("/newsletter/subscribe", { email, source }),
+      schemas.newsletterSubscribeResponse,
+    ),
+};
+
+export const blogContentPlanApi = {
+  getAll: (params?: Record<string, string>) =>
+    unwrapAxios("blogPlans.list", api.get("/admin/blog-content-plans", { params }), schemas.looseDataResponse),
+  create: (body: Record<string, unknown>) =>
+    unwrapAxios("blogPlans.create", api.post("/admin/blog-content-plans", body), schemas.looseDataResponse),
+  bulkCreate: (items: Record<string, unknown>[]) =>
+    unwrapAxios(
+      "blogPlans.bulk",
+      api.post("/admin/blog-content-plans/bulk", { items }),
+      schemas.looseDataResponse,
+    ),
+  update: (id: string, body: Record<string, unknown>) =>
+    unwrapAxios("blogPlans.update", api.patch(`/admin/blog-content-plans/${id}`, body), schemas.looseDataResponse),
+  delete: (id: string) =>
+    unwrapAxios("blogPlans.delete", api.delete(`/admin/blog-content-plans/${id}`), schemas.successData),
 };
 
 export const notificationApi = {

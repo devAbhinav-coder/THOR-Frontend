@@ -19,6 +19,7 @@ type ProductLite = {
 type BlogLite = {
   slug?: string;
   updatedAt?: string;
+  viewCount?: number;
 };
 
 /**
@@ -124,12 +125,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const blogUrls: MetadataRoute.Sitemap = blogs.flatMap((b) => {
       if (!b?.slug) return [];
+      const views = b.viewCount ?? 0;
+      const priority =
+        views >= 500 ? 0.82
+        : views >= 200 ? 0.78
+        : views >= 50 ? 0.74
+        : 0.7;
       return [
         {
           url: `${appUrl}/blog/${encodeURIComponent(b.slug)}`,
           lastModified: b.updatedAt ? new Date(b.updatedAt) : undefined,
           changeFrequency: "weekly" as const,
-          priority: 0.7,
+          priority,
         },
       ];
     });

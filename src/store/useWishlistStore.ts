@@ -12,7 +12,11 @@ interface WishlistState {
   isLoading: boolean;
   fetchWishlist: () => Promise<void>;
   /** Pass `product` when adding from PDP/card so the heart + count update instantly */
-  toggleWishlist: (productId: string, product?: Product) => Promise<void>;
+  toggleWishlist: (
+    productId: string,
+    product?: Product,
+    options?: { silent?: boolean },
+  ) => Promise<void>;
   isInWishlist: (productId: string) => boolean;
 }
 
@@ -34,10 +38,11 @@ export const useWishlistStore = create<WishlistState>()(
         }
       },
 
-      toggleWishlist: async (productId, product) => {
+      toggleWishlist: async (productId, product, options) => {
         if (toggleInFlight.has(productId)) return;
         const isIn = get().isInWishlist(productId);
         const previous = get().products.slice();
+        const silent = options?.silent === true;
 
         if (isIn) {
           set((state) => ({
@@ -54,15 +59,17 @@ export const useWishlistStore = create<WishlistState>()(
         toggleInFlight.add(productId);
         try {
           await wishlistApi.toggle(productId);
-          if (isIn) {
-            toast.success('Removed from wishlist');
-          } else {
-            toast.success('Added to wishlist');
-            if (!product) await get().fetchWishlist();
+          if (!silent) {
+            if (isIn) {
+              toast.success('Removed from wishlist');
+            } else {
+              toast.success('Added to wishlist');
+            }
           }
+          if (!isIn && !product) await get().fetchWishlist();
         } catch {
           set({ products: previous });
-          toast.error('Failed to update wishlist');
+          if (!silent) toast.error('Failed to update wishlist');
         } finally {
           toggleInFlight.delete(productId);
         }

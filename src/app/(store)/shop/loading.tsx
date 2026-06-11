@@ -1,5 +1,4 @@
-import ShopPageSkeleton from "@/components/shop/ShopPageSkeleton";
-
+/** Avoid replacing the listing shell during in-shop navigation. */
 export default function ShopLoading() {
-  return <ShopPageSkeleton />;
+  return null;
 }

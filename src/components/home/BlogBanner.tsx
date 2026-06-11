@@ -1,193 +1,188 @@
 "use client";
 
-import { useEffect, useState, useLayoutEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen } from "lucide-react";
 import Image from "next/image";
-import { storefrontApi } from "@/lib/api";
-import { StorefrontSettings } from "@/types";
+import { blogApi } from "@/lib/api";
+import type { Blog } from "@/types";
 import { cn } from "@/lib/utils";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { plainBlogExcerpt } from "@/lib/blogServer";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
-gsap.registerPlugin(ScrollTrigger);
+type Props = {
+  /** SSR-prefetched latest blogs — section hidden when empty. */
+  initialBlogs?: Blog[] | null;
+};
 
-export default function BlogBanner() {
-  const [settings, setSettings] = useState<StorefrontSettings | null>(null);
-  const containerRef = useRef<HTMLElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLDivElement>(null);
+function blogImage(blog: Blog): string {
+  return blog.images?.[0]?.url?.trim() || "";
+}
+
+function blogLabel(blog: Blog): string {
+  const cat = blog.category?.trim();
+  if (cat) return cat.toUpperCase();
+  const tag = blog.tags?.find((t) => t.trim())?.trim();
+  if (tag) return tag.toUpperCase();
+  return "HERITAGE CRAFT";
+}
+
+function blogExcerpt(blog: Blog): string {
+  if (blog.excerpt?.trim()) return blog.excerpt.trim();
+  return plainBlogExcerpt(blog.content, 120);
+}
+
+function HeritageStoryCard({
+  blog,
+  variant,
+}: {
+  blog: Blog;
+  variant: "featured" | "compact";
+}) {
+  const img = blogImage(blog);
+  const href = `/blog/${encodeURIComponent(blog.slug)}`;
+
+  if (variant === "featured") {
+    return (
+      <article className="flex h-full flex-col">
+        {img ?
+          <Link href={href} className="group relative mb-5 block aspect-[16/10] overflow-hidden bg-gray-100 sm:mb-6">
+            <Image
+              src={img}
+              alt={blog.title}
+              fill
+              loader={cloudinaryLoader}
+              sizes="(max-width: 1024px) 100vw, 55vw"
+              className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+              loading="lazy"
+              quality={72}
+            />
+          </Link>
+        : null}
+        <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#c5a059] sm:text-[11px]">
+          {blogLabel(blog)}
+        </p>
+        <h3 className="mt-2 font-serif text-xl font-medium leading-snug text-navy-900 sm:text-2xl lg:text-3xl">
+          <Link href={href} className="hover:text-navy-700">
+            {blog.title}
+          </Link>
+        </h3>
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-gray-500 sm:text-base">
+          {blogExcerpt(blog)}
+        </p>
+        <Link
+          href={href}
+          className="mt-4 inline-block text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-900 underline decoration-navy-900/30 underline-offset-[5px] transition-colors hover:decoration-navy-900 sm:text-xs"
+        >
+          Read Story
+        </Link>
+      </article>
+    );
+  }
+
+  return (
+    <article className="flex gap-4 border-t border-gray-200/80 pt-5 first:border-t-0 first:pt-0 sm:gap-5">
+      {img ?
+        <Link
+          href={href}
+          className="group relative h-20 w-20 shrink-0 overflow-hidden bg-gray-100 sm:h-24 sm:w-24"
+        >
+          <Image
+            src={img}
+            alt={blog.title}
+            fill
+            loader={cloudinaryLoader}
+            sizes="96px"
+            className="object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+            loading="lazy"
+            quality={68}
+          />
+        </Link>
+      : null}
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#c5a059]">
+          {blogLabel(blog)}
+        </p>
+        <h3 className="mt-1 line-clamp-2 font-serif text-base font-medium leading-snug text-navy-900 sm:text-lg">
+          <Link href={href} className="hover:text-navy-700">
+            {blog.title}
+          </Link>
+        </h3>
+        <Link
+          href={href}
+          className="mt-2 inline-block text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-900/70 hover:text-navy-900 sm:text-[11px]"
+        >
+          Read Story
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+export default function BlogBanner({ initialBlogs }: Props = {}) {
+  const [blogs, setBlogs] = useState<Blog[]>(() =>
+    Array.isArray(initialBlogs) ? initialBlogs : [],
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => !Array.isArray(initialBlogs),
+  );
 
   useEffect(() => {
-    storefrontApi
-      .getSettings()
-      .then((res) => setSettings(res.data?.settings || null))
-      .catch(() => {});
-  }, []);
+    if (Array.isArray(initialBlogs)) {
+      setBlogs(initialBlogs);
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    blogApi
+      .getAll({ limit: 3, page: 1, sort: "-createdAt" })
+      .then((res) => {
+        if (cancelled) return;
+        const list = (res.data?.blogs || []).filter(
+          (b) => b?.slug && b?.title && b.isPublished !== false,
+        );
+        setBlogs(list);
+      })
+      .catch(() => setBlogs([]))
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialBlogs]);
 
-  const blog = settings?.blogBanner;
+  if (isLoading) return null;
+  if (blogs.length === 0) return null;
 
-  useLayoutEffect(() => {
-    if (!blog?.mainImage || !containerRef.current || !cardRef.current) return;
-
-    const ctx = gsap.context(() => {
-      // Fade in the entire card smoothly
-      gsap.fromTo(
-        cardRef.current,
-        { y: 40, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top 80%",
-            toggleActions: "play reverse play reverse",
-          },
-        },
-      );
-
-      // Stagger in the text content inside the card
-      gsap.fromTo(
-        ".blog-text-reveal",
-        { y: 20, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: cardRef.current,
-            start: "top 85%",
-            toggleActions: "play reverse play reverse",
-          },
-        },
-      );
-
-      // Add subtle parallax to the floating side image
-      if (imageRef.current) {
-        gsap.to(imageRef.current, {
-          yPercent: -20,
-          ease: "none",
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: 1,
-          },
-        });
-      }
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, [blog?.mainImage]);
-
-  if (!blog?.mainImage) return null;
+  const [featured, ...rest] = blogs;
 
   return (
     <section
-      ref={containerRef}
-      className={cn(homeSectionStyles.pageBg, "relative isolate overflow-hidden py-16 sm:py-24")}
+      className={cn(homeSectionStyles.pageBg, "bg-gray-50/50 py-14 sm:py-20 lg:py-24")}
+      aria-labelledby="heritage-stories-heading"
     >
-      {/* Decorative background gradients */}
-      <div className='pointer-events-none absolute -mr-20 -mt-20 right-0 top-0 h-[30rem] w-[30rem] rounded-full bg-brand-100/50 blur-[100px]' />
-      <div className='pointer-events-none absolute -mb-20 -ml-20 bottom-0 left-0 h-[30rem] w-[30rem] rounded-full bg-navy-100/40 blur-[100px]' />
+      <div className={homeSectionStyles.container}>
+        <div className="mb-10 text-center sm:mb-14">
+          <h2
+            id="heritage-stories-heading"
+            className="font-serif text-3xl font-medium leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem]"
+          >
+            Heritage{" "}
+            <span className="italic text-navy-900">Stories</span>
+          </h2>
+        </div>
 
-      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
-        {/* Apple-like Glass Card */}
-        <div
-          ref={cardRef}
-          className='bg-white/80 backdrop-blur-2xl border border-white rounded-[2rem] p-6 sm:p-10 lg:p-14 overflow-hidden shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] relative'
-        >
-          <div className='grid lg:grid-cols-2 gap-10 lg:gap-8 items-center relative z-10'>
-            {/* Text Content */}
-            <div className='max-w-xl mx-auto text-center lg:text-left'>
-              <div className='blog-text-reveal mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 sm:text-sm'>
-                <BookOpen className='h-3.5 w-3.5' />
-                {blog?.eyebrow || "Journal & Stories"}
-              </div>
+        <div className="grid gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16">
+          <HeritageStoryCard blog={featured} variant="featured" />
 
-              <h2 className='blog-text-reveal mb-5 font-serif text-3xl font-medium leading-[1.15] tracking-tight text-navy-900 sm:text-4xl lg:text-5xl'>
-                {blog?.title?.split(" ").map((word, i, arr) => {
-                  if (i >= arr.length - 2 && i > 0) {
-                    return (
-                      <span
-                        key={i}
-                        className='bg-gradient-to-r from-brand-600 to-gold-500 bg-clip-text text-transparent'
-                      >
-                        {" "}
-                        {word}
-                      </span>
-                    );
-                  }
-                  return i === 0 ? word : " " + word;
-                }) || (
-                    <>
-                    Discover the{" "}
-                    <span className='bg-gradient-to-r from-brand-600 to-gold-500 bg-clip-text text-transparent'>
-                      Art of Ethnic
-                    </span>
-                  </>
-                )}
-              </h2>
-
-              <p className='blog-text-reveal text-base sm:text-lg text-gray-600 mb-8 leading-relaxed font-medium px-4 lg:px-0'>
-                {blog?.description ||
-                  "Dive deep into the rich history of Indian textures, get styling tips from experts, and stay updated with our latest collections."}
-              </p>
-
-              <div className='blog-text-reveal flex flex-col sm:flex-row justify-center lg:justify-start gap-4'>
-                <Link
-                  href={blog?.buttonLink || "/blog"}
-                  className='group inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 hover:bg-rose-600 hover:shadow-lg hover:-translate-y-0.5'
-                >
-                  {blog?.buttonText || "Visit Our Blog"}
-                  <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
-                </Link>
-              </div>
+          {rest.length > 0 ?
+            <div className="flex flex-col justify-center gap-5 lg:gap-6">
+              {rest.map((blog) => (
+                <HeritageStoryCard key={blog._id} blog={blog} variant="compact" />
+              ))}
             </div>
-
-            {/* Image Composition */}
-            <div className='relative h-full min-h-[300px] sm:min-h-[350px] lg:min-h-full flex items-center justify-center mt-6 lg:mt-0'>
-              {/* Main Image */}
-              <div className='blog-text-reveal relative w-full max-w-[280px] sm:max-w-sm aspect-[4/5] rounded-3xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.1)] transform rotate-2 hover:rotate-0 transition-transform duration-700 border-4 border-white group'>
-                <Image
-                  src={blog?.mainImage || ""}
-                  alt={blog?.title || "From The House of Rani journal"}
-                  fill
-                  loader={cloudinaryLoader}
-                  sizes='(max-width: 640px) 280px, 384px'
-                  loading='lazy'
-                  quality={70}
-                  className='object-cover transition-transform duration-700 group-hover:scale-110'
-                />
-              </div>
-
-              {/* Decorative floating side element */}
-              {blog?.sideImage && (
-                <div
-                  ref={imageRef}
-                  className='absolute top-1/4 -left-4 sm:-left-8 lg:-left-12 w-32 sm:w-40 aspect-square rounded-2xl overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,0,0,0.15)] transform -rotate-6 border-[3px] border-white z-20 hidden sm:block bg-white'
-                  aria-hidden='true'
-                >
-                  <Image
-                    src={blog.sideImage}
-                    alt=''
-                    fill
-                    loader={cloudinaryLoader}
-                    sizes='160px'
-                    loading='lazy'
-                    quality={65}
-                    className='object-cover'
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+          : null}
         </div>
       </div>
     </section>

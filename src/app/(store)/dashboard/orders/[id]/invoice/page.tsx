@@ -30,26 +30,38 @@ export default function UserInvoicePage() {
     return !!order.invoice?.isGenerated && (order.paymentStatus === 'paid' || order.status === 'delivered');
   }, [order]);
 
-  if (isLoading) return <div className="p-6">Loading invoice…</div>;
-  if (!order) return <div className="p-6">Order not found.</div>;
+  if (isLoading) {
+    return <div className="py-4 text-sm text-account-on-surface-variant">Loading invoice…</div>;
+  }
+  if (!order) {
+    return <div className="py-4 text-sm text-account-on-surface-variant">Order not found.</div>;
+  }
   if (!canShowInvoice) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-gray-600">Invoice is not available yet. It becomes available once payment is complete or order is delivered and invoice is generated.</p>
+      <div className="py-4">
+        <p className="text-sm text-account-on-surface-variant">
+          Invoice is not available yet. It becomes available once payment is complete or order is delivered and invoice is generated.
+        </p>
         <div className="mt-4">
-          <Button asChild variant="outline"><Link href={`/dashboard/orders/${encodeURIComponent(order._id)}`}>Back to Order</Link></Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/orders/${encodeURIComponent(order._id)}`}>Back to Order</Link>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-[820px] mx-auto mb-4 flex items-center gap-2 print:hidden">
-        <Button variant="outline" asChild><Link href={`/dashboard/orders/${encodeURIComponent(order._id)}`}>Back</Link></Button>
+    <div className="print:bg-white">
+      <div className="mb-4 flex items-center gap-2 print:hidden">
+        <Button variant="outline" asChild>
+          <Link href={`/dashboard/orders/${encodeURIComponent(order._id)}`}>Back</Link>
+        </Button>
         <Button variant="brand" onClick={() => window.print()}>Print / Save PDF</Button>
       </div>
-      <OrderInvoiceDocument order={order} />
+      <div className="bg-gray-100 p-4 sm:p-6 rounded-lg print:bg-white print:p-0">
+        <OrderInvoiceDocument order={order} />
+      </div>
     </div>
   );
 }

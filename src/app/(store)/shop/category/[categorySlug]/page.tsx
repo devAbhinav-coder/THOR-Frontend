@@ -1,7 +1,4 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
-import ShopClient from "@/components/shop/ShopClient";
-import ShopLoading from "../../loading";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { getSiteUrl } from "@/lib/siteUrl";
 import type { Category, Product } from "@/types";
@@ -255,15 +252,6 @@ export default async function ShopCategoryPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryLd) }}
         />
       )}
-      <Suspense fallback={<ShopLoading />}>
-        <ShopClient
-          categoryContext={{
-            name: category.name,
-            slug: canonicalSlug,
-            description: String(category.description || "").trim() || undefined,
-          }}
-        />
-      </Suspense>
     </>
   );
 }

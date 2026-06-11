@@ -26,14 +26,13 @@ const ForgotPasswordClient = dynamic(
 );
 
 const TITLES: Record<AuthModalView, string> = {
-  login: "Sign in",
-  signup: "Create account",
-  forgot: "Reset password",
+  login: "Welcome Back",
+  signup: "Join the Maison",
+  forgot: "Forgot Password",
 };
 
 const SUBTITLES: Partial<Record<AuthModalView, string>> = {
-  login: "Welcome back — continue shopping sarees you love",
-  signup: "A quick 2-step signup, then verify your email",
+  signup: "A quick two-step signup, then verify your email",
   forgot: "We will email you a secure 6-digit code",
 };
 
@@ -92,6 +91,7 @@ export default function StoreAuthModal() {
   return (
     <AuthModal
       open
+      view={view}
       title={TITLES[view]}
       subtitle={SUBTITLES[view]}
       onClose={dismissModal}
@@ -103,7 +103,7 @@ export default function StoreAuthModal() {
             role="status"
             aria-label="Loading sign in"
           >
-            <div className="h-9 w-9 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
+            <div className="h-9 w-9 animate-spin border-2 border-[#c5a059] border-t-transparent" />
           </div>
         : <>
             {view === "login" && (

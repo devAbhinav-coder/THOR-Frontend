@@ -62,6 +62,7 @@ export function ActiveSessionsPanel() {
           size="sm"
           loading={revoking}
           onClick={() => revokeOthers()}
+          className="uppercase tracking-widest text-[10px] font-semibold"
         >
           Sign out other devices
         </Button>
