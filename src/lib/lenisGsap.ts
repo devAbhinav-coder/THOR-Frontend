@@ -1,5 +1,21 @@
 import type Lenis from "lenis";
-import type { ScrollTrigger as ScrollTriggerType } from "gsap/ScrollTrigger";
+
+type LenisScrollTrigger = {
+  scrollerProxy(
+    scroller: Element,
+    vars: {
+      scrollTop?: (value?: number) => number;
+      getBoundingClientRect?: () => {
+        top: number;
+        left: number;
+        width: number;
+        height: number;
+      };
+    },
+  ): void;
+  addEventListener(event: "refresh", callback: () => void): void;
+  removeEventListener(event: "refresh", callback: () => void): void;
+};
 
 /**
  * Wire GSAP ScrollTrigger to Lenis virtual scroll (required for scrub/pin on /about).
@@ -7,7 +23,7 @@ import type { ScrollTrigger as ScrollTriggerType } from "gsap/ScrollTrigger";
  */
 export function bindLenisScrollTrigger(
   lenis: Lenis,
-  ScrollTrigger: typeof ScrollTriggerType,
+  ScrollTrigger: LenisScrollTrigger,
 ): () => void {
   ScrollTrigger.scrollerProxy(document.documentElement, {
     scrollTop(value?: number) {
