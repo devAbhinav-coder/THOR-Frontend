@@ -61,6 +61,9 @@ function LenisGsapSync() {
       const gsapModule = require("gsap").default;
       const ScrollTrigger = require("gsap/ScrollTrigger").ScrollTrigger;
 
+      // Essential: disable GSAP lag smoothing to prevent Lenis physics jitter
+      gsapModule.ticker.lagSmoothing(0);
+
       const update = (time: number) => {
         l.raf(time * 1000);
       };
@@ -87,9 +90,9 @@ function LenisEditorialRouteTune() {
     if (!lenis) return;
     const isAbout = pathname === "/about";
     const isHome = pathname === "/";
-    lenis.options.lerp = isAbout ? 0.1 : isHome ? 0.06 : 0.08;
-    lenis.options.duration = isAbout ? 1.15 : isHome ? 1.4 : 1.25;
-    lenis.options.wheelMultiplier = isAbout ? 1 : isHome ? 0.92 : 1;
+    lenis.options.lerp = isAbout ? 0.1 : isHome ? 0.08 : 0.1;
+    lenis.options.duration = isAbout ? 1.15 : isHome ? 1.3 : 1.2;
+    lenis.options.wheelMultiplier = isAbout ? 1 : isHome ? 0.95 : 1;
     lenis.resize();
   }, [pathname, lenis]);
 
@@ -121,12 +124,11 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       root
       options={{
         autoRaf: false, // We'll use GSAP ticker instead
-        lerp: 0.05,    // Silkier, more premium feel
-        duration: 1.5, // Longer, more elegant scroll
+        lerp: 0.1,      // Snappier, less laggy feel
+        duration: 1.2,  // Standard elegant scroll
         smoothWheel: true,
         wheelMultiplier: 1,
-        touchMultiplier: 1.2,
-        syncTouch: true,
+        touchMultiplier: 1,
       }}
     >
       <LenisGsapSync />
