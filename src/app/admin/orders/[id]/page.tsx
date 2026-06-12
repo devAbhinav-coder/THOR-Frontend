@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Download,
   Printer,
+  Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminApi } from '@/lib/api';
@@ -1183,6 +1184,25 @@ export default function AdminOrderDetailsPage() {
                   View Invoice
                 </Link>
               )}
+              <button
+                type="button"
+                className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-semibold shadow-sm transition-colors flex items-center gap-2"
+                onClick={async () => {
+                  if (confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
+                    try {
+                      await adminApi.deleteOrder(order._id);
+                      toast.success("Order deleted successfully");
+                      router.push('/admin/orders');
+                    } catch (err: unknown) {
+                      const error = err as { message?: string };
+                      toast.error(error.message || "Failed to delete order");
+                    }
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
               <select
                 onChange={(e) => updateStatus(e.target.value as OrderStatus)}
                 className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-300"

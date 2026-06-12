@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   List,
   HandIcon,
+  Trash2,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { Order, OrderStatus, DashboardAnalytics } from "@/types";
@@ -141,6 +142,20 @@ export default function AdminOrdersPage() {
   const [ordersLoadError, setOrdersLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
+      try {
+        await adminApi.deleteOrder(orderId);
+        toast.success("Order deleted successfully");
+        setOrders(prev => prev.filter(o => o._id !== orderId));
+        setPagination(prev => ({ ...prev, total: prev.total - 1 }));
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        toast.error(error.message || "Failed to delete order");
+      }
+    }
+  };
 
   const fetchOrders = useCallback(
     async (page = 1, append = false) => {
@@ -562,22 +577,34 @@ export default function AdminOrdersPage() {
                           </span>
                         </td>
                         <td className='px-4 py-4' onClick={(e) => e.stopPropagation()}>
-                          <div className='relative group/btn inline-block'>
-                            <Button variant='outline' size='sm' disabled={updatingOrder === order._id}
-                              className='text-xs h-8 px-3 rounded-lg border-gray-200 hover:border-brand-300 hover:bg-brand-50'>
-                              {updatingOrder === order._id
-                                ? <span className='h-3 w-3 rounded-full border-2 border-gray-400 border-t-gray-800 animate-spin' />
-                                : <><span>Update</span><ChevronDown className='h-3 w-3 ml-1' /></>}
-                            </Button>
-                            <div className='absolute right-0 top-full mt-1 bg-white shadow-2xl rounded-xl py-1.5 min-w-[150px] opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all z-20 border border-gray-100'>
-                              {getNextStatuses(order.status).map((status) => (
-                                <button key={status}
-                                  onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
-                                  className={cn('flex items-center gap-2 w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize transition-colors rounded-lg mx-1 w-[calc(100%-8px)]', STATUS_META[status]?.text)}>
-                                  {STATUS_META[status]?.icon}{status}
-                                </button>
-                              ))}
+                          <div className='flex items-center gap-2'>
+                            <div className='relative group/btn inline-block'>
+                              <Button variant='outline' size='sm' disabled={updatingOrder === order._id}
+                                className='text-xs h-8 px-3 rounded-lg border-gray-200 hover:border-brand-300 hover:bg-brand-50'>
+                                {updatingOrder === order._id
+                                  ? <span className='h-3 w-3 rounded-full border-2 border-gray-400 border-t-gray-800 animate-spin' />
+                                  : <><span>Update</span><ChevronDown className='h-3 w-3 ml-1' /></>}
+                              </Button>
+                              <div className='absolute right-0 top-full mt-1 bg-white shadow-2xl rounded-xl py-1.5 min-w-[150px] opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all z-20 border border-gray-100'>
+                                {getNextStatuses(order.status).map((status) => (
+                                  <button key={status}
+                                    onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
+                                    className={cn('flex items-center gap-2 w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize transition-colors rounded-lg mx-1 w-[calc(100%-8px)]', STATUS_META[status]?.text)}>
+                                    {STATUS_META[status]?.icon}{status}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteOrder(order._id);
+                              }}
+                              className='p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50'
+                              title='Delete Order'
+                            >
+                              <Trash2 className='h-4 w-4' />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -686,23 +713,35 @@ export default function AdminOrdersPage() {
                     </div>
                     
                     <div className="px-4 pb-4 mt-auto space-y-3">
-                      <Link
-                        href={`/admin/orders/${encodeURIComponent(order._id)}`}
-                        onClick={() => setNavigatingTo(order._id)}
-                        className='flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2 text-sm font-bold text-gray-900 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 shadow-sm hover:shadow'
-                      >
-                        {navigatingTo === order._id ? (
-                          <span className="h-4 w-4 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
-                        ) : (
-                          <>
-                            View details
-                            <ChevronRight
-                              className='h-4 w-4 shrink-0 opacity-70'
-                              aria-hidden
-                            />
-                          </>
-                        )}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/orders/${encodeURIComponent(order._id)}`}
+                          onClick={() => setNavigatingTo(order._id)}
+                          className='flex-1 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2 text-sm font-bold text-gray-900 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 shadow-sm hover:shadow'
+                        >
+                          {navigatingTo === order._id ? (
+                            <span className="h-4 w-4 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
+                          ) : (
+                            <>
+                              View details
+                              <ChevronRight
+                                className='h-4 w-4 shrink-0 opacity-70'
+                                aria-hidden
+                              />
+                            </>
+                          )}
+                        </Link>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOrder(order._id);
+                          }}
+                          className='h-9 w-9 flex shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm'
+                          title='Delete Order'
+                        >
+                          <Trash2 className='h-4 w-4' />
+                        </button>
+                      </div>
                       <div className='pt-3 border-t border-gray-100'>
                         <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2'>
                           Change status

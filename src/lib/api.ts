@@ -463,6 +463,8 @@ export const adminApi = {
     unwrapAxios("admin.orders", api.get("/admin/orders", { params }), schemas.adminOrdersList),
   getOrderDetails: (id: string) =>
     unwrapAxios("admin.orderDetail", api.get(`/admin/orders/${id}`), schemas.adminOrderDetail),
+  deleteOrder: (id: string) =>
+    del204("admin.deleteOrder", api.delete(`/admin/orders/${id}`)),
   createOfflineOrder: (data: AdminCreateOfflineOrderBody) =>
     unwrapAxios("admin.createOfflineOrder", api.post("/admin/orders/offline", data), schemas.adminOrderDetail),
   updateOrderStatus: (
@@ -802,8 +804,7 @@ export const blogApi = {
       }),
       schemas.blogSingle,
     ),
-  delete: (id: string) => 
-    unwrapAxios("blogs.delete", api.delete(`/blogs/${id}`), schemas.successData),
+  delete: (id: string) => del204("blogs.delete", api.delete(`/blogs/${id}`)),
   deleteImage: (id: string, publicId: string) => 
     unwrapAxios(
       "blogs.deleteImage",
@@ -836,8 +837,7 @@ export const blogContentPlanApi = {
     ),
   update: (id: string, body: Record<string, unknown>) =>
     unwrapAxios("blogPlans.update", api.patch(`/admin/blog-content-plans/${id}`, body), schemas.looseDataResponse),
-  delete: (id: string) =>
-    unwrapAxios("blogPlans.delete", api.delete(`/admin/blog-content-plans/${id}`), schemas.successData),
+  delete: (id: string) => del204("blogPlans.delete", api.delete(`/admin/blog-content-plans/${id}`)),
 };
 
 export const notificationApi = {
