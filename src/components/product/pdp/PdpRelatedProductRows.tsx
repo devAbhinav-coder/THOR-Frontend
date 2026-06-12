@@ -18,7 +18,7 @@ const PDP_CARD_CLASS =
 
 function ProductScrollRow({ products }: { products: Product[] }) {
   return (
-    <HorizontalScrollRow innerClassName="gap-4 sm:gap-6">
+    <HorizontalScrollRow innerClassName="gap-1 sm:gap-2">
       {products.slice(0, 8).map((p) => (
         <div key={p._id} className={PDP_CARD_CLASS}>
           <ShopCollectionCard product={p} />

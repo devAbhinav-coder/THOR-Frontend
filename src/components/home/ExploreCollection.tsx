@@ -82,7 +82,7 @@ export default function ExploreCollection() {
         </div>
 
         <ProductInfiniteGrid
-          gridClassName="grid grid-cols-2 items-stretch gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 [&>*]:h-full [&>*]:min-h-0"
+          gridClassName="grid grid-cols-2 items-stretch gap-y-2 gap-x-1 sm:gap-y-3 sm:gap-x-2 lg:grid-cols-4 lg:gap-x-2 [&>*]:h-full [&>*]:min-h-0"
           items={products}
           getItemKey={(p) => p._id}
           renderItem={(product) => <ShopCollectionCard product={product} />}

@@ -365,7 +365,7 @@ export default function ShopClient() {
     searchTitle,
   ]);
   const productGridClass =
-    "grid grid-cols-2 items-stretch gap-y-4 gap-x-2 sm:gap-y-8 sm:gap-x-4 lg:grid-cols-4 lg:gap-x-6 [&>*]:h-full [&>*]:min-h-0";
+    "grid grid-cols-2 items-stretch gap-y-2 gap-x-1 sm:gap-y-2 sm:gap-x-2 lg:grid-cols-4 lg:gap-x-3 [&>*]:h-full [&>*]:min-h-0";
 
   const quickFabrics = useMemo(() => {
     const fabrics = filterOptions?.fabrics ?? [];
