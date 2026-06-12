@@ -277,13 +277,11 @@ export default function ShopClient() {
   const { sentinelRef } = useInfiniteScrollTrigger({
     hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
-    isPending:
-      (isPending && products.length === 0) ||
-      (isFetching && !isFetchingNextPage),
+    isPending: isPending && products.length === 0,
     fetchNextPage,
-    rootMargin: "1500px 0px",
+    rootMargin: "600px 0px",
     threshold: 0,
-    enabled: !isPending || products.length > 0,
+    enabled: true,
   });
 
   const updateFilter = (key: string, value: string | number) => {
@@ -480,23 +478,8 @@ export default function ShopClient() {
                 loadMoreSkeletonCount={4}
                 sentinelRef={sentinelRef}
                 renderSkeleton={() => <ShopCollectionCardSkeleton />}
-                endMessage={undefined}
+                endMessage="You've reached the end of the collection."
               />
-
-              {hasNextPage && !isFetchingNextPage && (
-                <div className='mt-16 flex justify-center sm:mt-20'>
-                  <button
-                    type='button'
-                    onClick={() => fetchNextPage()}
-                    className='group relative overflow-hidden border border-navy-900 px-10 py-3.5 transition-all duration-500 sm:px-12 sm:py-4'
-                  >
-                    <span className='relative z-10 text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-900 transition-colors duration-500 group-hover:text-white'>
-                      Discover More
-                    </span>
-                    <div className='absolute inset-0 translate-y-full bg-navy-900 transition-transform duration-500 ease-out group-hover:translate-y-0' />
-                  </button>
-                </div>
-              )}
             </>
           }
         </section>

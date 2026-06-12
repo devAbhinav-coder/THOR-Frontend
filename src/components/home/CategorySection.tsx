@@ -277,7 +277,7 @@ export default function CategorySection({
             resistanceRatio={0}
             watchOverflow
             grabCursor
-            className='category-collection-swiper relative z-10 !pb-1'
+            className='category-collection-swiper relative z-10 !pb-1 touch-pan-y'
             slidesOffsetBefore={0}
             slidesOffsetAfter={0}
             breakpoints={{

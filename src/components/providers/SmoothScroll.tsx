@@ -121,11 +121,12 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       root
       options={{
         autoRaf: false, // We'll use GSAP ticker instead
-        lerp: 0.06,    // Silkier, more premium feel
-        duration: 1.4, // Longer, more elegant scroll
+        lerp: 0.05,    // Silkier, more premium feel
+        duration: 1.5, // Longer, more elegant scroll
         smoothWheel: true,
         wheelMultiplier: 1,
-        touchMultiplier: 1.4,
+        touchMultiplier: 1.2,
+        syncTouch: true,
       }}
     >
       <LenisGsapSync />

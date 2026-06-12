@@ -141,7 +141,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                   loading={i === 0 ? "eager" : "lazy"}
                   sizes='100vw'
                   quality={i === 0 ? 68 : 62}
-                  className='object-cover object-[center_top]'
+                  className='object-cover object-[center_25%]'
                 />
               : null}
             </div>
