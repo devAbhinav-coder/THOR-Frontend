@@ -208,7 +208,7 @@ export default function CartClient() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-12 pt-8 sm:pt-10 lg:pb-16 lg:pt-12">
+    <div className="min-h-screen bg-[#f8f9fa] pb-32 pt-8 sm:pt-10 sm:pb-36 lg:pb-16 lg:pt-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="mb-10 sm:mb-12 lg:mb-14">
           <h1 className="font-serif text-4xl font-semibold tracking-tight text-navy-900 sm:text-5xl lg:text-6xl">
@@ -653,7 +653,7 @@ export default function CartClient() {
                   type="button"
                   disabled={isCheckoutLaunching || hasUnavailableItems}
                   onClick={() => void goToCheckout()}
-                  className="mb-4 w-full bg-[#c5a059] py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
+                  className="mb-4 w-full bg-[#c5a059] py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-50 sm:py-5 max-lg:hidden"
                 >
                   {isCheckoutLaunching
                     ? "Opening checkout…"
@@ -698,6 +698,21 @@ export default function CartClient() {
             </div>
           </aside>
         </div>
+      </div>
+
+      {/* Mobile Sticky Bottom CTA */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 p-4 lg:hidden pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+        <button
+          type="button"
+          disabled={isCheckoutLaunching || hasUnavailableItems}
+          onClick={() => {
+            if (checkoutBtnRef.current) checkoutBtnRef.current.click();
+            else goToCheckout();
+          }}
+          className="w-full bg-[#c5a059] py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isCheckoutLaunching ? "Opening checkout…" : "Proceed to Checkout"}
+        </button>
       </div>
 
       {isAllCouponsOpen && (

@@ -110,9 +110,10 @@ export default function OrdersPage() {
 
   if (!isLoading && orders.length === 0 && activeFilter === '') {
     return (
-      <div className="py-account-stack-lg">
-        <header className="mb-account-stack-lg">
+      <div>
+        <header className="mb-account-stack-md">
           <h1 className="font-serif text-4xl md:text-5xl text-account-primary mb-4">Order History</h1>
+          ...
         </header>
         <div className="bg-account-surface-container-lowest border border-account-outline-variant/20 shadow-account-paper p-12 text-center">
           <Package className="h-12 w-12 text-account-outline-variant mx-auto mb-4" />
@@ -132,7 +133,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="py-account-stack-lg bg-account-surface">
+    <div className="bg-account-surface">
       <header className="mb-account-stack-lg">
         <h1 className="font-serif text-4xl md:text-5xl text-account-primary mb-4">Order History</h1>
         <div className="flex items-center gap-4 text-account-on-surface-variant text-sm">

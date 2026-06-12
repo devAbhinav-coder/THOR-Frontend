@@ -1332,7 +1332,7 @@ export default function CheckoutClient() {
         isOpen={isPlacingOrder || Boolean(pendingOrderSuccessId)}
         orderId={pendingOrderSuccessId}
       />
-      <div className='mx-auto box-border min-w-0 max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-12'>
+      <div className='mx-auto box-border min-w-0 max-w-7xl px-4 pt-6 pb-32 sm:px-6 sm:pt-10 sm:pb-36 lg:px-8 lg:py-12'>
         <header className='mb-8 lg:mb-10'>
           <h1 className='font-serif text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl lg:text-5xl'>
             Checkout
@@ -1347,10 +1347,10 @@ export default function CheckoutClient() {
 
         {showCheckoutWizard && (
           <nav
-            className='relative mb-8 flex items-center justify-between lg:hidden'
+            className='relative mb-8 flex items-center justify-between lg:hidden sticky top-12 z-30 bg-[#FAF9F6] py-2 shadow-sm'
             aria-label='Checkout steps'
           >
-            <div className='absolute left-0 top-4 -z-10 h-px w-full bg-gray-200' />
+            <div className='absolute left-0 top-6 -z-10 h-px w-full bg-gray-200' />
             {(
               [
                 { step: 1, label: "Shipping" },
@@ -1737,18 +1737,6 @@ export default function CheckoutClient() {
                       </span>
                     </div>
                   </section>
-
-                  {showCheckoutWizard && checkoutStep === 1 && (
-                    <div className='mt-8 lg:hidden'>
-                      <button
-                        type='button'
-                        className={heritageCta}
-                        onClick={() => void goToPaymentStep()}
-                      >
-                        Continue to Payment
-                      </button>
-                    </div>
-                  )}
                 </section>
               )}
 
@@ -1853,24 +1841,6 @@ export default function CheckoutClient() {
                       </button>
                     </>
                   )}
-                  {showCheckoutWizard && checkoutStep === 2 && (
-                    <div className='mt-8 flex flex-col gap-3 lg:hidden'>
-                      <button
-                        type='button'
-                        className='h-11 w-full border border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
-                        onClick={() => setCheckoutStep(1)}
-                      >
-                        Back to Shipping
-                      </button>
-                      <button
-                        type='button'
-                        className={heritageCta}
-                        onClick={() => void goToReviewStep()}
-                      >
-                        Review Order &amp; Pay
-                      </button>
-                    </div>
-                  )}
                 </section>
               )}
 
@@ -1889,7 +1859,7 @@ export default function CheckoutClient() {
             <div
               className={cn(
                 "min-w-0 lg:col-span-4",
-                showCheckoutWizard && checkoutStep < 3 && "order-2 lg:order-none",
+                showCheckoutWizard && checkoutStep < 3 && "max-lg:hidden",
               )}
             >
                 <div
@@ -2401,7 +2371,7 @@ export default function CheckoutClient() {
                       type='button'
                       className={cn(
                         heritageCta,
-                        "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)]",
+                        "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] max-lg:hidden",
                       )}
                       onClick={() => void goToPaymentStep()}
                     >
@@ -2410,7 +2380,7 @@ export default function CheckoutClient() {
                   )}
 
                   {showCheckoutWizard && checkoutStep === 2 && (
-                    <div className='mt-6 space-y-3'>
+                    <div className='mt-6 space-y-3 max-lg:hidden'>
                       <button
                         type='button'
                         className='h-11 w-full border border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
@@ -2449,7 +2419,7 @@ export default function CheckoutClient() {
                         type='submit'
                         className={cn(
                           heritageCta,
-                          "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)]",
+                          "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] max-lg:hidden",
                         )}
                         disabled={isPlacingOrder}
                       >
@@ -2512,6 +2482,56 @@ export default function CheckoutClient() {
               </div>
           </div>
         </form>
+
+        {/* Mobile Sticky Bottom CTA */}
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 p-4 lg:hidden pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+          {showCheckoutWizard && checkoutStep === 1 && (
+            <button
+              type='button'
+              className={heritageCta}
+              onClick={() => void goToPaymentStep()}
+            >
+              Proceed to Payment
+            </button>
+          )}
+          {showCheckoutWizard && checkoutStep === 2 && (
+            <div className="flex gap-3">
+              <button
+                type='button'
+                className='h-12 w-1/3 shrink-0 border border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
+                onClick={() => setCheckoutStep(1)}
+              >
+                Back
+              </button>
+              <button
+                type='button'
+                className={cn(heritageCta, "flex-1")}
+                onClick={() => void goToReviewStep()}
+              >
+                Review &amp; Pay
+              </button>
+            </div>
+          )}
+          {(!showCheckoutWizard || checkoutStep === 3) && (
+            <button
+              type='button'
+              onClick={() => {
+                const form = document.querySelector('form');
+                if (form) form.requestSubmit();
+              }}
+              className={heritageCta}
+              disabled={isPlacingOrder}
+            >
+              {isPlacingOrder
+                ? "Placing order…"
+                : existingOrder
+                  ? `Pay — ${formatPrice(total)}`
+                  : checkoutPaymentMethod === "razorpay"
+                    ? `Pay — ${formatPrice(total)}`
+                    : `Place Order — ${formatPrice(total)}`}
+            </button>
+          )}
+        </div>
 
         {/* See all coupons modal — portal + z-index above sticky nav (z-50) */}
         {typeof document !== "undefined" &&

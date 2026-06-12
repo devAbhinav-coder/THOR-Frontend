@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye } from 'lucide-react';
@@ -33,14 +33,15 @@ export default function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalProducts: 0 });
-  const [pageSize, setPageSize] = useState<number>(20);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const canPrevPage = pagination.currentPage > 1;
-  const canNextPage = pagination.currentPage < pagination.totalPages;
+  const [hasMore, setHasMore] = useState(true);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt', limit = pageSize, filter = quickFilter) => {
-    setIsLoading(true);
+  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt', limit = 20, filter = quickFilter, append = false) => {
+    if (append) setIsFetchingNextPage(true);
+    else setIsLoading(true);
     setLoadError(false);
     try {
       const params: Record<string, string | number> = {
@@ -59,24 +60,42 @@ export default function AdminProductsPage() {
           sortBy: sort,
           ...params,
         });
-        setProducts(searchRes.data.products);
+        if (append) {
+          setProducts(prev => {
+            const map = new Map(prev.map((p) => [p._id, p]));
+            for (const p of searchRes.data.products) map.set(p._id, p);
+            return Array.from(map.values());
+          });
+        } else {
+          setProducts(searchRes.data.products);
+        }
         const p = searchRes.pagination;
         setPagination({
           currentPage: p?.currentPage ?? 1,
           totalPages: p?.totalPages ?? 1,
           totalProducts: p?.totalProducts ?? p?.total ?? 0,
         });
+        setHasMore((p?.currentPage ?? 1) < (p?.totalPages ?? 1));
       } else {
         // Use regular getAll for non-search queries
         if (categoryFilter) params.category = categoryFilter;
         const res = await adminApi.getProducts(params);
-        setProducts(res.data.products);
+        if (append) {
+          setProducts(prev => {
+            const map = new Map(prev.map((p) => [p._id, p]));
+            for (const p of res.data.products) map.set(p._id, p);
+            return Array.from(map.values());
+          });
+        } else {
+          setProducts(res.data.products);
+        }
         const p = res.pagination;
         setPagination({
           currentPage: p?.currentPage ?? 1,
           totalPages: p?.totalPages ?? 1,
           totalProducts: p?.totalProducts ?? p?.total ?? 0,
         });
+        setHasMore((p?.currentPage ?? 1) < (p?.totalPages ?? 1));
       }
       setLoadError(false);
     } catch {
@@ -93,23 +112,59 @@ export default function AdminProductsPage() {
         if (filter === 'active') params.isActive = 'true';
         if (filter === 'inactive') params.isActive = 'false';
         const res = await adminApi.getProducts(params);
-        setProducts(res.data.products);
+        if (append) {
+          setProducts(prev => {
+            const map = new Map(prev.map((p) => [p._id, p]));
+            for (const p of res.data.products) map.set(p._id, p);
+            return Array.from(map.values());
+          });
+        } else {
+          setProducts(res.data.products);
+        }
         const p = res.pagination;
         setPagination({
           currentPage: p?.currentPage ?? 1,
           totalPages: p?.totalPages ?? 1,
           totalProducts: p?.totalProducts ?? p?.total ?? 0,
         });
+        setHasMore((p?.currentPage ?? 1) < (p?.totalPages ?? 1));
         setLoadError(false);
       } catch {
-        setProducts([]);
-        setLoadError(true);
+        if (!append) {
+          setProducts([]);
+          setLoadError(true);
+          setHasMore(false);
+        } else {
+          toast.error("Could not load more products.");
+        }
       }
     } finally {
       setIsLoading(false);
+      setIsFetchingNextPage(false);
       setIsRefreshing(false);
     }
-  }, [pageSize, categoryFilter, quickFilter]);
+  }, [categoryFilter, quickFilter]);
+
+  useEffect(() => {
+    setProducts([]);
+    setHasMore(true);
+    fetchProducts(1, debouncedSearch, sortBy);
+  }, [debouncedSearch, sortBy, categoryFilter, quickFilter, fetchProducts]);
+
+  useEffect(() => {
+    if (!hasMore || isLoading || isFetchingNextPage || !loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && hasMore && !isFetchingNextPage) {
+          void fetchProducts(pagination.currentPage + 1, debouncedSearch, sortBy, 20, quickFilter, true);
+        }
+      },
+      { rootMargin: "240px" }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, isFetchingNextPage, pagination.currentPage, fetchProducts, debouncedSearch, sortBy, quickFilter]);
 
   useEffect(() => {
     categoryApi
@@ -122,16 +177,6 @@ export default function AdminProductsPage() {
     .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== 'gifting')
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
-
-  useEffect(() => {
-    fetchProducts(1, debouncedSearch, sortBy);
-  }, [debouncedSearch, sortBy, pageSize, quickFilter, fetchProducts]);
-
-  const goToPage = (page: number) => {
-    const safePage = Math.min(Math.max(1, page), Math.max(1, pagination.totalPages));
-    if (safePage === pagination.currentPage) return;
-    void fetchProducts(safePage, debouncedSearch, sortBy);
-  };
 
   const filtered = products;
 
@@ -194,7 +239,6 @@ export default function AdminProductsPage() {
       <AdminPageHeader
         title="Products"
         description="Search, filter by category or status, sort by views or sales — edits sync with the storefront when active."
-        badge={pagination.totalProducts ? `${pagination.totalProducts.toLocaleString()} in catalogue` : undefined}
         actions={
           <>
             <Button
@@ -233,10 +277,9 @@ export default function AdminProductsPage() {
       )}
 
       {!loadError && (
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <SearchField
+      <section className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] flex flex-col">
+        <div className="sticky top-0 z-20 px-4 sm:px-6 py-4 border-b border-gray-100 bg-white/95 backdrop-blur-md flex flex-col sm:flex-row sm:items-center gap-3 shadow-sm rounded-t-2xl">
+          <SearchField
               value={search}
               onChange={setSearch}
               placeholder="Search products by name, SKU, tags…"
@@ -270,21 +313,9 @@ export default function AdminProductsPage() {
                 <option value="-viewCount">Most Viewed</option>
                 <option value="viewCount">Least Viewed</option>
               </select>
-              <select
-                value={String(pageSize)}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  setPageSize(next);
-                }}
-                className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                aria-label="Products per page"
-              >
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>
-                    {size}/page
-                  </option>
-                ))}
-              </select>
+              <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
+                {filtered.length} / {pagination.totalProducts || products.length} shown
+              </span>
 
               <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white mr-1">
                 <button
@@ -318,9 +349,9 @@ export default function AdminProductsPage() {
                     type="button"
                     onClick={() => setQuickFilter(f.id as any)}
                     className={[
-                      'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors',
+                      'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all duration-200',
                       active
-                        ? 'bg-brand-600 text-white border-brand-600'
+                        ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
                         : 'bg-white text-gray-700 border-gray-200 hover:border-brand-300 hover:bg-brand-50',
                     ].join(' ')}
                   >
@@ -330,22 +361,21 @@ export default function AdminProductsPage() {
                 );
               })}
             </div>
-          </div>
         </div>
 
-        {/* Tablet / desktop — min width for comfortable columns */}
+        {/* Desktop / Tablet — List View */}
         {viewMode === 'table' && (
-        <div className="hidden md:block overflow-x-auto [scrollbar-gutter:stable]">
-          <table className="w-full min-w-[880px] text-sm">
+        <div className="hidden md:block overflow-x-auto overflow-y-hidden">
+          <table className="w-full min-w-[700px] text-sm border-collapse">
             <thead>
-              <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left px-4 py-3">Product</th>
-                <th className="text-left px-4 py-3">Category</th>
-                <th className="text-left px-4 py-3">Price</th>
-                <th className="text-left px-4 py-3">Stock</th>
-                <th className="text-left px-4 py-3">Metrics</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-right px-4 py-3">Actions</th>
+              <tr className="bg-gradient-to-r from-gray-50/80 to-white text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                <th className="text-left px-5 py-4 font-bold">Product</th>
+                <th className="text-left px-4 py-4 font-bold">Category</th>
+                <th className="text-left px-4 py-4 font-bold">Price</th>
+                <th className="text-left px-4 py-4 font-bold">Stock</th>
+                <th className="text-left px-4 py-4 font-bold">Metrics</th>
+                <th className="text-left px-4 py-4 font-bold">Status</th>
+                <th className="text-right px-5 py-4 font-bold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -360,78 +390,76 @@ export default function AdminProductsPage() {
               ) : filtered.map((product) => {
                 const sm = stockMeta(product);
                 return (
-                <tr key={product._id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2">
+                <tr key={product._id} className="group hover:bg-brand-50/40 transition-all hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent">
+                  <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      {/* Portrait 3:4 thumbnail */}
-                      <div className="relative w-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '3/4' }}>
+                      <div className="relative w-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm group-hover:shadow transition-shadow" style={{ aspectRatio: '3/4' }}>
                         <Image
                           src={product.images[0]?.url || '/placeholder.jpg'}
                           alt={product.name}
                           fill
                           sizes="40px"
-                          className="object-cover"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate max-w-[200px]">{product.name}</p>
-                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                          {product.isFeatured && <Badge variant="brand" className="text-xs">Featured</Badge>}
-                          {product.fabric && <span className="text-xs text-gray-400">{product.fabric}</span>}
+                        <p className="text-sm font-bold text-gray-900 truncate max-w-[200px] group-hover:text-brand-700 transition-colors">{product.name}</p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {product.isFeatured && <Badge variant="brand" className="text-[10px] px-1.5 py-0">Featured</Badge>}
+                          {product.fabric && <span className="text-xs font-semibold text-gray-500">{product.fabric}</span>}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-sm text-gray-600">{product.category}</span>
-                    {product.fabric && <p className="text-xs text-gray-400">{product.fabric}</p>}
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">{product.category}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-semibold text-gray-900">{formatPrice(product.price)}</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">{formatPrice(product.price)}</p>
                     {product.comparePrice && (
-                      <p className="text-xs text-gray-400 line-through">{formatPrice(product.comparePrice)}</p>
+                      <p className="text-[11px] font-semibold text-gray-400 line-through mt-0.5">{formatPrice(product.comparePrice)}</p>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <div>
-                      <span className={`text-sm font-medium ${stockClass(sm.total)}`}>
-                        {sm.total === 0 ? 'Out' : sm.total}
+                      <span className={`text-sm font-bold ${stockClass(sm.total)}`}>
+                        {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}
                       </span>
                       {sm.breakdown && (
-                        <p className="text-[10px] text-gray-400 mt-0.5 max-w-[140px]" title="Stock per variant row (same order as in editor)">
-                          By variant: {sm.breakdown}
+                        <p className="text-[10px] font-semibold text-gray-500 mt-0.5 max-w-[140px]" title="Stock per variant">
+                          {sm.breakdown}
                         </p>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs">
                     <div className="flex flex-col gap-1 items-start">
-                      <span className="inline-flex items-center gap-1 bg-gray-50 text-gray-600 px-2 py-0.5 rounded font-medium border border-gray-100">
-                        <List className="h-3 w-3" /> {product.soldCount || 0} sold
+                      <span className="inline-flex items-center gap-1 bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold border border-gray-200 shadow-sm">
+                        <List className="h-3 w-3 text-gray-400" /> {product.soldCount || 0} sold
                       </span>
-                      <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-medium border border-indigo-100">
-                        <EyeOff className="h-3 w-3 hidden" /><svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" /></svg>
+                      <span className="inline-flex items-center gap-1 bg-indigo-50/50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100 shadow-sm">
+                        <Eye className="h-3 w-3 text-indigo-400" />
                         {product.viewCount || 0} views
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={product.isActive ? 'success' : 'error'} className="text-xs">
+                    <Badge variant={product.isActive ? 'success' : 'error'} className="text-[11px] font-bold">
                       {product.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => { setEditProduct(product); setIsModalOpen(true); }}
-                        className="p-1.5 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors"
+                        className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors border border-transparent hover:border-brand-200 shadow-sm"
                         title="Edit"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(product._id)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200 shadow-sm"
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -621,38 +649,13 @@ export default function AdminProductsPage() {
             </button>
           </div>
         )}
-      </div>
+        <div ref={loadMoreRef} className="h-px" aria-hidden />
+      </section>
       )}
 
-      {!loadError && pagination.totalPages > 1 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
-          <p className="text-xs sm:text-sm text-gray-600">
-            Page <span className="font-semibold text-gray-900">{pagination.currentPage}</span> of{" "}
-            <span className="font-semibold text-gray-900">{pagination.totalPages}</span> (
-            {pagination.totalProducts.toLocaleString()} products)
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-lg"
-              onClick={() => goToPage(pagination.currentPage - 1)}
-              disabled={!canPrevPage || isLoading}
-            >
-              Previous
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-lg"
-              onClick={() => goToPage(pagination.currentPage + 1)}
-              disabled={!canNextPage || isLoading}
-            >
-              Next
-            </Button>
-          </div>
+      {isFetchingNextPage && (
+        <div className="py-6 flex justify-center">
+          <div className="h-6 w-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 

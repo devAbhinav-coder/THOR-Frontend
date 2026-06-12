@@ -140,6 +140,7 @@ export default function AdminOrdersPage() {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [ordersLoadError, setOrdersLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   const fetchOrders = useCallback(
     async (page = 1, append = false) => {
@@ -305,158 +306,128 @@ export default function AdminOrdersPage() {
   });
 
   return (
-    <div className='p-4 sm:p-6 xl:p-8 space-y-5 max-w-[1600px] mx-auto'>
-      {/* Premium page header */}
-      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#14192f] to-indigo-950 p-5 sm:p-6 shadow-xl'>
-        <div className='pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl' />
-        <div className='pointer-events-none absolute -bottom-10 left-10 h-32 w-32 rounded-full bg-brand-400/10 blur-2xl' />
-        <div className='relative flex flex-wrap items-center justify-between gap-4'>
-          <div>
-            <p className='text-[10px] font-bold uppercase tracking-widest text-indigo-300/80 mb-1'>Admin Panel</p>
-            <div className='flex items-center gap-3'>
-              <h1 className='text-2xl font-serif font-bold text-white tracking-tight'>Orders</h1>
-              {pagination.total > 0 && (
-                <span className='inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-bold text-white/80 ring-1 ring-white/20'>
-                  {pagination.total.toLocaleString()} total
-                </span>
-              )}
-            </div>
-            <p className='text-sm text-slate-400 mt-1 hidden sm:block'>Fulfil, track, and update status — click any row for the full order.</p>
-          </div>
-          <div className='flex items-center gap-2 flex-wrap'>
-            <button
-              type='button'
-              onClick={handleRefreshList}
-              disabled={isRefreshing || isLoading}
-              className='inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:bg-white/20 disabled:opacity-50'
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-            <Link
-              href='/admin/orders/offline'
-              className='inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:bg-white/20'
-            >
-              <HandIcon className='h-4 w-4' />
-              Offline order
-            </Link>
-            <Link
-              href='/admin/returns'
-              className='inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-500 px-3.5 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-900/40 transition'
-            >
-              Returns
-            </Link>
-          </div>
-        </div>
-      </div>
+    <div className='min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white'>
+      <div className='p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto space-y-8'>
+        <AdminPageHeader
+          title='Orders'
+          badge={pagination.total > 0 ? `${pagination.total.toLocaleString()} total` : undefined}
+          description='Fulfil, track, and update status — click any row for the full order.'
+          actions={
+            <>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='rounded-xl border-gray-200 bg-white shadow-sm'
+                onClick={handleRefreshList}
+                disabled={isRefreshing || isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Link
+                href='/admin/orders/offline'
+                className='inline-flex items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors shadow-sm gap-2'
+              >
+                <HandIcon className='h-4 w-4 text-brand-600' />
+                Offline order
+              </Link>
+              <Link
+                href='/admin/returns'
+                className='inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition'
+              >
+                Returns
+              </Link>
+            </>
+          }
+        />
 
-      {/* Stats: today pulse + month + pipeline */}
-      <div className='grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3'>
-        {/* Today — orders + gross revenue (same rules as analytics) */}
-        <div className='col-span-2 rounded-2xl border border-blue-200/90 bg-gradient-to-br from-blue-600 via-blue-700 to-slate-900 p-5 text-white shadow-md ring-1 ring-blue-500/20'>
-          <div className='flex items-center gap-2 mb-2'>
-            <Calendar className='h-5 w-5 text-blue-100' aria-hidden />
-            <span className='text-[10px] font-bold uppercase tracking-[0.2em] text-blue-100/90'>
-              Today
-            </span>
-          </div>
-          <div className='flex flex-wrap items-end gap-x-6 gap-y-2'>
-            <div>
-              <p className='text-[11px] font-semibold text-blue-100/80 uppercase tracking-wide'>
-                Orders placed
-              </p>
-              <p className='text-3xl font-bold tabular-nums leading-none mt-0.5'>
-                {analytics != null ? (analytics.overview.ordersToday ?? 0).toLocaleString() : '—'}
-              </p>
-            </div>
-            <div className='min-w-[7rem]'>
-              <p className='text-[11px] font-semibold text-blue-100/80 uppercase tracking-wide'>
-                Gross revenue
-              </p>
-              <p className='text-xl sm:text-2xl font-bold tabular-nums leading-none mt-0.5'>
-                {analytics != null ?
-                  formatPrice(analytics.overview.revenueToday ?? 0)
-                : '—'}
-              </p>
-              <p className='text-[10px] text-blue-100/70 mt-1'>Paid + refunded · since midnight</p>
+        {/* Stats: today pulse + month + pipeline */}
+        <div className='grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4'>
+          {/* Revenue highlight — month */}
+          <div className='col-span-2 sm:col-span-2 xl:col-span-2 relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-shadow hover:shadow-md bg-gradient-to-br from-navy-900 to-navy-800 border-navy-700 text-white'>
+            <div className='flex items-start justify-between gap-2'>
+              <div>
+                <p className='text-[11px] font-semibold uppercase tracking-wide text-navy-300'>
+                  This Month
+                </p>
+                <p className='mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-white'>
+                  {analytics ? formatPrice(analytics.overview.monthRevenue) : "—"}
+                </p>
+                <p className='mt-0.5 text-[11px] text-navy-400'>
+                  {analytics?.overview.monthOrders || 0} orders
+                  {analytics && analytics.overview.revenueGrowth !== undefined && (
+                    <span className={cn('ml-1 font-semibold', analytics.overview.revenueGrowth >= 0 ? "text-emerald-400" : "text-amber-300")}>
+                      ({analytics.overview.revenueGrowth >= 0 ? "▲" : "▼"} {Math.abs(Math.round(analytics.overview.revenueGrowth))}%)
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className='h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-navy-800 text-brand-300 ring-1 ring-white/10'>
+                <TrendingUp className='h-5 w-5' />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Revenue highlight — month */}
-        <div className='col-span-1 sm:col-span-1 xl:col-span-1 bg-gradient-to-br from-navy-900 to-navy-800 rounded-2xl p-5 text-white shadow-sm'>
-          <div className='flex items-center gap-2 mb-2'>
-            <TrendingUp className='h-5 w-5 text-brand-300' />
-            <span className='text-xs font-semibold text-navy-300 uppercase tracking-widest'>
-              This Month
-            </span>
+          {/* Today */}
+          <div className='col-span-2 sm:col-span-1 xl:col-span-1 relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-shadow hover:shadow-md bg-gradient-to-br from-blue-50 to-white border-blue-100/80'>
+            <div className='flex items-start justify-between gap-2'>
+              <div>
+                <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>
+                  Today
+                </p>
+                <p className='mt-1.5 text-2xl font-bold text-gray-900 tabular-nums tracking-tight'>
+                  {analytics != null ? formatPrice(analytics.overview.revenueToday ?? 0) : '—'}
+                </p>
+                <p className='mt-0.5 text-[11px] text-gray-500'>
+                  {analytics != null ? (analytics.overview.ordersToday ?? 0).toLocaleString() : '—'} orders today
+                </p>
+              </div>
+              <div className='h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 text-blue-700'>
+                <Calendar className='h-5 w-5' />
+              </div>
+            </div>
           </div>
-          <p className='text-3xl font-bold leading-none'>
-            {analytics ? formatPrice(analytics.overview.monthRevenue) : "—"}
-          </p>
-          <p className='text-xs text-navy-400 mt-1.5'>
-            {analytics?.overview.monthOrders || 0} orders this month
-          </p>
-          {analytics && analytics.overview.revenueGrowth !== undefined && (
-            <p
-              className={cn(
-                "text-xs font-semibold mt-1",
-                analytics.overview.revenueGrowth >= 0 ?
-                  "text-emerald-300"
-                : "text-amber-200",
-              )}
-            >
-              {analytics.overview.revenueGrowth >= 0 ? "▲" : "▼"}{" "}
-              {Math.abs(Math.round(analytics.overview.revenueGrowth))}% vs last
-              month
-            </p>
-          )}
-        </div>
 
-        {/* Status counts */}
-        {(
-          [
-            "pending",
-            "processing",
-            "shipped",
-            "delivered",
-            "cancelled",
-          ] as OrderStatus[]
-        ).map((status) => {
-          const meta = STATUS_META[status];
-          const count = statusCounts[status] || 0;
-          return (
-            <button
-              key={status}
-              onClick={() =>
-                setStatusFilter(statusFilter === status ? "" : status)
-              }
-              className={cn(
-                "rounded-2xl p-2 border transition-all text-center items-center",
-                statusFilter === status ?
-                  "border-brand-400 shadow-sm ring-1 ring-brand-300"
-                : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm",
-              )}
-              style={statusFilter === status ? { background: "white" } : {}}
-            >
-              <div
+          {/* Status counts mapped similar to user stat cards */}
+          {(
+            [
+              "pending",
+              "processing",
+              "shipped",
+              "delivered",
+              "cancelled",
+            ] as OrderStatus[]
+          ).map((status) => {
+            const meta = STATUS_META[status];
+            const count = statusCounts[status] || 0;
+            const isSelected = statusFilter === status;
+            return (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(isSelected ? "" : status)}
                 className={cn(
-                  "h-9 w-9 rounded-xl flex items-center justify-center mb-2 mx-auto",
-                  meta.bg,
+                  "relative overflow-hidden rounded-2xl border p-4 text-left transition-all hover:shadow-md",
+                  isSelected ? "bg-white shadow-md ring-2 ring-brand-400 border-transparent scale-[1.02]" : "bg-gradient-to-br from-slate-50 to-white border-slate-200/80 shadow-sm",
                 )}
               >
-                <span className={meta.text}>{meta.icon}</span>
-              </div>
-              <p className='text-xl font-bold text-gray-900 leading-none'>
-                {count}
-              </p>
-              <p className={cn("text-xs font-semibold mt-0.5", meta.text)}>
-                {meta.label}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+                <div className='flex items-start justify-between gap-2'>
+                  <div>
+                    <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>
+                      {meta.label}
+                    </p>
+                    <p className='mt-1.5 text-2xl font-bold text-gray-900 tabular-nums tracking-tight'>
+                      {count}
+                    </p>
+                  </div>
+                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", meta.bg, meta.text)}>
+                    {meta.icon}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
       {/* Order analytics: volume trend + status mix (no revenue chart here) */}
       {analytics &&
@@ -475,8 +446,8 @@ export default function AdminOrdersPage() {
 
       {/* Filters + list */}
       {!ordersLoadError && (
-        <div className='bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'>
-          <div className='px-4 py-3 border-b border-gray-100 flex flex-wrap items-center gap-2.5 bg-gray-50/60'>
+        <section className='rounded-2xl border border-gray-200/80 bg-white shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] flex flex-col'>
+          <div className='sticky top-0 z-20 px-4 sm:px-6 py-4 border-b border-gray-100 bg-white/95 backdrop-blur-md flex flex-wrap items-center gap-3 shadow-sm rounded-t-2xl'>
             <SearchField
               value={search}
               onChange={setSearch}
@@ -506,7 +477,7 @@ export default function AdminOrdersPage() {
               <option value='value_low'>Low → High value</option>
             </select>
             <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
-              {visibleOrders.length} / {orders.length} shown
+              {visibleOrders.length} / {pagination.total || orders.length} shown
             </span>
             <div className='ml-auto flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm'>
               <button type='button' onClick={() => setViewMode('table')}
@@ -520,21 +491,21 @@ export default function AdminOrdersPage() {
 
           {/* Tablet / desktop table */}
           {viewMode === 'table' && (
-            <div className='hidden md:block'>
-              <table className='w-full table-fixed'>
+            <div className='hidden md:block overflow-x-auto overflow-y-hidden [scrollbar-width:thin]'>
+              <table className='w-full text-sm border-collapse min-w-[700px]'>
                 <thead>
-                  <tr className='bg-gradient-to-r from-gray-50 to-gray-50/80 text-[10px] font-bold text-gray-400 uppercase tracking-[0.12em] border-b border-gray-100'>
-                    <th className='text-left px-5 py-3'>Order #</th>
-                    <th className='text-left px-4 py-3'>Customer</th>
-                    <th className='text-left px-4 py-3'>Date</th>
-                    <th className='text-left px-4 py-3'>Items</th>
-                    <th className='text-left px-4 py-3'>Total</th>
-                    <th className='text-left px-4 py-3'>Payment</th>
-                    <th className='text-left px-4 py-3'>Status</th>
-                    <th className='text-left px-4 py-3'>Action</th>
+                  <tr className='bg-gradient-to-r from-gray-50/80 to-white text-[11px] text-gray-500 uppercase tracking-widest border-b border-gray-100 shadow-[0_1px_2px_rgba(0,0,0,0.02)]'>
+                    <th className='text-left px-5 py-4 font-bold'>Order #</th>
+                    <th className='text-left px-4 py-4 font-bold'>Customer</th>
+                    <th className='text-left px-4 py-4 font-bold'>Date</th>
+                    <th className='text-left px-4 py-4 font-bold'>Items</th>
+                    <th className='text-left px-4 py-4 font-bold'>Total</th>
+                    <th className='text-left px-4 py-4 font-bold'>Payment</th>
+                    <th className='text-left px-4 py-4 font-bold'>Status</th>
+                    <th className='text-left px-4 py-4 font-bold'>Action</th>
                   </tr>
                 </thead>
-                <tbody className='divide-y divide-gray-50'>
+                <tbody className='divide-y divide-gray-50 bg-white'>
                   {isLoading ?
                     [...Array(5)].map((_, i) => (
                       <tr key={i}>
@@ -546,13 +517,22 @@ export default function AdminOrdersPage() {
                   : visibleOrders.map((order) => (
                       <tr
                         key={order._id}
-                        className='group hover:bg-brand-50/30 transition-colors cursor-pointer border-b border-gray-50 last:border-0'
-                        onClick={() => router.push(`/admin/orders/${encodeURIComponent(order._id)}`)}
+                        className='group hover:bg-brand-50/40 transition-all cursor-pointer hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent'
+                        onClick={() => {
+                          if (navigatingTo === order._id) return;
+                          setNavigatingTo(order._id);
+                          router.push(`/admin/orders/${encodeURIComponent(order._id)}`);
+                        }}
                       >
-                        <td className='px-5 py-3.5'>
-                          <p className='text-sm font-bold text-brand-600 group-hover:text-brand-700'>{order.orderNumber}</p>
+                        <td className='px-5 py-4'>
+                          <div className='flex items-center gap-2'>
+                            {navigatingTo === order._id && (
+                              <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
+                            )}
+                            <p className='text-sm font-bold text-brand-600 group-hover:text-brand-700 transition-colors'>{order.orderNumber}</p>
+                          </div>
                         </td>
-                        <td className='px-4 py-3.5'>
+                        <td className='px-4 py-4'>
                           <p className='text-sm font-semibold text-gray-900 leading-tight'>
                             {typeof order.user === 'object' ? (order.user?.name ?? '—') : '—'}
                           </p>
@@ -560,14 +540,14 @@ export default function AdminOrdersPage() {
                             {typeof order.user === 'object' ? order.user?.email : ''}
                           </p>
                         </td>
-                        <td className='px-4 py-3.5 text-sm text-gray-500 whitespace-nowrap'>{formatDate(order.createdAt)}</td>
-                        <td className='px-4 py-3.5'>
+                        <td className='px-4 py-4 text-sm text-gray-500 whitespace-nowrap'>{formatDate(order.createdAt)}</td>
+                        <td className='px-4 py-4'>
                           <span className='inline-flex items-center justify-center h-6 min-w-[1.5rem] rounded-lg bg-gray-100 text-xs font-bold text-gray-600 px-2'>
                             {(order.items ?? []).length}
                           </span>
                         </td>
-                        <td className='px-4 py-3.5 text-sm font-bold text-gray-900'>{formatPrice(order.total)}</td>
-                        <td className='px-4 py-3.5'>
+                        <td className='px-4 py-4 text-sm font-bold text-gray-900'>{formatPrice(order.total)}</td>
+                        <td className='px-4 py-4'>
                           <span className={cn('inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize ring-1 ring-inset',
                             order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
                             : order.paymentStatus === 'failed' ? 'bg-red-50 text-red-700 ring-red-200'
@@ -575,13 +555,13 @@ export default function AdminOrdersPage() {
                             {order.paymentStatus === 'paid' ? '✓' : order.paymentStatus === 'failed' ? '✕' : '○'} {order.paymentStatus}
                           </span>
                         </td>
-                        <td className='px-4 py-3.5'>
-                          <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize', getOrderStatusColor(order.status))}>
+                        <td className='px-4 py-4'>
+                          <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize shadow-sm', getOrderStatusColor(order.status))}>
                             {STATUS_META[order.status]?.icon}
                             {order.status}
                           </span>
                         </td>
-                        <td className='px-4 py-3.5' onClick={(e) => e.stopPropagation()}>
+                        <td className='px-4 py-4' onClick={(e) => e.stopPropagation()}>
                           <div className='relative group/btn inline-block'>
                             <Button variant='outline' size='sm' disabled={updatingOrder === order._id}
                               className='text-xs h-8 px-3 rounded-lg border-gray-200 hover:border-brand-300 hover:bg-brand-50'>
@@ -607,7 +587,7 @@ export default function AdminOrdersPage() {
                     <>
                       {[...Array(3)].map((_, i) => (
                         <tr key={`load-more-table-${i}`}>
-                          <td colSpan={8} className='px-5 py-3.5'>
+                          <td colSpan={8} className='px-5 py-4'>
                             <div className='h-4 w-full animate-pulse rounded bg-gray-100' />
                           </td>
                         </tr>
@@ -621,7 +601,7 @@ export default function AdminOrdersPage() {
                       <tr>
                         <td
                           colSpan={8}
-                          className='px-5 py-3.5 text-center text-xs font-semibold text-gray-500'
+                          className='px-5 py-6 text-center text-xs font-semibold text-gray-500'
                         >
                           You’ve reached the end of the orders list.
                         </td>
@@ -644,52 +624,57 @@ export default function AdminOrdersPage() {
               : visibleOrders.map((order) => (
                   <div
                     key={order._id}
-                    className='rounded-2xl border border-gray-200/90 bg-white p-4 shadow-sm transition-shadow hover:border-gray-300 hover:shadow-md'
+                    className='rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-brand-300 overflow-hidden group flex flex-col'
                   >
-                    <div className='flex items-start justify-between gap-2'>
+                    <div className='p-4 border-b border-gray-50 flex items-start justify-between gap-2 bg-gradient-to-r from-gray-50/40 to-white'>
                       <div className='min-w-0'>
-                        <p className='text-sm font-semibold text-gray-900'>
-                          {order.orderNumber}
-                        </p>
+                        <div className='flex items-center gap-2'>
+                          {navigatingTo === order._id && (
+                            <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
+                          )}
+                          <p className='text-sm font-bold text-gray-900 group-hover:text-brand-600 transition-colors'>
+                            {order.orderNumber}
+                          </p>
+                        </div>
                         <p className='text-xs text-gray-500 mt-0.5 truncate'>
                           {typeof order.user === "object" ?
-                            order.user.name
+                            (order.user?.name ?? "—")
                           : "—"}
                         </p>
                       </div>
                       <span
                         className={cn(
-                          "shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full capitalize",
+                          "shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg capitalize shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]",
                           getOrderStatusColor(order.status),
                         )}
                       >
                         {order.status}
                       </span>
                     </div>
-                    <div className='mt-3 text-xs text-gray-500 space-y-1'>
-                      <p>
-                        Date:{" "}
-                        <span className='text-gray-700'>
+                    <div className='p-4 text-xs text-gray-500 space-y-2 flex-1'>
+                      <div className="flex justify-between items-center">
+                        <span>Date</span>
+                        <span className='text-gray-900 font-medium'>
                           {formatDate(order.createdAt)}
                         </span>
-                      </p>
-                      <p>
-                        Items:{" "}
-                        <span className='text-gray-700'>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Items</span>
+                        <span className='text-gray-900 font-medium'>
                           {(order.items ?? []).length}
                         </span>
-                      </p>
-                      <p>
-                        Total:{" "}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Total</span>
                         <span className='text-gray-900 font-bold'>
                           {formatPrice(order.total)}
                         </span>
-                      </p>
-                      <p>
-                        Payment:{" "}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Payment</span>
                         <span
                           className={cn(
-                            "font-semibold capitalize",
+                            "font-bold capitalize",
                             order.paymentStatus === "paid" ? "text-green-700"
                             : order.paymentStatus === "failed" ? "text-red-700"
                             : "text-amber-700",
@@ -697,41 +682,51 @@ export default function AdminOrdersPage() {
                         >
                           {order.paymentStatus}
                         </span>
-                      </p>
+                      </div>
                     </div>
-                    <Link
-                      href={`/admin/orders/${encodeURIComponent(order._id)}`}
-                      className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-800'
-                    >
-                      View details
-                      <ChevronRight
-                        className='h-4 w-4 shrink-0 opacity-70'
-                        aria-hidden
-                      />
-                    </Link>
-                    <div className='mt-4 pt-3 border-t border-gray-100'>
-                      <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2'>
-                        Change status
-                      </p>
-                      <div className='flex flex-wrap gap-1.5'>
-                        {getNextStatuses(order.status).map((status) => (
-                          <button
-                            key={status}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateStatus(order._id, status);
-                            }}
-                            disabled={updatingOrder === order._id}
-                            className={cn(
-                              "px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm disabled:opacity-50 uppercase tracking-tighter",
-                              STATUS_META[status]?.bg || "bg-gray-50",
-                              STATUS_META[status]?.text || "text-gray-600",
-                              "border-transparent hover:border-gray-200",
-                            )}
-                          >
-                            {status.replace(/_/g, " ")}
-                          </button>
-                        ))}
+                    
+                    <div className="px-4 pb-4 mt-auto space-y-3">
+                      <Link
+                        href={`/admin/orders/${encodeURIComponent(order._id)}`}
+                        onClick={() => setNavigatingTo(order._id)}
+                        className='flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2 text-sm font-bold text-gray-900 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 shadow-sm hover:shadow'
+                      >
+                        {navigatingTo === order._id ? (
+                          <span className="h-4 w-4 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
+                        ) : (
+                          <>
+                            View details
+                            <ChevronRight
+                              className='h-4 w-4 shrink-0 opacity-70'
+                              aria-hidden
+                            />
+                          </>
+                        )}
+                      </Link>
+                      <div className='pt-3 border-t border-gray-100'>
+                        <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2'>
+                          Change status
+                        </p>
+                        <div className='flex flex-wrap gap-1.5'>
+                          {getNextStatuses(order.status).map((status) => (
+                            <button
+                              key={status}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatus(order._id, status);
+                              }}
+                              disabled={updatingOrder === order._id}
+                              className={cn(
+                                "px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm disabled:opacity-50 uppercase tracking-tighter",
+                                STATUS_META[status]?.bg || "bg-gray-50",
+                                STATUS_META[status]?.text || "text-gray-600",
+                                "border-transparent hover:border-gray-200",
+                              )}
+                            >
+                              {status.replace(/_/g, " ")}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -909,7 +904,7 @@ export default function AdminOrdersPage() {
             </div>
           )}
           <div ref={loadMoreRef} className='h-px' aria-hidden />
-        </div>
+        </section>
       )}
 
       {/* Tracking modal */}
@@ -1054,6 +1049,7 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

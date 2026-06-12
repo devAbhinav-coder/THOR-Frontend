@@ -38,6 +38,7 @@ import { formatDateTime, formatPrice, getOrderStatusColor, cn, getPaymentStatusC
 import { getMaxRefundableInr, getNonRefundableFeesInr } from '@/lib/orderRefundPolicy';
 import AdminOrderPackingSlip4R from '@/components/admin/AdminOrderPackingSlip4R';
 import { AdminAiExplainButton } from '@/components/admin/ai';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 
 function adminPaymentMethodLabel(pm: Order['paymentMethod']): string {
   switch (pm) {
@@ -932,6 +933,7 @@ export default function AdminOrderDetailsPage() {
   const [resolvingReturn, setResolvingReturn] = useState(false);
   const [returnAdminNote, setReturnAdminNote] = useState('');
   const [loyaltySegment, setLoyaltySegment] = useState<string | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const trackingHref = useMemo(() => {
     if (!order) return null;
@@ -1117,109 +1119,107 @@ export default function AdminOrderDetailsPage() {
       : null;
   const orderItems = order.items ?? [];
   const invoiceEligible = order.paymentStatus === 'paid' || order.status === 'delivered';
+  const isPaid = order.paymentStatus === 'paid';
 
   return (
-    <div className="p-4 sm:p-6 xl:p-8 space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className='min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white pb-10'>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-8 relative">
+        {zoomedImage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/90 backdrop-blur-sm p-4" onClick={() => setZoomedImage(null)}>
+            <div className="relative max-w-4xl max-h-[90vh] w-full h-full">
+              <button onClick={() => setZoomedImage(null)} className="absolute -top-4 -right-4 md:-top-6 md:-right-6 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 backdrop-blur-md transition-colors z-50">
+                <XCircle className="h-6 w-6" />
+              </button>
+              <Image src={zoomedImage} alt="Zoomed product" fill className="object-contain" />
+            </div>
+          </div>
+        )}
+        {/* Breadcrumb / Back */}
         <button
           type="button"
           onClick={() => router.push('/admin/orders')}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-brand-700"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Orders
         </button>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-500 font-medium">Order:</span>
-            <span className={cn('text-xs font-semibold px-3 py-1.5 rounded-full capitalize', getOrderStatusColor(order.status))}>
+
+        <AdminPageHeader
+          title={`Order ${order.orderNumber}`}
+          badge={order.productType === 'custom' ? 'Bespoke Gift' : order.offlineMeta ? 'Offline Order' : undefined}
+          description={`Placed on ${formatDateTime(order.createdAt)}`}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminAiExplainButton kind="order" orderId={order._id} label="AI explain order" />
+              <button
+                type="button"
+                disabled={!invoiceEligible || generatingInvoice}
+                onClick={async () => {
+                  if (!invoiceEligible) return;
+                  setGeneratingInvoice(true);
+                  try {
+                    await adminApi.generateOrderInvoice(order._id);
+                    toast.success('Invoice generated');
+                    const refreshed = await adminApi.getOrderDetails(order._id);
+                    setOrder(refreshed.data.order as Order);
+                  } catch (err: unknown) {
+                    toast.error((err as { message?: string })?.message || 'Failed to generate invoice');
+                  } finally {
+                    setGeneratingInvoice(false);
+                  }
+                }}
+                className={cn(
+                  "px-3.5 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-colors",
+                  invoiceEligible ? "border-brand-200 text-brand-700 bg-white hover:bg-brand-50" : "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
+                )}
+              >
+                {generatingInvoice ? 'Generating…' : order.invoice?.isGenerated ? 'Regenerate Invoice' : 'Generate Invoice'}
+              </button>
+              {order.invoice?.isGenerated && (
+                <Link
+                  href={`/admin/orders/${encodeURIComponent(order._id)}/invoice`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-800 text-sm font-semibold text-white shadow-sm transition-all hover:from-navy-800 hover:to-navy-700 hover:shadow-md"
+                >
+                  <FileText className="h-4 w-4" />
+                  View Invoice
+                </Link>
+              )}
+              <select
+                onChange={(e) => updateStatus(e.target.value as OrderStatus)}
+                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                value=""
+              >
+                <option value="">Update Status</option>
+                {ORDER_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          }
+        />
+
+        {/* Status badges row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Status:</span>
+            <span className={cn('text-xs font-bold px-2.5 py-1 rounded-lg capitalize', getOrderStatusColor(order.status))}>
               {order.status}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-500 font-medium">Payment:</span>
-            <span className={cn('text-xs font-semibold px-3 py-1.5 rounded-full capitalize', getPaymentStatusColor(order.paymentStatus))}>
+          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Payment:</span>
+            <span className={cn('text-xs font-bold px-2.5 py-1 rounded-lg capitalize', getPaymentStatusColor(order.paymentStatus))}>
               {order.paymentStatus}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-500 font-medium">Method:</span>
-            <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700">
+          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Method:</span>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">
               {adminPaymentMethodLabel(order.paymentMethod)}
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Summary */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Order</p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-serif font-bold text-gray-900">{order.orderNumber}</h1>
-              {order.productType === 'custom' && (
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gold-100 text-gold-700 border border-gold-200 flex items-center gap-1">
-                  <Gift className="h-2.5 w-2.5" /> Bespoke Gift
-                </span>
-              )}
-              {order.offlineMeta && (
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  Offline · {order.offlineMeta.source === 'stall' ? 'Stall' : 'Personal contact'} ·{' '}
-                  {order.offlineMeta.fulfillment === 'delhivery' ? 'Courier' : 'Handover'}
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-500 mt-1">{formatDateTime(order.createdAt)}</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <AdminAiExplainButton kind="order" orderId={order._id} label="AI explain order" />
-            <button
-              type="button"
-              disabled={!invoiceEligible || generatingInvoice}
-              onClick={async () => {
-                if (!invoiceEligible) return;
-                setGeneratingInvoice(true);
-                try {
-                  await adminApi.generateOrderInvoice(order._id);
-                  toast.success('Invoice generated');
-                  const refreshed = await adminApi.getOrderDetails(order._id);
-                  setOrder(refreshed.data.order as Order);
-                } catch (err: unknown) {
-                  toast.error((err as { message?: string })?.message || 'Failed to generate invoice');
-                } finally {
-                  setGeneratingInvoice(false);
-                }
-              }}
-              className={cn(
-                "px-3 py-2 rounded-xl border text-xs font-semibold",
-                invoiceEligible ? "border-brand-200 text-brand-700 hover:bg-brand-50" : "border-gray-200 text-gray-400 cursor-not-allowed"
-              )}
-            >
-              {generatingInvoice ? 'Generating…' : order.invoice?.isGenerated ? 'Regenerate Invoice' : 'Generate Invoice'}
-            </button>
-            {order.invoice?.isGenerated && (
-              <Link
-                href={`/admin/orders/${encodeURIComponent(order._id)}/invoice`}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-800 text-xs font-semibold text-white shadow-sm transition-all hover:from-navy-800 hover:to-navy-700 hover:shadow-md"
-              >
-                <FileText className="h-3.5 w-3.5" />
-                View Invoice
-              </Link>
-            )}
-            <select
-  onChange={(e) => updateStatus(e.target.value as OrderStatus)}
-  className="px-3 py-2 rounded-xl border text-sm"
->
-  <option value="">Update Status</option>
-  {ORDER_STATUSES.map((s) => (
-    <option key={s} value={s}>
-      {s}
-    </option>
-  ))}
-</select>
-          </div>
-        </div>
-      </div>
 
 
 
@@ -1339,28 +1339,36 @@ export default function AdminOrderDetailsPage() {
                   </div>
                 )}
 
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-                  <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                    <Package className="h-4 w-4 text-brand-600" /> Items ({o.items?.length || 0})
-                  </h2>
-                  <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-gray-200/80 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-50/50 via-white to-white">
+                    <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                      <Package className="h-4 w-4 text-brand-600" /> Items ({o.items?.length || 0})
+                    </h2>
+                  </div>
+                  <div className="p-5 sm:p-6 space-y-4">
                     {(o.items || []).map((it, idx) => (
-                      <div key={idx} className="flex gap-3">
-                        <div className="relative h-16 w-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
+                      <div key={idx} className="flex gap-4 p-3 -mx-3 rounded-xl hover:bg-gray-50/80 transition-colors group">
+                        <div
+                          className={cn(
+                            "relative h-16 w-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-200 flex-shrink-0 shadow-sm transition-transform",
+                            it.image && "cursor-pointer group-hover:scale-105 group-hover:border-brand-300 group-hover:shadow"
+                          )}
+                          onClick={() => it.image && setZoomedImage(it.image)}
+                        >
                           {it.image ?
                             <Image src={it.image} alt={it.name || 'Product'} fill sizes="56px" className="object-cover" />
                           : <div className="h-full w-full bg-gray-100" aria-hidden />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 line-clamp-2">{it.name}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">{it.name}</p>
+                          <p className="text-xs text-gray-500 mt-1 font-medium">
                             {[it.variant?.size, it.variant?.color, it.variant?.sku].filter(Boolean).join(' · ')}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Qty {it.quantity} · {formatPrice(it.price)}
+                          <p className="text-xs text-brand-600 font-semibold mt-1.5 bg-brand-50 inline-block px-2 py-0.5 rounded-md border border-brand-100/50">
+                            Qty: {it.quantity} <span className="text-brand-300 mx-1">×</span> {formatPrice(it.price)}
                           </p>
                         </div>
-                        <p className="text-sm font-bold text-gray-900 flex-shrink-0">
+                        <p className="text-sm font-bold text-gray-900 flex-shrink-0 self-center">
                           {formatPrice(it.price * it.quantity)}
                         </p>
                       </div>
@@ -1388,15 +1396,13 @@ export default function AdminOrderDetailsPage() {
             if (!o) return null;
 
             return (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-8 overflow-hidden">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-5 w-5 rounded-full border border-blue-600 flex items-center justify-center">
-                     <Compass className="h-3 w-3 text-blue-600" />
-                  </div>
-                  <h2 className="font-bold text-gray-900">Order Lifecycle</h2>
+              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] overflow-hidden">
+                <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 via-white to-white">
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Compass className="h-4 w-4 text-blue-600" /> Order Lifecycle
+                  </h2>
                 </div>
-
-                <div className="w-full overflow-x-auto pb-4">
+                <div className="p-5 sm:p-8 w-full overflow-x-auto pb-4">
                   <div className="flex items-start min-w-[700px] relative mt-6 font-sans">
                     
                     {(() => {
@@ -1535,8 +1541,8 @@ export default function AdminOrderDetailsPage() {
 
         {/* Sidebar: customer, shipping, totals, tracking */}
         <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
               <UserIcon className="h-4 w-4 text-brand-600" /> Customer
             </h2>
             <div className="flex items-center gap-3 mb-1">
@@ -1564,8 +1570,8 @@ export default function AdminOrderDetailsPage() {
             {user?.phone && <p className="text-xs text-gray-500 mt-1">{user.phone}</p>}
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
               <MapPin className="h-4 w-4 text-brand-600" /> Shipping
             </h2>
             <p className="text-sm font-semibold text-gray-900">
@@ -1596,8 +1602,8 @@ export default function AdminOrderDetailsPage() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
               <CreditCard className="h-4 w-4 text-brand-600" /> Totals
             </h2>
             <div className="text-sm space-y-2">
@@ -1654,8 +1660,8 @@ export default function AdminOrderDetailsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-gray-50 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50/50 via-white to-white flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                 <Truck className="h-4 w-4 text-brand-600" /> Tracking Details
               </h2>
@@ -1825,6 +1831,7 @@ export default function AdminOrderDetailsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

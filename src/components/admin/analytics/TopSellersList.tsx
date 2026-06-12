@@ -18,7 +18,10 @@ export default function TopSellersList({ products }: { products: Product[] }) {
       {products.map((p, i) => {
         const pct = (p.revenue / maxRevenue) * 100;
         return (
-          <div key={p._id} className="flex items-center gap-3 py-2">
+          <div 
+            key={p._id} 
+            className="group flex items-center gap-3 p-3 rounded-xl transition-all duration-300 hover:bg-[#FAF9F6] hover:shadow-sm hover:-translate-y-0.5 border border-transparent hover:border-brand-100/50 cursor-pointer"
+          >
             <span
               className={`text-xs font-bold w-5 tabular-nums shrink-0 ${
                 i === 0 ? 'text-gold-600' : 'text-gray-300'
@@ -39,7 +42,7 @@ export default function TopSellersList({ products }: { products: Product[] }) {
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-navy-500 to-brand-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full transition-all duration-1000 ease-out"
                     style={{ width: `${pct}%` }}
                   />
                 </div>

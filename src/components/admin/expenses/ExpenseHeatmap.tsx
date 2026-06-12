@@ -32,11 +32,11 @@ export default function ExpenseHeatmap({
   function intensity(amount: number): string {
     if (amount <= 0) return 'bg-gray-50 text-gray-300';
     const ratio = amount / max;
-    if (ratio >= 0.75) return 'bg-red-600 text-white';
-    if (ratio >= 0.5) return 'bg-orange-500 text-white';
-    if (ratio >= 0.3) return 'bg-amber-400 text-amber-950';
-    if (ratio >= 0.15) return 'bg-yellow-200 text-yellow-900';
-    return 'bg-emerald-100 text-emerald-800';
+    if (ratio >= 0.75) return 'bg-brand-600 text-white shadow-sm';
+    if (ratio >= 0.5) return 'bg-brand-500 text-white';
+    if (ratio >= 0.3) return 'bg-brand-300 text-brand-950';
+    if (ratio >= 0.15) return 'bg-brand-200 text-brand-900';
+    return 'bg-brand-50 text-brand-800';
   }
 
   return (

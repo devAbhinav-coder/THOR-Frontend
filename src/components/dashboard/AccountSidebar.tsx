@@ -16,7 +16,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Overview", href: "/dashboard?view=overview", icon: LayoutDashboard },
   { label: "My Orders", href: "/dashboard/orders", icon: Package },
   { label: "Custom Gifts", href: "/dashboard/gifting", icon: Gift },
   { label: "Wishlist", href: "/wishlist", icon: Heart },
@@ -56,14 +56,16 @@ function NavLink({
   );
 }
 
-export default function AccountSidebar() {
+export default function AccountSidebar({ isMobileMenu }: { isMobileMenu?: boolean }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
   const firstName = user?.name?.split(" ")[0] || "Guest";
 
-  const isActive = (href: string) =>
-    pathname === href ||
-    (href !== "/dashboard" && pathname.startsWith(href));
+  const isActive = (href: string) => {
+    if (isMobileMenu && href === "/dashboard?view=overview") return false;
+    const baseHref = href.split('?')[0];
+    return pathname === baseHref || (baseHref !== "/dashboard" && pathname.startsWith(baseHref));
+  };
 
   return (
     <aside className="w-full md:w-64 shrink-0 md:bg-account-surface-container-lowest md:border md:border-account-outline-variant/30 md:py-8">

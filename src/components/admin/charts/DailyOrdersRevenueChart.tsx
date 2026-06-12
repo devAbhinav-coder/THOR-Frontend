@@ -48,15 +48,15 @@ function DailyTooltip({ active, payload }: TooltipProps<number, string>) {
 
   return (
     <div className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.22)]">
-      <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-        <span className="text-blue-600" aria-hidden>
+      <div className="flex items-center gap-2 text-sm font-semibold text-navy-900">
+        <span className="text-brand-600" aria-hidden>
           <BarChart3 className="h-3.5 w-3.5" strokeWidth={2.5} />
         </span>
         <span>{heading}</span>
       </div>
-      <p className="mt-1 text-[11px] text-slate-600">
+      <p className="mt-1 text-[11px] text-gray-500">
         {formatPrice(revenueVal)} gross ·{' '}
-        <span className="font-semibold text-blue-700 tabular-nums">{orderVal}</span>{' '}
+        <span className="font-semibold text-brand-700 tabular-nums">{orderVal}</span>{' '}
         {orderVal === 1 ? 'order' : 'orders'}
       </p>
     </div>
@@ -141,14 +141,14 @@ export function DailyOrdersRevenueChart({
             <ComposedChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 4 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1e40af" stopOpacity={0.55} />
-                  <stop offset="35%" stopColor="#3b82f6" stopOpacity={0.35} />
-                  <stop offset="70%" stopColor="#93c5fd" stopOpacity={0.12} />
+                  <stop offset="0%" stopColor="#14192f" stopOpacity={0.65} />
+                  <stop offset="40%" stopColor="#c5a059" stopOpacity={0.35} />
+                  <stop offset="80%" stopColor="#e8d4a8" stopOpacity={0.15} />
                   <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#1d4ed8" />
-                  <stop offset="100%" stopColor="#38bdf8" />
+                  <stop offset="0%" stopColor="#14192f" />
+                  <stop offset="100%" stopColor="#c5a059" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="2 6" stroke="#e2e8f0" vertical={false} strokeOpacity={0.95} />
@@ -189,10 +189,10 @@ export function DailyOrdersRevenueChart({
                 dataKey="revenue"
                 name="Revenue"
                 stroke={`url(#${strokeGradId})`}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 fill={`url(#${gradId})`}
                 dot={false}
-                activeDot={{ r: 4, fill: '#1d4ed8', stroke: '#fff', strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: '#14192f', stroke: '#fff', strokeWidth: 2 }}
                 isAnimationActive
               />
               <Line
@@ -200,10 +200,10 @@ export function DailyOrdersRevenueChart({
                 type="monotone"
                 dataKey="orders"
                 name="Orders"
-                stroke="#0ea5e9"
-                strokeWidth={2.25}
-                dot={{ r: 2.5, fill: '#fff', stroke: '#0ea5e9', strokeWidth: 2 }}
-                activeDot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#0284c7' }}
+                stroke="#c5a059"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: '#fff', stroke: '#c5a059', strokeWidth: 2 }}
+                activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#b8924d' }}
                 opacity={0.95}
               />
             </ComposedChart>
@@ -212,15 +212,15 @@ export function DailyOrdersRevenueChart({
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-slate-100/90 pt-3 text-[11px] text-slate-600">
           <span className="inline-flex items-center gap-2">
             <span
-              className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-blue-900 via-blue-500 to-white shadow-sm ring-1 ring-blue-200/60"
+              className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-navy-900 via-brand-500 to-white shadow-sm ring-1 ring-brand-200/60"
               aria-hidden
             />
             <span className="font-medium text-slate-700">Gross revenue (paid + refunded)</span>
           </span>
           <span className="inline-flex items-center gap-2">
             <span className="relative inline-flex h-3 w-7 items-center" aria-hidden>
-              <span className="h-0.5 w-full rounded-full bg-sky-500" />
-              <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sky-500 bg-white shadow-sm" />
+              <span className="h-0.5 w-full rounded-full bg-brand-500" />
+              <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand-500 bg-white shadow-sm" />
             </span>
             <span className="font-medium text-slate-700">Order count</span>
           </span>

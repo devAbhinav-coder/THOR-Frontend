@@ -44,7 +44,7 @@ export default function InventorySnapshotPanel({
         label: 'Units on hand',
         value: stockHealth.totalUnits.toLocaleString(),
         icon: Boxes,
-        tone: 'bg-blue-50 text-blue-900 border-blue-100',
+        tone: 'bg-navy-50 text-navy-900 border-navy-100',
       },
     ]
   : [];
@@ -72,13 +72,13 @@ export default function InventorySnapshotPanel({
       label: 'Total units',
       value: valuation.totalUnits.toLocaleString(),
       sub: 'Across all active variants',
-      color: 'text-blue-800',
+      color: 'text-navy-800',
     },
   ];
 
   return (
-    <section className="rounded-2xl border border-gray-200/80 bg-white shadow-sm overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50/80 to-white">
+    <section className="rounded-[1.5rem] border border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden group">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FAF9F6] to-white">
         <div>
           <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
             <Warehouse className="h-4 w-4 text-brand-600" />
@@ -127,9 +127,9 @@ export default function InventorySnapshotPanel({
         {metrics.map((c) => (
           <div
             key={c.label}
-            className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 hover:bg-white transition-colors"
+            className="rounded-xl border border-transparent bg-white p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
           >
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{c.label}</p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide group-hover:text-brand-500 transition-colors">{c.label}</p>
             <p className={cn('text-lg font-bold mt-1 tabular-nums', c.color)}>{c.value}</p>
             <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{c.sub}</p>
           </div>

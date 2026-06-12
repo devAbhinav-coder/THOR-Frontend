@@ -130,20 +130,23 @@ export default function RevenueVsProfitChart({
             fill={`url(#gross-${uid})`}
             radius={[4, 4, 0, 0]}
             maxBarSize={22}
+            className="hover:opacity-80 transition-opacity cursor-pointer"
           />
           <Bar
             dataKey="netRevenue"
             name="Net revenue"
-            fill="#1e3a5f"
+            fill="#14192f"
             radius={[4, 4, 0, 0]}
             maxBarSize={22}
+            className="hover:opacity-80 transition-opacity cursor-pointer"
           />
           <Bar
             dataKey="productRevenue"
             name="Product revenue"
-            fill="#94a3b8"
+            fill="#d1ad68"
             radius={[4, 4, 0, 0]}
             maxBarSize={18}
+            className="hover:opacity-80 transition-opacity cursor-pointer"
           />
           <Line
             type="monotone"
@@ -155,8 +158,8 @@ export default function RevenueVsProfitChart({
           />
           <defs>
             <linearGradient id={`gross-${uid}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563eb" />
-              <stop offset="100%" stopColor="#93c5fd" />
+              <stop offset="0%" stopColor="#c5a059" />
+              <stop offset="100%" stopColor="#e8d4a8" />
             </linearGradient>
           </defs>
         </ComposedChart>

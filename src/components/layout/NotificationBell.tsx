@@ -71,13 +71,23 @@ function formatRelativeTime(dateStr?: string): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function triggerClassForVariant(variant: "navbar" | "admin" | "default") {
+function triggerClassForVariant(variant: "navbar" | "admin" | "admin-sidebar" | "admin-mobile" | "default") {
   if (variant === "navbar") {
     return cn(navIconButton, "relative");
   }
   if (variant === "admin") {
     return cn(
       "relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+    );
+  }
+  if (variant === "admin-sidebar") {
+    return cn(
+      "relative flex h-6 w-6 items-center justify-center rounded-full bg-white text-navy-900 shadow-md ring-1 ring-gray-200 transition-all hover:scale-110",
+    );
+  }
+  if (variant === "admin-mobile") {
+    return cn(
+      "relative flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-700 ring-1 ring-gray-200 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400",
     );
   }
   return "relative rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-200";
@@ -90,7 +100,7 @@ export default function NotificationBell({
 }: {
   align?: "left" | "right";
   onOpenChange?: (open: boolean) => void;
-  variant?: "navbar" | "admin" | "default";
+  variant?: "navbar" | "admin" | "admin-sidebar" | "admin-mobile" | "default";
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -304,7 +314,10 @@ export default function NotificationBell({
   if (!isAuthedStable || !user) return null;
 
   const badgeClass =
-    variant === "navbar" ? navBadgeCount : (
+    variant === "navbar" ? navBadgeCount
+    : variant === "admin-sidebar" ?
+      "absolute -right-1 -top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-brand-600 px-0.5 text-[8px] font-bold leading-none text-white ring-2 ring-white"
+    : (
       "absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#eb5757] px-0.5 text-[9px] font-semibold leading-none text-white ring-2 ring-white"
     );
 
@@ -527,9 +540,12 @@ export default function NotificationBell({
       >
         <Bell
           className={cn(
-            variant === "navbar" ? "h-5 w-5" : "h-[1.125rem] w-[1.125rem]",
+            variant === "navbar" ? "h-5 w-5" 
+            : variant === "admin-sidebar" ? "h-3.5 w-3.5"
+            : variant === "admin-mobile" ? "h-4 w-4"
+            : "h-[1.125rem] w-[1.125rem]",
           )}
-          strokeWidth={variant === "navbar" ? 1.75 : 1.5}
+          strokeWidth={variant === "navbar" ? 1.75 : 2.25}
         />
         {unreadCount > 0 && (
           <span className={badgeClass}>

@@ -379,11 +379,11 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-6 px-4">
-      <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl animate-fadeIn overflow-x-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6">
+      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-full shadow-2xl animate-fadeIn flex flex-col overflow-hidden">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-xl font-serif font-bold text-gray-900">
               {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -393,17 +393,18 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
+            className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="relative p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] gap-8 max-h-[78vh] overflow-y-auto overflow-x-hidden min-w-0">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="relative p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] gap-8 overflow-y-auto overflow-x-hidden min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {loadingProduct && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-b-3xl bg-white/85 backdrop-blur-sm">
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm">
                 <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
                 <p className="text-sm font-medium text-gray-600">Loading product…</p>
               </div>
@@ -917,7 +918,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
           </div>
 
           {/* ── Footer ── */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 sm:px-8 py-5 border-t border-gray-100 bg-gray-50 rounded-b-3xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 sm:px-8 py-5 border-t border-gray-100 bg-gray-50 shrink-0">
             <p className="text-xs text-gray-400">
               {editingProduct ? 'Changes will be saved immediately.' : '* Required fields'}
             </p>

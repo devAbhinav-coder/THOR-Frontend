@@ -160,8 +160,8 @@ export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 /** Admin POS / stall recording — POST /admin/orders/offline */
 export interface AdminCreateOfflineOrderBody {
   customerName: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   orderSource: 'stall' | 'personal_contact';
   fulfillment: 'delhivery' | 'offline_handover';
   paymentMethod: 'offline_upi' | 'offline_cash';

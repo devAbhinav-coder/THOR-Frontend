@@ -299,7 +299,7 @@ export default function AdminExpensesPage() {
   );
 
   return (
-    <div className='p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto space-y-6'>
+    <div className='p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto space-y-6 min-h-[calc(100dvh-4rem)] bg-[#FAF9F6] pb-12'>
       <AdminPageHeader
         title='Operating costs'
         badge='Expenses'
@@ -366,7 +366,7 @@ export default function AdminExpensesPage() {
             ].map((c) => (
               <div
                 key={c.label}
-                className='bg-white rounded-2xl border border-gray-100 p-4 shadow-sm'
+                className='bg-white rounded-[1.5rem] border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1'
               >
                 <p className='text-[10px] font-bold text-gray-400 uppercase tracking-wide'>
                   {c.label}
@@ -379,7 +379,7 @@ export default function AdminExpensesPage() {
             ))}
           </div>
 
-          <div className='bg-white rounded-2xl border border-gray-100 shadow-sm p-5'>
+          <div className='bg-white rounded-[1.5rem] border border-gray-200/80 shadow-sm hover:shadow-md transition-shadow duration-300 p-5 sm:p-6'>
             <div className='flex flex-wrap items-center justify-between gap-3 mb-4'>
               <div className='flex items-center gap-2'>
                 <Flame className='h-5 w-5 text-orange-500' />
@@ -445,7 +445,7 @@ export default function AdminExpensesPage() {
         </>
       )}
 
-      <div className='bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'>
+      <div className='bg-white rounded-[1.5rem] border border-gray-200/80 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden'>
         <div className='px-4 py-3 border-b flex flex-wrap items-center gap-3'>
           <h2 className='font-bold text-gray-900 text-sm'>Expense log</h2>
           <select
@@ -502,7 +502,7 @@ export default function AdminExpensesPage() {
                   </td>
                 </tr>
               : expenses.map((e) => (
-                  <tr key={e._id} className='hover:bg-gray-50/80'>
+                  <tr key={e._id} className='hover:bg-brand-50/50 transition-colors duration-200 group'>
                     <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>
                       {formatDate(e.expenseDate)}
                     </td>
@@ -530,14 +530,14 @@ export default function AdminExpensesPage() {
                         <button
                           type='button'
                           onClick={() => setEditExpense(e)}
-                          className='p-2 rounded-lg hover:bg-amber-50 text-gray-500 hover:text-amber-700'
+                          className='p-2 rounded-lg hover:bg-white bg-transparent text-gray-400 hover:text-navy-700 hover:shadow-sm transition-all opacity-0 group-hover:opacity-100'
                         >
                           <Pencil className='h-4 w-4' />
                         </button>
                         <button
                           type='button'
                           onClick={() => handleVoid(e)}
-                          className='p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600'
+                          className='p-2 rounded-lg hover:bg-white bg-transparent text-gray-400 hover:text-red-600 hover:shadow-sm transition-all opacity-0 group-hover:opacity-100'
                         >
                           <Trash2 className='h-4 w-4' />
                         </button>

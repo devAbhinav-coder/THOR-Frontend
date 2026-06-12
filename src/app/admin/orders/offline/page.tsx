@@ -390,20 +390,15 @@ function ManualLineEditor({
 export default function AdminOfflineOrderPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
 
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  const [orderSource, setOrderSource] = useState<"stall" | "personal_contact">(
-    "stall",
-  );
-  const [fulfillment, setFulfillment] = useState<
-    "delhivery" | "offline_handover"
-  >("offline_handover");
-  const [paymentMethod, setPaymentMethod] = useState<
-    "offline_upi" | "offline_cash"
-  >("offline_upi");
+  const [orderSource, setOrderSource] = useState<"stall" | "personal_contact">("stall");
+  const [fulfillment, setFulfillment] = useState<"delhivery" | "offline_handover">("offline_handover");
+  const [paymentMethod, setPaymentMethod] = useState<"offline_upi" | "offline_cash">("offline_upi");
 
   const [lines, setLines] = useState<DraftLine[]>(() => [emptyCatalogDraft()]);
   const [shopCategories, setShopCategories] = useState<Category[]>([]);
@@ -427,8 +422,7 @@ export default function AdminOfflineOrderPage() {
       .then((res) => {
         if (cancelled) return;
         const raw = res.data?.categories;
-        const list =
-          Array.isArray(raw) ? raw.filter(isShopCatalogCategory) : [];
+        const list = Array.isArray(raw) ? raw.filter(isShopCatalogCategory) : [];
         list.sort((a, b) => a.name.localeCompare(b.name));
         setShopCategories(list);
       })
@@ -438,25 +432,15 @@ export default function AdminOfflineOrderPage() {
       .finally(() => {
         if (!cancelled) setCategoriesLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const patchCatalog = useCallback((id: string, p: Partial<CatalogDraft>) => {
-    setLines((prev) =>
-      prev.map((l) =>
-        l.id === id && l.kind === "catalog" ? { ...l, ...p } : l,
-      ),
-    );
+    setLines((prev) => prev.map((l) => (l.id === id && l.kind === "catalog" ? { ...l, ...p } : l)));
   }, []);
 
   const patchManual = useCallback((id: string, p: Partial<ManualDraft>) => {
-    setLines((prev) =>
-      prev.map((l) =>
-        l.id === id && l.kind === "manual" ? { ...l, ...p } : l,
-      ),
-    );
+    setLines((prev) => prev.map((l) => (l.id === id && l.kind === "manual" ? { ...l, ...p } : l)));
   }, []);
 
   const setLineKind = useCallback((id: string, kind: "catalog" | "manual") => {
@@ -475,54 +459,60 @@ export default function AdminOfflineOrderPage() {
     });
   }, []);
 
+  const handleNext = () => {
+    if (currentStep === 1) {
+      if (customerName.trim().length < 2) return toast.error("Enter customer name");
+      if (email.trim() && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+.[A-Z]{2,}$/i.test(email.trim())) return toast.error("Enter a valid email");
+      if (phone.trim() && !/^[6-9]\d{9}$/.test(phone.replace(/\D/g, "").slice(-10))) return toast.error("Enter a valid 10-digit mobile number");
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (fulfillment === "delhivery") {
+        const pin = shipPin.replace(/\D/g, "").slice(0, 6);
+        if (!shipStreet.trim() || !shipCity.trim() || !shipState.trim() || !/^\d{6}$/.test(pin)) {
+          return toast.error("Complete shipping address for Delhivery (street, city, state, 6-digit PIN)");
+        }
+        const sp = shipPhone.replace(/\D/g, "").slice(-10);
+        if (shipPhone.trim() && !/^[6-9]\d{9}$/.test(sp)) {
+          return toast.error("Shipping phone must be a valid 10-digit number");
+        }
+      }
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]!;
+        if (line.kind === "catalog") {
+          if (!line.selectedProduct?._id || !line.variantSku) return toast.error(`Line ${i + 1}: select a product and variant`);
+          const up = Number(line.unitPrice);
+          if (!Number.isFinite(up) || up < 0) return toast.error(`Line ${i + 1}: enter a valid unit price`);
+        } else {
+          const up = Number(line.unitPrice);
+          if (!Number.isFinite(up) || up < 0) return toast.error(`Line ${i + 1}: enter a valid unit price`);
+          if (!line.categorySelect) return toast.error(`Line ${i + 1}: choose a category or Other`);
+          if (line.categorySelect === OTHER_CATEGORY_VALUE && !line.customTitle.trim()) return toast.error(`Line ${i + 1}: enter a custom description for Other`);
+        }
+      }
+      setCurrentStep(4);
+    }
+  };
+
+  const handleBack = () => setCurrentStep((s) => Math.max(1, s - 1));
+
   const buildPayload = useCallback((): AdminCreateOfflineOrderBody | null => {
     const name = customerName.trim();
     const em = email.trim().toLowerCase();
     const ph = phone.replace(/\D/g, "").slice(-10);
-    if (name.length < 2) {
-      toast.error("Enter customer name");
-      return null;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
-      toast.error("Enter a valid email");
-      return null;
-    }
-    if (!/^[6-9]\d{9}$/.test(ph)) {
-      toast.error("Enter a valid 10-digit mobile number");
-      return null;
-    }
-
+    
     const lineItems: AdminCreateOfflineOrderBody["lineItems"] = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
-      const label = `Line ${i + 1}`;
       if (line.kind === "catalog") {
-        if (!line.selectedProduct?._id || !line.variantSku) {
-          toast.error(`${label}: select a product and variant`);
-          return null;
-        }
-        const up = Number(line.unitPrice);
-        if (!Number.isFinite(up) || up < 0) {
-          toast.error(`${label}: enter a valid unit price`);
-          return null;
-        }
         const q = Math.max(1, Math.min(50, Math.floor(line.quantity)));
-        const v = line.selectedProduct.variants.find(
-          (x) => x.sku === line.variantSku,
-        );
-        const listed =
-          v && typeof v.price === "number" && v.price >= 0 ?
-            v.price
-          : line.selectedProduct.price;
-        const out: {
-          type: "catalog";
-          productId: string;
-          variantSku: string;
-          quantity: number;
-          unitPrice?: number;
-        } = {
+        const up = Number(line.unitPrice);
+        const v = line.selectedProduct!.variants.find((x) => x.sku === line.variantSku);
+        const listed = v && typeof v.price === "number" && v.price >= 0 ? v.price : line.selectedProduct!.price;
+        const out: any = {
           type: "catalog",
-          productId: line.selectedProduct._id,
+          productId: line.selectedProduct!._id,
           variantSku: line.variantSku,
           quantity: q,
         };
@@ -532,34 +522,11 @@ export default function AdminOfflineOrderPage() {
         lineItems.push(out);
       } else {
         const up = Number(line.unitPrice);
-        if (!Number.isFinite(up) || up < 0) {
-          toast.error(`${label}: enter a valid unit price`);
-          return null;
-        }
         const q = Math.max(1, Math.min(50, Math.floor(line.quantity)));
-        if (!line.categorySelect) {
-          toast.error(`${label}: choose a category or Other`);
-          return null;
-        }
         if (line.categorySelect === OTHER_CATEGORY_VALUE) {
-          const t = line.customTitle.trim();
-          if (!t) {
-            toast.error(`${label}: enter a custom description for Other`);
-            return null;
-          }
-          lineItems.push({
-            type: "manual",
-            title: t,
-            quantity: q,
-            unitPrice: up,
-          });
+          lineItems.push({ type: "manual", title: line.customTitle.trim(), quantity: q, unitPrice: up });
         } else {
-          lineItems.push({
-            type: "manual",
-            categoryId: line.categorySelect,
-            quantity: q,
-            unitPrice: up,
-          });
+          lineItems.push({ type: "manual", categoryId: line.categorySelect, quantity: q, unitPrice: up });
         }
       }
     }
@@ -567,25 +534,10 @@ export default function AdminOfflineOrderPage() {
     let shippingAddress: AdminCreateOfflineOrderBody["shippingAddress"];
     if (fulfillment === "delhivery") {
       const pin = shipPin.replace(/\D/g, "").slice(0, 6);
-      if (
-        !shipStreet.trim() ||
-        !shipCity.trim() ||
-        !shipState.trim() ||
-        !/^\d{6}$/.test(pin)
-      ) {
-        toast.error(
-          "Complete shipping address for Delhivery (street, city, state, 6-digit PIN)",
-        );
-        return null;
-      }
       const sp = shipPhone.replace(/\D/g, "").slice(-10);
-      if (!/^[6-9]\d{9}$/.test(sp)) {
-        toast.error("Shipping phone must be a valid 10-digit Indian number");
-        return null;
-      }
       shippingAddress = {
         name: shipName.trim() || name,
-        phone: sp,
+        phone: sp || ph || undefined,
         house: shipHouse.trim() || undefined,
         street: shipStreet.trim(),
         landmark: shipLandmark.trim() || undefined,
@@ -598,8 +550,8 @@ export default function AdminOfflineOrderPage() {
 
     return {
       customerName: name,
-      email: em,
-      phone: ph,
+      ...(em ? { email: em } : {}),
+      ...(ph && ph.length === 10 ? { phone: ph } : {}),
       orderSource,
       fulfillment,
       paymentMethod,
@@ -607,24 +559,7 @@ export default function AdminOfflineOrderPage() {
       ...(shippingAddress ? { shippingAddress } : {}),
       ...(notes.trim() ? { notes: notes.trim().slice(0, 2000) } : {}),
     };
-  }, [
-    customerName,
-    email,
-    phone,
-    lines,
-    fulfillment,
-    shipPin,
-    shipStreet,
-    shipCity,
-    shipState,
-    shipName,
-    shipPhone,
-    shipHouse,
-    shipLandmark,
-    orderSource,
-    paymentMethod,
-    notes,
-  ]);
+  }, [customerName, email, phone, lines, fulfillment, shipPin, shipStreet, shipCity, shipState, shipName, shipPhone, shipHouse, shipLandmark, orderSource, paymentMethod, notes]);
 
   const handleSubmit = async () => {
     const body = buildPayload();
@@ -637,18 +572,23 @@ export default function AdminOfflineOrderPage() {
       if (id) router.push(`/admin/orders/${encodeURIComponent(id)}`);
       else router.push("/admin/orders");
     } catch (err: unknown) {
-      toast.error(
-        (err as { message?: string })?.message || "Could not create order",
-      );
+      toast.error((err as { message?: string })?.message || "Could not create order");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const steps = [
+    { id: 1, title: "Customer", icon: UserRound },
+    { id: 2, title: "Fulfillment", icon: Truck },
+    { id: 3, title: "Products", icon: PackageSearch },
+    { id: 4, title: "Payment", icon: Wallet },
+  ];
+
   return (
-    <div className='mx-auto max-w-4xl space-y-5 p-4 pb-32 sm:p-6 xl:p-8' style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div className='mx-auto max-w-4xl space-y-2 p-4 sm:p-6 xl:p-8'>
       {/* Premium header */}
-      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#14192f] to-slate-800 p-5 shadow-xl'>
+      <div className='hidden sm:block relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#14192f] to-slate-800 p-5 shadow-xl'>
         <div className='pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-brand-500/10 blur-3xl' />
         <div className='relative flex flex-wrap items-center justify-between gap-3'>
           <div>
@@ -664,387 +604,306 @@ export default function AdminOfflineOrderPage() {
               <h1 className='text-xl font-serif font-bold text-white'>Offline Order</h1>
               <span className='rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/70'>POS</span>
             </div>
-            <p className='text-sm text-slate-400 mt-1'>Record stall or personal-contact sales — confirmed &amp; paid instantly.</p>
+            <p className='text-sm text-slate-400 mt-1'>Record stall or personal-contact sales step-by-step.</p>
           </div>
-          <Link
-            href='/admin/orders'
-            className='shrink-0 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:bg-white/20'
-          >
-            All orders
-          </Link>
         </div>
       </div>
 
-      {/* Customer */}
-      <section className='space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6'>
-        <div className='flex items-center gap-2 font-semibold text-gray-900'>
-          <span className='flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 text-xs font-black text-brand-800'>
-            1
-          </span>
-          <UserRound className='h-4 w-4 text-brand-600' />
-          Customer
-        </div>
-        <div className='grid gap-3 sm:grid-cols-2'>
-          <label className='block space-y-1.5'>
-            <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-              Full name
-            </span>
-            <input
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className='h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-              placeholder='e.g. Priya Sharma'
-              autoComplete='name'
-            />
-          </label>
-          <label className='block space-y-1.5'>
-            <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-              Email
-            </span>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className='h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-              placeholder='customer@email.com'
-              autoComplete='email'
-            />
-          </label>
-          <label className='block space-y-1.5 sm:col-span-2'>
-            <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-              Phone
-            </span>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className='h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-              placeholder='10-digit mobile'
-              autoComplete='tel'
-            />
-          </label>
-        </div>
-
-        <div>
-          <p className='mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500'>
-            Order source
-          </p>
-          <div className='flex flex-wrap gap-2'>
-            <button
-              type='button'
-              onClick={() => setOrderSource("stall")}
-              className={cn(
-                pill,
-                orderSource === "stall" ?
-                  "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
-                : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
-              )}
-            >
-              <Store className='mr-1.5 inline h-4 w-4 -mt-0.5 opacity-80' />
-              Stall
-            </button>
-            <button
-              type='button'
-              onClick={() => setOrderSource("personal_contact")}
-              className={cn(
-                pill,
-                orderSource === "personal_contact" ?
-                  "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
-                : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
-              )}
-            >
-              <PenLine className='mr-1.5 inline h-4 w-4 -mt-0.5 opacity-80' />
-              Personal contact
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Products */}
-      <section className='space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6'>
-        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-          <div className='flex items-center gap-2 font-semibold text-gray-900'>
-            <span className='flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 text-xs font-black text-brand-800'>
-              2
-            </span>
-            <PackageSearch className='h-4 w-4 text-brand-600' />
-            Products &amp; prices
-          </div>
-          <div className='flex flex-wrap gap-2'>
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              className='rounded-xl'
-              onClick={() => setLines((p) => [...p, emptyCatalogDraft()])}
-            >
-              <Plus className='mr-1.5 h-4 w-4' />
-              Add catalog product
-            </Button>
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              className='rounded-xl'
-              onClick={() => setLines((p) => [...p, emptyManualDraft()])}
-            >
-              <Plus className='mr-1.5 h-4 w-4' />
-              Add category Product
-            </Button>
-          </div>
-        </div>
-
-        <div className='space-y-4'>
-          {lines.map((line, idx) => (
-            <div
-              key={line.id}
-              className='rounded-2xl border border-gray-100 bg-gray-50/40 p-4'
-            >
-              <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
-                <span className='text-xs font-bold uppercase tracking-wide text-gray-500'>
-                  Product {idx + 1}
+      {/* Progress Indicators */}
+      <div className="relative">
+        <div className="absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2 bg-gray-100 rounded-full" />
+        <div 
+          className="absolute top-1/2 left-0 h-0.5 -translate-y-1/2 bg-brand-500 rounded-full transition-all duration-500 ease-in-out" 
+          style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+        />
+        <div className="relative flex justify-between">
+          {steps.map((step) => {
+            const Icon = step.icon;
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            return (
+              <div key={step.id} className="flex flex-col items-center gap-2 z-10">
+                <button
+                  type="button"
+                  onClick={() => {
+                     if (isCompleted || isActive) setCurrentStep(step.id);
+                  }}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
+                    isActive ? "border-brand-500 bg-brand-50 text-brand-600 scale-110 shadow-sm" : 
+                    isCompleted ? "border-brand-500 bg-brand-500 text-white" : 
+                    "border-gray-200 bg-white text-gray-400"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+                <span className={cn(
+                  "text-[11px] font-bold uppercase tracking-widest transition-colors",
+                  isActive || isCompleted ? "text-gray-900" : "text-gray-400"
+                )}>
+                  {step.title}
                 </span>
-                <div className='flex flex-wrap gap-2'>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        {/* Step 1 */}
+        <div className={cn(currentStep === 1 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
+          <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900">Customer Details</h2>
+              <div className='grid gap-2 sm:grid-cols-2'>
+                <label className='block space-y-1.5 sm:col-span-2'>
+                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Full name <span className="text-red-500">*</span></span>
+                  <input
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className='h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+                    placeholder='e.g. Priya Sharma'
+                  />
+                </label>
+                <label className='block space-y-1.5'>
+                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Email (Optional)</span>
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className='h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+                    placeholder='customer@email.com'
+                  />
+                </label>
+                <label className='block space-y-1.5'>
+                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Phone (Optional)</span>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className='h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+                    placeholder='10-digit mobile'
+                  />
+                </label>
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-end gap-3">
+              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">Next →</Button>
+            </div>
+          </section>
+        </div>
+
+        {/* Step 2 */}
+        <div className={cn(currentStep === 2 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
+          <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900">Order Context & Fulfillment</h2>
+              
+              <div className="space-y-3">
+                <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Order source</p>
+                <div className='flex gap-3'>
                   <button
                     type='button'
-                    onClick={() => setLineKind(line.id, "catalog")}
+                    onClick={() => setOrderSource("stall")}
                     className={cn(
-                      pill,
-                      line.kind === "catalog" ?
-                        "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
+                      pill, "flex-1 py-3 justify-center text-center text-sm",
+                      orderSource === "stall" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
                     )}
                   >
-                    Catalog
+                    <Store className='mr-1.5 mb-0.5 inline h-4 w-4 opacity-80' />
+                    Stall / POS
                   </button>
                   <button
                     type='button'
-                    onClick={() => setLineKind(line.id, "manual")}
+                    onClick={() => setOrderSource("personal_contact")}
                     className={cn(
-                      pill,
-                      line.kind === "manual" ?
-                        "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
+                      pill, "flex-1 py-3 justify-center text-center text-sm",
+                      orderSource === "personal_contact" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
                     )}
                   >
-                    Category / Other
+                    <PenLine className='mr-1.5 mb-0.5 inline h-4 w-4 opacity-80' />
+                    Personal
                   </button>
                 </div>
               </div>
 
-              {line.kind === "catalog" ?
-                <CatalogLineEditor
-                  lineId={line.id}
-                  line={line}
-                  patch={patchCatalog}
-                  onRemove={() => removeLine(line.id)}
-                  canRemove={lines.length > 1}
-                />
-              : <ManualLineEditor
-                  lineId={line.id}
-                  line={line}
-                  patch={patchManual}
-                  shopCategories={shopCategories}
-                  categoriesLoading={categoriesLoading}
-                  onRemove={() => removeLine(line.id)}
-                  canRemove={lines.length > 1}
-                />
-              }
+              <div className="pt-4 border-t border-gray-100 space-y-3">
+                <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Fulfillment Method</p>
+                <div className='flex gap-3'>
+                  <button
+                    type='button'
+                    onClick={() => setFulfillment("delhivery")}
+                    className={cn(
+                      pill, "flex-1 py-3 flex flex-col items-center justify-center gap-1.5",
+                      fulfillment === "delhivery" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                    )}
+                  >
+                    <Truck className='h-5 w-5 opacity-80' />
+                    <span className="text-xs sm:text-sm">Delhivery</span>
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setFulfillment("offline_handover")}
+                    className={cn(
+                      pill, "flex-1 py-3 flex flex-col items-center justify-center gap-1.5",
+                      fulfillment === "offline_handover" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                    )}
+                  >
+                    <HandIcon className='h-5 w-5 opacity-80' />
+                    <span className="text-xs sm:text-sm">Handover</span>
+                  </button>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Delivery */}
-      <section className='space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6'>
-        <div className='flex items-center gap-2 font-semibold text-gray-900'>
-          <span className='flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 text-xs font-black text-brand-800'>
-            3
-          </span>
-          <Truck className='h-4 w-4 text-brand-600' />
-          Delivery
-        </div>
-        <div className='flex flex-wrap gap-2'>
-          <button
-            type='button'
-            onClick={() => setFulfillment("delhivery")}
-            className={cn(
-              pill,
-              fulfillment === "delhivery" ?
-                "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
-              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+            {fulfillment === "delhivery" && (
+              <div className='space-y-4 rounded-xl border border-amber-100 bg-amber-50/40 p-4 sm:p-5 mt-6 animate-in fade-in slide-in-from-top-2'>
+                <div className='flex items-start gap-2 text-sm text-amber-900 font-medium pb-2 border-b border-amber-100/50'>
+                  <MapPin className='mt-0.5 h-4 w-4 shrink-0' />
+                  <p>Shipping Details for Delhivery Integration</p>
+                </div>
+                <div className='grid gap-4 sm:grid-cols-2'>
+                  <label className='block space-y-1.5'>
+                    <span className='text-xs text-gray-600 font-semibold'>Recipient name</span>
+                    <input value={shipName} onChange={(e) => setShipName(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' placeholder='Defaults to customer name' />
+                  </label>
+                  <label className='block space-y-1.5'>
+                    <span className='text-xs text-gray-600 font-semibold'>Phone</span>
+                    <input value={shipPhone} onChange={(e) => setShipPhone(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' placeholder='10-digit' />
+                  </label>
+                  <label className='block space-y-1.5 sm:col-span-2'>
+                    <span className='text-xs text-gray-600 font-semibold'>Flat / house (optional)</span>
+                    <input value={shipHouse} onChange={(e) => setShipHouse(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                  </label>
+                  <label className='block space-y-1.5 sm:col-span-2'>
+                    <span className='text-xs text-gray-600 font-semibold'>Street / area <span className="text-red-500">*</span></span>
+                    <input value={shipStreet} onChange={(e) => setShipStreet(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                  </label>
+                  <label className='block space-y-1.5 sm:col-span-2'>
+                    <span className='text-xs text-gray-600 font-semibold'>Landmark (optional)</span>
+                    <input value={shipLandmark} onChange={(e) => setShipLandmark(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                  </label>
+                  <label className='block space-y-1.5'>
+                    <span className='text-xs text-gray-600 font-semibold'>City <span className="text-red-500">*</span></span>
+                    <input value={shipCity} onChange={(e) => setShipCity(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                  </label>
+                  <label className='block space-y-1.5'>
+                    <span className='text-xs text-gray-600 font-semibold'>State <span className="text-red-500">*</span></span>
+                    <input value={shipState} onChange={(e) => setShipState(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                  </label>
+                  <label className='block space-y-1.5 sm:col-span-2'>
+                    <span className='text-xs text-gray-600 font-semibold'>PIN code <span className="text-red-500">*</span></span>
+                    <input value={shipPin} onChange={(e) => setShipPin(e.target.value.replace(/\D/g, "").slice(0, 6))} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm tracking-widest' placeholder='6 digits' />
+                  </label>
+                </div>
+              </div>
             )}
-          >
-            <Truck className='mr-1.5 inline h-4 w-4 -mt-0.5 opacity-80' />
-            Delhivery / courier
-          </button>
-          <button
-            type='button'
-            onClick={() => setFulfillment("offline_handover")}
-            className={cn(
-              pill,
-              fulfillment === "offline_handover" ?
-                "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
-              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
-            )}
-          >
-            <HandIcon className='mr-1.5 inline h-4 w-4 -mt-0.5 opacity-80' />
-            Offline handover
-          </button>
-        </div>
 
-        {fulfillment === "delhivery" && (
-          <div className='space-y-3 rounded-xl border border-amber-100 bg-amber-50/40 p-4'>
-            <div className='flex items-start gap-2 text-sm text-amber-900'>
-              <MapPin className='mt-0.5 h-4 w-4 shrink-0' />
-              <p>
-                Used for courier labels and Delhivery automation — same rules as
-                web checkout orders.
-              </p>
+            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-between gap-3">
+              <Button type="button" variant="outline" onClick={handleBack} className="w-24 rounded-xl shadow-sm">← Back</Button>
+              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">Next →</Button>
             </div>
-            <div className='grid gap-3 sm:grid-cols-2'>
+          </section>
+        </div>
+
+        {/* Step 3 */}
+        <div className={cn(currentStep === 3 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
+          <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm'>
+            <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 '>
+              <h2 className="text-lg font-bold text-gray-900">Products &amp; Prices</h2>
+              <div className='flex flex-row flex-wrap gap-2'>
+                <Button type='button' variant='outline' size='sm' className='rounded-xl flex-1 sm:flex-none' onClick={() => setLines((p) => [...p, emptyCatalogDraft()])}>
+                  <Plus className='mr-1.5 h-4 w-4' /> Catalog Product
+                </Button>
+                <Button type='button' variant='outline' size='sm' className='rounded-xl flex-1 sm:flex-none' onClick={() => setLines((p) => [...p, emptyManualDraft()])}>
+                  <Plus className='mr-1.5 h-4 w-4' /> Custom Line
+                </Button>
+              </div>
+            </div>
+
+            <div className='space-y-2'>
+              {lines.map((line, idx) => (
+                <div key={line.id} className='rounded-2xl border border-gray-200 bg-gray-50/50 p-3 sm:p-4'>
+                  <div className='mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+                    <span className='text-xs font-bold uppercase tracking-wide text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md w-max'>Item {idx + 1}</span>
+                    <div className='flex p-1 bg-gray-200/50 rounded-lg w-full sm:w-auto'>
+                      <button type='button' onClick={() => setLineKind(line.id, "catalog")} className={cn("flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all", line.kind === "catalog" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}>Catalog</button>
+                      <button type='button' onClick={() => setLineKind(line.id, "manual")} className={cn("flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all", line.kind === "manual" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}>Category / Other</button>
+                    </div>
+                  </div>
+
+                  {line.kind === "catalog" ? (
+                    <CatalogLineEditor lineId={line.id} line={line} patch={patchCatalog} onRemove={() => removeLine(line.id)} canRemove={lines.length > 1} />
+                  ) : (
+                    <ManualLineEditor lineId={line.id} line={line} patch={patchManual} shopCategories={shopCategories} categoriesLoading={categoriesLoading} onRemove={() => removeLine(line.id)} canRemove={lines.length > 1} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-between gap-3">
+              <Button type="button" variant="outline" onClick={handleBack} className="w-24 rounded-xl shadow-sm">← Back</Button>
+              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">Next →</Button>
+            </div>
+          </section>
+        </div>
+
+        {/* Step 4 */}
+        <div className={cn(currentStep === 4 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
+           <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900">Payment &amp; Review</h2>
+              <div className='flex flex-col sm:flex-row gap-3'>
+                <button
+                  type='button'
+                  onClick={() => setPaymentMethod("offline_upi")}
+                  className={cn(
+                    pill, "flex-1 py-4 text-base",
+                    paymentMethod === "offline_upi" ? "border-emerald-400 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200 shadow-sm" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                  )}
+                >
+                  💳 UPI (offline)
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setPaymentMethod("offline_cash")}
+                  className={cn(
+                    pill, "flex-1 py-4 text-base",
+                    paymentMethod === "offline_cash" ? "border-emerald-400 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200 shadow-sm" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                  )}
+                >
+                  💵 Cash
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100">
               <label className='block space-y-1.5'>
-                <span className='text-xs text-gray-600'>Recipient name</span>
-                <input
-                  value={shipName}
-                  onChange={(e) => setShipName(e.target.value)}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
-                  placeholder='Defaults to customer name'
-                />
-              </label>
-              <label className='block space-y-1.5'>
-                <span className='text-xs text-gray-600'>Phone</span>
-                <input
-                  value={shipPhone}
-                  onChange={(e) => setShipPhone(e.target.value)}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
-                  placeholder='10-digit'
-                />
-              </label>
-              <label className='block space-y-1.5 sm:col-span-2'>
-                <span className='text-xs text-gray-600'>
-                  Flat / house (optional)
-                </span>
-                <input
-                  value={shipHouse}
-                  onChange={(e) => setShipHouse(e.target.value)}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
-                />
-              </label>
-              <label className='block space-y-1.5 sm:col-span-2'>
-                <span className='text-xs text-gray-600'>Street / area</span>
-                <input
-                  value={shipStreet}
-                  onChange={(e) => setShipStreet(e.target.value)}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
-                />
-              </label>
-              <label className='block space-y-1.5 sm:col-span-2'>
-                <span className='text-xs text-gray-600'>
-                  Landmark (optional)
-                </span>
-                <input
-                  value={shipLandmark}
-                  onChange={(e) => setShipLandmark(e.target.value)}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
-                />
-              </label>
-              <label className='block space-y-1.5'>
-                <span className='text-xs text-gray-600'>City</span>
-                <input
-                  value={shipCity}
-                  onChange={(e) => setShipCity(e.target.value)}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
-                />
-              </label>
-              <label className='block space-y-1.5'>
-                <span className='text-xs text-gray-600'>State</span>
-                <input
-                  value={shipState}
-                  onChange={(e) => setShipState(e.target.value)}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm'
-                />
-              </label>
-              <label className='block space-y-1.5 sm:col-span-2'>
-                <span className='text-xs text-gray-600'>PIN code</span>
-                <input
-                  value={shipPin}
-                  onChange={(e) =>
-                    setShipPin(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm tracking-widest'
-                  placeholder='6 digits'
+                <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Internal notes (optional)</span>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className='w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+                  placeholder='Reference for your team...'
                 />
               </label>
             </div>
-          </div>
-        )}
-      </section>
+            
+            <div className="rounded-xl bg-gray-50 p-4 border border-gray-100">
+               <h3 className="font-semibold text-gray-900 mb-2">Order Summary Overview</h3>
+               <ul className="space-y-2 text-sm text-gray-600">
+                 <li className="flex justify-between"><span>Customer:</span> <span className="font-medium text-gray-900">{customerName || "—"}</span></li>
+                 <li className="flex justify-between"><span>Total Items:</span> <span className="font-medium text-gray-900">{lines.length} Line(s)</span></li>
+                 <li className="flex justify-between"><span>Fulfillment:</span> <span className="font-medium text-gray-900">{fulfillment === "delhivery" ? "Delhivery" : "Handover"}</span></li>
+                 <li className="flex justify-between"><span>Payment:</span> <span className="font-medium text-gray-900">{paymentMethod === "offline_upi" ? "UPI" : "Cash"}</span></li>
+               </ul>
+            </div>
 
-      {/* Payment */}
-      <section className='space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6'>
-        <div className='flex items-center gap-2 font-semibold text-gray-900'>
-          <span className='flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 text-xs font-black text-brand-800'>
-            4
-          </span>
-          <Wallet className='h-4 w-4 text-brand-600' />
-          Payment collected
-        </div>
-        <div className='flex flex-wrap gap-2'>
-          <button
-            type='button'
-            onClick={() => setPaymentMethod("offline_upi")}
-            className={cn(
-              pill,
-              paymentMethod === "offline_upi" ?
-                "border-emerald-400 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200"
-              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
-            )}
-          >
-            UPI (offline)
-          </button>
-          <button
-            type='button'
-            onClick={() => setPaymentMethod("offline_cash")}
-            className={cn(
-              pill,
-              paymentMethod === "offline_cash" ?
-                "border-emerald-400 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200"
-              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
-            )}
-          >
-            Cash
-          </button>
-        </div>
-
-        <label className='block space-y-1.5'>
-          <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-            Internal notes (optional)
-          </span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            className='min-h-[72px] w-full resize-y rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-            placeholder='Reference for your team…'
-          />
-        </label>
-      </section>
-
-      {/* Sticky submit — safe-area aware for iOS/Android notch & nav bar */}
-      <div className='fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/98 backdrop-blur-md'
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)' }}>
-        <div className='mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8'>
-          <p className='hidden sm:block text-xs text-gray-500'>
-            Multiple lines summed like checkout. Handover = delivered + paid, no shipping.
-          </p>
-          <Button
-            type='button'
-            variant='brand'
-            className='w-full sm:w-auto min-w-[160px] rounded-xl h-12 text-base font-bold shadow-lg'
-            loading={submitting}
-            onClick={() => void handleSubmit()}
-          >
-            ✓ Create Order
-          </Button>
+            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-between gap-3">
+              <Button type="button" variant="outline" onClick={handleBack} disabled={submitting} className="w-24 rounded-xl shadow-sm">← Back</Button>
+              <Button type='button' variant='brand' className='min-w-[150px] rounded-xl font-bold shadow-lg' loading={submitting} onClick={() => void handleSubmit()}>✓ Create Order</Button>
+            </div>
+          </section>
         </div>
       </div>
     </div>

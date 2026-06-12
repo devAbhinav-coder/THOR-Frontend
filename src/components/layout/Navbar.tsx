@@ -21,6 +21,7 @@ import {
   Home,
   Store,
   Gift,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -71,6 +72,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const shopMenu = useNavDropdown();
   const userMenu = useNavDropdown();
   const [announcementIndex, setAnnouncementIndex] = useState(0);
@@ -234,6 +236,8 @@ export default function Navbar() {
 
   const navActive = useStoreNavActive();
 
+  const isCheckoutFlow = pathname === "/cart" || pathname.startsWith("/checkout");
+
   const mobileBottomNavItems: MobileBottomItem[] = useMemo(
     () => [
       { id: "home", label: "Home", Icon: Home, href: "/", activeKey: "home" },
@@ -280,7 +284,7 @@ export default function Navbar() {
   return (
     <>
       <BrowserNotificationPrompt />
-      {announcementMessages.length > 0 && !navActive.home && (
+      {announcementMessages.length > 0 && !navActive.home && !isCheckoutFlow && (
         <div className={navAnnouncementShell}>
           <p className={navAnnouncementText}>
             {announcementMessages[announcementIndex]}
@@ -290,12 +294,12 @@ export default function Navbar() {
 
       <header className={navShellClass(isScrolled)}>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
-          <div className='flex items-center justify-between h-[4.25rem] gap-3'>
+          <div className={cn('flex items-center justify-between gap-3', isCheckoutFlow ? "h-12 lg:h-[4.25rem]" : "h-[4.25rem]")}>
             <div className='flex items-center gap-1 sm:gap-2 lg:gap-0'>
               <button
                 type='button'
                 onClick={() => setIsMenuOpen((o) => !o)}
-                className={cn(navIconButton, "lg:hidden -ml-1")}
+                className={cn(navIconButton, "lg:hidden -ml-1", isCheckoutFlow && "hidden")}
                 aria-label={
                   isMenuOpen ? "Close navigation menu" : "Open navigation menu"
                 }
@@ -309,9 +313,25 @@ export default function Navbar() {
                 />
               </button>
               {/* Logo — left on mobile, desktop flow */}
+              {isCheckoutFlow && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pathname.startsWith("/checkout")) {
+                      setShowExitConfirm(true);
+                    } else {
+                      router.back();
+                    }
+                  }}
+                  className="lg:hidden flex items-center gap-1.5 text-white/80 hover:text-white transition -ml-2 p-2"
+                >
+                  <ChevronDown className="w-5 h-5 rotate-90" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Back</span>
+                </button>
+              )}
               <Link
                 href='/'
-                className='flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0'
+                className={cn('flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0', isCheckoutFlow && "max-lg:hidden")}
                 aria-label='The House of Rani — Home'
               >
                 <Image
@@ -391,7 +411,7 @@ export default function Navbar() {
             </div>
 
             {/* Right actions — mobile: search on right; cart in header only on desktop (mobile: bottom nav) */}
-            <div className='flex items-center justify-end gap-0.5 sm:gap-1 shrink-0'>
+            <div className={cn('flex items-center justify-end gap-0.5 sm:gap-1 shrink-0', isCheckoutFlow && "max-lg:hidden")}>
               {isAuthedStable && (
                 <Link
                   href='/wishlist'
@@ -504,6 +524,13 @@ export default function Navbar() {
                 </Link>
               }
             </div>
+
+            {isCheckoutFlow && (
+              <div className="lg:hidden flex items-center gap-1.5 text-[#c5a059] pr-1">
+                <Shield className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Secure</span>
+              </div>
+            )}
           </div>
 
           {/* Announcement Bar Removed from Header */}
@@ -754,10 +781,11 @@ export default function Navbar() {
       )}
 
       {/* Mobile bottom navigation — solid bg (no backdrop-blur / alpha bg: avoids “white bar” + invisible white icons on iOS/WebKit) */}
-      <nav
-        className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(20,25,47,0.55)] [color-scheme:dark]'
-        aria-label='Primary'
-      >
+      {!isCheckoutFlow && (
+        <nav
+          className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(20,25,47,0.55)] [color-scheme:dark]'
+          aria-label='Primary'
+        >
         <div className='mx-auto grid min-h-[3.25rem] w-full max-w-xl grid-cols-6 px-0.5'>
           {mobileBottomNavItems.map(
             ({ id, label, Icon, href, activeKey, showCartBadge }) => {
@@ -801,6 +829,45 @@ export default function Navbar() {
           )}
         </div>
       </nav>
+      )}
+
+      {/* Checkout Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-navy-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm border border-gray-200 bg-white shadow-2xl">
+            <div className="border-b border-gray-100 p-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#fff8eb] text-[#c5a059]">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="font-serif text-xl font-medium text-navy-900">
+                Leave Checkout?
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                Your progress will be saved, but you are almost done placing your order.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 p-4">
+              <button
+                type="button"
+                onClick={() => setShowExitConfirm(false)}
+                className="w-full bg-[#c5a059] py-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d]"
+              >
+                Continue Checkout
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  router.back();
+                }}
+                className="w-full border border-gray-200 bg-white py-3 text-[11px] font-bold uppercase tracking-widest text-gray-600 transition-colors hover:border-gray-300 hover:text-navy-900"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

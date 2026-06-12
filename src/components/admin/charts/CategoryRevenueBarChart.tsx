@@ -14,14 +14,14 @@ import {
 import { formatPrice, cn } from '@/lib/utils';
 
 const BAR_COLORS = [
-  '#1d4ed8',
-  '#2563eb',
-  '#3b82f6',
-  '#0ea5e9',
-  '#0369a1',
-  '#1e40af',
-  '#60a5fa',
-  '#0284c7',
+  '#c5a059', // brand-500
+  '#d1ad68', // brand-400
+  '#b8924d', // brand-600
+  '#e8d4a8', // brand-200
+  '#dbbc7c', // brand-300
+  '#14192f', // navy-900
+  '#2f3d75', // navy-600
+  '#5f6dad', // navy-400
 ];
 
 type Row = { _id: string; revenue: number; units: number };
@@ -115,7 +115,11 @@ export function CategoryRevenueBarChart({
             />
             <Bar dataKey="revenue" name="Revenue" radius={[0, 6, 6, 0]} maxBarSize={28}>
               {chartData.map((_, i) => (
-                <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                <Cell 
+                  key={i} 
+                  fill={BAR_COLORS[i % BAR_COLORS.length]} 
+                  className="transition-all duration-300 hover:opacity-80 cursor-pointer drop-shadow-sm"
+                />
               ))}
             </Bar>
           </BarChart>

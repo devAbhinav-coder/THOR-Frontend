@@ -151,15 +151,15 @@ export function RevenueTrendAreaChart({
               <defs>
                 {/* Dark at top (near line) → light / clear at bottom */}
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1e3a8a" stopOpacity={0.72} />
-                  <stop offset="28%" stopColor="#2563eb" stopOpacity={0.45} />
-                  <stop offset="55%" stopColor="#60a5fa" stopOpacity={0.2} />
-                  <stop offset="82%" stopColor="#bfdbfe" stopOpacity={0.08} />
+                  <stop offset="0%" stopColor="#14192f" stopOpacity={0.72} />
+                  <stop offset="28%" stopColor="#c5a059" stopOpacity={0.45} />
+                  <stop offset="55%" stopColor="#d1ad68" stopOpacity={0.2} />
+                  <stop offset="82%" stopColor="#e8d4a8" stopOpacity={0.08} />
                   <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#1d4ed8" />
-                  <stop offset="100%" stopColor="#38bdf8" />
+                  <stop offset="0%" stopColor="#14192f" />
+                  <stop offset="100%" stopColor="#c5a059" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="2 6" stroke="#e7e5e4" vertical={false} strokeOpacity={0.95} />
@@ -202,7 +202,7 @@ export function RevenueTrendAreaChart({
                 strokeWidth={2}
                 fill={`url(#${gradId})`}
                 dot={false}
-                activeDot={{ r: 5, fill: '#1d4ed8', stroke: '#fff', strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: '#14192f', stroke: '#fff', strokeWidth: 2 }}
                 isAnimationActive
               />
               {showOrdersLine && (
@@ -211,10 +211,10 @@ export function RevenueTrendAreaChart({
                   type={curve as 'natural' | 'monotone'}
                   dataKey="orders"
                   name="Order count"
-                  stroke="#38bdf8"
+                  stroke="#c5a059"
                   strokeWidth={2.25}
-                  dot={{ r: 3.5, fill: '#ffffff', stroke: '#38bdf8', strokeWidth: 2 }}
-                  activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#0ea5e9' }}
+                  dot={{ r: 3.5, fill: '#ffffff', stroke: '#c5a059', strokeWidth: 2 }}
+                  activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#d1ad68' }}
                   opacity={0.95}
                 />
               )}
@@ -224,7 +224,7 @@ export function RevenueTrendAreaChart({
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-stone-100/90 pt-3 text-[11px] text-stone-600">
           <span className="inline-flex items-center gap-2">
             <span
-              className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-blue-900 via-blue-500 to-white shadow-sm ring-1 ring-blue-200/60"
+              className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-navy-900 via-brand-500 to-white shadow-sm ring-1 ring-brand-200/60"
               aria-hidden
             />
             <span className="font-medium text-stone-700">Gross (paid + refunded)</span>
@@ -232,8 +232,8 @@ export function RevenueTrendAreaChart({
           {showOrdersLine && (
             <span className="inline-flex items-center gap-2">
               <span className="relative inline-flex h-3 w-7 items-center" aria-hidden>
-                <span className="h-0.5 w-full rounded-full bg-sky-400" />
-                <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sky-400 bg-white shadow-sm" />
+                <span className="h-0.5 w-full rounded-full bg-brand-400" />
+                <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand-400 bg-white shadow-sm" />
               </span>
               <span className="font-medium text-stone-700">Order count</span>
             </span>

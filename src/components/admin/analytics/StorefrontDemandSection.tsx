@@ -154,19 +154,25 @@ function InsightList({
 }) {
   const border = tone === 'emerald' ? 'border-emerald-100 bg-emerald-50/40' : 'border-amber-100 bg-amber-50/40';
   return (
-    <div className={`rounded-xl border p-4 ${border}`}>
-      <h4 className="text-xs font-bold uppercase tracking-wide text-gray-800">{title}</h4>
+    <div className={`rounded-xl border p-5 ${border} shadow-sm backdrop-blur-sm transition-all hover:shadow-md`}>
+      <h4 className="text-xs font-bold uppercase tracking-wide text-gray-800 flex items-center gap-2">
+        {tone === 'emerald' ? <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> : <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />}
+        {title}
+      </h4>
       <p className="text-[10px] text-gray-500 mt-0.5 mb-3">{hint}</p>
       <ul className="space-y-2">
         {items.map((p) => (
-          <li key={String(p._id)} className="flex items-center justify-between gap-2 text-xs">
+          <li 
+            key={String(p._id)} 
+            className="group flex items-center justify-between gap-2 text-xs p-2 -mx-2 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
+          >
             <Link
               href={`/shop/${encodeURIComponent(p.slug)}`}
               target="_blank"
-              className="font-medium text-gray-800 truncate hover:text-brand-600 flex items-center gap-1 min-w-0"
+              className="group/link flex-1 font-medium text-gray-800 truncate hover:text-brand-700 flex items-center gap-1.5 min-w-0 transition-colors"
             >
               <span className="truncate">{p.name}</span>
-              <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+              <ExternalLink className="h-3 w-3 shrink-0 opacity-0 -ml-1 transition-all group-hover/link:opacity-100 group-hover/link:ml-0 text-brand-400" />
             </Link>
             <span className="tabular-nums font-bold text-gray-700 shrink-0">{p.conversionPercent}%</span>
           </li>

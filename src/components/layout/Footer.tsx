@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   Facebook,
@@ -138,6 +138,7 @@ function FooterSection({
 
 export default function Footer() {
   const router = useRouter();
+  const pathname = usePathname();
   const [contactOpen, setContactOpen] = useState(false);
   const { data: categoriesRaw = [] } = useQuery({
     queryKey: queryKeys.categories,
@@ -191,8 +192,11 @@ export default function Footer() {
     return href !== "/" && href !== "#";
   });
 
+  const hideOnMobilePaths = ["/cart", "/checkout", "/dashboard"];
+  const shouldHideOnMobile = hideOnMobilePaths.some(p => pathname === p || pathname.startsWith(`${p}/`));
+
   return (
-    <footer className={footerShell} role='contentinfo' aria-label='Site footer'>
+    <footer className={cn(footerShell, shouldHideOnMobile && "max-lg:hidden")} role='contentinfo' aria-label='Site footer'>
       <div className={footerAccentLine} aria-hidden='true' />
 
       <div className={cn(footerContainer, "py-10 sm:py-14 lg:py-16")}>

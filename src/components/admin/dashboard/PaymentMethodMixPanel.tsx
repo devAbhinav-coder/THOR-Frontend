@@ -28,7 +28,10 @@ export default function PaymentMethodMixPanel({
         const barPct = (pm.revenue / maxRev) * 100;
         const label = pm._id.replace(/_/g, ' ');
         return (
-          <div key={pm._id} className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+          <div 
+            key={pm._id} 
+            className="group rounded-xl border border-transparent bg-white p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:bg-[#FAF9F6] hover:border-brand-100/50 cursor-pointer"
+          >
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 capitalize">
                 <CreditCard className="h-3.5 w-3.5 text-gray-400" />
@@ -40,7 +43,7 @@ export default function PaymentMethodMixPanel({
             </div>
             <div className="h-2 w-full bg-gray-200/80 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-navy-700 to-brand-500 rounded-full transition-all"
+                className="h-full bg-gradient-to-r from-navy-800 to-brand-500 rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${barPct}%` }}
               />
             </div>

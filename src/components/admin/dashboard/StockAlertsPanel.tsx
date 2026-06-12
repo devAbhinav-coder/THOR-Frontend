@@ -105,7 +105,7 @@ export default function StockAlertsPanel({
             </div>
             {outOfStock.length === 0 ?
               <p className="text-sm text-gray-500 py-4">No products completely out of stock.</p>
-            : <div className="max-h-[220px] overflow-y-auto pr-1">
+            : <div>
                 {outOfStock.map((p) => (
                   <ProductRow key={String(p._id)} product={p} variant="out" />
                 ))}
@@ -130,7 +130,7 @@ export default function StockAlertsPanel({
             </div>
             {lowStockOnly.length === 0 ?
               <p className="text-sm text-gray-500 py-4">No low-stock items (1–{LOW_STOCK_ALERT_EXCLUSIVE_MAX - 1} units).</p>
-            : <div className="max-h-[220px] overflow-y-auto pr-1">
+            : <div>
                 {lowStockOnly.map((p) => (
                   <ProductRow key={String(p._id)} product={p} variant="low" />
                 ))}

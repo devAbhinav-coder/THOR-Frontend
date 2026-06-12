@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X, ArrowUpDown, Package } from "lucide-react";
 import { FilterOptions } from "@/types";
 import { cn } from "@/lib/utils";
 import type { ShopFilters } from "@/lib/shopFilters";
@@ -19,7 +19,7 @@ const shopFilterCheckboxClass =
 const FILTER_CLOSE_DELAY_MS = 160;
 
 const shopBarTextClass =
-  "text-[11px] uppercase tracking-[0.12em] leading-none";
+  "text-[10px] sm:text-[11px] uppercase tracking-[0.12em] leading-none";
 const shopBarItemClass = cn(
   "inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap",
   shopBarTextClass,
@@ -179,7 +179,7 @@ export default function ShopFilterBar({
 
           <div className={shopBarDividerClass} aria-hidden />
 
-          <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto scrollbar-hide sm:gap-6">
+          <div className="hidden sm:flex min-w-0 flex-1 items-center gap-4 overflow-x-auto scrollbar-hide sm:gap-6">
             {quickFabrics.map((fabric) => (
               <button
                 key={fabric}
@@ -199,7 +199,7 @@ export default function ShopFilterBar({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+        <div className="flex shrink-0 items-center gap-2.5 sm:gap-4">
           {showClearFilters ? (
             <>
               <button
@@ -211,7 +211,8 @@ export default function ShopFilterBar({
                 )}
               >
                 <X className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Clear all filters
+                <span className="hidden sm:inline">Clear all filters</span>
+                <span className="sm:hidden">Clear</span>
               </button>
               <span className={shopBarDividerClass} aria-hidden />
             </>
@@ -222,7 +223,9 @@ export default function ShopFilterBar({
               "font-medium text-gray-500",
             )}
           >
-            {productCountLabel}
+            <Package className="h-3.5 w-3.5 sm:hidden" />
+            <span className="hidden sm:inline">{productCountLabel}</span>
+            <span className="sm:hidden">{parseInt(productCountLabel) || 0}</span>
           </span>
           <span className={shopBarDividerClass} aria-hidden />
           <ShopSortDropdown
@@ -237,9 +240,10 @@ export default function ShopFilterBar({
         id={filterMenuId}
         onMouseEnter={handleFilterZoneEnter}
         onMouseLeave={handleFilterZoneLeave}
+        data-lenis-prevent="true"
         className={cn(
-          "luxury-filter-transition overflow-hidden border-t border-[#c5a059]/10 bg-white",
-          isFilterOpen ? "open" : "max-h-0 border-t-0",
+          "luxury-filter-transition overflow-x-hidden overflow-y-auto overscroll-contain border-t border-[#c5a059]/10 bg-white",
+          isFilterOpen ? "open !max-h-[calc(100svh-280px)] sm:!max-h-[calc(100svh-200px)] lg:!max-h-[calc(100vh-120px)]" : "max-h-0 border-t-0",
         )}
       >
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-6 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8 lg:py-8">
@@ -336,7 +340,7 @@ export default function ShopFilterBar({
                 </ul>
               </FilterColumn>
 
-              <FilterColumn title="Price Range">
+              <FilterColumn title="Price Range" isCollapsibleOnMobile={false}>
                 <div className="space-y-4">
                   <ShopPriceRangeFilter
                     minPrice={draftMinPrice}
@@ -454,7 +458,8 @@ function ShopSortDropdown({
         aria-haspopup="listbox"
         aria-controls={menuId}
       >
-        <span className="text-gray-500">Sort By:</span>
+        <ArrowUpDown className="h-3.5 w-3.5 sm:hidden text-gray-500" />
+        <span className="hidden sm:inline text-gray-500">Sort By:</span>
         <span>{selectedLabel}</span>
         <ChevronDown
           className={cn(
@@ -500,16 +505,50 @@ function ShopSortDropdown({
 function FilterColumn({
   title,
   children,
+  defaultOpen = false,
+  isCollapsibleOnMobile = true,
 }: {
   title: string;
   children: React.ReactNode;
+  defaultOpen?: boolean;
+  isCollapsibleOnMobile?: boolean;
 }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
-    <div>
-      <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c5a059]">
-        {title}
-      </h4>
-      {children}
+    <div className="border-b border-gray-100 pb-5 sm:border-0 sm:pb-0">
+      <button
+        type="button"
+        onClick={() => {
+          if (isCollapsibleOnMobile) setIsOpen(!isOpen);
+        }}
+        className={cn(
+          "flex w-full items-center justify-between text-left",
+          isCollapsibleOnMobile ? "sm:cursor-default" : "cursor-default pointer-events-none"
+        )}
+        tabIndex={isCollapsibleOnMobile ? 0 : -1}
+      >
+        <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c5a059] sm:mb-4">
+          {title}
+        </h4>
+        {isCollapsibleOnMobile && (
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-[#c5a059] transition-transform duration-200 sm:hidden",
+              isOpen ? "rotate-180" : ""
+            )}
+            aria-hidden
+          />
+        )}
+      </button>
+      <div
+        className={cn(
+          "mt-5 sm:mt-0",
+          isCollapsibleOnMobile ? (isOpen ? "block" : "hidden sm:block") : "block"
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

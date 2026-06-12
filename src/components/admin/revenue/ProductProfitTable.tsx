@@ -63,7 +63,7 @@ export default function ProductProfitTable({ products }: { products: ProductProf
             className={cn(
               'rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors',
               sortBy === key ?
-                'bg-navy-900 text-white'
+                'bg-brand-500 text-white shadow-sm'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
             )}
           >
@@ -73,7 +73,7 @@ export default function ProductProfitTable({ products }: { products: ProductProf
       </div>
 
       {/* Summary row — one glance */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl bg-navy-950 text-white p-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-[1.5rem] bg-gradient-to-br from-navy-900 to-navy-950 text-white p-5 shadow-lg">
         <div>
           <p className="text-[10px] text-white/40 uppercase">Total sold</p>
           <p className="text-lg font-bold tabular-nums">{totals.units.toLocaleString()} u</p>
@@ -88,29 +88,29 @@ export default function ProductProfitTable({ products }: { products: ProductProf
         </div>
         <div>
           <p className="text-[10px] text-white/40 uppercase">Gross profit</p>
-          <p className="text-lg font-bold tabular-nums text-emerald-400">
+          <p className="text-lg font-bold tabular-nums text-brand-300">
             {formatPrice(totals.profit)} · {totalMargin.toFixed(1)}%
           </p>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100">
+      <div className="rounded-[1.5rem] border border-gray-100 overflow-hidden divide-y divide-gray-50 bg-white shadow-sm">
         {sorted.map((p, idx) => {
           const id = String(p._id);
           const open = expandedId === id;
           const missingCost = p.linesMissingCost > 0;
           return (
-            <div key={id} className="bg-white">
+            <div key={id} className="bg-white group">
               <button
                 type="button"
                 onClick={() => setExpandedId(open ? null : id)}
-                className="w-full flex items-center gap-3 px-3 sm:px-4 py-3 text-left hover:bg-gray-50/80 transition-colors"
+                className="w-full flex items-center gap-3 px-3 sm:px-4 py-3.5 text-left hover:bg-[#FAF9F6] transition-colors"
               >
                 {open ?
-                  <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
-                : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />}
-                <span className="text-xs font-bold text-gray-300 w-5 tabular-nums">{idx + 1}</span>
-                <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 ring-1 ring-gray-100">
+                  <ChevronDown className="h-4 w-4 text-brand-400 shrink-0" />
+                : <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-brand-400 transition-colors shrink-0" />}
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold tabular-nums shrink-0">{idx + 1}</span>
+                <div className="relative h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-1 ring-gray-100 shadow-sm group-hover:shadow-md transition-shadow">
                   {p.image ?
                     <Image src={p.image} alt="" fill sizes="40px" className="object-cover" />
                   : null}
@@ -130,7 +130,7 @@ export default function ProductProfitTable({ products }: { products: ProductProf
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400">Profit</p>
-                    <p className="text-xs font-bold tabular-nums text-emerald-700">{formatPrice(p.profit)}</p>
+                    <p className="text-xs font-bold tabular-nums text-brand-700">{formatPrice(p.profit)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400">Margin</p>
@@ -147,8 +147,8 @@ export default function ProductProfitTable({ products }: { products: ProductProf
                 <div className="sm:hidden text-right shrink-0 min-w-[5.5rem]">
                   <p className="text-[10px] text-gray-400 uppercase">Revenue</p>
                   <p className="text-xs font-bold text-gray-900 tabular-nums">{formatPrice(p.revenue)}</p>
-                  <p className="text-[10px] text-emerald-600 uppercase mt-1">Profit</p>
-                  <p className="text-sm font-bold text-emerald-700 tabular-nums">{formatPrice(p.profit)}</p>
+                  <p className="text-[10px] text-brand-600 uppercase mt-1">Profit</p>
+                  <p className="text-sm font-bold text-brand-700 tabular-nums">{formatPrice(p.profit)}</p>
                   <span
                     className={cn(
                       'inline-block mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded',
@@ -161,7 +161,7 @@ export default function ProductProfitTable({ products }: { products: ProductProf
               </button>
 
               {open && (
-                <div className="px-4 pb-4 pt-0 bg-gradient-to-b from-gray-50/80 to-white border-t border-gray-50">
+                <div className="px-4 pb-4 pt-0 bg-gradient-to-b from-brand-50/20 to-white border-t border-brand-50/50">
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 py-3">
                     <Detail label="Units sold" value={String(p.unitsSold)} />
                     <Detail label="Line revenue" value={formatPrice(p.revenue)} />
@@ -202,9 +202,9 @@ function Detail({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-white px-2.5 py-2">
+    <div className="rounded-xl border border-brand-100/50 bg-white px-2.5 py-2 shadow-sm hover:shadow-md transition-shadow">
       <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
-      <p className={cn('text-sm font-bold tabular-nums mt-0.5', highlight && 'text-emerald-700')}>{value}</p>
+      <p className={cn('text-sm font-bold tabular-nums mt-0.5', highlight ? 'text-brand-700' : 'text-gray-900')}>{value}</p>
     </div>
   );
 }
