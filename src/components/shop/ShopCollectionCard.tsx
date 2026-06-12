@@ -109,6 +109,7 @@ function ShopCollectionCardInner({
         "hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_22px_-12px_rgba(15,23,42,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         className,
       )}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "0 400px" }}
       aria-label={product.name}
     >
       <meta itemProp='name' content={product.name} />

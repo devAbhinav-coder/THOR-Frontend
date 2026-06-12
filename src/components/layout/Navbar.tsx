@@ -229,7 +229,8 @@ export default function Navbar() {
   }, [isSearchOpen, focusStoreSearch]);
 
   const isAuthedStable = hasSessionChecked && !isLoading && isAuthenticated;
-  const { href: authHref } = useAuthModal();
+  const authModal = useAuthModal();
+  const { href: authHref, open: openAuth } = authModal;
 
   const ordersHref =
     isAuthedStable ? "/dashboard/orders" : authHref("login", "/dashboard/orders");
@@ -511,9 +512,9 @@ export default function Navbar() {
                     />
                   </div>
                 </div>
-              : <Link
-                  href={authHref("login")}
-                  scroll={false}
+              : <button
+                  type="button"
+                  onClick={() => openAuth("login")}
                   className={cn(
                     navLinkClass(false),
                     "hidden lg:inline-flex items-center gap-1.5",
@@ -521,7 +522,7 @@ export default function Navbar() {
                 >
                   <User className='h-4 w-4' strokeWidth={1.75} />
                   <span>Sign In</span>
-                </Link>
+                </button>
               }
             </div>
 
@@ -756,22 +757,26 @@ export default function Navbar() {
                     </button>
                   </div>
                 : <div className='mt-2 flex gap-2.5'>
-                    <Link
-                      onClick={() => setIsMenuOpen(false)}
-                      href={authHref("login")}
-                      scroll={false}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        openAuth("login");
+                      }}
                       className='flex-1 border border-navy-700 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:border-[#c5a059]/50 hover:text-[#c5a059]'
                     >
                       Sign In
-                    </Link>
-                    <Link
-                      onClick={() => setIsMenuOpen(false)}
-                      href={authHref("signup")}
-                      scroll={false}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        openAuth("signup");
+                      }}
                       className='flex-1 bg-[#c5a059] py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#b8924d]'
                     >
                       Create Account
-                    </Link>
+                    </button>
                   </div>
                 }
               </div>

@@ -21,11 +21,10 @@ import {
 } from "@/lib/authHeritageTheme";
 
 const MOBILE_HEADINGS: Record<AuthModalView, string> = {
-  login: "Sign In",
-  signup: "Create Account",
-  forgot: "Reset Password",
+  login: "Step Inside",
+  signup: "Join the House",
+  forgot: "Recover Access",
 };
-
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -40,7 +39,7 @@ export default function AuthModal({
   open,
   onClose,
   view = "login",
-  title = "Welcome Back",
+  title = "Enter the House",
   subtitle,
   children,
   className,
@@ -104,10 +103,10 @@ export default function AuthModal({
         </div>
 
         <div className={authFormPanel}>
-          <div className="shrink-0 border-b border-gray-100 px-5 pb-3 pt-4 sm:px-7 sm:pt-5">
+          <div className="shrink-0 border-b border-gray-100 px-5 pb-3 pt-2 sm:px-7 sm:pt-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-col items-center text-center lg:mb-3 lg:items-start lg:text-left">
+                <div className="mb-2 flex flex-col  text-center lg:mb-3 items-start">
                   <Image
                     src="/logoNew.png"
                     alt={BRAND_NAME}
@@ -151,11 +150,11 @@ export default function AuthModal({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 scrollbar-hide sm:px-7 sm:py-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-2 scrollbar-hide sm:px-7 sm:py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {children}
           </div>
 
-          <div className="hidden shrink-0 border-t border-gray-100 px-8 py-4 lg:block">
+          <div className="hidden shrink-0 border-t border-gray-100 px-8 py-2 lg:block">
             <div className="flex items-center justify-center gap-6">
               {authFooterLinks.map((link) => (
                 <Link

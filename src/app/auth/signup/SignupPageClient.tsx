@@ -15,7 +15,13 @@ import {
 } from "@/components/auth/AuthFormChrome";
 import AuthField from "@/components/auth/AuthField";
 import { authLinkText, authPrimaryBtn } from "@/lib/authFormShell";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { authFieldLabel } from "@/lib/authHeritageTheme";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
@@ -204,16 +210,31 @@ export default function SignupPageClient({
             icon={<Mail className="h-5 w-5" />}
           />
           <form onSubmit={otpForm.handleSubmit(onSubmitOtp)} className="space-y-3">
-            <AuthField
-              embedded={embedded}
-              {...otpForm.register("otp")}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              label="Verification code"
-              placeholder="000000"
-              error={otpForm.formState.errors.otp?.message}
-            />
+            <div className="space-y-2 pb-2">
+              <label className={authFieldLabel(embedded)}>6-digit code</label>
+              <Controller
+                control={otpForm.control}
+                name="otp"
+                render={({ field }) => (
+                  <InputOTP 
+                    maxLength={6} 
+                    {...field}
+                  >
+                    <InputOTPGroup className="w-full justify-between gap-1 sm:gap-2">
+                      <InputOTPSlot index={0} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={1} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={2} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={3} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={4} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={5} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                )}
+              />
+              {otpForm.formState.errors.otp?.message && (
+                <p className="text-xs text-red-600">{otpForm.formState.errors.otp.message}</p>
+              )}
+            </div>
             <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
               Verify & create account
             </Button>

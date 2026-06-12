@@ -281,7 +281,7 @@ export default function ShopClient() {
       (isPending && products.length === 0) ||
       (isFetching && !isFetchingNextPage),
     fetchNextPage,
-    rootMargin: "500px 0px",
+    rootMargin: "1500px 0px",
     threshold: 0,
     enabled: !isPending || products.length > 0,
   });

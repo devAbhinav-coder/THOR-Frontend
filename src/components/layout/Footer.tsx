@@ -195,6 +195,11 @@ export default function Footer() {
   const hideOnMobilePaths = ["/cart", "/checkout", "/dashboard"];
   const shouldHideOnMobile = hideOnMobilePaths.some(p => pathname === p || pathname.startsWith(`${p}/`));
 
+  const hideCompletelyPaths = ["/shop"];
+  const shouldHideCompletely = hideCompletelyPaths.some(p => pathname === p || pathname.startsWith(`${p}/`));
+
+  if (shouldHideCompletely) return null;
+
   return (
     <footer className={cn(footerShell, shouldHideOnMobile && "max-lg:hidden")} role='contentinfo' aria-label='Site footer'>
       <div className={footerAccentLine} aria-hidden='true' />

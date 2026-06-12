@@ -26,13 +26,13 @@ const ForgotPasswordClient = dynamic(
 );
 
 const TITLES: Record<AuthModalView, string> = {
-  login: "Welcome Back",
-  signup: "Join the Maison",
-  forgot: "Forgot Password",
+  login: "Enter the House",
+  signup: "Join the House",
+  forgot: "Recover Access",
 };
 
 const SUBTITLES: Partial<Record<AuthModalView, string>> = {
-  signup: "A quick two-step signup, then verify your email",
+  signup: "Discover timeless elegance at The House of Rani. Your journey begins here ",
   forgot: "We will email you a secure 6-digit code",
 };
 
