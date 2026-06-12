@@ -154,7 +154,7 @@ function FeaturedProductCardInner({
         className='flex h-full min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/50 focus-visible:ring-offset-2'
         aria-label={`View ${product.name}`}
       >
-        <div className='relative aspect-square w-full shrink-0 overflow-hidden bg-gray-50'>
+        <div className='relative aspect-[3/4] w-full shrink-0 overflow-hidden bg-gray-50'>
           {showPrimaryImage ?
             <Image
               src={primaryUrl}
@@ -195,9 +195,9 @@ function FeaturedProductCardInner({
           </button>
         </div>
 
-        <div className='flex min-h-[8rem] flex-1 flex-col px-3 py-4 text-left sm:min-h-[8.75rem] sm:px-4 sm:py-5'>
+        <div className='flex min-h-[3rem] flex-1 flex-col px-3 py-2 text-left sm:min-h-[3.25rem] sm:px-4 sm:py-3'>
           <h3
-            className='line-clamp-2 min-h-[2.5rem] font-serif text-sm font-medium leading-snug text-navy-900 sm:min-h-[2.875rem] sm:text-base'
+            className='line-clamp-1 min-h-[1.20rem] font-serif text-sm font-medium leading-snug text-navy-900 sm:min-h-[1.175rem] sm:text-base'
             itemProp='name'
           >
             {product.name}
@@ -214,7 +214,7 @@ function FeaturedProductCardInner({
           </p>
 
           <div
-            className='mt-1.5 flex min-h-[1rem] shrink-0 items-center gap-0.5 sm:mt-2 sm:min-h-[1.125rem]'
+            className=' flex min-h-[1rem] shrink-0 items-center gap-0.5  sm:min-h-[1.125rem]'
             aria-label={
               hasReviews ?
                 `Rated ${product.ratings.average.toFixed(1)} out of 5 from ${product.ratings.count} reviews`
@@ -244,7 +244,7 @@ function FeaturedProductCardInner({
           </div>
 
           <p
-            className='mt-auto pt-1.5 text-sm font-semibold text-[#c5a059] sm:pt-2 sm:text-[15px]'
+            className=' pt-1 text-sm font-semibold text-[#c5a059] sm:pt-1 sm:text-[15px]'
             aria-label={`Price: ${formatPrice(product.price)}`}
           >
             {formatPrice(product.price)}

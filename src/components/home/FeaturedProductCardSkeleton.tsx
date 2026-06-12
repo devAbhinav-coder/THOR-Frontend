@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/SkeletonLoader";
 export default function FeaturedProductCardSkeleton() {
   return (
     <div className="flex h-full min-h-0 flex-col border-[3px] border-white bg-white">
-      <Skeleton className="aspect-square w-full shrink-0 rounded-none border-0 bg-gray-100" />
+      <Skeleton className="aspect-[3/4] w-full shrink-0 rounded-none border-0 bg-gray-100" />
       <div className="flex min-h-[8rem] flex-1 flex-col px-3 py-4 sm:min-h-[8.75rem] sm:px-4 sm:py-5">
         <Skeleton className="h-10 w-4/5 rounded-md sm:h-11" />
         <Skeleton className="mt-1 h-3 w-1/2 rounded-md" />

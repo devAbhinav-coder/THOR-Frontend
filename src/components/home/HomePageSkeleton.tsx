@@ -143,7 +143,7 @@ export default function HomePageSkeleton() {
           <div className="flex gap-3 overflow-hidden pb-1 sm:gap-4 lg:gap-5">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="w-[calc(50%-0.375rem)] shrink-0 sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.9375rem)] flex h-full flex-col border-[3px] border-white bg-white">
-                <Skeleton className="aspect-square w-full rounded-none border-0 bg-gray-100" />
+                <Skeleton className="aspect-[3/4] w-full rounded-none border-0 bg-gray-100" />
                 <div className="flex flex-col items-center px-3 py-4">
                   <Skeleton className="h-4 w-4/5 rounded-md" />
                   <Skeleton className="mt-2 h-2.5 w-2/3 rounded-md" />
