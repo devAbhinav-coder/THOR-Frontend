@@ -88,7 +88,7 @@ function GalleryTile({
       <Link
         href={href}
         className={cn(
-          "group block h-full border border-[#c5a059]/40 bg-white p-2 transition-shadow duration-500 hover:shadow-[0_12px_40px_rgba(0,13,33,0.08)] sm:p-2.5 lg:border-[#c5a059]/50",
+          "group block h-full border border-[#c5a059]/40 bg-white p-2 transition-shadow duration-500 md:hover:shadow-[0_12px_40px_rgba(0,13,33,0.08)] sm:p-2.5 lg:border-[#c5a059]/50",
           className,
         )}
       >
@@ -104,13 +104,13 @@ function GalleryTile({
             fill
             loader={cloudinaryLoader}
             sizes={sizes}
-            className='object-cover object-center transition-transform duration-700 group-hover:scale-[1.04]'
+            className='object-cover object-center transition-transform duration-700 md:group-hover:scale-[1.04]'
             loading={priority ? "eager" : "lazy"}
             quality={priority ? 72 : 68}
             priority={priority}
           />
           <div
-            className='pointer-events-none absolute inset-0 bg-gradient-to-t from-[#000d21]/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100'
+            className='pointer-events-none absolute inset-0 bg-gradient-to-t from-[#000d21]/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 md:group-hover:opacity-100'
             aria-hidden
           />
         </div>
@@ -352,9 +352,9 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
                   src={tile.src}
                   alt={tile.alt}
                   href={tile.href}
-                  className='w-[95vw] shrink-0 snap-center sm:w-[260px]'
+                  className='w-[80vw] shrink-0 snap-center sm:w-[260px]'
                   mediaClassName='aspect-[4/5]'
-                  sizes='95vw'
+                  sizes='(max-width: 640px) 80vw, 260px'
                   priority={index === 0}
                   revealDelay={`${index * 90}ms`}
                 />

@@ -21,10 +21,10 @@ type HorizontalScrollRowProps = {
 
 const navButtonVariants: Record<ScrollRowVariant, string> = {
   default:
-    "border border-gray-100 bg-white/95 text-navy-900 shadow-md hover:bg-white",
-  dark: "border border-white/25 bg-white/10 text-white shadow-md backdrop-blur-sm hover:bg-white/20",
+    "border border-[#c5a059]/35 bg-white/95 text-[#c5a059] shadow-md hover:bg-white",
+  dark: "border border-white/25 bg-white/10 text-[#c5a059] shadow-md backdrop-blur-sm hover:bg-white/20",
   light:
-    "border border-gray-100 bg-white/95 text-navy-900 shadow-md hover:bg-white",
+    "border border-[#c5a059]/35 bg-white/95 text-[#c5a059] shadow-md hover:bg-white",
 };
 
 export default function HorizontalScrollRow({

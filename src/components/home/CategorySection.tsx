@@ -236,15 +236,15 @@ export default function CategorySection({
               <button
                 type="button"
                 onClick={handleSlidePrev}
-                className="absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-navy-900 shadow-md transition-colors hover:bg-white sm:left-1 sm:h-10 sm:w-10"
+                className="absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-[#c5a059] shadow-md transition-colors hover:bg-white sm:left-1 sm:h-10 sm:w-10"
                 aria-label="Previous categories"
               >
-                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 " />
               </button>
               <button
                 type="button"
                 onClick={handleSlideNext}
-                className="absolute right-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-navy-900 shadow-md transition-colors hover:bg-white sm:right-1 sm:h-10 sm:w-10"
+                className="absolute right-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-[#c5a059] shadow-md transition-colors hover:bg-white sm:right-1 sm:h-10 sm:w-10"
                 aria-label="Next categories"
               >
                 <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
