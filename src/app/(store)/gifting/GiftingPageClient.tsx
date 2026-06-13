@@ -364,7 +364,7 @@ export default function GiftingPageClient({
       </section>
       {/* Admin categories image strip */}
       <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
-        <div className='flex items-start gap-2.5 overflow-x-auto px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <div data-lenis-prevent-horizontal className='flex touch-pan-x items-start gap-2.5 overflow-x-auto overscroll-x-contain px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
           {categoriesLoading ?
             Array.from({ length: 8 }).map((_, i) => (
               <div

@@ -182,6 +182,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const buyNowBtnRef = useRef<HTMLButtonElement>(null);
+  const buyNowMobileRef = useRef<HTMLButtonElement>(null);
   const [copied, setCopied] = useState(false);
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
   const [customFieldAnswers, setCustomFieldAnswers] = useState<
@@ -720,9 +721,12 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           }),
         );
       }
-      await playCheckoutLaunchAnimation(buyNowBtnRef.current, {
-        gifSrc: shoppingCartGif.src,
-      });
+      await playCheckoutLaunchAnimation(
+        buyNowMobileRef.current ?? buyNowBtnRef.current,
+        {
+          gifSrc: shoppingCartGif.src,
+        },
+      );
       router.push("/checkout?buyNow=1");
     } catch {
       setIsBuyingNow(false);
@@ -954,9 +958,9 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   };
 
   /* JSX */
-  /* Bottom padding for store mobile tab bar only (CTAs are inline, not fixed) */
+  /* Reserve space for fixed mobile purchase bar (tab bar hidden on PDP). */
   const mobileBottomReserve =
-    "pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6";
+    "pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-6";
   const categoryPath = `/shop/category/${encodeURIComponent(toShopCategorySlug(product.category))}`;
 
   return (
@@ -1339,7 +1343,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                 </div>
               )}
 
-            <div className='flex flex-col gap-3 pt-2'>
+            <div className='hidden flex-col gap-3 pt-2 lg:flex'>
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock || isAddingToCart}
@@ -1393,6 +1397,17 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                 </button>
               )}
             </div>
+
+            {product.isCustomizable && (
+              <button
+                type='button'
+                onClick={() => setIsGiftModalOpen(true)}
+                className='flex w-full items-center justify-center gap-2 border border-[#c5a059]/50 bg-[#c5a059]/10 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a6d3b] transition-colors hover:bg-[#c5a059]/20 lg:hidden'
+              >
+                <Gift className='h-4 w-4' />
+                Request Customization
+              </button>
+            )}
 
             <div className='grid grid-cols-3 gap-3 border-t border-gray-100 pt-5'>
               {[
@@ -1579,6 +1594,55 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           onClose={() => setIsGiftModalOpen(false)}
         />
       )}
+
+      {/* Mobile fixed purchase bar — Flipkart/Amazon style */}
+      <div
+        className='lg:hidden fixed inset-x-0 bottom-0 z-[88] border-t border-gray-200 bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-6px_28px_rgba(0,13,33,0.1)]'
+        role='toolbar'
+        aria-label='Purchase actions'
+      >
+        <div className='mx-auto flex max-w-7xl gap-2.5 px-4 py-3'>
+          <button
+            type='button'
+            onClick={handleAddToCart}
+            disabled={isOutOfStock || isAddingToCart}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 border py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors",
+              isOutOfStock ?
+                "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+              : "border-navy-900 bg-white text-navy-900 active:bg-navy-50",
+            )}
+          >
+            {isAddingToCart ?
+              <span className='h-4 w-4 animate-spin rounded-full border-2 border-navy-900/30 border-t-navy-900' />
+            : <>
+                <ShoppingBag className='h-4 w-4 shrink-0' aria-hidden />
+                Add to Bag
+              </>
+            }
+          </button>
+          <button
+            ref={buyNowMobileRef}
+            type='button'
+            onClick={handleBuyNow}
+            disabled={isOutOfStock || isBuyingNow}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors",
+              isOutOfStock ?
+                "cursor-not-allowed bg-gray-200 text-gray-400"
+              : "bg-[#c5a059] text-white active:bg-[#b8924f]",
+            )}
+          >
+            {isBuyingNow ?
+              <span className='h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white' />
+            : <>
+                <Zap className='h-4 w-4 shrink-0' aria-hidden />
+                Buy Now
+              </>
+            }
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

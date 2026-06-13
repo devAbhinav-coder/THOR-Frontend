@@ -221,7 +221,7 @@ export default function CategorySection({
         </div>
 
         <div
-          data-lenis-prevent="true"
+          data-lenis-prevent-horizontal
           className={cn(
             "relative min-h-[360px] overflow-hidden sm:min-h-[420px] lg:min-h-[480px]",
             isSwiperLocked && "[&_.swiper-wrapper]:justify-center",

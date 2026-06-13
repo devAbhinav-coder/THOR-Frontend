@@ -4,8 +4,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { ReactLenis, useLenis } from "lenis/react";
 import "lenis/dist/lenis.css";
+import { shouldEnableLenisSmoothScroll } from "@/lib/scrollSurface";
 
-/** Next/Lenis: window scroll reset when smooth scroll is off (reduced motion). */
+/** Scroll reset when Lenis is off (mobile / reduced motion). */
 function WindowScrollToTopOnRoute() {
   const pathname = usePathname();
 
@@ -28,7 +29,6 @@ function WindowScrollToTopOnRoute() {
   return null;
 }
 
-/** Lenis owns scroll; reset its position on every pathname change so new pages start at top. */
 function LenisScrollToTopOnRoute() {
   const pathname = usePathname();
   const lenis = useLenis();
@@ -50,38 +50,34 @@ function LenisScrollToTopOnRoute() {
   return null;
 }
 
-function LenisGsapSync() {
-  const lenis = useLenis();
-
-  useEffect(() => {
-    const l = lenis;
-    if (l) {
-      // Import GSAP only on client
-      const ScrollTrigger = require("gsap/ScrollTrigger").ScrollTrigger;
-      l.on("scroll", ScrollTrigger.update);
-      return () => {
-        l.off("scroll", ScrollTrigger.update);
-      };
-    }
-  }, [lenis]);
-
-  return null;
-}
-
-/** Silkier Lenis feel on editorial pages (About, home). */
-function LenisEditorialRouteTune() {
-  const pathname = usePathname();
+/** Keep Lenis scroll limits in sync when infinite grids / images change page height. */
+function LenisResizeSync() {
   const lenis = useLenis();
 
   useEffect(() => {
     if (!lenis) return;
-    const isAbout = pathname === "/about";
-    const isHome = pathname === "/";
-    lenis.options.lerp = isAbout ? 0.08 : isHome ? 0.05 : 0.06;
-    lenis.options.duration = isAbout ? 1.2 : isHome ? 1.5 : 1.4;
-    lenis.options.wheelMultiplier = isAbout ? 1 : isHome ? 0.95 : 1;
-    lenis.resize();
-  }, [pathname, lenis]);
+
+    let raf = 0;
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => lenis.resize());
+    };
+
+    const ro = new ResizeObserver(schedule);
+    ro.observe(document.documentElement);
+    ro.observe(document.body);
+
+    window.addEventListener("load", schedule, { passive: true });
+    document.fonts?.ready?.then(schedule).catch(() => {});
+
+    schedule();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("load", schedule);
+    };
+  }, [lenis]);
 
   return null;
 }
@@ -91,10 +87,18 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const mqReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setLenisOn(!mqReduce.matches);
+    const mqPointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+
+    const sync = () => setLenisOn(shouldEnableLenisSmoothScroll());
+
     sync();
     mqReduce.addEventListener("change", sync);
-    return () => mqReduce.removeEventListener("change", sync);
+    mqPointer.addEventListener("change", sync);
+
+    return () => {
+      mqReduce.removeEventListener("change", sync);
+      mqPointer.removeEventListener("change", sync);
+    };
   }, []);
 
   if (!lenisOn) {
@@ -110,18 +114,16 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     <ReactLenis
       root
       options={{
-        autoRaf: true, 
-        lerp: 0.05,    
-        duration: 1.5, 
+        autoRaf: true,
+        lerp: 0.1,
+        duration: 1,
         smoothWheel: true,
         wheelMultiplier: 1,
-        touchMultiplier: 1.2,
-        syncTouch: true,
+        syncTouch: false,
       }}
     >
-      <LenisGsapSync />
       <LenisScrollToTopOnRoute />
-      <LenisEditorialRouteTune />
+      <LenisResizeSync />
       {children}
     </ReactLenis>
   );

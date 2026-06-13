@@ -2,9 +2,18 @@ import { cn } from "@/lib/utils";
 
 export function navShellClass(scrolled: boolean) {
   return cn(
-    "sticky top-0 z-50 border-b border-navy-800 bg-navy-950",
+    "border-b border-navy-800 bg-navy-950",
     "transition-[box-shadow,background-color] duration-300 ease-out motion-reduce:transition-none",
     scrolled && "shadow-[0_8px_32px_-8px_rgba(20,25,47,0.65)]",
+  );
+}
+
+/** Sticky shell for announcement + header — slides off-screen on mobile scroll-down. */
+export function navStickyShellClass(visible: boolean) {
+  return cn(
+    "sticky top-0 z-50 will-change-transform",
+    "transition-transform duration-300 ease-out motion-reduce:transition-none",
+    !visible && "max-lg:-translate-y-full max-lg:pointer-events-none",
   );
 }
 

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Star,
   MessageSquare,
@@ -121,6 +122,14 @@ export function PdpReviewsSection({
   setReportDetails,
   onSubmitReport,
 }: PdpReviewsSectionProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const signInHref = useMemo(() => {
+    const search = searchParams.toString();
+    const currentPath = search ? `${pathname}?${search}` : pathname;
+    return loginUrlWithRedirect(currentPath);
+  }, [pathname, searchParams]);
+
   const displayAverageRating = useMemo(() => {
     const fromProduct = Number(product.ratings?.average || 0);
     if (fromProduct > 0) return fromProduct;
@@ -186,11 +195,7 @@ export function PdpReviewsSection({
                 </span>
               : null
               : <Link
-                href={loginUrlWithRedirect(
-                  typeof window !== "undefined"
-                    ? window.location.pathname + window.location.search
-                    : "/",
-                )}
+                href={signInHref}
                 scroll={false}
                 className='text-sm text-brand-600 font-bold hover:bg-brand-50 px-4 py-2 rounded-xl transition-all flex items-center gap-2'
               >
@@ -506,7 +511,7 @@ export function PdpReviewsSection({
 
                     {review.images && review.images.length > 0 && (
                       <div className='mt-4'>
-                        <div className='flex min-w-0 max-w-full items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide touch-pan-x'>
+                        <div data-lenis-prevent-horizontal className='flex min-w-0 max-w-full touch-pan-x items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide'>
                           {(expandedReviewPhotos[review._id] ?
                             review.images
                           : review.images.slice(0, 3)
@@ -695,7 +700,7 @@ export function PdpReviewsSection({
                     </button>
                   </div>
                   {review.images && review.images.length > 0 && (
-                    <div className='mt-3 flex min-w-0 max-w-full gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide touch-pan-x'>
+                    <div data-lenis-prevent-horizontal className='mt-3 flex min-w-0 max-w-full touch-pan-x gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide'>
                       {review.images.slice(0, 3).map((img, i) => (
                         <button
                           key={`all_img_${review._id}_${i}`}

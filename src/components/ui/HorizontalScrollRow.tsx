@@ -9,6 +9,10 @@ import {
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  horizontalScrollSurfaceClassName,
+  horizontalScrollSurfaceProps,
+} from "@/lib/scrollSurface";
 
 type ScrollRowVariant = "default" | "dark" | "light";
 
@@ -104,9 +108,10 @@ export default function HorizontalScrollRow({
 
       <div
         ref={scrollRef}
-        data-lenis-prevent="true"
+        {...horizontalScrollSurfaceProps}
         className={cn(
-          "flex w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden pb-1 scrollbar-hide snap-x snap-mandatory sm:gap-4 lg:gap-5 [-webkit-overflow-scrolling:touch]",
+          "flex w-full min-w-0 gap-3 pb-1 scrollbar-hide snap-x snap-mandatory sm:gap-4 lg:gap-5",
+          horizontalScrollSurfaceClassName,
           innerClassName,
         )}
       >

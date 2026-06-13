@@ -534,7 +534,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             {!colorSwatches ?
               <div className='h-3 sm:h-5' aria-hidden />
             : <div
-                className='flex h-3 sm:h-5 max-w-full items-center gap-1.5 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                data-lenis-prevent-horizontal
+                className='flex h-3 sm:h-5 max-w-full touch-pan-x items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
                 aria-label={`Available colors: ${uniqueColors.map((c) => c.color).join(", ")}`}
               >
                 {colorSwatches.visible.map(({ color, colorCode }) => {

@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import {
+  prefersNativeTouchScroll,
+  prefersReducedMotion,
+} from "@/lib/scrollSurface";
 
 const REVEAL_SELECTOR = "[data-home-reveal]";
 
@@ -19,7 +23,7 @@ export function useHomeReveal(rootRef: RefObject<HTMLElement | null>) {
       nodes.forEach((el) => el.classList.add("home-visible"));
     };
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (prefersReducedMotion() || prefersNativeTouchScroll()) {
       showAll();
       return;
     }
@@ -33,7 +37,7 @@ export function useHomeReveal(rootRef: RefObject<HTMLElement | null>) {
           }
         });
       },
-      { root: null, rootMargin: "0px 0px -6% 0px", threshold: 0.1 },
+      { root: null, rootMargin: "12% 0px -4% 0px", threshold: 0.05 },
     );
 
     nodes.forEach((el) => observer.observe(el));

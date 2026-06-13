@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/SkeletonLoader";
 
 /** Mirrors `ProductDetailClient` wrapper — avoids mobile tab-bar layout jump when content swaps in. */
 const mobileBottomReserve =
-  "pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8";
+  "pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-8";
 
 /**
  * Full product detail placeholder: gallery (3:4 + thumbs), info column, tabs, reviews band.

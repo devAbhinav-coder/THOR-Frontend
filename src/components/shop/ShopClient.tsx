@@ -393,7 +393,7 @@ export default function ShopClient() {
 
   return (
     <div className='bg-white selection:bg-brand-100 selection:text-brand-900'>
-      <div className='pb-12 pt-6 sm:pt-8 lg:pb-16 lg:pt-10'>
+      <div className='pb-[calc(3.25rem+env(safe-area-inset-bottom,0px)+2rem)] pt-6 sm:pb-12 sm:pt-8 lg:pb-16 lg:pt-10'>
         <section className='mb-6 px-4 sm:mb-8 sm:px-6 lg:px-8'>
           <div className='mx-auto max-w-7xl'>
             <nav
@@ -453,7 +453,7 @@ export default function ShopClient() {
               ))}
             </div>
           : !isPending && (isError || products.length === 0) ?
-            <div className='flex min-h-[420px] flex-col items-start justify-start border border-gray-100 bg-white px-6 pt-10 sm:min-h-[460px]'>
+            <div className='flex min-h-[240px] flex-col items-start justify-start border border-gray-100 bg-white px-6 pt-10 sm:min-h-[460px]'>
               <p className='mb-4 text-lg text-gray-700'>
                 {isError ?
                   "Something went wrong loading products. Try again or adjust filters."

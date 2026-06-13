@@ -319,8 +319,9 @@ export function PdpImageGallery({
 
           {images.length > 1 && (
             <div
-              className='lg:hidden w-full min-w-0 max-w-full flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide pb-1'
-              style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}
+              data-lenis-prevent-horizontal
+              className='lg:hidden w-full min-w-0 max-w-full flex touch-pan-x gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide pb-1'
+              style={{ WebkitOverflowScrolling: "touch" }}
             >
               {images.map((img, i) => (
                 <button

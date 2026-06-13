@@ -345,7 +345,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
 
           {/* Mobile — horizontal scroll */}
           <div className='md:hidden'>
-            <div data-lenis-prevent="true" className='flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+            <div data-lenis-prevent-horizontal className='flex touch-pan-x snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
               {resolvedTiles.map((tile, index) => (
                 <GalleryTile
                   key={`mobile-${tile.slot}`}

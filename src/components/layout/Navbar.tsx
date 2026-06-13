@@ -43,6 +43,8 @@ import {
 } from "@/hooks/useStoreNavActive";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useNavDropdown } from "@/hooks/useNavDropdown";
+import { useMobileNavAutoHide } from "@/hooks/useMobileNavAutoHide";
+import { isStoreProductDetailPath, isStoreShopListingPath } from "@/lib/storeRoutes";
 import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 import {
   mobileTabClass,
@@ -56,6 +58,7 @@ import {
   navLinkClass,
   navSearchInputClass,
   navShellClass,
+  navStickyShellClass,
   navUserMenuShellClass,
 } from "@/lib/navbarStyles";
 
@@ -68,7 +71,17 @@ type MobileBottomItem = {
   showCartBadge?: boolean;
 };
 
-export default function Navbar() {
+type NavbarProps = {
+  /** SSR snapshot so announcement bar matches on hydration. */
+  initialAnnouncementMessages?: readonly string[];
+  /** SSR snapshot for shop dropdown + mobile drawer categories. */
+  initialNavCategories?: Category[];
+};
+
+export default function Navbar({
+  initialAnnouncementMessages = [],
+  initialNavCategories = [],
+}: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -85,7 +98,7 @@ export default function Navbar() {
   const { itemCount } = useCartStore();
   const { products: wishlistProducts } = useWishlistStore();
 
-  const { data: categoriesData = [] } = useQuery({
+  const { data: categoriesData } = useQuery({
     queryKey: queryKeys.categories,
     queryFn: async () => {
       const body = await categoryApi.getAll();
@@ -93,10 +106,13 @@ export default function Navbar() {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const navCategories = useMemo(
-    () => categoriesData.filter(isShopCatalogCategory).slice(0, 7),
-    [categoriesData],
-  );
+  const navCategories = useMemo(() => {
+    const live = (categoriesData ?? [])
+      .filter(isShopCatalogCategory)
+      .slice(0, 7);
+    if (live.length > 0) return live;
+    return initialNavCategories.filter(isShopCatalogCategory).slice(0, 7);
+  }, [categoriesData, initialNavCategories]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -116,7 +132,14 @@ export default function Navbar() {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const announcementMessages = storefrontSettings?.announcementMessages ?? [];
+  const announcementMessages = useMemo(() => {
+    const live = storefrontSettings?.announcementMessages;
+    const source =
+      live && live.length > 0 ? live : initialAnnouncementMessages;
+    return source
+      .map((m) => String(m || "").trim())
+      .filter(Boolean);
+  }, [storefrontSettings?.announcementMessages, initialAnnouncementMessages]);
 
   useEffect(() => {
     let raf = 0;
@@ -238,6 +261,26 @@ export default function Navbar() {
   const navActive = useStoreNavActive();
 
   const isCheckoutFlow = pathname === "/cart" || pathname.startsWith("/checkout");
+  const isProductDetailPage = isStoreProductDetailPath(pathname);
+  const isShopListingPage = isStoreShopListingPath(pathname);
+  /** Shop + PDP mobile: persistent search bar, cart/wishlist top-right (no search icon). */
+  const showCommerceMobileShell =
+    isProductDetailPage || isShopListingPage;
+  const navAutoHideEnabled =
+    !isCheckoutFlow && !isMenuOpen && !isSearchOpen;
+  const navChromeVisible = useMobileNavAutoHide({
+    enabled: navAutoHideEnabled,
+  });
+  const showMobileBottomNav =
+    !isCheckoutFlow && !isProductDetailPage && !isShopListingPage;
+
+  const handleWishlistPress = useCallback(() => {
+    if (isAuthedStable) {
+      router.push("/wishlist");
+      return;
+    }
+    openAuth("login", "/wishlist");
+  }, [isAuthedStable, router, openAuth]);
 
   const mobileBottomNavItems: MobileBottomItem[] = useMemo(
     () => [
@@ -285,6 +328,7 @@ export default function Navbar() {
   return (
     <>
       <BrowserNotificationPrompt />
+      <div className={navStickyShellClass(navChromeVisible)} data-store-sticky-nav>
       {announcementMessages.length > 0 && !navActive.home && !isCheckoutFlow && (
         <div className={navAnnouncementShell}>
           <p className={navAnnouncementText}>
@@ -332,7 +376,10 @@ export default function Navbar() {
               )}
               <Link
                 href='/'
-                className={cn('flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0', isCheckoutFlow && "max-lg:hidden")}
+                className={cn(
+                  'flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0',
+                  isCheckoutFlow && "max-lg:hidden",
+                )}
                 aria-label='The House of Rani — Home'
               >
                 <Image
@@ -411,12 +458,32 @@ export default function Navbar() {
               />
             </div>
 
-            {/* Right actions — mobile: search on right; cart in header only on desktop (mobile: bottom nav) */}
+            {/* Right actions */}
             <div className={cn('flex items-center justify-end gap-0.5 sm:gap-1 shrink-0', isCheckoutFlow && "max-lg:hidden")}>
-              {isAuthedStable && (
+              {showCommerceMobileShell ?
+                <button
+                  type='button'
+                  onClick={handleWishlistPress}
+                  className={cn(navIconButton, "relative lg:hidden")}
+                  aria-label='Wishlist'
+                >
+                  <Heart className='h-5 w-5' strokeWidth={1.75} />
+                  {isAuthedStable && wishlistProducts.length > 0 && (
+                    <span className={navBadgeCount}>
+                      {wishlistProducts.length}
+                    </span>
+                  )}
+                </button>
+              : null}
+
+              {isAuthedStable ?
                 <Link
                   href='/wishlist'
-                  className={cn(navIconButton, "relative")}
+                  className={cn(
+                    navIconButton,
+                    "relative",
+                    showCommerceMobileShell && "hidden lg:inline-flex",
+                  )}
                   aria-label='Wishlist'
                 >
                   <Heart className='h-5 w-5' strokeWidth={1.75} />
@@ -426,11 +493,17 @@ export default function Navbar() {
                     </span>
                   )}
                 </Link>
-              )}
+              : null}
 
               <Link
                 href='/cart'
-                className={cn(navIconButton, "relative hidden lg:inline-flex")}
+                className={cn(
+                  navIconButton,
+                  "relative",
+                  showCommerceMobileShell ?
+                    "inline-flex"
+                  : "hidden lg:inline-flex",
+                )}
                 aria-label='Cart'
               >
                 <ShoppingBag className='h-5 w-5' strokeWidth={1.75} />
@@ -441,19 +514,21 @@ export default function Navbar() {
                 )}
               </Link>
 
-              <button
-                type='button'
-                onClick={() => {
-                  if (isSearchOpen) setIsSearchOpen(false);
-                  else openMobileSearch();
-                }}
-                className={cn(navIconButton, "lg:hidden")}
-                aria-label={isSearchOpen ? "Close search" : "Open search"}
-                aria-expanded={isSearchOpen}
-                aria-controls='mobile-search-panel'
-              >
-                <Search className='h-5 w-5' aria-hidden='true' />
-              </button>
+              {!showCommerceMobileShell && (
+                <button
+                  type='button'
+                  onClick={() => {
+                    if (isSearchOpen) setIsSearchOpen(false);
+                    else openMobileSearch();
+                  }}
+                  className={cn(navIconButton, "lg:hidden")}
+                  aria-label={isSearchOpen ? "Close search" : "Open search"}
+                  aria-expanded={isSearchOpen}
+                  aria-controls='mobile-search-panel'
+                >
+                  <Search className='h-5 w-5' aria-hidden='true' />
+                </button>
+              )}
 
               {isAuthedStable && <NotificationBell variant="navbar" />}
 
@@ -536,23 +611,27 @@ export default function Navbar() {
 
           {/* Announcement Bar Removed from Header */}
 
-          {/* Mobile / tablet search */}
-          {isSearchOpen && (
+          {/* Mobile search — always open on shop/PDP; toggle elsewhere */}
+          {!isCheckoutFlow &&
+            (showCommerceMobileShell || isSearchOpen) && (
             <div
               id='mobile-search-panel'
-              className='border-t border-white/10 pb-3 pt-3 animate-fadeIn lg:hidden'
+              className='border-t border-white/10 pb-3 pt-3 lg:hidden'
             >
               <StoreSearchAutocomplete
                 scope={navActive.gifting ? "gifting" : "shop"}
                 variant='nav-mobile'
                 searchInstance='mobile'
                 urlSearch={urlSearchForNav}
-                onNavigate={() => setIsSearchOpen(false)}
+                onNavigate={() => {
+                  if (!showCommerceMobileShell) setIsSearchOpen(false);
+                }}
               />
             </div>
           )}
         </div>
       </header>
+      </div>
 
       {/* Mobile drawer — above bottom tab bar */}
       {isMenuOpen && (
@@ -786,7 +865,7 @@ export default function Navbar() {
       )}
 
       {/* Mobile bottom navigation — solid bg (no backdrop-blur / alpha bg: avoids “white bar” + invisible white icons on iOS/WebKit) */}
-      {!isCheckoutFlow && (
+      {showMobileBottomNav && (
         <nav
           className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(20,25,47,0.55)] [color-scheme:dark]'
           aria-label='Primary'
