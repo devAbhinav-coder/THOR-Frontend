@@ -104,8 +104,9 @@ export default function HorizontalScrollRow({
 
       <div
         ref={scrollRef}
+        data-lenis-prevent="true"
         className={cn(
-          "flex w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide snap-x snap-mandatory touch-pan-y sm:gap-4 lg:gap-5 [-webkit-overflow-scrolling:touch]",
+          "flex w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden pb-1 scrollbar-hide snap-x snap-mandatory sm:gap-4 lg:gap-5 [-webkit-overflow-scrolling:touch]",
           innerClassName,
         )}
       >

@@ -221,6 +221,7 @@ export default function CategorySection({
         </div>
 
         <div
+          data-lenis-prevent="true"
           className={cn(
             "relative min-h-[360px] overflow-hidden sm:min-h-[420px] lg:min-h-[480px]",
             isSwiperLocked && "[&_.swiper-wrapper]:justify-center",
@@ -277,7 +278,7 @@ export default function CategorySection({
             resistanceRatio={0}
             watchOverflow
             grabCursor
-            className='category-collection-swiper relative z-10 !pb-1 touch-pan-y'
+            className='category-collection-swiper relative z-10 !pb-1'
             slidesOffsetBefore={0}
             slidesOffsetAfter={0}
             breakpoints={{
