@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState, useMemo, useCallback } from "react";
+import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag, Star, Gift, Tag } from "lucide-react";
@@ -533,9 +534,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           <div className='h-3 sm:h-5 min-h-3 sm:min-h-5 shrink-0'>
             {!colorSwatches ?
               <div className='h-3 sm:h-5' aria-hidden />
-            : <div
-                data-lenis-prevent-horizontal
-                className='flex h-3 sm:h-5 max-w-full touch-pan-x items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+            : <HorizontalScrollSurface
+                className='flex h-3 sm:h-5 max-w-full items-center gap-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
                 aria-label={`Available colors: ${uniqueColors.map((c) => c.color).join(", ")}`}
               >
                 {colorSwatches.visible.map(({ color, colorCode }) => {
@@ -560,7 +560,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
                     +{colorSwatches.extra}
                   </span>
                 )}
-              </div>
+              </HorizontalScrollSurface>
             }
           </div>
 

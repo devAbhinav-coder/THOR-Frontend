@@ -1,5 +1,6 @@
 "use client";
 
+import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -350,9 +351,8 @@ export default function BlogListingClient({
             )}
           </div>
 
-          <div
-            data-lenis-prevent-horizontal
-            className="flex touch-pan-x gap-2 overflow-x-auto overscroll-x-contain pb-1 -mx-1 px-1 scrollbar-hide"
+          <HorizontalScrollSurface
+            className="flex gap-2 pb-1 -mx-1 px-1 scrollbar-hide"
             role="tablist"
             aria-label="Filter stories by category"
           >
@@ -376,7 +376,7 @@ export default function BlogListingClient({
                 </button>
               );
             })}
-          </div>
+          </HorizontalScrollSurface>
         </div>
 
         <form

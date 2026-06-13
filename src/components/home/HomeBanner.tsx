@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
 import { useHomeReveal } from "@/hooks/useHomeReveal";
+import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 
 type Props = {
   /** SSR-prefetched storefront settings — avoids a client fetch + late mount CLS. */
@@ -345,7 +346,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
 
           {/* Mobile — horizontal scroll */}
           <div className='md:hidden'>
-            <div data-lenis-prevent-horizontal className='flex touch-pan-x snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+            <HorizontalScrollSurface className='flex snap-x snap-mandatory gap-3 px-4 pb-1 scrollbar-hide'>
               {resolvedTiles.map((tile, index) => (
                 <GalleryTile
                   key={`mobile-${tile.slot}`}
@@ -359,7 +360,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
                   revealDelay={`${index * 90}ms`}
                 />
               ))}
-            </div>
+            </HorizontalScrollSurface>
           </div>
 
           {/* Desktop — compact editorial grid */}

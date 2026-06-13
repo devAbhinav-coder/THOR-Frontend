@@ -13,6 +13,7 @@ import {
   horizontalScrollSurfaceClassName,
   horizontalScrollSurfaceProps,
 } from "@/lib/scrollSurface";
+import { useHorizontalScrollTouchUnlock } from "@/hooks/useHorizontalScrollTouchUnlock";
 
 type ScrollRowVariant = "default" | "dark" | "light";
 
@@ -40,6 +41,8 @@ export default function HorizontalScrollRow({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useHorizontalScrollTouchUnlock(scrollRef);
 
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current;

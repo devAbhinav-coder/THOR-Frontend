@@ -1,5 +1,6 @@
 "use client";
 
+import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -511,7 +512,7 @@ export function PdpReviewsSection({
 
                     {review.images && review.images.length > 0 && (
                       <div className='mt-4'>
-                        <div data-lenis-prevent-horizontal className='flex min-w-0 max-w-full touch-pan-x items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide'>
+                        <HorizontalScrollSurface className='flex min-w-0 max-w-full items-center gap-2 pb-1 scrollbar-hide'>
                           {(expandedReviewPhotos[review._id] ?
                             review.images
                           : review.images.slice(0, 3)
@@ -551,7 +552,7 @@ export function PdpReviewsSection({
                                 +{review.images.length - 3} more
                               </button>
                             )}
-                        </div>
+                        </HorizontalScrollSurface>
                         {review.images.length > 3 &&
                           expandedReviewPhotos[review._id] && (
                             <button
@@ -700,7 +701,7 @@ export function PdpReviewsSection({
                     </button>
                   </div>
                   {review.images && review.images.length > 0 && (
-                    <div data-lenis-prevent-horizontal className='mt-3 flex min-w-0 max-w-full touch-pan-x gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 scrollbar-hide'>
+                    <HorizontalScrollSurface className='mt-3 flex min-w-0 max-w-full gap-2 pb-1 scrollbar-hide'>
                       {review.images.slice(0, 3).map((img, i) => (
                         <button
                           key={`all_img_${review._id}_${i}`}
@@ -722,7 +723,7 @@ export function PdpReviewsSection({
                           />
                         </button>
                       ))}
-                    </div>
+                    </HorizontalScrollSurface>
                   )}
                 </div>
               ))}

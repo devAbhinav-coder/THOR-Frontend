@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import Image from "next/image";
 import {
   Package,
@@ -318,11 +319,7 @@ export function PdpImageGallery({
           </div>
 
           {images.length > 1 && (
-            <div
-              data-lenis-prevent-horizontal
-              className='lg:hidden w-full min-w-0 max-w-full flex touch-pan-x gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide pb-1'
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
+            <HorizontalScrollSurface className='lg:hidden flex w-full min-w-0 max-w-full gap-2 scrollbar-hide pb-1'>
               {images.map((img, i) => (
                 <button
                   key={i}
@@ -354,7 +351,7 @@ export function PdpImageGallery({
                   </div>
                 </button>
               ))}
-            </div>
+            </HorizontalScrollSurface>
           )}
         </div>
       </div>

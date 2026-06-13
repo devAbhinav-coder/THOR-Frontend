@@ -73,6 +73,12 @@
     overflow-x: clip;
     overscroll-behavior-y: none;
   }
+
+  /* Horizontal rows: contain sideways overscroll but let vertical scroll reach the page. */
+  [data-lenis-prevent-horizontal] {
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+  }
   html {
     scroll-padding-top: 4rem;
   }

@@ -4,7 +4,7 @@ export const horizontalScrollSurfaceProps = {
 } as const;
 
 export const horizontalScrollSurfaceClassName =
-  "touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]";
+  "overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] [touch-action:manipulation]";
 
 export function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;

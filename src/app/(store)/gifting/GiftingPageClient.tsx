@@ -21,6 +21,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { getNextGiftingPageParam } from "@/lib/infiniteScrollPagination";
 import { Skeleton } from "@/components/ui/SkeletonLoader";
+import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { queryKeys } from "@/lib/queryKeys";
@@ -364,7 +365,7 @@ export default function GiftingPageClient({
       </section>
       {/* Admin categories image strip */}
       <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
-        <div data-lenis-prevent-horizontal className='flex touch-pan-x items-start gap-2.5 overflow-x-auto overscroll-x-contain px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <HorizontalScrollSurface className='flex items-start gap-2.5 px-1 pt-2 pb-3 scrollbar-hide'>
           {categoriesLoading ?
             Array.from({ length: 8 }).map((_, i) => (
               <div
@@ -434,7 +435,7 @@ export default function GiftingPageClient({
               ))}
             </>
           : null}
-        </div>
+        </HorizontalScrollSurface>
       </section>
       {/* Banner 2 */}
       <section className='max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-3'>
