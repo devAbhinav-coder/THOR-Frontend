@@ -56,11 +56,12 @@ import {
   PdpRelatedProductRows,
 } from "@/components/product/pdp";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
+import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
 const MAX_REVIEW_IMAGES = 3;
-const MAX_REVIEW_IMAGE_SIZE_MB = 5;
+const MAX_REVIEW_IMAGE_SIZE_MB = UPLOAD_MAX_MB.review;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
 const REVIEW_IMAGE_MAX_DIMENSION = 1600;
 type RatingDistributionBucket = { _id: number | string; count: number };

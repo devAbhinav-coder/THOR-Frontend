@@ -26,6 +26,7 @@ import {
   pairsFromBulkInput,
 } from "@/lib/productDetailsBulk";
 import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
+import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import {
   AdminAiProductCopySection,
   type ProductCopyDraft,
@@ -1122,7 +1123,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                   key={editingProduct?._id ?? "new-product"}
                   maxFiles={7}
                   aspectRatio='3:4'
-                  maxSizeMB={5}
+                  maxSizeMB={UPLOAD_MAX_MB.product}
                   existingImages={existingImageSlots.map((i) => i.url)}
                   onRemoveExisting={
                     editingProduct?._id ? handleRemoveExistingImage : undefined

@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
+import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import type { Product, Review } from "@/types";
 import { StarSelector, RatingBar } from "./PdpReviewPrimitives";
 import type { ReviewEligibility, ReviewFormState } from "./types";
@@ -363,7 +364,7 @@ export function PdpReviewsSection({
                       )}
                     </div>
                     <p className='text-[10px] text-gray-400 italic'>
-                      Images help other shoppers see the product in real life (max 3 photos, 5MB each, uploaded as WebP).
+                      Images help other shoppers see the product in real life (max 3 photos, {UPLOAD_MAX_MB.review}MB each, uploaded as WebP).
                     </p>
                   </div>
 

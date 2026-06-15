@@ -10,6 +10,7 @@ import { useCartStore } from "@/store/useCartStore";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import ImageUploader from "@/components/ui/ImageUploader";
+import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import Link from "next/link";
 import type { Product as ProductType } from "@/types";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
@@ -448,7 +449,7 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
                 <div className="bg-gray-50 rounded-2xl p-4 border border-dashed border-gray-200">
                   <ImageUploader
                     maxFiles={5}
-                    maxSizeMB={5}
+                    maxSizeMB={UPLOAD_MAX_MB.gifting}
                     onChange={setReferenceFiles}
                     hint="Upload photos for reference/design"
                   />

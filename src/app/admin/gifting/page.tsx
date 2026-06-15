@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatPrice, formatDate } from "@/lib/utils";
 import ImageUploader from "@/components/ui/ImageUploader";
+import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import toast from "react-hot-toast";
 import type { Product, ProductImage } from "@/types";
 
@@ -524,7 +525,7 @@ function GiftProductFormModal({
                   key={editingProduct?._id ?? "new-gift-product"}
                   maxFiles={7}
                   aspectRatio="1:1"
-                  maxSizeMB={5}
+                  maxSizeMB={UPLOAD_MAX_MB.gifting}
                   existingImages={existingImageSlots.map((i) => i.url)}
                   onRemoveExisting={editingProduct?._id ? handleRemoveExistingImage : undefined}
                   onChange={setNewFiles}
