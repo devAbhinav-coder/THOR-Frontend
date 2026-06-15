@@ -1,26 +1,37 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { X, Plus, Trash2, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
-import { Product, Category, ProductImage } from '@/types';
-import { productApi, categoryApi, adminApi } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import ImageUploader from '@/components/ui/ImageUploader';
-import toast from 'react-hot-toast';
-import { isMulticolorLabel, VARIANT_MULTICOLOR_MARKER } from '@/lib/variantSwatch';
+import { useState, useEffect, useCallback } from "react";
+import {
+  X,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
+import { Product, Category, ProductImage } from "@/types";
+import { productApi, categoryApi, adminApi } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import ImageUploader from "@/components/ui/ImageUploader";
+import toast from "react-hot-toast";
+import {
+  isMulticolorLabel,
+  VARIANT_MULTICOLOR_MARKER,
+} from "@/lib/variantSwatch";
 import {
   bulkTextFromPairs,
   mergeFabricIntoProductDetails,
   pairsFromBulkInput,
-} from '@/lib/productDetailsBulk';
-import ProductDetailsBulkFields from '@/components/admin/ProductDetailsBulkFields';
+} from "@/lib/productDetailsBulk";
+import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
 import {
   AdminAiProductCopySection,
   type ProductCopyDraft,
-} from '@/components/admin/ai/AdminAiProductCopySection';
-import ProductSeoChecklist from '@/components/admin/ProductSeoChecklist';
-import { evaluateProductSeo } from '@/lib/productSeoChecklist';
+} from "@/components/admin/ai/AdminAiProductCopySection";
+import ProductSeoChecklist from "@/components/admin/ProductSeoChecklist";
+import { evaluateProductSeo } from "@/lib/productSeoChecklist";
 
 interface Props {
   product: Product | null;
@@ -29,25 +40,43 @@ interface Props {
 }
 
 const FABRICS = [
-  'Silk', 'Cotton', 'Chiffon', 'Georgette', 'Banarasi',
-  'Kanjeevaram', 'Linen', 'Crepe', 'Net', 'Velvet', 'Other',
+  "Silk",
+  "Cotton",
+  "Chiffon",
+  "Georgette",
+  "Banarasi",
+  "Kanjeevaram",
+  "Linen",
+  "Crepe",
+  "Net",
+  "Velvet",
+  "Other",
 ];
 
-const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
+const Field = ({
+  label,
+  children,
+  required,
+}: {
+  label: string;
+  children: React.ReactNode;
+  required?: boolean;
+}) => (
   <div>
-    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-      {label} {required && <span className="text-brand-500">*</span>}
+    <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
+      {label} {required && <span className='text-brand-500'>*</span>}
     </label>
     {children}
   </div>
 );
 
-const inputCls = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all placeholder:text-gray-300';
+const inputCls =
+  "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all placeholder:text-gray-300";
 
-const emptyVariant = (): Product['variants'][0] => ({
-  size: '',
-  color: '',
-  colorCode: '',
+const emptyVariant = (): Product["variants"][0] => ({
+  size: "",
+  color: "",
+  colorCode: "",
   stock: 0,
   sku: `SKU-${Date.now()}`,
   costPrice: undefined,
@@ -62,84 +91,94 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [existingImageSlots, setExistingImageSlots] = useState<ProductImage[]>([]);
+  const [existingImageSlots, setExistingImageSlots] = useState<ProductImage[]>(
+    [],
+  );
   const [showSeo, setShowSeo] = useState(false);
-  const [detailsKeysText, setDetailsKeysText] = useState('');
-  const [detailsValuesText, setDetailsValuesText] = useState('');
-  const [variants, setVariants] = useState<Product['variants']>([emptyVariant()]);
-  const [variantColorKinds, setVariantColorKinds] = useState<Array<'solid' | 'multicolor'>>(['solid']);
+  const [detailsKeysText, setDetailsKeysText] = useState("");
+  const [detailsValuesText, setDetailsValuesText] = useState("");
+  const [variants, setVariants] = useState<Product["variants"]>([
+    emptyVariant(),
+  ]);
+  const [variantColorKinds, setVariantColorKinds] = useState<
+    Array<"solid" | "multicolor">
+  >(["solid"]);
 
   const [form, setForm] = useState({
-    name: '',
-    description: '',
-    shortDescription: '',
-    price: '',
-    comparePrice: '',
-    category: '',
-    subcategory: '',
-    fabric: '',
-    tags: '',
+    name: "",
+    description: "",
+    shortDescription: "",
+    price: "",
+    comparePrice: "",
+    category: "",
+    subcategory: "",
+    fabric: "",
+    tags: "",
     isFeatured: false,
     isActive: true,
-    seoTitle: '',
-    seoDescription: '',
-    hsnCode: '',
+    seoTitle: "",
+    seoDescription: "",
+    hsnCode: "",
   });
 
   const hydrateFromProduct = useCallback((p: Product | null) => {
     if (!p) {
       const v = [emptyVariant()];
       setForm({
-        name: '',
-        description: '',
-        shortDescription: '',
-        price: '',
-        comparePrice: '',
-        category: '',
-        subcategory: '',
-        fabric: '',
-        tags: '',
+        name: "",
+        description: "",
+        shortDescription: "",
+        price: "",
+        comparePrice: "",
+        category: "",
+        subcategory: "",
+        fabric: "",
+        tags: "",
         isFeatured: false,
         isActive: true,
-        seoTitle: '',
-        seoDescription: '',
-        hsnCode: '',
+        seoTitle: "",
+        seoDescription: "",
+        hsnCode: "",
       });
       setVariants(v);
-      setVariantColorKinds(['solid']);
+      setVariantColorKinds(["solid"]);
       setExistingImageSlots([]);
       setNewFiles([]);
-      setDetailsKeysText('');
-      setDetailsValuesText('');
+      setDetailsKeysText("");
+      setDetailsValuesText("");
       return;
     }
-    const v =
-      p.variants?.length ? [...p.variants] : [emptyVariant()];
+    const v = p.variants?.length ? [...p.variants] : [emptyVariant()];
     setForm({
-      name: p.name || '',
-      description: p.description || '',
-      shortDescription: p.shortDescription || '',
-      price: p.price != null ? String(p.price) : '',
-      comparePrice: p.comparePrice != null ? String(p.comparePrice) : '',
-      category: p.category || '',
-      subcategory: p.subcategory || '',
-      fabric: p.fabric || '',
-      tags: (p.tags || []).join(', '),
+      name: p.name || "",
+      description: p.description || "",
+      shortDescription: p.shortDescription || "",
+      price: p.price != null ? String(p.price) : "",
+      comparePrice: p.comparePrice != null ? String(p.comparePrice) : "",
+      category: p.category || "",
+      subcategory: p.subcategory || "",
+      fabric: p.fabric || "",
+      tags: (p.tags || []).join(", "),
       isFeatured: p.isFeatured ?? false,
       isActive: p.isActive !== undefined ? p.isActive : true,
-      seoTitle: p.seoTitle || '',
-      seoDescription: p.seoDescription || '',
-      hsnCode: p.hsnCode || '',
+      seoTitle: p.seoTitle || "",
+      seoDescription: p.seoDescription || "",
+      hsnCode: p.hsnCode || "",
     });
     setVariants(v);
     setVariantColorKinds(
       v.map((row) =>
-        (row.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER || isMulticolorLabel(row.color) ?
-          'multicolor'
-        : 'solid',
+        (
+          (row.colorCode || "").trim() === VARIANT_MULTICOLOR_MARKER ||
+          isMulticolorLabel(row.color)
+        ) ?
+          "multicolor"
+        : "solid",
       ),
     );
-    setExistingImageSlots(p.images?.length ? p.images.map((i) => ({ ...i })) : []);
+    setExistingImageSlots(
+      p.images?.length ? p.images.map((i) => ({ ...i })) : [],
+    );
     setNewFiles([]);
     const { keysText, valuesText } = bulkTextFromPairs(p.productDetails || []);
     setDetailsKeysText(keysText);
@@ -147,15 +186,25 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   }, []);
 
   useEffect(() => {
-    categoryApi.getAll().then((res) => setCategories(res.data.categories || [])).catch(() => {});
+    categoryApi
+      .getAll()
+      .then((res) => setCategories(res.data.categories || []))
+      .catch(() => {});
   }, []);
 
   /** Keep specs table Fabric row in sync with the Fabric dropdown */
   useEffect(() => {
     const f = form.fabric.trim();
     if (!f) return;
-    const merged = mergeFabricIntoProductDetails(detailsKeysText, detailsValuesText, f);
-    if (merged.keys !== detailsKeysText || merged.values !== detailsValuesText) {
+    const merged = mergeFabricIntoProductDetails(
+      detailsKeysText,
+      detailsValuesText,
+      f,
+    );
+    if (
+      merged.keys !== detailsKeysText ||
+      merged.values !== detailsValuesText
+    ) {
       setDetailsKeysText(merged.keys);
       setDetailsValuesText(merged.values);
     }
@@ -201,7 +250,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       })
       .catch(() => {
         if (cancelled) return;
-        toast.error('Could not load full product — showing partial data');
+        toast.error("Could not load full product — showing partial data");
         setLoadedProduct(product);
         hydrateFromProduct(product);
       })
@@ -220,8 +269,18 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const addVariant = () => {
-    setVariants((v) => [...v, { size: '', color: '', colorCode: '', stock: 0, sku: `SKU-${Date.now()}`, costPrice: undefined }]);
-    setVariantColorKinds((k) => [...k, 'solid']);
+    setVariants((v) => [
+      ...v,
+      {
+        size: "",
+        color: "",
+        colorCode: "",
+        stock: 0,
+        sku: `SKU-${Date.now()}`,
+        costPrice: undefined,
+      },
+    ]);
+    setVariantColorKinds((k) => [...k, "solid"]);
   };
 
   const removeVariant = (i: number) => {
@@ -229,16 +288,16 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     setVariantColorKinds((k) => k.filter((_, idx) => idx !== i));
   };
 
-  const setVariantColorKind = (i: number, kind: 'solid' | 'multicolor') => {
+  const setVariantColorKind = (i: number, kind: "solid" | "multicolor") => {
     setVariantColorKinds((k) => k.map((c, idx) => (idx === i ? kind : c)));
-    if (kind === 'multicolor') {
+    if (kind === "multicolor") {
       setVariants((v) =>
         v.map((row, idx) =>
           idx === i ?
             {
               ...row,
               colorCode: VARIANT_MULTICOLOR_MARKER,
-              color: row.color?.trim() ? row.color : 'Multicolor',
+              color: row.color?.trim() ? row.color : "Multicolor",
             }
           : row,
         ),
@@ -250,9 +309,14 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             {
               ...row,
               colorCode:
-                String(row.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER ||
-                !String(row.colorCode || '').trim().startsWith('#') ?
-                  '#000000'
+                (
+                  String(row.colorCode || "").trim() ===
+                    VARIANT_MULTICOLOR_MARKER ||
+                  !String(row.colorCode || "")
+                    .trim()
+                    .startsWith("#")
+                ) ?
+                  "#000000"
                 : row.colorCode,
             }
           : row,
@@ -262,17 +326,19 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   };
 
   const updateVariant = (i: number, field: string, value: string | number) =>
-    setVariants((v) => v.map((item, idx) => (idx === i ? { ...item, [field]: value } : item)));
+    setVariants((v) =>
+      v.map((item, idx) => (idx === i ? { ...item, [field]: value } : item)),
+    );
 
   const handleRemoveExistingImage = async (index: number) => {
     if (!editingProduct?._id) return;
-    if (existingImageSlots.length <= 1) {
-      toast.error('At least one product image is required.');
+    if (existingImageSlots.length <= 0) {
+      toast.error("At least one product image is required.");
       return;
     }
     const pub = existingImageSlots[index]?.publicId;
     if (!pub) {
-      toast.error('Cannot remove this image.');
+      toast.error("Cannot remove this image.");
       return;
     }
     try {
@@ -284,94 +350,125 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       } else {
         setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
       }
-      toast.success('Image removed');
+      toast.success("Image removed");
     } catch (err: unknown) {
-      toast.error((err as { message?: string }).message || 'Failed to remove image');
+      toast.error(
+        (err as { message?: string }).message || "Failed to remove image",
+      );
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct && newFiles.length === 0) return toast.error('Upload at least one product image');
-    if (editingProduct && existingImageSlots.length === 0 && newFiles.length === 0) {
-      return toast.error('Upload at least one product image');
+    if (!editingProduct && newFiles.length === 0)
+      return toast.error("Upload at least one product image");
+    if (
+      editingProduct &&
+      existingImageSlots.length === 0 &&
+      newFiles.length === 0
+    ) {
+      return toast.error("Upload at least one product image");
     }
     if (editingProduct && existingImageSlots.length + newFiles.length > 7) {
-      return toast.error('Maximum 7 images per product (remove some or upload fewer).');
+      return toast.error(
+        "Maximum 7 images per product (remove some or upload fewer).",
+      );
     }
-    if (!form.category) return toast.error('Please select a category');
-    if (variants.some((v) => !v.sku.trim())) return toast.error('Every variant needs a SKU');
+    if (!form.category) return toast.error("Please select a category");
+    if (variants.some((v) => !v.sku.trim()))
+      return toast.error("Every variant needs a SKU");
 
-    const detailsParsed = pairsFromBulkInput(detailsKeysText, detailsValuesText);
+    const detailsParsed = pairsFromBulkInput(
+      detailsKeysText,
+      detailsValuesText,
+    );
     if (!detailsParsed.ok) return toast.error(detailsParsed.error);
 
     setIsSaving(true);
     setUploadProgress(newFiles.length > 0 ? 0 : null);
     try {
       const fd = new FormData();
-      fd.append('name', form.name);
-      fd.append('description', form.description);
-      if (form.shortDescription) fd.append('shortDescription', form.shortDescription);
-      fd.append('price', form.price);
-      if (form.comparePrice) fd.append('comparePrice', form.comparePrice);
-      fd.append('category', form.category);
-      if (form.subcategory) fd.append('subcategory', form.subcategory);
-      if (form.fabric) fd.append('fabric', form.fabric);
-      fd.append('isFeatured', String(form.isFeatured));
-      fd.append('isActive', String(form.isActive));
-      if (form.seoTitle) fd.append('seoTitle', form.seoTitle);
-      if (form.seoDescription) fd.append('seoDescription', form.seoDescription);
-      if (form.hsnCode) fd.append('hsnCode', form.hsnCode);
+      fd.append("name", form.name);
+      fd.append("description", form.description);
+      if (form.shortDescription)
+        fd.append("shortDescription", form.shortDescription);
+      fd.append("price", form.price);
+      if (form.comparePrice) fd.append("comparePrice", form.comparePrice);
+      fd.append("category", form.category);
+      if (form.subcategory) fd.append("subcategory", form.subcategory);
+      if (form.fabric) fd.append("fabric", form.fabric);
+      fd.append("isFeatured", String(form.isFeatured));
+      fd.append("isActive", String(form.isActive));
+      if (form.seoTitle) fd.append("seoTitle", form.seoTitle);
+      if (form.seoDescription) fd.append("seoDescription", form.seoDescription);
+      if (form.hsnCode) fd.append("hsnCode", form.hsnCode);
       fd.append(
-        'variants',
+        "variants",
         JSON.stringify(
           variants.map((row, idx) => ({
             sku: row.sku,
             size: row.size,
             color: row.color,
             colorCode:
-              variantColorKinds[idx] === 'multicolor' ?
+              variantColorKinds[idx] === "multicolor" ?
                 VARIANT_MULTICOLOR_MARKER
-              : String(row.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER ?
-                '#000000'
+              : (
+                String(row.colorCode || "").trim() === VARIANT_MULTICOLOR_MARKER
+              ) ?
+                "#000000"
               : row.colorCode,
             stock: row.stock,
             ...(row.price != null && row.price > 0 ? { price: row.price } : {}),
-            ...(row.costPrice != null && row.costPrice > 0 ? { costPrice: row.costPrice } : {}),
+            ...(row.costPrice != null && row.costPrice > 0 ?
+              { costPrice: row.costPrice }
+            : {}),
           })),
         ),
       );
       if (form.tags.trim())
-        fd.append('tags', JSON.stringify(form.tags.split(',').map((t) => t.trim()).filter(Boolean)));
+        fd.append(
+          "tags",
+          JSON.stringify(
+            form.tags
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean),
+          ),
+        );
       fd.append(
-        'productDetails',
+        "productDetails",
         JSON.stringify(
-          detailsParsed.pairs.map((d) => ({ key: d.key.trim(), value: d.value.trim() }))
-        )
+          detailsParsed.pairs.map((d) => ({
+            key: d.key.trim(),
+            value: d.value.trim(),
+          })),
+        ),
       );
-      newFiles.forEach((f) => fd.append('images', f));
+      newFiles.forEach((f) => fd.append("images", f));
 
       let saved: Product | undefined;
       if (editingProduct?._id) {
         if (editingProduct.updatedAt) {
-          fd.append('updatedAt', editingProduct.updatedAt);
+          fd.append("updatedAt", editingProduct.updatedAt);
         }
         const res = await productApi.update(editingProduct._id, fd, {
           onUploadProgress: (p) => setUploadProgress(p),
         });
         saved = (res.data?.product || undefined) as Product | undefined;
         if (saved) setLoadedProduct(saved);
-        toast.success('Product updated');
+        toast.success("Product updated");
       } else {
         const res = await productApi.create(fd, {
           onUploadProgress: (p) => setUploadProgress(p),
         });
         saved = (res.data?.product || undefined) as Product | undefined;
-        toast.success('Product created');
+        toast.success("Product created");
       }
       onSave(saved);
     } catch (err: unknown) {
-      toast.error((err as { message?: string }).message || 'Failed to save product');
+      toast.error(
+        (err as { message?: string }).message || "Failed to save product",
+      );
     } finally {
       setIsSaving(false);
       setUploadProgress(null);
@@ -379,364 +476,487 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6">
-      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-full shadow-2xl animate-fadeIn flex flex-col overflow-hidden">
-
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6'>
+      <div className='bg-white rounded-3xl w-full max-w-4xl max-h-full shadow-2xl animate-fadeIn flex flex-col overflow-hidden'>
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 shrink-0">
+        <div className='flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 shrink-0'>
           <div>
-            <h2 className="text-xl font-serif font-bold text-gray-900">
-              {editingProduct ? 'Edit Product' : 'Add New Product'}
+            <h2 className='text-xl font-serif font-bold text-gray-900'>
+              {editingProduct ? "Edit Product" : "Add New Product"}
             </h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {editingProduct ? `Editing: ${editingProduct.name}` : 'Fill in product details below'}
+            <p className='text-xs text-gray-400 mt-0.5'>
+              {editingProduct ?
+                `Editing: ${editingProduct.name}`
+              : "Fill in product details below"}
             </p>
           </div>
           <button
-            type="button"
+            type='button'
             onClick={onClose}
-            className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0"
+            className='h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0'
           >
-            <X className="h-5 w-5" />
+            <X className='h-5 w-5' />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
-          <div className="relative p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] gap-8 overflow-y-auto overflow-x-hidden min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <form onSubmit={handleSubmit} className='flex flex-col min-h-0 flex-1'>
+          <div className='relative p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] gap-8 overflow-y-auto overflow-x-hidden min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
             {loadingProduct && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm">
-                <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
-                <p className="text-sm font-medium text-gray-600">Loading product…</p>
+              <div className='absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm'>
+                <Loader2 className='h-8 w-8 text-brand-600 animate-spin' />
+                <p className='text-sm font-medium text-gray-600'>
+                  Loading product…
+                </p>
               </div>
             )}
 
             {/* ── LEFT: Details ── */}
-            <div className="space-y-6 min-w-0">
-
+            <div className='space-y-6 min-w-0'>
               {/* Basic info */}
-              <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Basic Information</h3>
-                <Field label="Product Name" required>
+              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
+                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
+                  Basic Information
+                </h3>
+                <Field label='Product Name' required>
                   <input
                     className={inputCls}
                     value={form.name}
-                    onChange={(e) => set('name', e.target.value)}
-                    placeholder="e.g. Banarasi Silk Saree in Royal Blue"
+                    onChange={(e) => set("name", e.target.value)}
+                    placeholder='e.g. Banarasi Silk Saree in Royal Blue'
                     required
                   />
                 </Field>
-                <Field label="Description" required>
+                <Field label='Description' required>
                   <textarea
                     className={`${inputCls} resize-none`}
                     value={form.description}
-                    onChange={(e) => set('description', e.target.value)}
-                    placeholder={"Paste rich text with line breaks/bullets, e.g.\n- Pure silk weave\n- Handcrafted border\n- Dry clean only"}
+                    onChange={(e) => set("description", e.target.value)}
+                    placeholder={
+                      "Paste rich text with line breaks/bullets, e.g.\n- Pure silk weave\n- Handcrafted border\n- Dry clean only"
+                    }
                     rows={6}
                     required
                   />
-                  <p className="mt-1 text-[11px] text-gray-400">
-                    Tip: You can paste multi-line text and bullet points; storefront now renders it in a readable format.
+                  <p className='mt-1 text-[11px] text-gray-400'>
+                    Tip: You can paste multi-line text and bullet points;
+                    storefront now renders it in a readable format.
                   </p>
                 </Field>
-                <Field label="Short Description">
+                <Field label='Short Description'>
                   <input
                     className={inputCls}
                     value={form.shortDescription}
-                    onChange={(e) => set('shortDescription', e.target.value)}
-                    placeholder="2 sentences for listings (~120–200 chars) — AI fills this separately from long description"
+                    onChange={(e) => set("shortDescription", e.target.value)}
+                    placeholder='2 sentences for listings (~120–200 chars) — AI fills this separately from long description'
                   />
                 </Field>
-                <Field label="HSN Code">
+                <Field label='HSN Code'>
                   <input
                     className={inputCls}
                     value={form.hsnCode}
-                    onChange={(e) => set('hsnCode', e.target.value)}
-                    placeholder="e.g. 6204"
+                    onChange={(e) => set("hsnCode", e.target.value)}
+                    placeholder='e.g. 6204'
                   />
                 </Field>
               </div>
 
               {/* Pricing */}
-              <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pricing</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Selling Price (₹)" required>
+              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
+                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
+                  Pricing
+                </h3>
+                <div className='grid grid-cols-2 gap-4'>
+                  <Field label='Selling Price (₹)' required>
                     <input
-                      type="number" min="0" step="0.01"
+                      type='number'
+                      min='0'
+                      step='0.01'
                       className={inputCls}
                       value={form.price}
-                      onChange={(e) => set('price', e.target.value)}
-                      placeholder="1499"
+                      onChange={(e) => set("price", e.target.value)}
+                      placeholder='1499'
                       required
                     />
                   </Field>
-                  <Field label="MRP / Compare Price (₹)">
+                  <Field label='MRP / Compare Price (₹)'>
                     <input
-                      type="number" min="0" step="0.01"
+                      type='number'
+                      min='0'
+                      step='0.01'
                       className={inputCls}
                       value={form.comparePrice}
-                      onChange={(e) => set('comparePrice', e.target.value)}
-                      placeholder="1999"
+                      onChange={(e) => set("comparePrice", e.target.value)}
+                      placeholder='1999'
                     />
                   </Field>
                 </div>
-                {form.price && form.comparePrice && Number(form.comparePrice) > Number(form.price) && (
-                  <p className="text-xs text-green-600 font-medium">
-                    ✓ {Math.round(((Number(form.comparePrice) - Number(form.price)) / Number(form.comparePrice)) * 100)}% discount will be shown
-                  </p>
-                )}
+                {form.price &&
+                  form.comparePrice &&
+                  Number(form.comparePrice) > Number(form.price) && (
+                    <p className='text-xs text-green-600 font-medium'>
+                      ✓{" "}
+                      {Math.round(
+                        ((Number(form.comparePrice) - Number(form.price)) /
+                          Number(form.comparePrice)) *
+                          100,
+                      )}
+                      % discount will be shown
+                    </p>
+                  )}
               </div>
 
               {/* Categorisation */}
-              <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Categorisation</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Category" required>
+              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
+                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
+                  Categorisation
+                </h3>
+                <div className='grid grid-cols-2 gap-4'>
+                  <Field label='Category' required>
                     <select
                       className={inputCls}
                       value={form.category}
-                      onChange={(e) => set('category', e.target.value)}
+                      onChange={(e) => set("category", e.target.value)}
                       required
                     >
-                      <option value="">Select category</option>
+                      <option value=''>Select category</option>
                       {categories
-                        .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== "gifting")
+                        .filter(
+                          (c) =>
+                            !c.isGiftCategory &&
+                            c.name.toLowerCase() !== "gifting",
+                        )
                         .map((c) => (
-                        <option key={c._id} value={c.name}>{c.name}</option>
-                      ))}
+                          <option key={c._id} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
                     </select>
                     {categories.length === 0 && (
-                      <p className="text-xs text-amber-500 mt-1">Create categories in Admin → Categories first.</p>
+                      <p className='text-xs text-amber-500 mt-1'>
+                        Create categories in Admin → Categories first.
+                      </p>
                     )}
                   </Field>
-                  <Field label="Subcategory">
-                    {subcategories.length > 0 ? (
-                      <select className={inputCls} value={form.subcategory} onChange={(e) => set('subcategory', e.target.value)}>
-                        <option value="">None</option>
-                        {subcategories.map((s) => <option key={s} value={s}>{s}</option>)}
+                  <Field label='Subcategory'>
+                    {subcategories.length > 0 ?
+                      <select
+                        className={inputCls}
+                        value={form.subcategory}
+                        onChange={(e) => set("subcategory", e.target.value)}
+                      >
+                        <option value=''>None</option>
+                        {subcategories.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
                       </select>
-                    ) : (
-                      <input className={inputCls} value={form.subcategory} onChange={(e) => set('subcategory', e.target.value)} placeholder="e.g. Silk Sarees" />
-                    )}
+                    : <input
+                        className={inputCls}
+                        value={form.subcategory}
+                        onChange={(e) => set("subcategory", e.target.value)}
+                        placeholder='e.g. Silk Sarees'
+                      />
+                    }
                   </Field>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Fabric">
-                    <select className={inputCls} value={form.fabric} onChange={(e) => set('fabric', e.target.value)}>
-                      <option value="">Select fabric</option>
-                      {FABRICS.map((f) => <option key={f} value={f}>{f}</option>)}
+                <div className='grid grid-cols-2 gap-4'>
+                  <Field label='Fabric'>
+                    <select
+                      className={inputCls}
+                      value={form.fabric}
+                      onChange={(e) => set("fabric", e.target.value)}
+                    >
+                      <option value=''>Select fabric</option>
+                      {FABRICS.map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
                     </select>
                   </Field>
-                  <Field label="Tags (comma separated)">
-                    <input className={inputCls} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="silk, wedding, festive" />
+                  <Field label='Tags (comma separated)'>
+                    <input
+                      className={inputCls}
+                      value={form.tags}
+                      onChange={(e) => set("tags", e.target.value)}
+                      placeholder='silk, wedding, festive'
+                    />
                   </Field>
                 </div>
-                <div className="flex gap-6 pt-1">
-                  <label className="flex items-center gap-2.5 cursor-pointer group">
+                <div className='flex gap-6 pt-1'>
+                  <label className='flex items-center gap-2.5 cursor-pointer group'>
                     <button
-                      type="button"
-                      onClick={() => set('isFeatured', !form.isFeatured)}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${form.isFeatured ? 'bg-brand-500' : 'bg-gray-300'}`}
+                      type='button'
+                      onClick={() => set("isFeatured", !form.isFeatured)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${form.isFeatured ? "bg-brand-500" : "bg-gray-300"}`}
                     >
-                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isFeatured ? 'translate-x-5' : ''}`} />
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isFeatured ? "translate-x-5" : ""}`}
+                      />
                     </button>
-                    <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors flex items-center gap-1">
-                      <Sparkles className="h-3.5 w-3.5 text-gold-500" /> Featured
+                    <span className='text-sm text-gray-700 group-hover:text-gray-900 transition-colors flex items-center gap-1'>
+                      <Sparkles className='h-3.5 w-3.5 text-gold-500' />{" "}
+                      Featured
                     </span>
                   </label>
-                  <label className="flex items-center gap-2.5 cursor-pointer group">
+                  <label className='flex items-center gap-2.5 cursor-pointer group'>
                     <button
-                      type="button"
-                      onClick={() => set('isActive', !form.isActive)}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${form.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
+                      type='button'
+                      onClick={() => set("isActive", !form.isActive)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${form.isActive ? "bg-green-500" : "bg-gray-300"}`}
                     >
-                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : ''}`} />
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? "translate-x-5" : ""}`}
+                      />
                     </button>
-                    <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Active / Visible</span>
+                    <span className='text-sm text-gray-700 group-hover:text-gray-900 transition-colors'>
+                      Active / Visible
+                    </span>
                   </label>
                 </div>
               </div>
 
               {/* Variants */}
-              <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
+                <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
                   <div>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                      Variants <span className="text-brand-500">*</span>
+                    <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
+                      Variants <span className='text-brand-500'>*</span>
                     </h3>
-                    <p className="text-xs text-gray-500 mt-1 max-w-xl leading-relaxed">
-                      Each variant is one sellable option: same product with its own <strong>SKU</strong>,{" "}
-                      <strong>size</strong> (e.g. Free, S, M), <strong>stock</strong>, and how{" "}
-                      <strong>color</strong> appears on the site. Add another row for another size/color combo.
+                    <p className='text-xs text-gray-500 mt-1 max-w-xl leading-relaxed'>
+                      Each variant is one sellable option: same product with its
+                      own <strong>SKU</strong>, <strong>size</strong> (e.g.
+                      Free, S, M), <strong>stock</strong>, and how{" "}
+                      <strong>color</strong> appears on the site. Add another
+                      row for another size/color combo.
                     </p>
                   </div>
                   <button
-                    type="button"
+                    type='button'
                     onClick={addVariant}
-                    className="flex shrink-0 items-center gap-1.5 self-start text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full transition-colors"
+                    className='flex shrink-0 items-center gap-1.5 self-start text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full transition-colors'
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add variant
+                    <Plus className='h-3.5 w-3.5' /> Add variant
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className='space-y-3'>
                   {variants.map((v, i) => {
-                    const kind = variantColorKinds[i] ?? 'solid';
+                    const kind = variantColorKinds[i] ?? "solid";
                     const hexForInputs =
-                      String(v.colorCode || '').trim() === VARIANT_MULTICOLOR_MARKER ?
-                        ''
-                      : (v.colorCode || '');
+                      (
+                        String(v.colorCode || "").trim() ===
+                        VARIANT_MULTICOLOR_MARKER
+                      ) ?
+                        ""
+                      : v.colorCode || "";
                     const pickerValue =
-                      hexForInputs.trim().startsWith('#') ? hexForInputs.trim() : '#000000';
+                      hexForInputs.trim().startsWith("#") ?
+                        hexForInputs.trim()
+                      : "#000000";
                     return (
                       <div
                         key={i}
-                        className="bg-white rounded-2xl p-4 border border-gray-100 space-y-3 min-w-0 shadow-sm"
+                        className='bg-white rounded-2xl p-4 border border-gray-100 space-y-3 min-w-0 shadow-sm'
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                        <div className='flex items-center justify-between gap-2'>
+                          <span className='text-[11px] font-bold text-gray-400 uppercase tracking-wider'>
                             Variant {i + 1}
                           </span>
                           <button
-                            type="button"
+                            type='button'
                             onClick={() => removeVariant(i)}
                             disabled={variants.length === 1}
-                            className="h-9 w-9 rounded-xl flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            aria-label="Remove variant"
+                            className='h-9 w-9 rounded-xl flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
+                            aria-label='Remove variant'
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className='h-4 w-4' />
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                          <Field label="SKU" required>
+                        <div className='grid grid-cols-1 sm:grid-cols-4 gap-3'>
+                          <Field label='SKU' required>
                             <input
-                              placeholder="e.g. SKU-RED-FREE"
+                              placeholder='e.g. SKU-RED-FREE'
                               value={v.sku}
-                              onChange={(e) => updateVariant(i, 'sku', e.target.value)}
+                              onChange={(e) =>
+                                updateVariant(i, "sku", e.target.value)
+                              }
                               className={inputCls}
                               required
                             />
                           </Field>
-                          <Field label="Size">
+                          <Field label='Size'>
                             <input
-                              placeholder="e.g. Free, S, M, or custom"
-                              value={v.size || ''}
-                              onChange={(e) => updateVariant(i, 'size', e.target.value)}
+                              placeholder='e.g. Free, S, M, or custom'
+                              value={v.size || ""}
+                              onChange={(e) =>
+                                updateVariant(i, "size", e.target.value)
+                              }
                               className={inputCls}
                             />
                           </Field>
-                          <Field label="Stock (units)">
+                          <Field label='Stock (units)'>
                             <input
-                              type="number"
-                              placeholder="0"
+                              type='number'
+                              placeholder='0'
                               min={0}
                               value={v.stock}
-                              onChange={(e) => updateVariant(i, 'stock', parseInt(e.target.value, 10) || 0)}
+                              onChange={(e) =>
+                                updateVariant(
+                                  i,
+                                  "stock",
+                                  parseInt(e.target.value, 10) || 0,
+                                )
+                              }
                               className={inputCls}
                             />
                           </Field>
                           <div>
-                            <Field label="Cost Price ₹ (optional)">
+                            <Field label='Cost Price ₹ (optional)'>
                               <input
-                                type="number"
-                                placeholder="0"
+                                type='number'
+                                placeholder='0'
                                 min={0}
-                                step="0.01"
-                                value={v.costPrice ?? ''}
-                                onChange={(e) => updateVariant(i, 'costPrice', parseFloat(e.target.value) || 0)}
+                                step='0.01'
+                                value={v.costPrice ?? ""}
+                                onChange={(e) =>
+                                  updateVariant(
+                                    i,
+                                    "costPrice",
+                                    parseFloat(e.target.value) || 0,
+                                  )
+                                }
                                 className={inputCls}
                               />
                             </Field>
-                            {v.costPrice && v.costPrice > 0 && (v.price ?? (form.price ? Number(form.price) : 0)) > 0 && (
-                              <p className={`text-[11px] font-semibold mt-1 ${
-                                ((v.price ?? Number(form.price)) - v.costPrice) / (v.price ?? Number(form.price)) >= 0
-                                  ? 'text-emerald-600' : 'text-red-500'
-                              }`}>
-                                {Math.round(((v.price ?? Number(form.price)) - v.costPrice) / (v.price ?? Number(form.price)) * 100)}% margin
-                              </p>
-                            )}
+                            {v.costPrice &&
+                              v.costPrice > 0 &&
+                              (v.price ??
+                                (form.price ? Number(form.price) : 0)) > 0 && (
+                                <p
+                                  className={`text-[11px] font-semibold mt-1 ${
+                                    (
+                                      ((v.price ?? Number(form.price)) -
+                                        v.costPrice) /
+                                        (v.price ?? Number(form.price)) >=
+                                      0
+                                    ) ?
+                                      "text-emerald-600"
+                                    : "text-red-500"
+                                  }`}
+                                >
+                                  {Math.round(
+                                    (((v.price ?? Number(form.price)) -
+                                      v.costPrice) /
+                                      (v.price ?? Number(form.price))) *
+                                      100,
+                                  )}
+                                  % margin
+                                </p>
+                              )}
                           </div>
                         </div>
 
-                        <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-3">
-                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <div className='rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-3'>
+                          <p className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider'>
                             Color on storefront
                           </p>
-                          <div className="flex flex-wrap gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                          <div className='flex flex-wrap gap-4'>
+                            <label className='flex items-center gap-2 cursor-pointer text-sm text-gray-700'>
                               <input
-                                type="radio"
+                                type='radio'
                                 name={`color-kind-${i}`}
-                                className="accent-brand-600"
-                                checked={kind === 'solid'}
-                                onChange={() => setVariantColorKind(i, 'solid')}
+                                className='accent-brand-600'
+                                checked={kind === "solid"}
+                                onChange={() => setVariantColorKind(i, "solid")}
                               />
                               Single color
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                            <label className='flex items-center gap-2 cursor-pointer text-sm text-gray-700'>
                               <input
-                                type="radio"
+                                type='radio'
                                 name={`color-kind-${i}`}
-                                className="accent-brand-600"
-                                checked={kind === 'multicolor'}
-                                onChange={() => setVariantColorKind(i, 'multicolor')}
+                                className='accent-brand-600'
+                                checked={kind === "multicolor"}
+                                onChange={() =>
+                                  setVariantColorKind(i, "multicolor")
+                                }
                               />
                               Multicolor / print (no one swatch)
                             </label>
                           </div>
 
-                          {kind === 'solid' ?
-                            <div className="space-y-2">
-                              <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-                                <div className="shrink-0">
-                                  <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                          {kind === "solid" ?
+                            <div className='space-y-2'>
+                              <div className='flex flex-col sm:flex-row sm:items-end gap-3'>
+                                <div className='shrink-0'>
+                                  <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
                                     Swatch
                                   </span>
                                   <input
-                                    type="color"
+                                    type='color'
                                     value={pickerValue}
-                                    onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
-                                    className="h-11 w-[4.5rem] rounded-xl border border-gray-200 bg-white p-1 cursor-pointer"
-                                    aria-label="Pick swatch color"
+                                    onChange={(e) =>
+                                      updateVariant(
+                                        i,
+                                        "colorCode",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className='h-11 w-[4.5rem] rounded-xl border border-gray-200 bg-white p-1 cursor-pointer'
+                                    aria-label='Pick swatch color'
                                   />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                <div className='flex-1 min-w-0'>
+                                  <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
                                     Color name (shown to customers)
                                   </span>
                                   <input
-                                    placeholder="e.g. Royal Blue, Maroon"
-                                    value={v.color || ''}
-                                    onChange={(e) => updateVariant(i, 'color', e.target.value)}
+                                    placeholder='e.g. Royal Blue, Maroon'
+                                    value={v.color || ""}
+                                    onChange={(e) =>
+                                      updateVariant(i, "color", e.target.value)
+                                    }
                                     className={inputCls}
                                   />
                                 </div>
                               </div>
                               <div>
-                                <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
-                                  Hex code (optional — overrides swatch if you paste a value)
+                                <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
+                                  Hex code (optional — overrides swatch if you
+                                  paste a value)
                                 </span>
                                 <input
-                                  placeholder="#0b0f1a"
+                                  placeholder='#0b0f1a'
                                   value={hexForInputs}
-                                  onChange={(e) => updateVariant(i, 'colorCode', e.target.value)}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      i,
+                                      "colorCode",
+                                      e.target.value,
+                                    )
+                                  }
                                   className={`${inputCls} font-mono text-sm max-w-xs`}
                                 />
                               </div>
                             </div>
                           : <div>
-                              <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                              <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
                                 Label (e.g. Multicolor, Printed, Assorted)
                               </span>
                               <input
-                                placeholder="Multicolor"
-                                value={v.color || ''}
-                                onChange={(e) => updateVariant(i, 'color', e.target.value)}
+                                placeholder='Multicolor'
+                                value={v.color || ""}
+                                onChange={(e) =>
+                                  updateVariant(i, "color", e.target.value)
+                                }
                                 className={inputCls}
                               />
-                              <p className="text-[11px] text-gray-400 mt-1.5">
-                                Customers see this text and a multicolor-style badge on listings — no single color picker.
+                              <p className='text-[11px] text-gray-400 mt-1.5'>
+                                Customers see this text and a multicolor-style
+                                badge on listings — no single color picker.
                               </p>
                             </div>
                           }
@@ -764,11 +984,11 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                     description: d.description ?? f.description,
                     seoTitle: d.seoTitle ?? f.seoTitle,
                     seoDescription: d.seoDescription ?? f.seoDescription,
-                    tags: d.tags?.length ? d.tags.join(', ') : f.tags,
+                    tags: d.tags?.length ? d.tags.join(", ") : f.tags,
                   }));
                   const merged = mergeFabricIntoProductDetails(
-                    d.productDetailKeys || '',
-                    d.productDetailValues || '',
+                    d.productDetailKeys || "",
+                    d.productDetailValues || "",
                     form.fabric,
                   );
                   if (merged.keys.trim()) {
@@ -779,13 +999,14 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 }}
               />
 
-              <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <div className='bg-gray-50 rounded-2xl p-5 space-y-3'>
+                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
                   Product detail table (keys & values)
                 </h3>
-                <p className="text-xs text-gray-400">
-                  Shown on the product page as a specs table. <strong>Fabric</strong> row fills automatically
-                  when you pick fabric above (or use AI generate).
+                <p className='text-xs text-gray-400'>
+                  Shown on the product page as a specs table.{" "}
+                  <strong>Fabric</strong> row fills automatically when you pick
+                  fabric above (or use AI generate).
                 </p>
                 <ProductDetailsBulkFields
                   keysText={detailsKeysText}
@@ -797,13 +1018,13 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               </div>
 
               {/* SEO */}
-              <div className="bg-gray-50 rounded-2xl overflow-hidden">
+              <div className='bg-gray-50 rounded-2xl overflow-hidden'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => setShowSeo(!showSeo)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest hover:bg-gray-100 transition-colors"
+                  className='w-full flex items-center justify-between px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest hover:bg-gray-100 transition-colors'
                 >
-                  <span className="flex items-center gap-2">
+                  <span className='flex items-center gap-2'>
                     SEO for Google India
                     {evaluateProductSeo({
                       name: form.name,
@@ -813,15 +1034,17 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                       fabric: form.fabric,
                       category: form.category,
                     }).score < 100 && (
-                      <span className="normal-case font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full text-[10px]">
+                      <span className='normal-case font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full text-[10px]'>
                         Needs work
                       </span>
                     )}
                   </span>
-                  {showSeo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {showSeo ?
+                    <ChevronUp className='h-4 w-4' />
+                  : <ChevronDown className='h-4 w-4' />}
                 </button>
                 {showSeo && (
-                  <div className="px-5 pb-5 space-y-4">
+                  <div className='px-5 pb-5 space-y-4'>
                     <ProductSeoChecklist
                       name={form.name}
                       shortDescription={form.shortDescription}
@@ -831,38 +1054,47 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                       category={form.category}
                       onApplySuggestion={(patch) => {
                         if (patch.seoTitle) set("seoTitle", patch.seoTitle);
-                        if (patch.seoDescription) set("seoDescription", patch.seoDescription);
-                        toast.success("SEO suggestions applied — review and save.");
+                        if (patch.seoDescription)
+                          set("seoDescription", patch.seoDescription);
+                        toast.success(
+                          "SEO suggestions applied — review and save.",
+                        );
                       }}
                     />
-                    <Field label="SEO Title">
+                    <Field label='SEO Title'>
                       <input
                         className={inputCls}
                         value={form.seoTitle}
                         onChange={(e) => set("seoTitle", e.target.value)}
-                        placeholder="e.g. Buy Handpainted Kalamkari Silk Saree Online in India"
+                        placeholder='e.g. Buy Handpainted Kalamkari Silk Saree Online in India'
                         maxLength={70}
                       />
-                      <p className="text-[11px] text-gray-400 mt-1">
-                        {form.seoTitle.length}/70 · Brand name is added automatically in Google.
+                      <p className='text-[11px] text-gray-400 mt-1'>
+                        {form.seoTitle.length}/70 · Brand name is added
+                        automatically in Google.
                       </p>
                     </Field>
-                    <Field label="SEO Description">
+                    <Field label='SEO Description'>
                       <textarea
                         className={`${inputCls} resize-none`}
                         value={form.seoDescription}
                         onChange={(e) => set("seoDescription", e.target.value)}
                         rows={3}
-                        placeholder="120–160 chars: fabric, occasion, free delivery over ₹1,099, 7-day returns across India."
+                        placeholder='120–160 chars: fabric, occasion, free delivery over ₹1,099, 7-day returns across India.'
                         maxLength={160}
                       />
                       <p
                         className={`text-[11px] mt-1 ${
-                          form.seoDescription.length >= 120 ? "text-emerald-600" : "text-amber-600"
+                          form.seoDescription.length >= 120 ?
+                            "text-emerald-600"
+                          : "text-amber-600"
                         }`}
                       >
                         {form.seoDescription.length}/160 characters
-                        {form.seoDescription.length > 0 && form.seoDescription.length < 120 ?
+                        {(
+                          form.seoDescription.length > 0 &&
+                          form.seoDescription.length < 120
+                        ) ?
                           " — add more detail for better click-through"
                         : form.seoDescription.length >= 120 ?
                           " — good length for Google"
@@ -875,41 +1107,50 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             </div>
 
             {/* ── RIGHT: Images ── */}
-            <div className="space-y-4 min-w-0">
-              <div className="bg-gray-50 rounded-2xl p-5 space-y-4 sticky top-2">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Images</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Upload high-quality <strong>portrait photos (3:4)</strong> — front, back, draping shot. White/neutral background recommended.
+            <div className='space-y-4 min-w-0'>
+              <div className='bg-gray-50 rounded-2xl p-5 space-y-4 sticky top-2'>
+                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
+                  Product Images
+                </h3>
+                <p className='text-xs text-gray-400 leading-relaxed'>
+                  Upload high-quality <strong>portrait photos (3:4)</strong> —
+                  front, back, draping shot. White/neutral background
+                  recommended.
                 </p>
 
                 <ImageUploader
-                  key={editingProduct?._id ?? 'new-product'}
+                  key={editingProduct?._id ?? "new-product"}
                   maxFiles={7}
-                  aspectRatio="3:4"
+                  aspectRatio='3:4'
                   maxSizeMB={5}
                   existingImages={existingImageSlots.map((i) => i.url)}
-                  onRemoveExisting={editingProduct?._id ? handleRemoveExistingImage : undefined}
+                  onRemoveExisting={
+                    editingProduct?._id ? handleRemoveExistingImage : undefined
+                  }
                   onChange={setNewFiles}
                   isUploading={isSaving && newFiles.length > 0}
                   uploadProgress={uploadProgress}
                   hint={
-                    editingProduct
-                      ? 'Up to 7 images total. Select multiple at once (within remaining slots). Hover ✕ to remove.'
-                      : 'First image is the cover. Select up to 7 images in one go.'
+                    editingProduct ?
+                      "Up to 7 images total. Select multiple at once (within remaining slots). Hover ✕ to remove."
+                    : "First image is the cover. Select up to 7 images in one go."
                   }
                 />
 
                 {/* Tips */}
-                <div className="bg-white rounded-xl p-3 border border-gray-100 space-y-1.5">
-                  <p className="text-xs font-semibold text-gray-600">📸 Photo Tips</p>
+                <div className='bg-white rounded-xl p-3 border border-gray-100 space-y-1.5'>
+                  <p className='text-xs font-semibold text-gray-600'>
+                    📸 Photo Tips
+                  </p>
                   {[
-                    'Use natural or studio lighting',
-                    '3:4 portrait ratio (e.g. 900×1200px)',
-                    'Show drape, texture & embroidery',
-                    'Include model shots when possible',
+                    "Use natural or studio lighting",
+                    "3:4 portrait ratio (e.g. 900×1200px)",
+                    "Show drape, texture & embroidery",
+                    "Include model shots when possible",
                   ].map((tip) => (
-                    <p key={tip} className="text-xs text-gray-400 flex gap-1.5">
-                      <span className="text-brand-400 flex-shrink-0">·</span> {tip}
+                    <p key={tip} className='text-xs text-gray-400 flex gap-1.5'>
+                      <span className='text-brand-400 flex-shrink-0'>·</span>{" "}
+                      {tip}
                     </p>
                   ))}
                 </div>
@@ -918,16 +1159,33 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
           </div>
 
           {/* ── Footer ── */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 sm:px-8 py-5 border-t border-gray-100 bg-gray-50 shrink-0">
-            <p className="text-xs text-gray-400">
-              {editingProduct ? 'Changes will be saved immediately.' : '* Required fields'}
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 sm:px-8 py-5 border-t border-gray-100 bg-gray-50 shrink-0'>
+            <p className='text-xs text-gray-400'>
+              {editingProduct ?
+                "Changes will be saved immediately."
+              : "* Required fields"}
             </p>
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={onClose} className="rounded-xl">
+            <div className='flex gap-3'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={onClose}
+                className='rounded-xl'
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="brand" loading={isSaving} disabled={loadingProduct} className="rounded-xl px-8">
-                {isSaving ? 'Saving…' : editingProduct ? 'Save Changes' : 'Create Product'}
+              <Button
+                type='submit'
+                variant='brand'
+                loading={isSaving}
+                disabled={loadingProduct}
+                className='rounded-xl px-8'
+              >
+                {isSaving ?
+                  "Saving…"
+                : editingProduct ?
+                  "Save Changes"
+                : "Create Product"}
               </Button>
             </div>
           </div>
