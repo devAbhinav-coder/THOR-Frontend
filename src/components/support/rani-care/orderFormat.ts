@@ -41,25 +41,63 @@ export function summarizeOrder(o: Order): OrderSummary {
   };
 }
 
+function payMethodLabel(o: Order): string {
+  switch (o.paymentMethod) {
+    case "cod":
+      return "COD";
+    case "razorpay":
+      return "Online";
+    case "offline_upi":
+      return "UPI";
+    case "offline_cash":
+      return "Cash";
+    default:
+      return "—";
+  }
+}
+
+function titleCase(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+function itemLines(o: Order): string[] {
+  const items = o.items || [];
+  const shown = items.slice(0, 6).map((i) => `• ${i.name} × ${i.quantity}`);
+  if (items.length > 6) shown.push(`• +${items.length - 6} more`);
+  return shown;
+}
+
 export function formatOrderDetailText(o: Order): string {
   const trackingLine = o.trackingNumber
     ? `Tracking: ${o.trackingNumber}${o.shippingCarrier ? ` · ${o.shippingCarrier}` : ""}`
     : "Tracking: not assigned yet (appears after dispatch).";
 
-  const pay = `${o.paymentMethod?.toUpperCase() || "—"} · Payment: ${o.paymentStatus || "—"}`;
-
   const lines = [
-    `Order ${o.orderNumber}`,
+    `📦 Order ${o.orderNumber}`,
     `Placed: ${formatDate(o.createdAt)}`,
-    `Status: ${o.status.toUpperCase()}`,
-    pay,
+    `Status: ${titleCase(o.status)}`,
+    `Payment: ${payMethodLabel(o)} · ${titleCase(o.paymentStatus || "—")}`,
     `Total: ${formatPrice(o.total)}`,
     trackingLine,
     "",
     "Items:",
-    ...(o.items || []).slice(0, 6).map((i) => `· ${i.name} × ${i.quantity}`),
-    (o.items?.length || 0) > 6 ? `· …and ${(o.items?.length || 0) - 6} more` : "",
+    ...itemLines(o),
   ].filter(Boolean);
 
+  return lines.join("\n");
+}
+
+/** Compact facts (no status/tracking sentence) — used when a headline blurb
+ *  already states the status, to avoid repeating everything. */
+export function formatOrderFacts(o: Order): string {
+  const lines = [
+    `📦 ${o.orderNumber}`,
+    `Placed: ${formatDate(o.createdAt)}`,
+    `Payment: ${payMethodLabel(o)} · ${titleCase(o.paymentStatus || "—")}`,
+    `Total: ${formatPrice(o.total)}`,
+    "",
+    "Items:",
+    ...itemLines(o),
+  ].filter(Boolean);
   return lines.join("\n");
 }

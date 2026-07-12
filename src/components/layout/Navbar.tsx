@@ -26,17 +26,19 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
-import { categoryApi, storefrontApi } from "@/lib/api";
-import { Category, StorefrontSettings } from "@/types";
+import { navigationApi, storefrontApi } from "@/lib/api";
+import { Category, StorefrontSettings, MegaMenuCategory } from "@/types";
 import { cn } from "@/lib/utils";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
 import NavProfileDropdown from "@/components/layout/NavProfileDropdown";
-import NavShopDropdown from "@/components/layout/NavShopDropdown";
+import MegaMenu from "@/components/layout/MegaMenu";
+import MobileMegaMenu from "@/components/layout/MobileMegaMenu";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
 import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
+import VoiceSearchOverlay from "@/components/search/VoiceSearchOverlay";
 import {
   useStoreNavActive,
   type StoreNavActive,
@@ -75,7 +77,7 @@ type NavbarProps = {
   /** SSR snapshot so announcement bar matches on hydration. */
   initialAnnouncementMessages?: readonly string[];
   /** SSR snapshot for shop dropdown + mobile drawer categories. */
-  initialNavCategories?: Category[];
+  initialNavCategories?: MegaMenuCategory[];
 };
 
 export default function Navbar({
@@ -99,19 +101,19 @@ export default function Navbar({
   const { products: wishlistProducts } = useWishlistStore();
 
   const { data: categoriesData } = useQuery({
-    queryKey: queryKeys.categories,
+    queryKey: queryKeys.megaMenu,
     queryFn: async () => {
-      const body = await categoryApi.getAll();
-      return (body.data.categories || []) as Category[];
+      const body = await navigationApi.getMegaMenu();
+      return (body.data.categories || []) as unknown as MegaMenuCategory[];
     },
     staleTime: 5 * 60 * 1000,
   });
   const navCategories = useMemo(() => {
-    const live = (categoriesData ?? [])
-      .filter(isShopCatalogCategory)
-      .slice(0, 7);
-    if (live.length > 0) return live;
-    return initialNavCategories.filter(isShopCatalogCategory).slice(0, 7);
+    const pickShopCategories = (cats: MegaMenuCategory[]) =>
+      cats.filter(isShopCatalogCategory).slice(0, 7);
+    const live = categoriesData ?? [];
+    if (live.length > 0) return pickShopCategories(live);
+    return pickShopCategories(initialNavCategories);
   }, [categoriesData, initialNavCategories]);
 
   useEffect(() => {
@@ -423,7 +425,7 @@ export default function Navbar({
                     />
                   </span>
                 </button>
-                <NavShopDropdown
+                <MegaMenu
                   isOpen={shopMenu.isOpen}
                   pathname={pathname}
                   categories={navCategories}
@@ -682,7 +684,7 @@ export default function Navbar({
                 </Link>
                 <Link
                   onClick={() => setIsMenuOpen(false)}
-                  href='/shop'
+                  href='/shop/collections'
                   className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
                   <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
@@ -749,23 +751,7 @@ export default function Navbar({
 
               {/* Categories */}
               {navCategories.length > 0 && (
-                <div>
-                  <p className='mb-3 px-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#c5a059]'>
-                    Curated Collections
-                  </p>
-                  <div className='space-y-0.5'>
-                    {navCategories.map((cat) => (
-                      <Link
-                        key={cat._id}
-                        onClick={() => setIsMenuOpen(false)}
-                        href={buildShopCategoryHref(cat)}
-                        className='block border-l-2 border-transparent px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
-                      >
-                        {cat.name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+                <MobileMegaMenu categories={navCategories} onClose={() => setIsMenuOpen(false)} />
               )}
 
               {/* Account Section */}
@@ -952,6 +938,7 @@ export default function Navbar({
           </div>
         </div>
       )}
+      <VoiceSearchOverlay />
     </>
   );
 }

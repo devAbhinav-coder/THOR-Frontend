@@ -80,19 +80,29 @@ type GiftingProductsResponse = {
 export default function GiftingPageClient({
   initialStorefront,
   initialGiftingCategories,
+  pinnedOccasion,
+  heroH1Override,
 }: {
   initialStorefront: StorefrontSettingsApiEnvelope | null;
   /** Server JSON for `giftingApi.getCategories()` — removes category-strip skeleton flash. */
   initialGiftingCategories?: Awaited<
     ReturnType<typeof giftingApi.getCategories>
   > | null;
+  /** Locks occasion filter on dedicated landing pages (e.g. /gifting/corporate-gifts). */
+  pinnedOccasion?: string;
+  heroH1Override?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const defaultOccasion =
+    pinnedOccasion?.trim() ||
+    searchParams.get("occasion")?.trim() ||
+    "all";
+
   const [activeOccasion, setActiveOccasion] = useState(
-    () => searchParams.get("occasion")?.trim() || "all",
+    () => defaultOccasion,
   );
   const [search, setSearch] = useState(() =>
     (searchParams.get("search")?.trim() || "").slice(0, SEARCH_MAX_LEN),
@@ -176,7 +186,10 @@ export default function GiftingPageClient({
   const giftingUrlKey = searchParams.toString();
 
   useLayoutEffect(() => {
-    const occ = searchParams.get("occasion")?.trim() || "all";
+    const occ =
+      pinnedOccasion?.trim() ||
+      searchParams.get("occasion")?.trim() ||
+      "all";
     const s = (searchParams.get("search")?.trim() || "").slice(
       0,
       SEARCH_MAX_LEN,
@@ -322,7 +335,7 @@ export default function GiftingPageClient({
               <div className='absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center'>
                 <div className='max-w-xl text-white animate-in slide-in-from-bottom-8 fade-in duration-1000 ease-out'>
                   <h1 className='text-3xl sm:text-4xl lg:text-5xl font-serif font-bold leading-tight drop-shadow-xl'>
-                    {resolveGiftingHeroH1(activeHero?.title)}
+                    {heroH1Override || resolveGiftingHeroH1(activeHero?.title)}
                   </h1>
                   <p className='mt-2 text-xs sm:text-sm text-white/90'>
                     {activeHero?.description ||
@@ -804,7 +817,7 @@ function GiftProductCardSkeleton() {
 
 function GiftProductCard({ product }: { product: Product }) {
   const needsCustomization = productNeedsCustomization(product);
-  const isCorporateGift = (product.giftOccasions || []).some(
+  const isCorporateGift = (product.occasions || []).some(
     (o) => String(o).trim().toLowerCase() === "corporate",
   );
   const minPurchaseQty =
@@ -848,7 +861,7 @@ function GiftProductCard({ product }: { product: Product }) {
         )}
 
         <span className='absolute top-2 right-2 bg-white/90 text-gray-800 text-[10px] font-semibold px-2 py-1 rounded-md border border-gray-200'>
-          {product.giftOccasions?.[0] || ""}
+          {product.occasions?.[0] || ""}
         </span>
       </div>
       <div className='p-2.5 sm:p-3'>

@@ -46,11 +46,19 @@ export function ProductInfiniteGrid<T>({
           Array.from({ length: pageSize }).map((_, i) => (
             <Skeleton key={`initial-${i}`} />
           ))
-        : items.map((item) => (
-            <div key={getItemKey(item)} className='h-full min-h-0'>
-              {renderItem(item)}
-            </div>
-          ))
+        : (() => {
+            const seen = new Set<string>();
+            return items.filter(item => {
+              const key = getItemKey(item);
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            }).map((item) => (
+              <div key={getItemKey(item)} className='h-full min-h-0'>
+                {renderItem(item)}
+              </div>
+            ));
+          })()
         }
         {isFetchingNextPage ?
           Array.from({ length: skeletonCount }).map((_, i) => (

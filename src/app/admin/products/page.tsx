@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye } from 'lucide-react';
-import { adminApi, categoryApi, productApi } from '@/lib/api';
+import { adminApi, productApi } from '@/lib/api';
+import { fetchAdminCatalogCategories } from '@/lib/adminCatalog';
 import { Category, Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { sumVariantStock, variantStockSummary } from '@/lib/productStock';
+import { adminProductListThumbnail } from '@/lib/adminProductDisplay';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SearchField } from '@/components/ui/SearchField';
@@ -53,6 +55,7 @@ export default function AdminProductsPage() {
       if (filter === 'active') params.isActive = 'true';
       if (filter === 'inactive') params.isActive = 'false';
       if (query) {
+        if (categoryFilter) params.category = categoryFilter;
         const searchRes = await adminApi.searchProducts({
           q: query,
           page,
@@ -167,9 +170,8 @@ export default function AdminProductsPage() {
   }, [hasMore, isLoading, isFetchingNextPage, pagination.currentPage, fetchProducts, debouncedSearch, sortBy, quickFilter]);
 
   useEffect(() => {
-    categoryApi
-      .getAll()
-      .then((res) => setCatalogCategories(res.data.categories || []))
+    fetchAdminCatalogCategories()
+      .then(setCatalogCategories)
       .catch(() => setCatalogCategories([]));
   }, []);
 
@@ -214,7 +216,7 @@ export default function AdminProductsPage() {
         setPagination((prev) => ({ ...prev, totalProducts: prev.totalProducts + 1 }));
       }
     }
-    fetchProducts(1, debouncedSearch, sortBy);
+    fetchProducts(pagination.currentPage, debouncedSearch, sortBy);
   };
 
   const stockMeta = (p: Product) => {
@@ -395,7 +397,7 @@ export default function AdminProductsPage() {
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm group-hover:shadow transition-shadow" style={{ aspectRatio: '3/4' }}>
                         <Image
-                          src={product.images[0]?.url || '/placeholder.jpg'}
+                          src={adminProductListThumbnail(product)}
                           alt={product.name}
                           fill
                           sizes="40px"
@@ -485,7 +487,7 @@ export default function AdminProductsPage() {
               return (
               <div key={product._id} className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all">
                 <div className="relative w-full bg-gray-100" style={{ aspectRatio: '3/4' }}>
-                  <Image src={product.images[0]?.url || '/placeholder.jpg'} alt={product.name} fill sizes="320px" className="object-cover" />
+                  <Image src={adminProductListThumbnail(product)} alt={product.name} fill sizes="320px" className="object-cover" />
                 </div>
                 <div className="p-3">
                   <p className="text-sm font-semibold text-gray-900 line-clamp-2">{product.name}</p>
@@ -541,7 +543,7 @@ export default function AdminProductsPage() {
                   <div className="flex items-start gap-3">
                     <div className="relative w-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '3/4' }}>
                       <Image
-                        src={product.images[0]?.url || '/placeholder.jpg'}
+                        src={adminProductListThumbnail(product)}
                         alt={product.name}
                         fill
                         sizes="64px"
@@ -603,7 +605,7 @@ export default function AdminProductsPage() {
                 return (
                   <div key={product._id} className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
                     <div className="relative w-full bg-gray-100" style={{ aspectRatio: '3/4' }}>
-                      <Image src={product.images[0]?.url || '/placeholder.jpg'} alt={product.name} fill sizes="180px" className="object-cover" />
+                      <Image src={adminProductListThumbnail(product)} alt={product.name} fill sizes="180px" className="object-cover" />
                     </div>
                     <div className="p-2.5">
                       <p className="text-xs font-semibold text-gray-900 line-clamp-2">{product.name}</p>

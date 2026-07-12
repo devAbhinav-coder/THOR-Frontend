@@ -2,9 +2,10 @@
 
 import Script from "next/script";
 import { reapplyStoredConsentIfAny } from "@/lib/cookieConsent";
+import { getGaMeasurementId } from "@/lib/gaConfig";
 import { gtagJsIntegrity } from "@/lib/thirdPartySri";
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+const GA_ID = getGaMeasurementId();
 
 /**
  * Loads GA4 after hydration. Consent defaults (denied) are set in `app/layout.tsx` `<head>`;

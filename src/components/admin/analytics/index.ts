@@ -6,3 +6,5 @@ export { default as ChannelSplitBar } from './ChannelSplitBar';
 export { default as StorefrontDemandSection } from './StorefrontDemandSection';
 export { default as ViewsConversionChart } from './ViewsConversionChart';
 export { default as ConversionRateChart } from './ConversionRateChart';
+export { default as VisitInsightsPanel } from './VisitInsightsPanel';
+export { default as MarketingInsightsPanel } from './MarketingInsightsPanel';

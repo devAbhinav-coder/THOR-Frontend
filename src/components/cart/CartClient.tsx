@@ -410,7 +410,11 @@ export default function CartClient() {
                                   isLoading ||
                                   isOutOfStock ||
                                   exceedsCurrentStock ||
-                                  item.quantity >= 10
+                                  item.quantity >=
+                                    Math.min(
+                                      99,
+                                      Math.max(1, item.variant.stock ?? 99),
+                                    )
                                 }
                                 aria-label="Increase quantity"
                               >

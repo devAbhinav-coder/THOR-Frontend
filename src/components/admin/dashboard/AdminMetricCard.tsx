@@ -11,6 +11,7 @@ type AdminMetricCardProps = {
   icon: LucideIcon;
   growth?: number;
   variant?: 'default' | 'navy' | 'danger' | 'success';
+  compact?: boolean;
   className?: string;
 };
 
@@ -40,6 +41,7 @@ export default function AdminMetricCard({
   icon: Icon,
   growth,
   variant = 'default',
+  compact = false,
   className,
 }: AdminMetricCardProps) {
   const v = variantStyles[variant];
@@ -48,19 +50,24 @@ export default function AdminMetricCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl border p-4 sm:p-5 shadow-sm transition-shadow hover:shadow-md bg-gradient-to-br',
+        'relative overflow-hidden rounded-xl border shadow-sm transition-shadow hover:shadow-md bg-gradient-to-br',
+        compact ? 'p-3' : 'p-4 sm:p-5 rounded-2xl',
         v.card,
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-2.5">
-        <div className={cn('h-10 w-10 rounded-xl flex items-center justify-center shrink-0', v.icon)}>
-          <Icon className="h-5 w-5" strokeWidth={2.25} />
+      <div className={cn('flex items-start justify-between gap-2', compact ? 'mb-1.5' : 'mb-2.5')}>
+        <div className={cn(
+          'rounded-lg flex items-center justify-center shrink-0',
+          compact ? 'h-8 w-8' : 'h-10 w-10 rounded-xl',
+          v.icon,
+        )}>
+          <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} strokeWidth={2.25} />
         </div>
         {growth !== undefined && (
           <span
             className={cn(
-              'flex items-center gap-0.5 text-[11px] font-bold tabular-nums px-2 py-0.5 rounded-full',
+              'flex items-center gap-0.5 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full',
               growth >= 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50',
             )}
           >
@@ -71,18 +78,23 @@ export default function AdminMetricCard({
       </div>
       <p
         className={cn(
-          'text-xl sm:text-2xl font-bold font-serif tracking-tight tabular-nums',
+          'font-bold font-serif tracking-tight tabular-nums',
+          compact ? 'text-lg' : 'text-xl sm:text-2xl',
           isNavy ? 'text-white' : 'text-gray-900',
         )}
       >
         {value}
       </p>
       {sub && (
-        <p className={cn('text-[11px] mt-1 leading-snug', isNavy ? 'text-white/50' : 'text-gray-500')}>
+        <p className={cn('text-[10px] mt-0.5 leading-snug', isNavy ? 'text-white/50' : 'text-gray-500')}>
           {sub}
         </p>
       )}
-      <p className={cn('text-xs sm:text-sm font-semibold mt-2', isNavy ? 'text-white/85' : 'text-gray-700')}>
+      <p className={cn(
+        'font-semibold',
+        compact ? 'text-[11px] mt-1' : 'text-xs sm:text-sm mt-2',
+        isNavy ? 'text-white/85' : 'text-gray-700',
+      )}>
         {label}
       </p>
     </div>

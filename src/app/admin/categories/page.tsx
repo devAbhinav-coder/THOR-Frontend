@@ -11,18 +11,7 @@ import { Plus, Pencil, Trash2, Tag, X, Check, Loader2, LayoutGrid, List } from '
 const inputCls =
   'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all placeholder:text-gray-300';
 
-/** Normalize subcategories — handles string/JSON-string/array from DB */
-function getSubs(raw: unknown): string[] {
-  if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
-  if (typeof raw === 'string') {
-    try {
-      const p = JSON.parse(raw);
-      if (Array.isArray(p)) return p.map(String).filter(Boolean);
-    } catch { /* ignore */ }
-    return raw.split(',').map((s) => s.trim()).filter(Boolean);
-  }
-  return [];
-}
+
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,15 +21,15 @@ export default function AdminCategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
-
   const emptyForm = {
     name: '',
     description: '',
-    subcategories: '',
     isActive: true,
     isGiftCategory: false,
     giftType: '',
     minOrderQty: '1',
+    metaTitle: '',
+    metaDescription: '',
   };
   const [form, setForm] = useState(emptyForm);
   const set = (k: keyof typeof emptyForm, v: string | boolean) =>
@@ -68,11 +57,12 @@ export default function AdminCategoriesPage() {
     setForm({
       name: cat.name,
       description: cat.description || '',
-      subcategories: getSubs(cat.subcategories).join(', '),
       isActive: cat.isActive,
       isGiftCategory: Boolean(cat.isGiftCategory),
       giftType: cat.giftType || '',
       minOrderQty: String(cat.minOrderQty || 1),
+      metaTitle: cat.metaTitle || '',
+      metaDescription: cat.metaDescription || '',
     });
     setNewImageFile(null);
     setEditingId(cat._id);
@@ -87,11 +77,12 @@ export default function AdminCategoriesPage() {
       const fd = new FormData();
       fd.append('name', form.name.trim());
       if (form.description) fd.append('description', form.description);
-      fd.append('subcategories', JSON.stringify(form.subcategories.split(',').map((s) => s.trim()).filter(Boolean)));
       fd.append('isActive', String(form.isActive));
       fd.append('isGiftCategory', String(form.isGiftCategory));
       if (form.giftType) fd.append('giftType', form.giftType);
       fd.append('minOrderQty', form.minOrderQty || '1');
+      if (form.metaTitle) fd.append('metaTitle', form.metaTitle);
+      if (form.metaDescription) fd.append('metaDescription', form.metaDescription);
       if (newImageFile) fd.append('avatar', newImageFile);
 
       let savedCategory: Category | undefined;
@@ -209,12 +200,6 @@ export default function AdminCategoriesPage() {
                     </span>
                   )}
                 </div>
-                {getSubs(cat.subcategories).length > 0 && (
-                  <p className="text-xs text-gray-400 mt-1 line-clamp-1">
-                    {getSubs(cat.subcategories).slice(0, 3).join(' · ')}
-                    {getSubs(cat.subcategories).length > 3 && ` +${getSubs(cat.subcategories).length - 3}`}
-                  </p>
-                )}
               </div>
             </div>
           ))}
@@ -226,7 +211,7 @@ export default function AdminCategoriesPage() {
             <thead>
               <tr className="bg-gray-50 text-xs text-gray-400 uppercase tracking-wider">
                 <th className="text-left px-5 py-3">Category</th>
-                <th className="text-left px-5 py-3">Subcategories</th>
+
                 <th className="text-left px-5 py-3">Status</th>
                 <th className="text-right px-5 py-3">Actions</th>
               </tr>
@@ -248,14 +233,7 @@ export default function AdminCategoriesPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {getSubs(cat.subcategories).slice(0, 3).map((s) => (
-                        <span key={s} className="text-xs bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full">{s}</span>
-                      ))}
-                      {getSubs(cat.subcategories).length > 3 && <span className="text-xs text-gray-400">+{getSubs(cat.subcategories).length - 3}</span>}
-                    </div>
-                  </td>
+
                   <td className="px-5 py-3">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${cat.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {cat.isActive ? 'Active' : 'Inactive'}
@@ -296,17 +274,15 @@ export default function AdminCategoriesPage() {
 
             <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-6">
               {/* Category image */}
-              <div>
-                <ImageUploader
-                  maxFiles={1}
-                  aspectRatio="3:4"
-                  maxSizeMB={2}
-                  existingImages={editingCat?.image ? [editingCat.image] : []}
-                  onChange={(files) => setNewImageFile(files[0] || null)}
-                  label="Category Image"
-                  hint="Portrait 3:4 recommended (e.g. 600×800px). Full image will show without cropping."
-                />
-              </div>
+              <ImageUploader
+                maxFiles={1}
+                aspectRatio="3:4"
+                maxSizeMB={2}
+                existingImages={editingCat?.image ? [editingCat.image] : []}
+                onChange={(files) => setNewImageFile(files[0] || null)}
+                label="Category Image"
+                hint="Portrait 3:4 recommended (e.g. 600×800px). Full image will show without cropping."
+              />
 
               {/* Name */}
               <div>
@@ -335,26 +311,38 @@ export default function AdminCategoriesPage() {
                 />
               </div>
 
-              {/* Subcategories */}
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Subcategories <span className="text-gray-300 font-normal normal-case tracking-normal text-xs">(comma separated)</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.subcategories}
-                  onChange={(e) => set('subcategories', e.target.value)}
-                  placeholder="Silk Sarees, Cotton Sarees, Banarasi Sarees"
-                  className={inputCls}
-                />
-                {form.subcategories && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {form.subcategories.split(',').map((s) => s.trim()).filter(Boolean).map((s) => (
-                      <span key={s} className="text-xs bg-brand-50 text-brand-600 px-2.5 py-1 rounded-full font-medium">{s}</span>
-                    ))}
-                  </div>
-                )}
+              {/* SEO Section */}
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-900">Search Engine Optimisation</h3>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    Meta Title
+                  </label>
+                  <input
+                    type="text"
+                    value={form.metaTitle}
+                    onChange={(e) => set('metaTitle', e.target.value)}
+                    placeholder="e.g. Buy Premium Sarees Online | House of Rani"
+                    className={inputCls}
+                  />
+                  <p className="mt-1.5 text-[11px] text-gray-400">Leave blank to use category name.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    Meta Description
+                  </label>
+                  <textarea
+                    value={form.metaDescription}
+                    onChange={(e) => set('metaDescription', e.target.value)}
+                    placeholder="Explore our exquisite collection of handcrafted sarees..."
+                    rows={2}
+                    className={`${inputCls} resize-none`}
+                  />
+                  <p className="mt-1.5 text-[11px] text-gray-400">Keep it between 150-160 characters for best results.</p>
+                </div>
               </div>
+
+
 
               {/* Active toggle */}
               <label className="flex items-center justify-between cursor-pointer p-4 bg-gray-50 rounded-xl">

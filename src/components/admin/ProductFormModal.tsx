@@ -1,38 +1,43 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   X,
-  Plus,
-  Trash2,
   ChevronDown,
   ChevronUp,
   Sparkles,
   Loader2,
 } from "lucide-react";
-import { Product, Category, ProductImage } from "@/types";
-import { productApi, categoryApi, adminApi } from "@/lib/api";
+import { Product, Category, SubCategory } from "@/types";
+import { productApi, adminApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import ImageUploader from "@/components/ui/ImageUploader";
 import toast from "react-hot-toast";
-import {
-  isMulticolorLabel,
-  VARIANT_MULTICOLOR_MARKER,
-} from "@/lib/variantSwatch";
 import {
   bulkTextFromPairs,
   mergeFabricIntoProductDetails,
   pairsFromBulkInput,
 } from "@/lib/productDetailsBulk";
 import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
-import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
+import { PRODUCT_OCCASIONS } from "@/lib/productCatalogOptions";
+import { cn } from "@/lib/utils";
 import {
   AdminAiProductCopySection,
   type ProductCopyDraft,
 } from "@/components/admin/ai/AdminAiProductCopySection";
 import ProductSeoChecklist from "@/components/admin/ProductSeoChecklist";
+import ProductColorVariantEditor, {
+  buildImagesMetaFromGroups,
+  collectNewImageFiles,
+  colorGroupsFromProduct,
+  emptyColorGroup,
+  flattenColorGroups,
+  validateColorGroupsForSave,
+  type ColorVariantGroup,
+} from "@/components/admin/ProductColorVariantEditor";
 import { evaluateProductSeo } from "@/lib/productSeoChecklist";
+import { fetchAdminCatalogCategories } from "@/lib/adminCatalog";
+
+const MAX_PRODUCT_IMAGES = 20;
 
 interface Props {
   product: Product | null;
@@ -74,15 +79,6 @@ const Field = ({
 const inputCls =
   "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all placeholder:text-gray-300";
 
-const emptyVariant = (): Product["variants"][0] => ({
-  size: "",
-  color: "",
-  colorCode: "",
-  stock: 0,
-  sku: `SKU-${Date.now()}`,
-  costPrice: undefined,
-});
-
 export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -91,19 +87,15 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const editingProduct = loadedProduct ?? product;
 
   const [categories, setCategories] = useState<Category[]>([]);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [existingImageSlots, setExistingImageSlots] = useState<ProductImage[]>(
-    [],
-  );
+  const [allSubcategories, setAllSubcategories] = useState<SubCategory[]>([]);
+  const [colorGroups, setColorGroups] = useState<ColorVariantGroup[]>([
+    emptyColorGroup(),
+  ]);
   const [showSeo, setShowSeo] = useState(false);
   const [detailsKeysText, setDetailsKeysText] = useState("");
   const [detailsValuesText, setDetailsValuesText] = useState("");
-  const [variants, setVariants] = useState<Product["variants"]>([
-    emptyVariant(),
-  ]);
-  const [variantColorKinds, setVariantColorKinds] = useState<
-    Array<"solid" | "multicolor">
-  >(["solid"]);
+
+  const [customOccasion, setCustomOccasion] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -114,6 +106,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     category: "",
     subcategory: "",
     fabric: "",
+    occasions: [] as string[],
     tags: "",
     isFeatured: false,
     isActive: true,
@@ -122,9 +115,32 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     hsnCode: "",
   });
 
+  const toggleOccasion = (occasion: string) => {
+    setForm((prev) => {
+      const exists = prev.occasions.some(
+        (o) => o.toLowerCase() === occasion.toLowerCase(),
+      );
+      return {
+        ...prev,
+        occasions:
+          exists ?
+            prev.occasions.filter(
+              (o) => o.toLowerCase() !== occasion.toLowerCase(),
+            )
+          : [...prev.occasions, occasion],
+      };
+    });
+  };
+
+  const addCustomOccasion = () => {
+    const trimmed = customOccasion.trim();
+    if (!trimmed) return;
+    toggleOccasion(trimmed);
+    setCustomOccasion("");
+  };
+
   const hydrateFromProduct = useCallback((p: Product | null) => {
     if (!p) {
-      const v = [emptyVariant()];
       setForm({
         name: "",
         description: "",
@@ -134,6 +150,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         category: "",
         subcategory: "",
         fabric: "",
+        occasions: [] as string[],
         tags: "",
         isFeatured: false,
         isActive: true,
@@ -141,15 +158,11 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         seoDescription: "",
         hsnCode: "",
       });
-      setVariants(v);
-      setVariantColorKinds(["solid"]);
-      setExistingImageSlots([]);
-      setNewFiles([]);
+      setColorGroups([emptyColorGroup()]);
       setDetailsKeysText("");
       setDetailsValuesText("");
       return;
     }
-    const v = p.variants?.length ? [...p.variants] : [emptyVariant()];
     setForm({
       name: p.name || "",
       description: p.description || "",
@@ -159,6 +172,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       category: p.category || "",
       subcategory: p.subcategory || "",
       fabric: p.fabric || "",
+      occasions: [...(p.occasions || [])],
       tags: (p.tags || []).join(", "),
       isFeatured: p.isFeatured ?? false,
       isActive: p.isActive !== undefined ? p.isActive : true,
@@ -166,30 +180,19 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       seoDescription: p.seoDescription || "",
       hsnCode: p.hsnCode || "",
     });
-    setVariants(v);
-    setVariantColorKinds(
-      v.map((row) =>
-        (
-          (row.colorCode || "").trim() === VARIANT_MULTICOLOR_MARKER ||
-          isMulticolorLabel(row.color)
-        ) ?
-          "multicolor"
-        : "solid",
-      ),
-    );
-    setExistingImageSlots(
-      p.images?.length ? p.images.map((i) => ({ ...i })) : [],
-    );
-    setNewFiles([]);
+    setColorGroups(colorGroupsFromProduct(p));
     const { keysText, valuesText } = bulkTextFromPairs(p.productDetails || []);
     setDetailsKeysText(keysText);
     setDetailsValuesText(valuesText);
   }, []);
 
   useEffect(() => {
-    categoryApi
-      .getAll()
-      .then((res) => setCategories(res.data.categories || []))
+    fetchAdminCatalogCategories()
+      .then(setCategories)
+      .catch(() => {});
+    adminApi
+      .getSubcategories()
+      .then((res) => setAllSubcategories(res.data?.subcategories || []))
       .catch(() => {});
   }, []);
 
@@ -264,93 +267,54 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   }, [product?._id, hydrateFromProduct]);
 
   const selectedCategory = categories.find((c) => c.name === form.category);
-  const subcategories = selectedCategory?.subcategories || [];
+  const subcategories = allSubcategories.filter((s) => 
+    s.categoryId === selectedCategory?._id || (s.categoryId as any)?._id === selectedCategory?._id || s.categorySlug === selectedCategory?.slug
+  ).map(s => s.name);
 
   const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const addVariant = () => {
-    setVariants((v) => [
-      ...v,
-      {
-        size: "",
-        color: "",
-        colorCode: "",
-        stock: 0,
-        sku: `SKU-${Date.now()}`,
-        costPrice: undefined,
-      },
-    ]);
-    setVariantColorKinds((k) => [...k, "solid"]);
+  const setCategory = (category: string) => {
+    setForm((prev) => ({ ...prev, category, subcategory: "" }));
   };
 
-  const removeVariant = (i: number) => {
-    setVariants((v) => v.filter((_, idx) => idx !== i));
-    setVariantColorKinds((k) => k.filter((_, idx) => idx !== i));
-  };
+  const totalImageCount = colorGroups.reduce(
+    (n, g) => n + g.existingImages.length + g.newFiles.length,
+    0,
+  );
+  const flattenedVariants = flattenColorGroups(colorGroups);
 
-  const setVariantColorKind = (i: number, kind: "solid" | "multicolor") => {
-    setVariantColorKinds((k) => k.map((c, idx) => (idx === i ? kind : c)));
-    if (kind === "multicolor") {
-      setVariants((v) =>
-        v.map((row, idx) =>
-          idx === i ?
-            {
-              ...row,
-              colorCode: VARIANT_MULTICOLOR_MARKER,
-              color: row.color?.trim() ? row.color : "Multicolor",
-            }
-          : row,
-        ),
-      );
-    } else {
-      setVariants((v) =>
-        v.map((row, idx) =>
-          idx === i ?
-            {
-              ...row,
-              colorCode:
-                (
-                  String(row.colorCode || "").trim() ===
-                    VARIANT_MULTICOLOR_MARKER ||
-                  !String(row.colorCode || "")
-                    .trim()
-                    .startsWith("#")
-                ) ?
-                  "#000000"
-                : row.colorCode,
-            }
-          : row,
-        ),
-      );
-    }
-  };
+  const untaggedImageCount = useMemo(() => {
+    if (colorGroups.length <= 1) return 0;
+    const meta = buildImagesMetaFromGroups(colorGroups);
+    return meta.filter((m) => !m.color?.trim()).length;
+  }, [colorGroups]);
 
-  const updateVariant = (i: number, field: string, value: string | number) =>
-    setVariants((v) =>
-      v.map((item, idx) => (idx === i ? { ...item, [field]: value } : item)),
-    );
-
-  const handleRemoveExistingImage = async (index: number) => {
+  const handleDeleteExistingImage = async (
+    publicId: string,
+    groupId: string,
+  ) => {
     if (!editingProduct?._id) return;
-    if (existingImageSlots.length <= 0) {
+    if (totalImageCount <= 1) {
       toast.error("At least one product image is required.");
       return;
     }
-    const pub = existingImageSlots[index]?.publicId;
-    if (!pub) {
-      toast.error("Cannot remove this image.");
-      return;
-    }
     try {
-      const res = await productApi.deleteImage(editingProduct._id, pub);
+      const res = await productApi.deleteImage(editingProduct._id, publicId);
       const updated = res.data?.product as Product | undefined;
-      if (updated?.images?.length) {
-        setExistingImageSlots(updated.images);
-        setLoadedProduct(updated);
-      } else {
-        setExistingImageSlots((prev) => prev.filter((_, i) => i !== index));
-      }
+      if (updated) setLoadedProduct(updated);
+      setColorGroups((groups) =>
+        groups.map((g) =>
+          g.id === groupId ?
+            {
+              ...g,
+              existingImages: g.existingImages.filter(
+                (img) => img.publicId !== publicId,
+              ),
+            }
+          : g,
+        ),
+      );
       toast.success("Image removed");
     } catch (err: unknown) {
       toast.error(
@@ -361,23 +325,34 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct && newFiles.length === 0)
-      return toast.error("Upload at least one product image");
-    if (
-      editingProduct &&
-      existingImageSlots.length === 0 &&
-      newFiles.length === 0
-    ) {
-      return toast.error("Upload at least one product image");
+    const newFiles = collectNewImageFiles(colorGroups);
+    const imagesMeta = buildImagesMetaFromGroups(colorGroups);
+
+    if (totalImageCount < 1) {
+      return toast.error("Upload at least one product image (per color)");
     }
-    if (editingProduct && existingImageSlots.length + newFiles.length > 7) {
+    if (totalImageCount > MAX_PRODUCT_IMAGES) {
       return toast.error(
-        "Maximum 7 images per product (remove some or upload fewer).",
+        `Maximum ${MAX_PRODUCT_IMAGES} images per product across all colors.`,
       );
     }
     if (!form.category) return toast.error("Please select a category");
-    if (variants.some((v) => !v.sku.trim()))
+    if (!flattenedVariants.length) {
+      return toast.error("Add at least one size with a SKU");
+    }
+    if (flattenedVariants.some((v) => !v.sku.trim())) {
       return toast.error("Every variant needs a SKU");
+    }
+
+    const colorErr = validateColorGroupsForSave(colorGroups);
+    if (colorErr) return toast.error(colorErr);
+
+    const expectedNewUploads = imagesMeta.filter((m) => !m.publicId).length;
+    if (expectedNewUploads !== newFiles.length) {
+      return toast.error(
+        "Photo upload sync error — refresh the page, re-add photos per color, and save again.",
+      );
+    }
 
     const detailsParsed = pairsFromBulkInput(
       detailsKeysText,
@@ -391,51 +366,43 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       const fd = new FormData();
       fd.append("name", form.name);
       fd.append("description", form.description);
-      if (form.shortDescription)
-        fd.append("shortDescription", form.shortDescription);
+      fd.append("shortDescription", form.shortDescription);
       fd.append("price", form.price);
-      if (form.comparePrice) fd.append("comparePrice", form.comparePrice);
+      fd.append("comparePrice", form.comparePrice);
       fd.append("category", form.category);
-      if (form.subcategory) fd.append("subcategory", form.subcategory);
-      if (form.fabric) fd.append("fabric", form.fabric);
+      fd.append("subcategory", form.subcategory);
+      fd.append("fabric", form.fabric);
       fd.append("isFeatured", String(form.isFeatured));
       fd.append("isActive", String(form.isActive));
-      if (form.seoTitle) fd.append("seoTitle", form.seoTitle);
-      if (form.seoDescription) fd.append("seoDescription", form.seoDescription);
-      if (form.hsnCode) fd.append("hsnCode", form.hsnCode);
+      fd.append("seoTitle", form.seoTitle);
+      fd.append("seoDescription", form.seoDescription);
+      fd.append("hsnCode", form.hsnCode);
       fd.append(
         "variants",
         JSON.stringify(
-          variants.map((row, idx) => ({
+          flattenedVariants.map((row) => ({
             sku: row.sku,
             size: row.size,
             color: row.color,
-            colorCode:
-              variantColorKinds[idx] === "multicolor" ?
-                VARIANT_MULTICOLOR_MARKER
-              : (
-                String(row.colorCode || "").trim() === VARIANT_MULTICOLOR_MARKER
-              ) ?
-                "#000000"
-              : row.colorCode,
+            colorCode: row.colorCode,
             stock: row.stock,
-            ...(row.price != null && row.price > 0 ? { price: row.price } : {}),
             ...(row.costPrice != null && row.costPrice > 0 ?
               { costPrice: row.costPrice }
             : {}),
           })),
         ),
       );
-      if (form.tags.trim())
-        fd.append(
-          "tags",
-          JSON.stringify(
-            form.tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean),
-          ),
-        );
+      fd.append("imagesMeta", JSON.stringify(imagesMeta));
+      fd.append(
+        "tags",
+        JSON.stringify(
+          form.tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean),
+        ),
+      );
+      fd.append("occasions", JSON.stringify(form.occasions));
       fd.append(
         "productDetails",
         JSON.stringify(
@@ -456,13 +423,36 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
           onUploadProgress: (p) => setUploadProgress(p),
         });
         saved = (res.data?.product || undefined) as Product | undefined;
-        if (saved) setLoadedProduct(saved);
+        if (saved?._id) {
+          try {
+            const fresh = await adminApi.getProductById(saved._id);
+            saved = (fresh.data?.product || saved) as Product;
+          } catch {
+            /* use PATCH response */
+          }
+        }
+        if (saved) {
+          setLoadedProduct(saved);
+          hydrateFromProduct(saved);
+        }
         toast.success("Product updated");
       } else {
         const res = await productApi.create(fd, {
           onUploadProgress: (p) => setUploadProgress(p),
         });
         saved = (res.data?.product || undefined) as Product | undefined;
+        if (saved?._id) {
+          try {
+            const fresh = await adminApi.getProductById(saved._id);
+            saved = (fresh.data?.product || saved) as Product;
+          } catch {
+            /* use create response */
+          }
+        }
+        if (saved) {
+          setLoadedProduct(saved);
+          hydrateFromProduct(saved);
+        }
         toast.success("Product created");
       }
       onSave(saved);
@@ -616,7 +606,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                     <select
                       className={inputCls}
                       value={form.category}
-                      onChange={(e) => set("category", e.target.value)}
+                      onChange={(e) => setCategory(e.target.value)}
                       required
                     >
                       <option value=''>Select category</option>
@@ -639,11 +629,11 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                     )}
                   </Field>
                   <Field label='Subcategory'>
-                    {subcategories.length > 0 ?
                       <select
                         className={inputCls}
                         value={form.subcategory}
                         onChange={(e) => set("subcategory", e.target.value)}
+                        disabled={!form.category || subcategories.length === 0}
                       >
                         <option value=''>None</option>
                         {subcategories.map((s) => (
@@ -652,13 +642,11 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                           </option>
                         ))}
                       </select>
-                    : <input
-                        className={inputCls}
-                        value={form.subcategory}
-                        onChange={(e) => set("subcategory", e.target.value)}
-                        placeholder='e.g. Silk Sarees'
-                      />
-                    }
+                      {!form.category ? (
+                        <p className='text-xs text-gray-400 mt-1'>Select a category first.</p>
+                      ) : subcategories.length === 0 ? (
+                        <p className='text-xs text-amber-500 mt-1'>No subcategories found for this category.</p>
+                      ) : null}
                   </Field>
                 </div>
                 <div className='grid grid-cols-2 gap-4'>
@@ -683,6 +671,68 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                       onChange={(e) => set("tags", e.target.value)}
                       placeholder='silk, wedding, festive'
                     />
+                  </Field>
+                </div>
+                <div className='grid grid-cols-1 gap-4'>
+                  <Field label='Occasions'>
+                    <div className='flex flex-wrap gap-2'>
+                      {PRODUCT_OCCASIONS.map((occ) => (
+                        <button
+                          key={occ}
+                          type='button'
+                          onClick={() => toggleOccasion(occ)}
+                          className={cn(
+                            "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                            form.occasions.some(
+                              (o) => o.toLowerCase() === occ.toLowerCase(),
+                            ) ?
+                              "border-[#c5a059] bg-[#c5a059] text-white"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-[#c5a059]",
+                          )}
+                        >
+                          {occ}
+                        </button>
+                      ))}
+                      {form.occasions
+                        .filter(
+                          (o) =>
+                            !PRODUCT_OCCASIONS.some(
+                              (p) => p.toLowerCase() === o.toLowerCase(),
+                            ),
+                        )
+                        .map((occ) => (
+                          <button
+                            key={occ}
+                            type='button'
+                            onClick={() => toggleOccasion(occ)}
+                            className='rounded-full border border-[#c5a059] bg-[#c5a059]/10 px-3 py-1.5 text-xs font-semibold text-[#c5a059]'
+                          >
+                            {occ} ×
+                          </button>
+                        ))}
+                    </div>
+                    <div className='mt-3 flex gap-2'>
+                      <input
+                        className={inputCls}
+                        value={customOccasion}
+                        onChange={(e) => setCustomOccasion(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addCustomOccasion();
+                          }
+                        }}
+                        placeholder='Add custom occasion…'
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        onClick={addCustomOccasion}
+                        disabled={!customOccasion.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
                   </Field>
                 </div>
                 <div className='flex gap-6 pt-1'>
@@ -718,254 +768,15 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 </div>
               </div>
 
-              {/* Variants */}
-              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
-                <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-                  <div>
-                    <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
-                      Variants <span className='text-brand-500'>*</span>
-                    </h3>
-                    <p className='text-xs text-gray-500 mt-1 max-w-xl leading-relaxed'>
-                      Each variant is one sellable option: same product with its
-                      own <strong>SKU</strong>, <strong>size</strong> (e.g.
-                      Free, S, M), <strong>stock</strong>, and how{" "}
-                      <strong>color</strong> appears on the site. Add another
-                      row for another size/color combo.
-                    </p>
-                  </div>
-                  <button
-                    type='button'
-                    onClick={addVariant}
-                    className='flex shrink-0 items-center gap-1.5 self-start text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full transition-colors'
-                  >
-                    <Plus className='h-3.5 w-3.5' /> Add variant
-                  </button>
-                </div>
-
-                <div className='space-y-3'>
-                  {variants.map((v, i) => {
-                    const kind = variantColorKinds[i] ?? "solid";
-                    const hexForInputs =
-                      (
-                        String(v.colorCode || "").trim() ===
-                        VARIANT_MULTICOLOR_MARKER
-                      ) ?
-                        ""
-                      : v.colorCode || "";
-                    const pickerValue =
-                      hexForInputs.trim().startsWith("#") ?
-                        hexForInputs.trim()
-                      : "#000000";
-                    return (
-                      <div
-                        key={i}
-                        className='bg-white rounded-2xl p-4 border border-gray-100 space-y-3 min-w-0 shadow-sm'
-                      >
-                        <div className='flex items-center justify-between gap-2'>
-                          <span className='text-[11px] font-bold text-gray-400 uppercase tracking-wider'>
-                            Variant {i + 1}
-                          </span>
-                          <button
-                            type='button'
-                            onClick={() => removeVariant(i)}
-                            disabled={variants.length === 1}
-                            className='h-9 w-9 rounded-xl flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
-                            aria-label='Remove variant'
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </button>
-                        </div>
-
-                        <div className='grid grid-cols-1 sm:grid-cols-4 gap-3'>
-                          <Field label='SKU' required>
-                            <input
-                              placeholder='e.g. SKU-RED-FREE'
-                              value={v.sku}
-                              onChange={(e) =>
-                                updateVariant(i, "sku", e.target.value)
-                              }
-                              className={inputCls}
-                              required
-                            />
-                          </Field>
-                          <Field label='Size'>
-                            <input
-                              placeholder='e.g. Free, S, M, or custom'
-                              value={v.size || ""}
-                              onChange={(e) =>
-                                updateVariant(i, "size", e.target.value)
-                              }
-                              className={inputCls}
-                            />
-                          </Field>
-                          <Field label='Stock (units)'>
-                            <input
-                              type='number'
-                              placeholder='0'
-                              min={0}
-                              value={v.stock}
-                              onChange={(e) =>
-                                updateVariant(
-                                  i,
-                                  "stock",
-                                  parseInt(e.target.value, 10) || 0,
-                                )
-                              }
-                              className={inputCls}
-                            />
-                          </Field>
-                          <div>
-                            <Field label='Cost Price ₹ (optional)'>
-                              <input
-                                type='number'
-                                placeholder='0'
-                                min={0}
-                                step='0.01'
-                                value={v.costPrice ?? ""}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    i,
-                                    "costPrice",
-                                    parseFloat(e.target.value) || 0,
-                                  )
-                                }
-                                className={inputCls}
-                              />
-                            </Field>
-                            {v.costPrice &&
-                              v.costPrice > 0 &&
-                              (v.price ??
-                                (form.price ? Number(form.price) : 0)) > 0 && (
-                                <p
-                                  className={`text-[11px] font-semibold mt-1 ${
-                                    (
-                                      ((v.price ?? Number(form.price)) -
-                                        v.costPrice) /
-                                        (v.price ?? Number(form.price)) >=
-                                      0
-                                    ) ?
-                                      "text-emerald-600"
-                                    : "text-red-500"
-                                  }`}
-                                >
-                                  {Math.round(
-                                    (((v.price ?? Number(form.price)) -
-                                      v.costPrice) /
-                                      (v.price ?? Number(form.price))) *
-                                      100,
-                                  )}
-                                  % margin
-                                </p>
-                              )}
-                          </div>
-                        </div>
-
-                        <div className='rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-3'>
-                          <p className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider'>
-                            Color on storefront
-                          </p>
-                          <div className='flex flex-wrap gap-4'>
-                            <label className='flex items-center gap-2 cursor-pointer text-sm text-gray-700'>
-                              <input
-                                type='radio'
-                                name={`color-kind-${i}`}
-                                className='accent-brand-600'
-                                checked={kind === "solid"}
-                                onChange={() => setVariantColorKind(i, "solid")}
-                              />
-                              Single color
-                            </label>
-                            <label className='flex items-center gap-2 cursor-pointer text-sm text-gray-700'>
-                              <input
-                                type='radio'
-                                name={`color-kind-${i}`}
-                                className='accent-brand-600'
-                                checked={kind === "multicolor"}
-                                onChange={() =>
-                                  setVariantColorKind(i, "multicolor")
-                                }
-                              />
-                              Multicolor / print (no one swatch)
-                            </label>
-                          </div>
-
-                          {kind === "solid" ?
-                            <div className='space-y-2'>
-                              <div className='flex flex-col sm:flex-row sm:items-end gap-3'>
-                                <div className='shrink-0'>
-                                  <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
-                                    Swatch
-                                  </span>
-                                  <input
-                                    type='color'
-                                    value={pickerValue}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        i,
-                                        "colorCode",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className='h-11 w-[4.5rem] rounded-xl border border-gray-200 bg-white p-1 cursor-pointer'
-                                    aria-label='Pick swatch color'
-                                  />
-                                </div>
-                                <div className='flex-1 min-w-0'>
-                                  <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
-                                    Color name (shown to customers)
-                                  </span>
-                                  <input
-                                    placeholder='e.g. Royal Blue, Maroon'
-                                    value={v.color || ""}
-                                    onChange={(e) =>
-                                      updateVariant(i, "color", e.target.value)
-                                    }
-                                    className={inputCls}
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
-                                  Hex code (optional — overrides swatch if you
-                                  paste a value)
-                                </span>
-                                <input
-                                  placeholder='#0b0f1a'
-                                  value={hexForInputs}
-                                  onChange={(e) =>
-                                    updateVariant(
-                                      i,
-                                      "colorCode",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className={`${inputCls} font-mono text-sm max-w-xs`}
-                                />
-                              </div>
-                            </div>
-                          : <div>
-                              <span className='block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1'>
-                                Label (e.g. Multicolor, Printed, Assorted)
-                              </span>
-                              <input
-                                placeholder='Multicolor'
-                                value={v.color || ""}
-                                onChange={(e) =>
-                                  updateVariant(i, "color", e.target.value)
-                                }
-                                className={inputCls}
-                              />
-                              <p className='text-[11px] text-gray-400 mt-1.5'>
-                                Customers see this text and a multicolor-style
-                                badge on listings — no single color picker.
-                              </p>
-                            </div>
-                          }
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+              {/* Colors, sizes & photos */}
+              <div className='bg-gray-50 rounded-2xl p-5'>
+                <ProductColorVariantEditor
+                  groups={colorGroups}
+                  onChange={setColorGroups}
+                  productId={editingProduct?._id}
+                  untaggedImageCount={untaggedImageCount}
+                  onDeleteExistingImage={handleDeleteExistingImage}
+                />
               </div>
 
               <AdminAiProductCopySection
@@ -976,7 +787,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 price={form.price}
                 comparePrice={form.comparePrice}
                 tags={form.tags}
-                variants={variants}
+                variants={flattenedVariants}
                 productId={editingProduct?._id}
                 onApply={(d: ProductCopyDraft) => {
                   setForm((f) => ({
@@ -1107,47 +918,28 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               </div>
             </div>
 
-            {/* ── RIGHT: Images ── */}
+            {/* ── RIGHT: Photo tips ── */}
             <div className='space-y-4 min-w-0'>
               <div className='bg-gray-50 rounded-2xl p-5 space-y-4 sticky top-2'>
                 <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
-                  Product Images
+                  Photo guide
                 </h3>
                 <p className='text-xs text-gray-400 leading-relaxed'>
-                  Upload high-quality <strong>portrait photos (3:4)</strong> —
-                  front, back, draping shot. White/neutral background
-                  recommended.
+                  Har color ke liye alag photos upload karo (left panel). Customer
+                  jis color ko choose karega, product page par wahi images
+                  dikhengi.
                 </p>
 
-                <ImageUploader
-                  key={editingProduct?._id ?? "new-product"}
-                  maxFiles={7}
-                  aspectRatio='3:4'
-                  maxSizeMB={UPLOAD_MAX_MB.product}
-                  existingImages={existingImageSlots.map((i) => i.url)}
-                  onRemoveExisting={
-                    editingProduct?._id ? handleRemoveExistingImage : undefined
-                  }
-                  onChange={setNewFiles}
-                  isUploading={isSaving && newFiles.length > 0}
-                  uploadProgress={uploadProgress}
-                  hint={
-                    editingProduct ?
-                      "Up to 7 images total. Select multiple at once (within remaining slots). Hover ✕ to remove."
-                    : "First image is the cover. Select up to 7 images in one go."
-                  }
-                />
-
-                {/* Tips */}
                 <div className='bg-white rounded-xl p-3 border border-gray-100 space-y-1.5'>
                   <p className='text-xs font-semibold text-gray-600'>
-                    📸 Photo Tips
+                    Photo tips
                   </p>
                   {[
                     "Use natural or studio lighting",
                     "3:4 portrait ratio (e.g. 900×1200px)",
                     "Show drape, texture & embroidery",
                     "Include model shots when possible",
+                    "Same color ke saare angles ek color group mein rakho",
                   ].map((tip) => (
                     <p key={tip} className='text-xs text-gray-400 flex gap-1.5'>
                       <span className='text-brand-400 flex-shrink-0'>·</span>{" "}

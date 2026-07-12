@@ -18,6 +18,8 @@ export function detectIntent(input: string): Intent {
       "show order",
       "list order",
       "all orders",
+      "mera order",
+      "mere order",
     ]) ||
     /\borders?\b/.test(q)
   ) {
@@ -35,6 +37,10 @@ export function detectIntent(input: string): Intent {
       "parcel",
       "courier",
       "shipped",
+      "kahan hai",
+      "kab aayega",
+      "kab milega",
+      "kidhar",
     ])
   ) {
     return "show_orders";
@@ -49,20 +55,56 @@ export function detectIntent(input: string): Intent {
       "wrong item",
       "damaged",
       "defective",
+      "wapas",
+      "paisa wapas",
     ])
   ) {
     return "returns";
   }
-  if (fuzzyHas(q, ["ship", "delivery", "deliver", "cod", "how long"])) {
+  if (
+    fuzzyHas(q, [
+      "ship",
+      "delivery",
+      "deliver",
+      "cod",
+      "how long",
+      "kitne din",
+      "pincode",
+      "address",
+      "bhej",
+    ])
+  ) {
     return "shipping";
   }
-  if (fuzzyHas(q, ["payment", "upi", "card", "failed", "razorpay", "charged", "debit"])) {
+  if (
+    fuzzyHas(q, [
+      "payment",
+      "upi",
+      "card",
+      "failed",
+      "razorpay",
+      "charged",
+      "debit",
+      "paisa kata",
+    ])
+  ) {
     return "payment";
   }
   if (fuzzyHas(q, ["coupon", "discount", "offer", "promo", "code"])) {
     return "coupon";
   }
-  if (fuzzyHas(q, ["size", "fit", "measurement", "sizing"])) {
+  if (
+    fuzzyHas(q, [
+      "size",
+      "fit",
+      "measurement",
+      "sizing",
+      "blouse",
+      "2xl",
+      "3xl",
+      "naap",
+    ])
+  ) {
     return "sizing";
   }
   if (fuzzyHas(q, ["privacy", "data", "personal info"])) {
@@ -185,11 +227,17 @@ export function findOrderIdByNumber(text: string, orders: Order[]): string | nul
     if (num && t.includes(num)) return o._id;
   }
   const m = t.match(/\b[A-Z]{2,}[\w#-]*\d{2,}\b/g);
-  if (!m) return null;
-  for (const token of m) {
-    const hit = orders.find(
-      (o) => o.orderNumber.toUpperCase() === token.replace(/#/g, ""),
-    );
+  if (m) {
+    for (const token of m) {
+      const hit = orders.find(
+        (o) => o.orderNumber.toUpperCase() === token.replace(/#/g, ""),
+      );
+      if (hit) return hit._id;
+    }
+  }
+  const parts = t.split(/\s+/).filter((p) => p.length >= 4);
+  for (const part of parts) {
+    const hit = orders.find((o) => o.orderNumber.toUpperCase().includes(part));
     if (hit) return hit._id;
   }
   return null;

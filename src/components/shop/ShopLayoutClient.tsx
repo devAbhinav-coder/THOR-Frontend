@@ -7,7 +7,8 @@ import { ShopFilterPanelProvider } from "@/components/shop/ShopFilterPanelContex
 
 function isShopListingPath(pathname: string): boolean {
   if (pathname === "/shop") return true;
-  return pathname.startsWith("/shop/category/");
+  if (pathname === "/shop/collections") return true;
+  return pathname.startsWith("/shop/category/") || pathname.startsWith("/shop/collections/");
 }
 
 export default function ShopLayoutClient({
@@ -24,9 +25,10 @@ export default function ShopLayoutClient({
 
   return (
     <ShopFilterPanelProvider>
-      {children}
       <Suspense fallback={null}>
-        <ShopClient />
+        <ShopClient>
+          {children}
+        </ShopClient>
       </Suspense>
     </ShopFilterPanelProvider>
   );

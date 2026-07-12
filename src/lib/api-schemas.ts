@@ -86,12 +86,55 @@ export const categoriesList = z.object({
   data: z.object({ categories: z.array(doc) }),
 });
 
+export const megaMenu = z.object({
+  status: z.string(),
+  data: z
+    .object({
+      categories: z.array(
+        z
+          .object({
+            name: z.string(),
+            slug: z.string(),
+            subcategories: z
+              .array(
+                z.object({
+                  name: z.string(),
+                  slug: z.string(),
+                  productCount: z.number().optional(),
+                }),
+              )
+              .optional()
+              .default([]),
+          })
+          .passthrough(),
+      ),
+    })
+    .passthrough(),
+});
+
 export const storefrontSettings = z.object({
   status: z.string(),
   data: z.object({ settings: doc }),
 });
 
 export type StorefrontSettingsApiEnvelope = z.infer<typeof storefrontSettings>;
+
+export const parsedSearchIntentSchema = z
+  .object({
+    rawQuery: z.string(),
+    textQuery: z.string(),
+    fabrics: z.array(z.string()),
+    categories: z.array(z.string()),
+    subcategories: z.array(z.string()),
+    tags: z.array(z.string()),
+    colors: z.array(z.string()),
+    minPrice: z.number().optional(),
+    maxPrice: z.number().optional(),
+    displayLabel: z.string(),
+    didYouMean: z.string().optional(),
+    corrections: z.array(z.string()),
+  })
+  .passthrough();
 
 export const productsPaginated = z
   .object({
@@ -109,7 +152,14 @@ export const productsPaginated = z
       .passthrough()
       .optional(),
     total: z.number().optional(),
-    data: z.object({ products: z.array(doc) }),
+    data: z
+      .object({
+        products: z.array(doc),
+        searchIntent: parsedSearchIntentSchema.optional(),
+        searchMethod: z.string().optional(),
+        cached: z.boolean().optional(),
+      })
+      .passthrough(),
   })
   .passthrough();
 
@@ -123,12 +173,57 @@ export const viewCount = z.object({
   data: z.object({ viewCount: z.number() }),
 });
 
+export const storeVisitRecorded = z.object({
+  status: z.string(),
+  data: z.object({
+    recorded: z.boolean(),
+    visitDate: z.string(),
+  }),
+});
+
+export const raniCareStatus = z.object({
+  status: z.string(),
+  data: z.object({
+    aiEnabled: z.boolean(),
+  }),
+});
+
+export const raniCareChatReply = z.object({
+  status: z.string(),
+  data: z.object({
+    answer: z.string(),
+    routeIntent: z
+      .enum(["show_orders", "cancel_help", "returns", "contact"])
+      .nullable()
+      .optional(),
+    suggestedActions: z
+      .array(z.object({ label: z.string(), value: z.string() }))
+      .optional(),
+    aiUsed: z.boolean().optional(),
+    aiEnabled: z.boolean().optional(),
+  }),
+});
+
 export const filterOptions = z.object({
   status: z.string(),
   data: z
     .object({
-      categories: z.array(z.union([z.string(), z.any()])),
-      fabrics: z.array(z.union([z.string(), z.any()])),
+      categories: z.array(z.union([z.string(), z.any()])).optional().default([]),
+      fabrics: z.array(z.union([z.string(), z.any()])).optional().default([]),
+      subcategories: z.array(z.union([z.string(), z.any()])).optional(),
+      occasions: z.array(z.union([z.string(), z.any()])).optional(),
+      categoryTree: z
+        .array(
+          z.object({
+            name: z.string(),
+            slug: z.string(),
+            subcategories: z.array(
+              z.object({ name: z.string(), slug: z.string() }),
+            ),
+          }),
+        )
+        .optional(),
+      tags: z.array(z.union([z.string(), z.any()])).optional(),
       priceRange: z
         .object({
           minPrice: z.number().optional(),
@@ -142,25 +237,41 @@ export const filterOptions = z.object({
     .passthrough(),
 });
 
-export const autocompleteResponse = z.object({
-  status: z.string(),
-  data: z.object({
-    suggestions: z.array(
-      z
-        .object({
-          id: z.string(),
-          name: z.string(),
-          slug: z.string(),
-          image: z.string(),
-          price: z.number(),
-          category: z.string(),
-          relevance: z.number().optional(),
-        })
-        .passthrough(),
-    ),
-    query: z.string(),
-  }),
-});
+export const autocompleteResponse = z
+  .object({
+    status: z.string(),
+    data: z
+      .object({
+        suggestions: z.array(
+          z
+            .object({
+              id: z.string().optional(),
+              name: z.string(),
+              slug: z.string(),
+              image: z.string().optional(),
+              price: z.number(),
+              category: z.string().optional(),
+              relevance: z.number().optional(),
+            })
+            .passthrough(),
+        ),
+        query: z.string(),
+        searchIntent: parsedSearchIntentSchema.optional(),
+        querySuggestions: z.array(z.string()).optional(),
+        didYouMean: z.string().optional(),
+        collectionSuggestions: z
+          .array(
+            z.object({
+              name: z.string(),
+              url: z.string(),
+              image: z.string().optional(),
+            }),
+          )
+          .optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
 
 export const searchSuggestionsResponse = z.object({
   status: z.string(),
@@ -661,6 +772,16 @@ export const categorySingle = z.object({
 });
 
 export const categoryStats = z.object({ status: z.string(), data: z.unknown() });
+
+export const subcategorySingle = z.object({
+  status: z.string(),
+  data: z.object({ subcategory: doc }).passthrough(),
+});
+
+export const subcategoriesList = z.object({
+  status: z.string(),
+  data: z.object({ subcategories: z.array(doc), category: doc.optional() }).passthrough(),
+});
 
 export const orderCreateResponse = z.union([
   orderCreatedRazorpayIntent,

@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { getSiteUrl } from "@/lib/siteUrl";
-import type { Category, Product } from "@/types";
-import { isShopCatalogCategory } from "@/lib/categoryFilters";
+import type { Category, Product, SubCategory } from "@/types";
 import { resolveCategoryPageSeo } from "@/lib/categoryPageSeo";
-import { resolveCategoryBySlug, toShopCategorySlug } from "@/lib/shopCategorySeo";
+import { resolveSerpTitleString } from "@/lib/pageSeo";
+import {
+  buildSubcategoryMetaDescription,
+  buildSubcategoryPageTitle,
+} from "@/lib/subcategoryPageSeo";
+import Image from "next/image";
 
 const SITE_URL = getSiteUrl();
 
-type ParamsInput = Promise<{ categorySlug: string }>;
+type ParamsInput = Promise<{ categorySlug: string; subcategorySlug: string }>;
 type SearchParamsInput = Promise<Record<string, string | string[] | undefined>>;
 
-function humanizeCategorySlug(input: string): string {
+function humanizeSlug(input: string): string {
   const decoded = decodeURIComponent(String(input || "").trim());
-  if (!decoded) return "Shop Category";
+  if (!decoded) return "Shop";
   return decoded
     .replace(/[-_]+/g, " ")
     .split(/\s+/)
@@ -22,19 +26,23 @@ function humanizeCategorySlug(input: string): string {
     .join(" ");
 }
 
-async function fetchCategories(): Promise<Category[]> {
+interface SubcollectionDetails {
+  category: Category;
+  subcategory: SubCategory;
+}
+
+async function fetchSubcollectionDetails(catSlug: string, subSlug: string): Promise<SubcollectionDetails | null> {
   const apiBase = await getBuildSafeApiBase();
-  if (!apiBase) return [];
+  if (!apiBase) return null;
   try {
-    const res = await fetch(`${apiBase}/categories?active=true`, {
+    const res = await fetch(`${apiBase}/collections/${encodeURIComponent(catSlug)}/${encodeURIComponent(subSlug)}`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data?: { categories?: Category[] } };
-    const categories = Array.isArray(body?.data?.categories) ? body.data.categories : [];
-    return categories.filter(isShopCatalogCategory);
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body.data as SubcollectionDetails;
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -45,12 +53,12 @@ function hasAnyFilters(sp: Record<string, string | string[] | undefined>): boole
   });
 }
 
-async function fetchTopProducts(categoryName: string): Promise<Product[]> {
+async function fetchTopSubcollectionProducts(catSlug: string, subSlug: string): Promise<Product[]> {
   const apiBase = await getBuildSafeApiBase();
   if (!apiBase) return [];
   try {
     const res = await fetch(
-      `${apiBase}/products?limit=12&page=1&sort=featured&category=${encodeURIComponent(categoryName)}`,
+      `${apiBase}/collections/${encodeURIComponent(catSlug)}/${encodeURIComponent(subSlug)}/products?limit=12&page=1&sort=featured`,
       { next: { revalidate: 600 } },
     );
     if (!res.ok) return [];
@@ -68,33 +76,40 @@ export async function generateMetadata({
   params: ParamsInput;
   searchParams: SearchParamsInput;
 }): Promise<Metadata> {
-  const [p, sp, categories] = await Promise.all([params, searchParams, fetchCategories()]);
-  const resolved = resolveCategoryBySlug(categories, p.categorySlug);
-  const fallbackName = humanizeCategorySlug(p.categorySlug);
-  const category = resolved || {
-    _id: "fallback",
-    name: fallbackName,
-    slug: toShopCategorySlug(p.categorySlug),
-    isActive: true,
-    subcategories: [],
-    productCount: 0,
-    createdAt: new Date().toISOString(),
-  };
+  const [p, sp] = await Promise.all([params, searchParams]);
+  const details = await fetchSubcollectionDetails(p.categorySlug, p.subcategorySlug);
+  
+  const fallbackCatName = humanizeSlug(p.categorySlug);
+  const fallbackSubName = humanizeSlug(p.subcategorySlug);
+  
+  const categoryName = details?.category?.name || fallbackCatName;
+  const subcategoryName = details?.subcategory?.name || fallbackSubName;
 
-  const canonicalSlug =
-    toShopCategorySlug(category.slug || category.name) ||
-    toShopCategorySlug(p.categorySlug);
-  const basePath = `/shop/category/${encodeURIComponent(canonicalSlug)}`;
+  const basePath = `/shop/collections/${encodeURIComponent(p.categorySlug)}/${encodeURIComponent(p.subcategorySlug)}`;
   const filtered = hasAnyFilters(sp);
-  const seo = resolveCategoryPageSeo(category.name, canonicalSlug);
-  const title = seo.title;
-  const description = seo.description;
-  const ogImage = `${SITE_URL}/ogimage.png`;
+  
+  // Use category page SEO as fallback, but prefix with subcategory
+  const fallbackSeo = resolveCategoryPageSeo(categoryName, p.categorySlug);
+  const title = buildSubcategoryPageTitle(
+    subcategoryName,
+    categoryName,
+    details?.subcategory?.metaTitle,
+  );
+  const description = buildSubcategoryMetaDescription(
+    subcategoryName,
+    categoryName,
+    details?.subcategory?.metaDescription,
+  );
+  const ogImage = details?.subcategory?.heroBannerImage?.url || details?.subcategory?.image || `${SITE_URL}/ogimage.png`;
+  const ogTitle = resolveSerpTitleString(
+    title,
+    `${subcategoryName} ${categoryName} — Shop Online India`,
+  );
 
   return {
     title,
     description,
-    keywords: seo.keywords,
+    keywords: `${subcategoryName}, ${categoryName}, ${fallbackSeo.keywords}`,
     alternates: { canonical: basePath },
     robots: {
       index: !filtered,
@@ -106,54 +121,46 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title,
+      title: ogTitle,
       description,
       url: `${SITE_URL}${basePath}`,
       type: "website",
       siteName: "The House of Rani",
       locale: "en_IN",
-      images: [{ url: ogImage, width: 1200, height: 630, alt: `${category.name} | The House of Rani` }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `${subcategoryName} | The House of Rani` }],
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: ogTitle,
       description,
       images: [ogImage],
     },
   };
 }
 
-export default async function ShopCategoryPage({
+export default async function ShopSubcategoryPage({
   params,
   searchParams,
 }: {
   params: ParamsInput;
   searchParams: SearchParamsInput;
 }) {
-  const [p, sp, categories] = await Promise.all([params, searchParams, fetchCategories()]);
-  const resolved = resolveCategoryBySlug(categories, p.categorySlug);
-  const fallbackName = humanizeCategorySlug(p.categorySlug);
-  const category = resolved || {
-    _id: "fallback",
-    name: fallbackName,
-    slug: toShopCategorySlug(p.categorySlug),
-    isActive: true,
-    subcategories: [],
-    productCount: 0,
-    createdAt: new Date().toISOString(),
-  };
-  const canonicalSlug =
-    toShopCategorySlug(category.slug || category.name) ||
-    toShopCategorySlug(p.categorySlug);
+  const [p, sp] = await Promise.all([params, searchParams]);
+  const details = await fetchSubcollectionDetails(p.categorySlug, p.subcategorySlug);
+  const fallbackCatName = humanizeSlug(p.categorySlug);
+  const fallbackSubName = humanizeSlug(p.subcategorySlug);
+  
+  const categoryName = details?.category?.name || fallbackCatName;
+  const subcategoryName = details?.subcategory?.name || fallbackSubName;
 
   const filtered = hasAnyFilters(sp);
-  const products = filtered ? [] : await fetchTopProducts(category.name);
-  const canonicalPath = `/shop/category/${encodeURIComponent(canonicalSlug)}`;
+  const products = filtered ? [] : await fetchTopSubcollectionProducts(p.categorySlug, p.subcategorySlug);
+  const canonicalPath = `/shop/collections/${encodeURIComponent(p.categorySlug)}/${encodeURIComponent(p.subcategorySlug)}`;
   const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
 
-  const categoryLd =
+  const subcategoryLd =
     products.length === 0 ?
       null
     : {
@@ -162,16 +169,39 @@ export default async function ShopCategoryPage({
           {
             "@type": "CollectionPage",
             "@id": `${SITE_URL}${canonicalPath}#collectionpage`,
-            name: `${category.name} Collection`,
-            description: `Shop ${category.name} collection at The House of Rani.`,
+            name: `${subcategoryName} Collection`,
+            description: `Shop ${subcategoryName} ${categoryName} collection at The House of Rani.`,
             url: `${SITE_URL}${canonicalPath}`,
             inLanguage: "en-IN",
             isPartOf: { "@id": `${SITE_URL}/#website` },
           },
           {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: categoryName,
+                item: `${SITE_URL}/shop/collections/${encodeURIComponent(p.categorySlug)}`,
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: subcategoryName,
+                item: `${SITE_URL}${canonicalPath}`,
+              },
+            ],
+          },
+          {
             "@type": "ItemList",
             "@id": `${SITE_URL}${canonicalPath}#itemlist`,
-            name: `${category.name} Products`,
+            name: `${subcategoryName} Products`,
             url: `${SITE_URL}${canonicalPath}`,
             numberOfItems: products.length,
             itemListElement: products
@@ -244,13 +274,34 @@ export default async function ShopCategoryPage({
         ],
       };
 
+  const heroBanner = details?.subcategory?.heroBannerImage?.url;
+
   return (
     <>
-      {categoryLd && (
+      {subcategoryLd && (
         <script
           type='application/ld+json'
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(subcategoryLd) }}
         />
+      )}
+      {!filtered && heroBanner && (
+        <div className="w-full flex flex-col items-center">
+          <div className="w-full max-w-7xl mx-auto mb-12 relative aspect-[21/9] md:aspect-[3/1] bg-rose-50 overflow-hidden md:rounded-2xl">
+            <Image
+              src={heroBanner}
+              alt={`${subcategoryName} Collection`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1280px) 100vw, 1280px"
+              priority
+            />
+            <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
+               <h1 className="text-3xl md:text-5xl font-serif text-white text-center px-4 drop-shadow-md">
+                 {subcategoryName} {categoryName}
+               </h1>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

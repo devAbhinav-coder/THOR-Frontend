@@ -8,9 +8,10 @@ import {
 } from 'lucide-react';
 import { inventoryApi, operatingExpensesApi } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import InventoryBusinessSummary, {
   type InventoryBusinessSummaryData,
   type OperatingCostsSnapshot,
@@ -56,7 +57,7 @@ const REASONS = [
 
 function StockBadge({ stock }: { stock: number }) {
   if (stock === 0) return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Out</span>;
-  if (stock < 3) return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{stock} low</span>;
+  if (stock < LOW_STOCK_ALERT_EXCLUSIVE_MAX) return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{stock} low</span>;
   return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{stock}</span>;
 }
 

@@ -21,7 +21,6 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
       "premium sarees",
       "designer sarees India",
       "online saree shopping",
-      ""
     ],
   },
   silk: {
@@ -57,14 +56,34 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
   "salwar-suits": {
     title: "Salwar Suits & Ethnic Sets Online India",
     description:
-      "Salwar suits and coordinated ethnic sets for everyday and occasion wear. Premium fabrics and pan-India delivery.",
-    keywords: ["salwar suits online India", "ethnic suits online", "women ethnic wear"],
+      "Shop salwar suits, ethnic co-ord sets, and women’s Indian wear online at The House of Rani. Premium fabrics, festive styles, free delivery over ₹1,099, and 7-day returns.",
+    keywords: [
+      "salwar suits online India",
+      "buy salwar suits online",
+      "designer salwar suits",
+      "women salwar kameez online",
+      "ethnic suits online",
+      "punjabi suits online",
+      "festive salwar suits",
+    ],
+  },
+  lehengas: {
+    title: "Lehengas & Ethnic Occasion Wear Online India",
+    description:
+      "Occasion-ready lehengas and ethnic silhouettes for weddings and festivities. Shop curated styles at The House of Rani with pan-India delivery.",
+    keywords: ["lehenga online India", "wedding lehenga online", "bridal lehenga", "festive lehenga sets"],
+  },
+  corsets: {
+    title: "Corsets & Ethnic Tops Online India",
+    description:
+      "Structured corsets and ethnic tops to pair with sarees and lehengas. Premium fits with easy returns from The House of Rani.",
+    keywords: ["corset tops online India", "ethnic corsets", "saree blouse corset", "women ethnic tops"],
   },
   lehenga: {
-    title: "Lehengas & Ethnic Occasion Wear Online",
+    title: "Chaniya Choli & Lehenga Choli Sets Online India",
     description:
-      "Occasion-ready lehengas and ethnic silhouettes for weddings and festivities. Shop curated styles at The House of Rani.",
-    keywords: ["lehenga online India", "ethnic occasion wear", "wedding lehenga online"],
+      "Shop chaniya choli and lehenga choli sets for Navratri, weddings, and festive celebrations. Curated occasion wear from The House of Rani with pan-India delivery.",
+    keywords: ["chaniya choli online", "lehenga choli sets India", "festive lehenga online", "Navratri lehenga"],
   },
   gifts: {
     title: "Saree Gift Sets & Ethnic Gift Hampers India",
@@ -84,7 +103,8 @@ function matchPresetSlug(categoryName: string, slug: string): string {
   if (name.includes("kalamkari") || name.includes("handpaint")) return "kalamkari";
   if (name.includes("festive") || name.includes("party")) return "festive";
   if (name.includes("salwar")) return "salwar-suits";
-  if (name.includes("lehenga")) return "lehenga";
+  if (name.includes("corset")) return "corsets";
+  if (name.includes("lehenga")) return "lehengas";
   if (name.includes("gift")) return "gifts";
   if (name.includes("saree")) return "sarees";
   return normalized;

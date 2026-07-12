@@ -3,6 +3,8 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Page Not Found",
+  description:
+    "This page could not be found on The House of Rani. Browse premium sarees, salwar suits, and Indian ethnic wear from our shop or home page.",
   robots: { index: false, follow: true },
 };
 

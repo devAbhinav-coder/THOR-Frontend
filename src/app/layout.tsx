@@ -76,6 +76,15 @@ const DNS_PREFETCH_HINTS = [
   "https://connect.facebook.net",
 ];
 
+const verificationOther: Record<string, string> = {};
+const bingVerification = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim();
+const metaDomainVerification =
+  process.env.NEXT_PUBLIC_META_DOMAIN_VERIFICATION?.trim();
+if (bingVerification) verificationOther["msvalidate.01"] = bingVerification;
+if (metaDomainVerification) {
+  verificationOther["facebook-domain-verification"] = metaDomainVerification;
+}
+
 export const metadata: Metadata = {
   title: {
     default: ROOT_DEFAULT_TITLE,
@@ -92,9 +101,9 @@ openGraph: {
   locale: "en_IN",
   url: SITE_URL,
   siteName: "The House of Rani",
-  title: "Premium Sarees & Indian Ethnic Wear | The House of Rani",
+  title: "Premium Sarees, Salwar Suits & Ethnic Wear | The House of Rani",
   description:
-    "Premium sarees, lehengas, and ethnic wear — heritage craftsmanship with modern elegance. Free delivery over ₹1,099.",
+    "Shop premium sarees, salwar suits, corsets and handmade gift sets online in India. Designer weaves, festive & bridal styles, free delivery over ₹1,099.",
   images: [
     {
       url: `${SITE_URL}/ogimage.png`,
@@ -109,16 +118,33 @@ openGraph: {
   card: "summary_large_image",
   title: "Premium Sarees & Indian Ethnic Wear | The House of Rani",
   description:
-    "Shop premium sarees, lehengas, and ethnic wear designed for weddings, festivals, and everyday elegance.",
+    "Shop premium sarees, corsets and handmade gift sets and women's ethnic wear designed for weddings, festivals, and everyday elegance.",
   images: [`${SITE_URL}/ogimage.png`],
 },
   verification: {
     google: "c-mAKK6c-M5IbneZfLyOePUcU6LaG0a8H2QVX3vQz2M",
+    ...(Object.keys(verificationOther).length ?
+      { other: verificationOther }
+    : {}),
   },
   icons: {
-    icon: [{ url: "/favicon.png", type: "image/png" }],
-    shortcut: ["/favicon.png"],
-    apple: [{ url: "/logo.png", type: "image/png" }],
+    icon: [
+      { url: "/favicon/favicon.ico", sizes: "48x48" },
+      { url: "/favicon/favicon.svg", type: "image/svg+xml" },
+      {
+        url: "/favicon/favicon-96x96.png",
+        sizes: "96x96",
+        type: "image/png",
+      },
+    ],
+    shortcut: ["/favicon/favicon.ico"],
+    apple: [
+      {
+        url: "/favicon/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
   },
   robots: { index: true, follow: true },
   metadataBase: new URL(SITE_URL),
@@ -181,7 +207,7 @@ export default async function RootLayout({
           "@type": "SearchAction",
           target: {
             "@type": "EntryPoint",
-            urlTemplate: `${appUrl}/shop?search={search_term_string}`,
+            urlTemplate: `${appUrl}/shop/collections?search={search_term_string}`,
           },
           "query-input": "required name=search_term_string",
         },

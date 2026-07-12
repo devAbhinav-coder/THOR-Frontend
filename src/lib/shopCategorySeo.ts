@@ -11,7 +11,7 @@ export function toShopCategorySlug(value: string): string {
 export function buildShopCategoryHref(category: Pick<Category, "name" | "slug">): string {
   const slug = String(category.slug || "").trim();
   const safeSlug = slug || toShopCategorySlug(category.name);
-  return `/shop/category/${encodeURIComponent(safeSlug)}`;
+  return `/shop/collections/${encodeURIComponent(safeSlug)}`;
 }
 
 export function resolveCategoryBySlug(

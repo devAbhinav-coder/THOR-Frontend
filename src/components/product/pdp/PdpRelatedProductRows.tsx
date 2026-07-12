@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import ShopCollectionCard from "@/components/shop/ShopCollectionCard";
 import HorizontalScrollRow from "@/components/ui/HorizontalScrollRow";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
+import { colorHasTaggedImages } from "@/lib/pdpImages";
+import { getDistinctVariantColors } from "@/lib/shopProductListing";
 import type { Product } from "@/types";
 
 export interface PdpRelatedProductRowsProps {
@@ -16,12 +19,37 @@ export interface PdpRelatedProductRowsProps {
 const PDP_CARD_CLASS =
   "w-[calc(50%-0.5rem)] shrink-0 snap-start sm:w-[calc(50%-0.75rem)] lg:w-[calc(25%-1.125rem)]";
 
+/** One card per product on PDP rows — pick the best shade thumbnail when multi-color. */
+function pdpRowListingEntries(products: Product[]) {
+  return products.slice(0, 12).map((product) => {
+    const colors = getDistinctVariantColors(product);
+    let displayColor: string | null = colors[0] ?? null;
+    if (colors.length > 1) {
+      const withPhoto = colors.find((c) => colorHasTaggedImages(product, c));
+      displayColor = withPhoto ?? colors[0] ?? null;
+    }
+    return {
+      product,
+      displayColor,
+      listKey: String(product._id),
+    };
+  });
+}
+
 function ProductScrollRow({ products }: { products: Product[] }) {
+  const entries = useMemo(
+    () => pdpRowListingEntries(products),
+    [products],
+  );
   return (
     <HorizontalScrollRow innerClassName="gap-1 sm:gap-2">
-      {products.slice(0, 8).map((p) => (
-        <div key={p._id} className={PDP_CARD_CLASS}>
-          <ShopCollectionCard product={p} />
+      {entries.map((entry) => (
+        <div key={entry.listKey} className={PDP_CARD_CLASS}>
+          <ShopCollectionCard
+            product={entry.product}
+            displayColor={entry.displayColor}
+            allowImageFallback
+          />
         </div>
       ))}
     </HorizontalScrollRow>

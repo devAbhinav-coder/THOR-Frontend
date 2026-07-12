@@ -11,8 +11,8 @@ import {
   IndianRupee, Clock, User, CheckCircle2, XCircle,
   AlertCircle, Sparkles, Send, ShoppingBag,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatPrice, formatDate } from "@/lib/utils";
+import { cn, formatPrice, formatDate } from "@/lib/utils";
+import { sumVariantStock } from "@/lib/productStock";
 import ImageUploader from "@/components/ui/ImageUploader";
 import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import toast from "react-hot-toast";
@@ -102,7 +102,7 @@ function GiftProductFormModal({
     price: "",
     comparePrice: "",
     minOrderQty: "1",
-    giftOccasions: [] as string[],
+    occasions: [] as string[],
     isActive: true,
     isCustomizable: false,
     stock: "",
@@ -120,7 +120,7 @@ function GiftProductFormModal({
         price: "",
         comparePrice: "",
         minOrderQty: "1",
-        giftOccasions: [],
+        occasions: [],
         isActive: true,
         isCustomizable: false,
         stock: "",
@@ -132,7 +132,7 @@ function GiftProductFormModal({
       setNewFiles([]);
       return;
     }
-    const stockVal = p.variants?.[0]?.stock ?? p.totalStock ?? 0;
+    const stockVal = sumVariantStock(p);
     setForm({
       name: p.name || "",
       description: p.description || "",
@@ -140,7 +140,7 @@ function GiftProductFormModal({
       price: String(p.price ?? ""),
       comparePrice: p.comparePrice != null ? String(p.comparePrice) : "",
       minOrderQty: String(p.minOrderQty ?? 1),
-      giftOccasions: (p.giftOccasions || []) as string[],
+      occasions: (p.occasions || []) as string[],
       isActive: p.isActive !== undefined ? p.isActive : true,
       isCustomizable: p.isCustomizable || false,
       stock: String(stockVal),
@@ -237,9 +237,9 @@ function GiftProductFormModal({
   const toggleOccasion = (occ: string) => {
     setForm((p) => ({
       ...p,
-      giftOccasions: p.giftOccasions.includes(occ)
-        ? p.giftOccasions.filter((o) => o !== occ)
-        : [...p.giftOccasions, occ],
+      occasions: p.occasions.includes(occ)
+        ? p.occasions.filter((o) => o !== occ)
+        : [...p.occasions, occ],
     }));
   };
 
@@ -267,7 +267,7 @@ function GiftProductFormModal({
       fd.append("isGiftable", "true");
       fd.append("isCustomizable", String(form.isCustomizable));
       fd.append("minOrderQty", form.minOrderQty || "1");
-      fd.append("giftOccasions", JSON.stringify(form.giftOccasions));
+      fd.append("occasions", JSON.stringify(form.occasions));
       fd.append(
         "customFields",
         JSON.stringify(
@@ -401,7 +401,7 @@ function GiftProductFormModal({
                       {dynamicOccasions.map((occ) => (
                         <button key={occ} type="button" onClick={() => toggleOccasion(occ)}
                           className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                            form.giftOccasions.includes(occ) ? "bg-gold-500 text-white border-gold-500" : "bg-white text-gray-600 border-gray-200 hover:border-gold-400"
+                            form.occasions.includes(occ) ? "bg-gold-500 text-white border-gold-500" : "bg-white text-gray-600 border-gray-200 hover:border-gold-400"
                           )}>
                           {occ}
                         </button>
@@ -1007,14 +1007,14 @@ export default function AdminGiftingPage() {
                     <p className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</p>
                     <p className="text-sm font-bold text-gray-900 mt-1">{formatPrice(p.price)}</p>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      Stock: <span className={cn("font-semibold", (p.totalStock ?? 0) === 0 ? "text-red-600" : "text-gray-700")}>{p.totalStock ?? 0}</span>
+                      Stock: <span className={cn("font-semibold", sumVariantStock(p) === 0 ? "text-red-600" : "text-gray-700")}>{sumVariantStock(p)}</span>
                       {(p.soldCount ?? 0) > 0 && (
                         <span className="text-gray-400"> · {p.soldCount} sold</span>
                       )}
                     </p>
-                    {(p.giftOccasions?.length || 0) > 0 && (
+                    {(p.occasions?.length || 0) > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
-                        {(p.giftOccasions || []).slice(0, 2).map((occ: string) => (
+                        {(p.occasions || []).slice(0, 2).map((occ: string) => (
                           <span key={occ} className="text-[10px] bg-gold-50 text-gold-700 px-1.5 py-0.5 rounded-full border border-gold-200">{occ}</span>
                         ))}
                       </div>

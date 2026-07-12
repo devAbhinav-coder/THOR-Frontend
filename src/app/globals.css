@@ -82,7 +82,12 @@
   html {
     scroll-padding-top: 4rem;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-serif;
   }
 }
@@ -105,10 +110,8 @@
   }
 
   .account-hero-gradient {
-    background: linear-gradient(
-        rgba(248, 249, 250, 0.92),
-        rgba(248, 249, 250, 0.78)
-      ),
+    background:
+      linear-gradient(rgba(248, 249, 250, 0.92), rgba(248, 249, 250, 0.78)),
       linear-gradient(135deg, #e7e8e9 0%, #f3f4f5 50%, #edeeef 100%);
   }
 
@@ -116,7 +119,7 @@
     @apply relative overflow-hidden bg-gray-200;
   }
   .skeleton::after {
-    content: '';
+    content: "";
     @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer;
   }
 
@@ -141,10 +144,20 @@
 
   /* Prussian-to-gold gradient (hero overlays & CTAs) */
   .gradient-brand {
-    background: linear-gradient(135deg, #0c1020 0%, var(--prussian-blue) 50%, #c5a059 100%);
+    background: linear-gradient(
+      135deg,
+      #0c1020 0%,
+      var(--prussian-blue) 50%,
+      #c5a059 100%
+    );
   }
   .gradient-hero {
-    background: linear-gradient(160deg, #0a0e1a 0%, var(--prussian-blue) 58%, #7d6234 100%);
+    background: linear-gradient(
+      160deg,
+      #0a0e1a 0%,
+      var(--prussian-blue) 58%,
+      #7d6234 100%
+    );
   }
 
   /* Checkout empty cart — soft motion */
@@ -301,7 +314,8 @@
   @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translateX(28px) scale(calc(var(--toast-stack-scale, 1) - 0.04));
+      transform: translateX(28px)
+        scale(calc(var(--toast-stack-scale, 1) - 0.04));
     }
     to {
       opacity: 1;
@@ -385,6 +399,14 @@ html.lenis body {
 
 .lenis.lenis-scrolling iframe {
   pointer-events: none;
+}
+
+/* Freeze card image zoom while Lenis is wheel-scrolling (cursor stays over cards). */
+@media (hover: hover) and (pointer: fine) {
+  html.lenis.lenis-scrolling .card-hover-zoom {
+    transform: none !important;
+    transition-duration: 0ms !important;
+  }
 }
 :focus-visible {
   outline: 2px solid hsl(var(--ring));

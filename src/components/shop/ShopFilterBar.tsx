@@ -9,7 +9,7 @@ import {
   ArrowUpDown,
   Package,
 } from "lucide-react";
-import { FilterOptions } from "@/types";
+import { FilterOptions, FilterCategoryTreeItem } from "@/types";
 import { cn } from "@/lib/utils";
 import type { ShopFilters } from "@/lib/shopFilters";
 import {
@@ -52,12 +52,15 @@ const SORT_OPTIONS = [
   { label: "Price: High to Low", value: "-price", short: "High–Low" },
   { label: "Price: Low to High", value: "price", short: "Low–High" },
   { label: "Curated Favorites", value: "-ratings.average", short: "Top rated" },
-  { label: "Most Popular", value: "-ratings.count", short: "Popular" },
+  { label: "Most Popular", value: "-soldCount", short: "Popular" },
 ] as const;
 
 type Props = {
   filters: ShopFilters;
   filterOptions: FilterOptions | null;
+  categoryTree?: FilterCategoryTreeItem[];
+  occasionOptions?: string[];
+  subcategories?: Array<{ name?: string; slug?: string } | string>;
   activeFilterCount: number;
   showClearFilters: boolean;
   isFilterOpen: boolean;
@@ -89,6 +92,9 @@ export default function ShopFilterBar(props: Props) {
   const {
     filters,
     filterOptions,
+    categoryTree: categoryTreeProp,
+    occasionOptions: occasionOptionsProp,
+    subcategories,
     activeFilterCount,
     showClearFilters,
     isFilterOpen,
@@ -200,6 +206,9 @@ export default function ShopFilterBar(props: Props) {
     <ShopFilterPanel
       filters={filters}
       filterOptions={filterOptions}
+      categoryTree={categoryTreeProp}
+      occasionOptions={occasionOptionsProp}
+      subcategories={subcategories}
       draftMinPrice={draftMinPrice}
       draftMaxPrice={draftMaxPrice}
       onUpdateFilter={onUpdateFilter}
@@ -214,6 +223,9 @@ export default function ShopFilterBar(props: Props) {
     <ShopFilterPanel
       filters={filters}
       filterOptions={filterOptions}
+      categoryTree={categoryTreeProp}
+      occasionOptions={occasionOptionsProp}
+      subcategories={subcategories}
       draftMinPrice={draftMinPrice}
       draftMaxPrice={draftMaxPrice}
       onUpdateFilter={onUpdateFilter}
@@ -242,7 +254,7 @@ export default function ShopFilterBar(props: Props) {
         <>
           <div
             className={cn(
-              "sm:hidden fixed inset-x-0 bottom-0 border-t border-[#c5a059]/30 bg-white shadow-[0_-8px_32px_rgba(0,13,33,0.12)] pb-[env(safe-area-inset-bottom,0px)]",
+              "lg:hidden fixed inset-x-0 bottom-0 border-t border-[#c5a059]/30 bg-white shadow-[0_-8px_32px_rgba(0,13,33,0.12)] pb-[env(safe-area-inset-bottom,0px)]",
               MOBILE_FILTER_BAR_Z,
             )}
             role="toolbar"
@@ -263,7 +275,7 @@ export default function ShopFilterBar(props: Props) {
               <button
                 type="button"
                 className={cn(
-                  "sm:hidden fixed inset-0 bg-black/45",
+                  "lg:hidden fixed inset-0 bg-black/45",
                   MOBILE_FILTER_OVERLAY_Z,
                 )}
                 aria-label="Close filters"
@@ -273,7 +285,7 @@ export default function ShopFilterBar(props: Props) {
                 id={filterMenuId}
                 data-lenis-prevent-vertical
                 className={cn(
-                  "sm:hidden fixed inset-x-0 flex flex-col overflow-hidden border-t border-[#c5a059]/20 bg-white shadow-2xl",
+                  "lg:hidden fixed inset-x-0 flex flex-col overflow-hidden border-t border-[#c5a059]/20 bg-white shadow-2xl",
                   MOBILE_FILTER_SHEET_Z,
                 )}
                 style={{
@@ -318,71 +330,6 @@ export default function ShopFilterBar(props: Props) {
 
   return (
     <>
-      {/* Desktop / tablet — toolbar pins under navbar on scroll (Lenis-safe fixed pin). */}
-      <section
-        className="relative mb-10 hidden sm:mb-12 sm:block"
-        aria-label="Product filters and sorting"
-      >
-        <div
-          ref={sentinelRef}
-          className="pointer-events-none h-px w-full"
-          aria-hidden
-        />
-
-        <div
-          ref={toolbarRef}
-          className={cn(
-            "z-40 border-y border-[#c5a059]/20 bg-white transition-shadow duration-200",
-            pinned ?
-              "fixed inset-x-0 shadow-[0_4px_24px_rgba(0,13,33,0.1)]"
-            : "relative",
-          )}
-          style={pinned ? { top: navHeight } : undefined}
-          onMouseEnter={handleFilterZoneEnter}
-          onMouseLeave={handleFilterZoneLeave}
-        >
-          <div className="mx-auto flex max-w-7xl min-h-5 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-4 sm:gap-x-4 sm:px-6 lg:px-8">
-            <ShopFilterToolbar
-              {...toolbarProps}
-              quickFabrics={quickFabrics}
-              sortDropUp={false}
-            />
-          </div>
-        </div>
-
-        {pinned ?
-          <div aria-hidden style={{ height: toolbarHeight }} />
-        : null}
-
-        <div
-          id={filterMenuId}
-          onMouseEnter={handleFilterZoneEnter}
-          onMouseLeave={handleFilterZoneLeave}
-          data-lenis-prevent-vertical
-          className={cn(
-            "luxury-filter-transition overflow-x-hidden overflow-y-auto overscroll-contain border-b border-[#c5a059]/10 bg-white",
-            isFilterOpen ?
-              "open shadow-sm"
-            : "max-h-0 overflow-hidden border-b-0 shadow-none",
-            pinned && isFilterOpen ?
-              "fixed inset-x-0 z-[39]"
-            : "relative",
-          )}
-          style={
-            pinned && isFilterOpen ?
-              {
-                top: navHeight + toolbarHeight,
-                maxHeight: `min(720px, calc(100svh - ${navHeight + toolbarHeight}px))`,
-              }
-            : isFilterOpen ?
-              { maxHeight: "min(720px, calc(100svh - 12rem))" }
-            : undefined
-          }
-        >
-          {filterPanelDesktop}
-        </div>
-      </section>
-
       {mobileFilterChrome}
     </>
   );
@@ -528,91 +475,292 @@ function ShopFilterToolbar({
   );
 }
 
-function ShopFilterPanel({
+function CategoryTreeFilter({
+  categoryTree,
+  filters,
+  onUpdateFilter,
+  sidebar = false,
+}: {
+  categoryTree: FilterCategoryTreeItem[];
+  filters: ShopFilters;
+  onUpdateFilter: (key: string, value: string | number) => void;
+  sidebar?: boolean;
+}) {
+  if (!categoryTree.length) return null;
+
+  return (
+    <ul className={cn("space-y-1", sidebar ? "space-y-0.5" : "space-y-3")}>
+      {categoryTree.map((cat) => {
+        const catSelected = isShopCategoryFilterSelected(
+          filters.categories,
+          cat.name,
+        );
+        const hasSubs = cat.subcategories.length > 0;
+        const selectedSubCount = cat.subcategories.filter((sub) =>
+          isShopListFilterSelected(filters.subcategories, sub.name),
+        ).length;
+
+        return (
+          <li
+            key={cat.slug || cat.name}
+            className={cn(
+              sidebar && "rounded-md",
+              sidebar && catSelected && "bg-[#c5a059]/5",
+            )}
+          >
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
+                catSelected ?
+                  "font-semibold text-[#c5a059]"
+                : "font-medium text-navy-900 hover:text-[#c5a059]",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={catSelected}
+                onChange={() => onUpdateFilter("categories", cat.name)}
+                className={shopFilterCheckboxClass}
+              />
+              <span className="flex-1 leading-snug">{cat.name}</span>
+              {hasSubs && selectedSubCount > 0 ?
+                <span className="text-[10px] font-semibold tabular-nums text-[#c5a059]">
+                  {selectedSubCount}
+                </span>
+              : null}
+            </label>
+
+            {hasSubs && (
+              <ul
+                className={cn(
+                  "ml-3 space-y-0.5 border-l-2 pl-3",
+                  sidebar ?
+                    "mb-2 ml-4 border-[#c5a059]/25"
+                  : "mt-1.5 border-gray-100",
+                )}
+              >
+                {cat.subcategories.map((sub) => {
+                  const subSelected = isShopListFilterSelected(
+                    filters.subcategories,
+                    sub.name,
+                  );
+                  return (
+                    <li key={`${cat.slug}-${sub.slug}`}>
+                      <label
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 transition-colors",
+                          subSelected ?
+                            "font-medium text-[#c5a059]"
+                          : "text-gray-500 hover:text-[#c5a059]",
+                          sidebar && subSelected && "bg-[#c5a059]/5",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={subSelected}
+                          onChange={() =>
+                            onUpdateFilter("subcategories", sub.name)
+                          }
+                          className={shopFilterCheckboxClass}
+                        />
+                        <span className="text-[13px] leading-snug">{sub.name}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function FlatCategoryFilter({
+  categories,
+  filters,
+  onUpdateFilter,
+}: {
+  categories: string[];
+  filters: ShopFilters;
+  onUpdateFilter: (key: string, value: string | number) => void;
+}) {
+  return (
+    <ul className="space-y-2 text-sm">
+      {categories.map((cat) => {
+        const selected = isShopCategoryFilterSelected(filters.categories, cat);
+        return (
+          <li key={cat}>
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-2 transition-colors",
+                selected ?
+                  "font-medium text-[#c5a059]"
+                : "text-gray-600 hover:text-[#c5a059]",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => onUpdateFilter("categories", cat)}
+                className={shopFilterCheckboxClass}
+              />
+              {cat}
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+export function ShopFilterPanel({
   filters,
   filterOptions,
+  categoryTree: categoryTreeProp,
+  occasionOptions: occasionOptionsProp,
+  subcategories,
   draftMinPrice,
   draftMaxPrice,
   onUpdateFilter,
   onMinPriceChange,
   onMaxPriceChange,
   mobileSheet = false,
+  sidebar = false,
   onApply,
 }: {
   filters: ShopFilters;
   filterOptions: FilterOptions | null;
+  categoryTree?: FilterCategoryTreeItem[];
+  occasionOptions?: string[];
+  subcategories?: any[];
   draftMinPrice: string;
   draftMaxPrice: string;
   onUpdateFilter: (key: string, value: string | number) => void;
   onMinPriceChange: (value: string) => void;
   onMaxPriceChange: (value: string) => void;
   mobileSheet?: boolean;
+  sidebar?: boolean;
   onApply?: () => void;
 }) {
-  const columnDefaultOpen = mobileSheet;
+  const columnDefaultOpen = mobileSheet || sidebar;
+  const categoryTree =
+    categoryTreeProp?.length ?
+      categoryTreeProp
+    : (filterOptions?.categoryTree ?? []);
+  const flatCategories = filterOptions?.categories ?? [];
+  const fabrics = filterOptions?.fabrics ?? [];
+  const occasions = occasionOptionsProp ?? filterOptions?.occasions ?? [];
+
+  const filterCheckboxList = (
+    items: string[],
+    selectedList: string[],
+    filterKey: string,
+  ) => (
+    <ul className={cn("space-y-0.5", sidebar ? "" : "space-y-2 text-sm")}>
+      {items.map((item) => {
+        const selected = isShopListFilterSelected(selectedList, item);
+        return (
+          <li key={item}>
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
+                selected ?
+                  "font-medium text-[#c5a059]"
+                : "text-gray-600 hover:text-[#c5a059]",
+                sidebar && selected && "bg-[#c5a059]/5",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => onUpdateFilter(filterKey, item)}
+                className={shopFilterCheckboxClass}
+              />
+              <span className={cn(sidebar ? "text-[13px] leading-snug" : "text-sm")}>
+                {item}
+              </span>
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
-    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-6 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8 lg:py-8">
-      <FilterColumn title="Category" defaultOpen={columnDefaultOpen}>
-        <ul className="space-y-2 text-sm">
-          {filterOptions?.categories.map((cat) => {
-            const selected = isShopCategoryFilterSelected(
-              filters.categories,
-              cat,
-            );
-            return (
-              <li key={cat}>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2 transition-colors",
-                    selected ?
-                      "font-medium text-[#c5a059]"
-                    : "text-gray-600 hover:text-[#c5a059]",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => onUpdateFilter("categories", cat)}
-                    className={shopFilterCheckboxClass}
-                  />
-                  {cat}
-                </label>
-              </li>
-            );
-          })}
+    <div className={cn(
+      sidebar ?
+        "flex flex-col gap-6"
+      : "grid gap-8",
+      !sidebar && (mobileSheet ?
+        "grid-cols-1 mx-auto max-w-7xl px-4 py-6 sm:px-6"
+      : "mx-auto max-w-7xl grid-cols-1 md:grid-cols-2 lg:grid-cols-4 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"),
+    )}>
+      <FilterColumn title="Offers" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+        <ul className={cn("space-y-0.5", sidebar ? "" : "space-y-2 text-sm")}>
+          <li>
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
+                filters.onSale === "true" ?
+                  "font-medium text-[#c5a059]"
+                : "text-gray-600 hover:text-[#c5a059]",
+                sidebar && filters.onSale === "true" && "bg-[#c5a059]/5",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={filters.onSale === "true"}
+                onChange={() => onUpdateFilter("onSale", "true")}
+                className={shopFilterCheckboxClass}
+              />
+              <span className={cn(sidebar ? "text-[13px] leading-snug" : "text-sm")}>
+                Sale &amp; Offers
+              </span>
+            </label>
+          </li>
         </ul>
       </FilterColumn>
 
-      <FilterColumn title="Fabric" defaultOpen={columnDefaultOpen}>
-        <ul className="space-y-2 text-sm">
-          {filterOptions?.fabrics.map((fabric) => {
-            const selected = isShopListFilterSelected(filters.fabrics, fabric);
-            return (
-              <li key={fabric}>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2 transition-colors",
-                    selected ?
-                      "font-medium text-[#c5a059]"
-                    : "text-gray-600 hover:text-[#c5a059]",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => onUpdateFilter("fabrics", fabric)}
-                    className={shopFilterCheckboxClass}
-                  />
-                  {fabric}
-                </label>
-              </li>
-            );
-          })}
-        </ul>
+      <FilterColumn title="Collections" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+        {categoryTree.length > 0 ?
+          <CategoryTreeFilter
+            categoryTree={categoryTree}
+            filters={filters}
+            onUpdateFilter={onUpdateFilter}
+            sidebar={sidebar}
+          />
+        : flatCategories.length > 0 ?
+          <FlatCategoryFilter
+            categories={flatCategories}
+            filters={filters}
+            onUpdateFilter={onUpdateFilter}
+          />
+        : subcategories && subcategories.length > 0 ?
+          filterCheckboxList(
+            subcategories.map((sub: { name?: string } | string) =>
+              typeof sub === "string" ? sub : sub.name || "",
+            ).filter(Boolean),
+            filters.subcategories,
+            "subcategories",
+          )
+        : <p className="text-sm text-gray-400">No collections available</p>}
       </FilterColumn>
 
-      <FilterColumn title="Minimum Rating" defaultOpen={columnDefaultOpen}>
+      <FilterColumn title="Fabric" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+        {fabrics.length > 0 ?
+          filterCheckboxList(fabrics, filters.fabrics, "fabrics")
+        : <p className="text-sm text-gray-400">No fabrics available</p>}
+      </FilterColumn>
+
+      <FilterColumn title="Occasion" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+        {occasions.length > 0 ?
+          filterCheckboxList(occasions, filters.occasions, "occasions")
+        : <p className="text-sm text-gray-400">No occasions available</p>}
+      </FilterColumn>
+
+      <FilterColumn title="Rating" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
         <ul className="space-y-2 text-sm">
           {[4, 3, 2, 1].map((r) => {
             const selected = isShopListFilterSelected(
@@ -643,7 +791,7 @@ function ShopFilterPanel({
         </ul>
       </FilterColumn>
 
-      <FilterColumn title="Price Range" isCollapsibleOnMobile={false}>
+      <FilterColumn title="Price" isCollapsibleOnMobile={false} sidebar={sidebar}>
         <ShopPriceRangeFilter
           minPrice={draftMinPrice}
           maxPrice={draftMaxPrice}
@@ -664,7 +812,7 @@ function ShopFilterPanel({
   );
 }
 
-function ShopSortDropdown({
+export function ShopSortDropdown({
   value,
   onChange,
   hoverCapable,
@@ -866,13 +1014,26 @@ function FilterColumn({
   children,
   defaultOpen = false,
   isCollapsibleOnMobile = true,
+  sidebar = false,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
   isCollapsibleOnMobile?: boolean;
+  sidebar?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  if (sidebar) {
+    return (
+      <div className="border-b border-gray-100 pb-5 last:border-b-0 last:pb-0">
+        <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#c5a059]">
+          {title}
+        </h4>
+        <div>{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="border-b border-gray-100 pb-5 sm:border-0 sm:pb-0">

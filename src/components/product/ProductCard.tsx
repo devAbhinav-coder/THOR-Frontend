@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useState, useMemo, useCallback } from "react";
-import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag, Star, Gift, Tag } from "lucide-react";
@@ -11,21 +10,23 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 import { hasInStockVariant } from "@/lib/productStock";
-import { variantSwatchBackground } from "@/lib/variantSwatch";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
+import {
+  isLenisScrolling,
+  useScrollHoverPause,
+} from "@/hooks/useScrollHoverPause";
 
 interface ProductCardProps {
   product: Product;
   className?: string;
 }
-
-const COLOR_SWATCH_MAX = 5;
 
 /** Round to 2 decimal places — required by Google Merchant Center price format. */
 function toMerchantPrice(n: number): string {
@@ -46,6 +47,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
   const [secondaryLoaded, setSecondaryLoaded] = useState(false);
   const [secondaryImageError, setSecondaryImageError] = useState(false);
   const [primaryImageError, setPrimaryImageError] = useState(false);
+
+  const hoverScrollPaused = useScrollHoverPause();
 
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
@@ -84,25 +87,6 @@ function ProductCardInner({ product, className }: ProductCardProps) {
     return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }, []);
 
-  const uniqueColors = useMemo(() => {
-    return (product.variants || [])
-      .filter((v) => v.color)
-      .reduce<{ color: string; colorCode?: string }[]>((acc, v) => {
-        if (!acc.find((c) => c.color === v.color)) {
-          acc.push({ color: v.color!, colorCode: v.colorCode });
-        }
-        return acc;
-      }, []);
-  }, [product.variants]);
-
-  const colorSwatches = useMemo(() => {
-    if (uniqueColors.length === 0) return null;
-    return {
-      visible: uniqueColors.slice(0, COLOR_SWATCH_MAX),
-      extra: uniqueColors.length - COLOR_SWATCH_MAX,
-    };
-  }, [uniqueColors]);
-
   /**
    * Discount percentage — computed from comparePrice when available.
    * Google Merchant Center uses this to show "X% off" in Shopping ads.
@@ -126,10 +110,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
     const parts: string[] = [product.name];
     if (product.category) parts.push(product.category);
     if (product.fabric) parts.push(product.fabric);
-    if (uniqueColors.length > 0)
-      parts.push(uniqueColors.map((c) => c.color).join(", "));
     return parts.join(" — ");
-  }, [product.name, product.category, product.fabric, uniqueColors]);
+  }, [product.name, product.category, product.fabric]);
 
   /** Schema.org availability URL — read by Googlebot from microdata. */
   const schemaAvailability =
@@ -181,10 +163,10 @@ function ProductCardInner({ product, className }: ProductCardProps) {
   );
 
   const handleMouseEnter = useCallback(() => {
-    if (!canUseHoverEffects) return;
+    if (!canUseHoverEffects || hoverScrollPaused || isLenisScrolling()) return;
     setIsHovered(true);
     setHasHoveredOnce(true);
-  }, [canUseHoverEffects]);
+  }, [canUseHoverEffects, hoverScrollPaused]);
 
   const handleMouseLeave = useCallback(() => {
     if (!canUseHoverEffects) return;
@@ -363,8 +345,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
               loading='lazy'
               quality={70}
               className={cn(
-                "object-cover transition-all duration-500",
-                isHovered ? "scale-105" : "scale-100",
+                "card-hover-zoom object-cover transition-all duration-500",
+                isHovered && !hoverScrollPaused ? "scale-105" : "scale-100",
                 showSecondary ? "opacity-0" : "opacity-100",
               )}
               onError={() => setPrimaryImageError(true)}
@@ -394,8 +376,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
               loading='lazy'
               quality={70}
               className={cn(
-                "object-cover transition-all duration-500",
-                isHovered ? "scale-105" : "scale-100",
+                "card-hover-zoom object-cover transition-all duration-500",
+                isHovered && !hoverScrollPaused ? "scale-105" : "scale-100",
                 showSecondary ? "opacity-100" : "opacity-0",
               )}
               onLoad={handleSecondaryLoad}
@@ -496,31 +478,21 @@ function ProductCardInner({ product, className }: ProductCardProps) {
 
         {/* ── Info ── */}
         <div className='flex min-h-0 flex-none flex-col gap-0.5 sm:gap-1 sm:flex-1'>
-          {/* Meta — single line */}
-          <div className='flex h-4 min-h-4 shrink-0 items-center gap-0.5 overflow-hidden'>
-            <span
-              className='truncate text-[10px] font-bold uppercase tracking-wider text-brand-600'
-              aria-label={`Category: ${product.category}`}
-            >
-              {product.category}
-            </span>
-            {product.fabric ?
-              <>
+          {/* Meta — fabric · subcategory · category (deduped) */}
+          {(() => {
+            const metaLine = buildProductMetaLine(product);
+            if (!metaLine) return null;
+            return (
+              <div className='flex h-4 min-h-4 shrink-0 items-center gap-0.5 overflow-hidden'>
                 <span
-                  className='shrink-0 text-[8px] sm:text-[10px] text-gray-500'
-                  aria-hidden
+                  className='truncate text-[10px] font-bold uppercase tracking-wider text-brand-600'
+                  aria-label={`Details: ${metaLine}`}
                 >
-                  ·
+                  {metaLine}
                 </span>
-                <span
-                  className='truncate text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-gray-600'
-                  aria-label={`Fabric: ${product.fabric}`}
-                >
-                  {product.fabric}
-                </span>
-              </>
-            : null}
-          </div>
+              </div>
+            );
+          })()}
 
           {/* Title */}
           <h3
@@ -529,40 +501,6 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           >
             {product.name}
           </h3>
-
-          {/* Colors */}
-          <div className='h-3 sm:h-5 min-h-3 sm:min-h-5 shrink-0'>
-            {!colorSwatches ?
-              <div className='h-3 sm:h-5' aria-hidden />
-            : <HorizontalScrollSurface
-                className='flex h-3 sm:h-5 max-w-full items-center gap-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-                aria-label={`Available colors: ${uniqueColors.map((c) => c.color).join(", ")}`}
-              >
-                {colorSwatches.visible.map(({ color, colorCode }) => {
-                  const bg = variantSwatchBackground(color, colorCode);
-                  return bg ?
-                      <span
-                        key={color}
-                        title={color}
-                        className='h-2 sm:h-4 w-2 sm:w-4 shrink-0 rounded-full border border-gray-200 shadow-sm'
-                        style={{ background: bg }}
-                        aria-label={color}
-                      />
-                    : <span
-                        key={color}
-                        className='shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-700'
-                      >
-                        {color}
-                      </span>;
-                })}
-                {colorSwatches.extra > 0 && (
-                  <span className='shrink-0 text-[10px] font-semibold text-gray-600'>
-                    +{colorSwatches.extra}
-                  </span>
-                )}
-              </HorizontalScrollSurface>
-            }
-          </div>
 
           {/* Ratings */}
           <div className='mt-0.2 flex h-2 min-h-2 shrink-0 items-center sm:h-4 sm:min-h-4'>

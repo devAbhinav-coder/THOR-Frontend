@@ -1,6 +1,7 @@
 import HeroSectionSkeleton from "@/components/home/HeroSectionSkeleton";
 import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
 import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkeleton";
+import { SHOP_PRODUCT_GRID_CLASS } from "@/lib/shopLayout";
 import { ProductCardSkeleton, Skeleton } from "@/components/ui/SkeletonLoader";
 
 function SectionHeaderSkeleton({
@@ -164,8 +165,8 @@ export default function HomePageSkeleton() {
             <Skeleton className="mx-auto mt-4 h-10 w-64 rounded-lg sm:h-12 sm:w-80" />
             <Skeleton className="mx-auto mt-4 h-4 w-full max-w-xl rounded-md" />
           </div>
-          <div className="grid grid-cols-2 gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8">
-            {Array.from({ length: 8 }).map((_, i) => (
+          <div className={SHOP_PRODUCT_GRID_CLASS}>
+            {Array.from({ length: 4 }).map((_, i) => (
               <ShopCollectionCardSkeleton key={i} />
             ))}
           </div>

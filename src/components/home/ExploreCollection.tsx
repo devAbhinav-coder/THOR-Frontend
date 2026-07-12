@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
@@ -11,8 +12,9 @@ import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { getNextExcludeIdsParam } from "@/lib/infiniteScrollPagination";
 import { cn } from "@/lib/utils";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
+import { expandProductsForShopListing } from "@/lib/shopProductListing";
 
-const EXPLORE_PAGE_LIMIT = 8;
+const EXPLORE_PAGE_LIMIT = 12;
 
 /**
  * ExploreCollection — random storefront sample with excludeIds cursor.
@@ -43,6 +45,11 @@ export default function ExploreCollection() {
 
   const products = (data?.pages ?? []).flatMap(
     (pg) => (pg.data?.products || []) as Product[],
+  );
+
+  const listingEntries = useMemo(
+    () => expandProductsForShopListing(products),
+    [products],
   );
 
   const { sentinelRef } = useInfiniteScrollTrigger({
@@ -82,10 +89,16 @@ export default function ExploreCollection() {
         </div>
 
         <ProductInfiniteGrid
-          gridClassName="grid grid-cols-2 items-stretch gap-y-2 gap-x-1 sm:gap-y-3 sm:gap-x-2 lg:grid-cols-4 lg:gap-x-2 [&>*]:h-full [&>*]:min-h-0"
-          items={products}
-          getItemKey={(p) => p._id}
-          renderItem={(product) => <ShopCollectionCard product={product} />}
+          gridClassName="grid grid-cols-2 items-stretch gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 [&>*]:h-full [&>*]:min-h-0"
+          items={listingEntries}
+          getItemKey={(entry) => entry.listKey}
+          renderItem={(entry) => (
+            <ShopCollectionCard
+              product={entry.product}
+              displayColor={entry.displayColor}
+              allowImageFallback
+            />
+          )}
           isInitialLoading={isLoading}
           isFetchingNextPage={isFetchingNextPage}
           hasNextPage={Boolean(hasNextPage)}

@@ -479,20 +479,29 @@ interface CartState {
       const body = await cartApi.applyCoupon(normalized, { idempotencyKey });
       clearCartIdempotencyKey(idemOp);
       const cart = body.data.cart;
+      const discount = cart?.discount ?? 0;
+      if (discount <= 0) {
+        writeStoredCouponCode(null);
+        set({ cart, appliedCouponCode: null });
+        toast.error('This coupon cannot be applied to your cart.');
+        throw new Error('Coupon not applied');
+      }
       const cartCoupon =
         cart?.coupon && typeof cart.coupon === 'object' && cart.coupon !== null
           ? (cart.coupon as { code?: string; appliedDiscount?: number })
           : null;
-      const resolved = (cartCoupon?.code || code).trim();
+      const resolved = (cartCoupon?.code || normalized).trim();
       const next =
         resolveAppliedCouponCode(cart, get().appliedCouponCode, resolved) ?? resolved;
       set({ cart, appliedCouponCode: next });
-      if ((cart?.discount ?? 0) > 0 && next) writeStoredCouponCode(next);
-      const saved = cartCoupon?.appliedDiscount ?? cart?.discount ?? 0;
+      if (next) writeStoredCouponCode(next);
+      const saved = cartCoupon?.appliedDiscount ?? discount;
       toast.success(`Coupon applied. You saved ₹${saved}.`);
     } catch (err: unknown) {
       const error = err as { message?: string };
-      toast.error(error.message || 'Invalid coupon');
+      if (error.message !== 'Coupon not applied') {
+        toast.error(error.message || 'Invalid coupon');
+      }
       throw err;
     }
   },
@@ -554,12 +563,14 @@ export function readPersistedCartCouponCode(): string | null {
 /** Use when placing an order from cart (not buy-now) so coupon is always sent to the API. */
 export function getCartAppliedCouponCodeForOrder(): string | null {
   const { appliedCouponCode, cart } = useCartStore.getState();
+  const discount = cart?.discount ?? 0;
+  if (discount <= 0) return null;
+
   if (appliedCouponCode?.trim()) return appliedCouponCode.trim();
   const raw = cart?.coupon;
   if (raw && typeof raw === 'object' && raw !== null && 'code' in raw) {
     const c = (raw as { code?: string }).code;
     if (typeof c === 'string' && c.trim()) return c.trim();
   }
-  if ((cart?.discount ?? 0) > 0) return readStoredCouponCode();
-  return null;
+  return readStoredCouponCode();
 }

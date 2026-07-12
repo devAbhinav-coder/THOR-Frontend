@@ -11,6 +11,17 @@ export function middleware(request: NextRequest) {
     return new NextResponse(null, { status: 405 });
   }
 
+  const { pathname } = request.nextUrl;
+  const indexNowKey =
+    process.env.INDEXNOW_API_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_INDEXNOW_API_KEY?.trim();
+  if (indexNowKey && pathname === `/${indexNowKey}.txt`) {
+    return new NextResponse(indexNowKey, {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
   const nonce = randomNonce();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
@@ -25,6 +36,10 @@ export function middleware(request: NextRequest) {
   );
 
   if (isAuthModalSearchParam(request.nextUrl.searchParams.get("auth"))) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
 

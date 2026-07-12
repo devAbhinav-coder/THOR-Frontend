@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +28,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import { formatMarketingAttributionSummary } from "@/lib/marketingAttribution";
 import AdminErrorState from "@/components/admin/AdminErrorState";
 import { OrdersInsightsPanel } from "@/components/admin/OrdersInsightsPanel";
 
@@ -165,7 +166,7 @@ export default function AdminOrdersPage() {
         setOrdersLoadError(false);
       }
       try {
-        const params: Record<string, string | number> = { page, limit: 20 };
+        const params: Record<string, string | number> = { page, limit: 20, sort: sortBy };
         if (statusFilter) params.status = statusFilter;
         if (debouncedSearch) params.search = debouncedSearch;
         const res = await adminApi.getOrders(params);
@@ -193,7 +194,7 @@ export default function AdminOrdersPage() {
         setIsLoadingMore(false);
       }
     },
-    [statusFilter, debouncedSearch],
+    [statusFilter, debouncedSearch, sortBy],
   );
 
   const handleRefreshList = useCallback(() => {
@@ -218,7 +219,7 @@ export default function AdminOrdersPage() {
     setOrders([]);
     setHasMore(true);
     fetchOrders(1, false);
-  }, [statusFilter, fetchOrders]);
+  }, [statusFilter, debouncedSearch, sortBy, fetchOrders]);
 
   useEffect(() => {
     if (!hasMore || isLoading || isLoadingMore || !loadMoreRef.current) return;
@@ -296,25 +297,6 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const visibleOrders = useMemo(() => {
-    const list = [...orders];
-    switch (sortBy) {
-      case "oldest":
-        list.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
-        break;
-      case "value_high":
-        list.sort((a, b) => b.total - a.total);
-        break;
-      case "value_low":
-        list.sort((a, b) => a.total - b.total);
-        break;
-      default:
-        list.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    }
-    return list;
-  }, [orders, sortBy]);
-
-  // Build status counts from analytics
   const statusCounts: Record<string, number> = {};
   analytics?.ordersByStatus?.forEach(({ _id, count }) => {
     statusCounts[_id] = count;
@@ -371,7 +353,7 @@ export default function AdminOrdersPage() {
                 </p>
                 <p className='mt-0.5 text-[11px] text-navy-400'>
                   {analytics?.overview.monthOrders || 0} orders
-                  {analytics && analytics.overview.revenueGrowth !== undefined && (
+                  {analytics && analytics.overview.revenueGrowth != null && (
                     <span className={cn('ml-1 font-semibold', analytics.overview.revenueGrowth >= 0 ? "text-emerald-400" : "text-amber-300")}>
                       ({analytics.overview.revenueGrowth >= 0 ? "▲" : "▼"} {Math.abs(Math.round(analytics.overview.revenueGrowth))}%)
                     </span>
@@ -492,7 +474,7 @@ export default function AdminOrdersPage() {
               <option value='value_low'>Low → High value</option>
             </select>
             <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
-              {visibleOrders.length} / {pagination.total || orders.length} shown
+              {orders.length} / {pagination.total || orders.length} shown
             </span>
             <div className='ml-auto flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm'>
               <button type='button' onClick={() => setViewMode('table')}
@@ -529,7 +511,7 @@ export default function AdminOrdersPage() {
                         </td>
                       </tr>
                     ))
-                  : visibleOrders.map((order) => (
+                  : orders.map((order) => (
                       <tr
                         key={order._id}
                         className='group hover:bg-brand-50/40 transition-all cursor-pointer hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent'
@@ -545,6 +527,11 @@ export default function AdminOrdersPage() {
                               <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
                             )}
                             <p className='text-sm font-bold text-brand-600 group-hover:text-brand-700 transition-colors'>{order.orderNumber}</p>
+                            {formatMarketingAttributionSummary(order.marketingAttribution) ?
+                              <p className='text-[10px] font-medium text-emerald-700 truncate max-w-[140px]'>
+                                {formatMarketingAttributionSummary(order.marketingAttribution)}
+                              </p>
+                            : null}
                           </div>
                         </td>
                         <td className='px-4 py-4'>
@@ -648,7 +635,7 @@ export default function AdminOrdersPage() {
                     className='h-48 rounded-2xl bg-gray-100 animate-pulse'
                   />
                 ))
-              : visibleOrders.map((order) => (
+              : orders.map((order) => (
                   <div
                     key={order._id}
                     className='rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-brand-300 overflow-hidden group flex flex-col'
@@ -803,7 +790,7 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
               ))
-            : visibleOrders.map((order) => {
+            : orders.map((order) => {
                 const lineItems = order.items ?? [];
                 const firstLine = lineItems[0];
                 return (
@@ -930,7 +917,7 @@ export default function AdminOrdersPage() {
             )}
           </div>
 
-          {!isLoading && visibleOrders.length === 0 && (
+          {!isLoading && orders.length === 0 && (
             <div className='py-16 flex flex-col items-center gap-3 text-center'>
               <div className='h-14 w-14 rounded-2xl bg-gray-100 flex items-center justify-center'>
                 <Package className='h-7 w-7 text-gray-300' />

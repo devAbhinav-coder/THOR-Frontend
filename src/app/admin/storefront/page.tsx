@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronUp, Megaphone, ImageIcon, Percent, BookOpen, ShoppingBag, Gift, Star, Settings2, LayoutGrid, Save, Loader2, ExternalLink } from 'lucide-react';
 import { adminApi, categoryApi, giftingApi } from '@/lib/api';
 import {
@@ -12,6 +12,13 @@ import {
   StorefrontSettings,
 } from '@/types';
 import ImageUploader from '@/components/ui/ImageUploader';
+import ExploreHouseShowcaseCard from '@/components/home/ExploreHouseShowcaseCard';
+import {
+  resolveGiftingCard,
+  resolveGiftingCardImage,
+  resolveSaleCard,
+  resolveSaleCardImage,
+} from '@/lib/shopSpecialCollections';
 import { revalidateStorefrontCache } from '@/actions/revalidateStorefrontCache';
 import toast from 'react-hot-toast';
 
@@ -54,6 +61,9 @@ export default function AdminStorefrontPage() {
   const [shopBannerLeftFile, setShopBannerLeftFile] = useState<File | null>(null);
   const [shopBannerCenterFile, setShopBannerCenterFile] = useState<File | null>(null);
   const [shopBannerRightFile, setShopBannerRightFile] = useState<File | null>(null);
+  const [homeMiddleBannerFile, setHomeMiddleBannerFile] = useState<File | null>(null);
+  const [homeExploreHouseSaleFile, setHomeExploreHouseSaleFile] = useState<File | null>(null);
+  const [homeExploreHouseGiftingFile, setHomeExploreHouseGiftingFile] = useState<File | null>(null);
   const [giftingHeroFiles, setGiftingHeroFiles] = useState<Record<number, File | null>>({});
   const [giftingSecondaryFiles, setGiftingSecondaryFiles] = useState<Record<number, File | null>>({});
   const [homeGiftCardFiles, setHomeGiftCardFiles] = useState<Record<number, File | null>>({});
@@ -70,6 +80,75 @@ export default function AdminStorefrontPage() {
     if (firstInput instanceof HTMLInputElement) firstInput.focus();
     setPendingFocusSlide(null);
   }, [pendingFocusSlide, settings?.heroSlides.length]);
+
+  const [homeExploreHouseSalePreview, setHomeExploreHouseSalePreview] = useState<string | null>(null);
+  const [homeExploreHouseGiftingPreview, setHomeExploreHouseGiftingPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!homeExploreHouseSaleFile) {
+      setHomeExploreHouseSalePreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(homeExploreHouseSaleFile);
+    setHomeExploreHouseSalePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [homeExploreHouseSaleFile]);
+
+  useEffect(() => {
+    if (!homeExploreHouseGiftingFile) {
+      setHomeExploreHouseGiftingPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(homeExploreHouseGiftingFile);
+    setHomeExploreHouseGiftingPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [homeExploreHouseGiftingFile]);
+
+  const exploreHouseSalePreviewImage = useMemo(
+    () => homeExploreHouseSalePreview || resolveSaleCardImage(settings?.homeExploreHouse),
+    [homeExploreHouseSalePreview, settings?.homeExploreHouse],
+  );
+
+  const exploreHouseGiftingPreviewImage = useMemo(
+    () =>
+      homeExploreHouseGiftingPreview ||
+      resolveGiftingCardImage(categories, settings?.homeExploreHouse),
+    [homeExploreHouseGiftingPreview, categories, settings?.homeExploreHouse],
+  );
+
+  const exploreHouseSalePreviewCard = useMemo(
+    () =>
+      resolveSaleCard({
+        ...settings?.homeExploreHouse,
+        saleImage: exploreHouseSalePreviewImage,
+      }),
+    [settings?.homeExploreHouse, exploreHouseSalePreviewImage],
+  );
+
+  const exploreHouseGiftingPreviewCard = useMemo(
+    () =>
+      resolveGiftingCard(categories, {
+        ...settings?.homeExploreHouse,
+        giftingImage: exploreHouseGiftingPreviewImage,
+      }),
+    [categories, settings?.homeExploreHouse, exploreHouseGiftingPreviewImage],
+  );
+
+  const patchHomeExploreHouse = (
+    patch: Partial<NonNullable<StorefrontSettings['homeExploreHouse']>>,
+  ) => {
+    setSettings((p) =>
+      p ?
+        {
+          ...p,
+          homeExploreHouse: {
+            ...p.homeExploreHouse,
+            ...patch,
+          },
+        }
+      : p,
+    );
+  };
 
   useEffect(() => {
     Promise.all([
@@ -116,6 +195,14 @@ export default function AdminStorefrontPage() {
       homeEditorialGallery: s.homeEditorialGallery
         ? { ...s.homeEditorialGallery, tiles: editorialTiles }
         : { isActive: true, tiles: editorialTiles },
+      homeExploreHouse: s.homeExploreHouse
+        ? {
+            ...s.homeExploreHouse,
+            saleImagePublicId: s.homeExploreHouse.saleImagePublicId ?? undefined,
+            giftingImagePublicId:
+              s.homeExploreHouse.giftingImagePublicId ?? undefined,
+          }
+        : s.homeExploreHouse,
     });
   };
 
@@ -134,6 +221,13 @@ export default function AdminStorefrontPage() {
       if (shopBannerLeftFile) fd.append('shopBannerLeftImage', shopBannerLeftFile);
       if (shopBannerCenterFile) fd.append('shopBannerCenterImage', shopBannerCenterFile);
       if (shopBannerRightFile) fd.append('shopBannerRightImage', shopBannerRightFile);
+      if (homeMiddleBannerFile) fd.append('homeMiddleBanner', homeMiddleBannerFile);
+      if (homeExploreHouseSaleFile) {
+        fd.append('homeExploreHouseSaleImage', homeExploreHouseSaleFile);
+      }
+      if (homeExploreHouseGiftingFile) {
+        fd.append('homeExploreHouseGiftingImage', homeExploreHouseGiftingFile);
+      }
       Object.entries(giftingHeroFiles).forEach(([index, file]) => {
         if (file) fd.append(`giftingHeroImage_${index}`, file);
       });
@@ -158,6 +252,9 @@ export default function AdminStorefrontPage() {
       setShopBannerLeftFile(null);
       setShopBannerCenterFile(null);
       setShopBannerRightFile(null);
+      setHomeMiddleBannerFile(null);
+      setHomeExploreHouseSaleFile(null);
+      setHomeExploreHouseGiftingFile(null);
       setGiftingHeroFiles({});
       setGiftingSecondaryFiles({});
       setHomeGiftCardFiles({});
@@ -524,6 +621,192 @@ export default function AdminStorefrontPage() {
         </div>
       ))}
 
+    </div>
+  )}
+</section>
+
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mt-4">
+  <div
+    onClick={() =>
+      setActiveSection(activeSection === "exploreHouse" ? null : "exploreHouse")
+    }
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "exploreHouse" ? "bg-emerald-50 border-b border-emerald-100" : "hover:bg-gray-50/80"}`}
+  >
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+        <LayoutGrid className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Explore Our House</h2>
+        <p className="text-xs text-gray-500 mt-0.5">
+          Sale &amp; Gifting card images and labels on the homepage
+        </p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">
+      {activeSection === "exploreHouse" ?
+        <ChevronUp className="h-4 w-4" />
+      : <ChevronDown className="h-4 w-4" />}
+    </span>
+  </div>
+
+  {activeSection === "exploreHouse" && (
+    <div className="px-5 pb-5 space-y-5 mt-4">
+      <p className="text-xs text-gray-500">
+        Upload portrait images (3:4) and edit card labels. Sale appears first; Gifting last.
+        Links are fixed — Sale → shop offers, Gifting → gifting page.
+      </p>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
+          <FieldLabel>Sale card</FieldLabel>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium text-gray-500">Title</p>
+              <input
+                className={inputCls}
+                value={settings.homeExploreHouse?.saleName ?? 'Sale'}
+                onChange={(e) => patchHomeExploreHouse({ saleName: e.target.value })}
+                placeholder="Sale"
+                maxLength={48}
+              />
+            </div>
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium text-gray-500">Label</p>
+              <input
+                className={inputCls}
+                value={settings.homeExploreHouse?.saleSubtitle ?? 'ON OFFER'}
+                onChange={(e) => patchHomeExploreHouse({ saleSubtitle: e.target.value })}
+                placeholder="ON OFFER"
+                maxLength={48}
+              />
+            </div>
+          </div>
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="3:4"
+            maxSizeMB={5}
+            existingImages={
+              homeExploreHouseSaleFile ?
+                []
+              : settings.homeExploreHouse?.saleImage ?
+                [settings.homeExploreHouse.saleImage]
+              : []
+            }
+            onChange={(files) => setHomeExploreHouseSaleFile(files[0] || null)}
+            label="Sale (first card)"
+            hint="Shown before category cards on homepage & shop."
+          />
+          {settings.homeExploreHouse?.saleImage && !homeExploreHouseSaleFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setSettings((p) =>
+                  p ?
+                    {
+                      ...p,
+                      homeExploreHouse: {
+                        ...p.homeExploreHouse,
+                        saleImage: "",
+                        saleImagePublicId: undefined,
+                      },
+                    }
+                  : p,
+                )
+              }
+            >
+              Remove sale image
+            </button>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
+          <FieldLabel>Gifting card</FieldLabel>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium text-gray-500">Title</p>
+              <input
+                className={inputCls}
+                value={settings.homeExploreHouse?.giftingName ?? 'Gifting'}
+                onChange={(e) => patchHomeExploreHouse({ giftingName: e.target.value })}
+                placeholder="Gifting"
+                maxLength={48}
+              />
+            </div>
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium text-gray-500">Label</p>
+              <input
+                className={inputCls}
+                value={settings.homeExploreHouse?.giftingSubtitle ?? 'THE COLLECTION'}
+                onChange={(e) =>
+                  patchHomeExploreHouse({ giftingSubtitle: e.target.value })
+                }
+                placeholder="THE COLLECTION"
+                maxLength={48}
+              />
+            </div>
+          </div>
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="3:4"
+            maxSizeMB={5}
+            existingImages={
+              homeExploreHouseGiftingFile ?
+                []
+              : settings.homeExploreHouse?.giftingImage ?
+                [settings.homeExploreHouse.giftingImage]
+              : []
+            }
+            onChange={(files) => setHomeExploreHouseGiftingFile(files[0] || null)}
+            label="Gifting (last card)"
+            hint="Links to /gifting on homepage & shop."
+          />
+          {settings.homeExploreHouse?.giftingImage && !homeExploreHouseGiftingFile && (
+            <button
+              type="button"
+              className="text-xs text-red-600"
+              onClick={() =>
+                setSettings((p) =>
+                  p ?
+                    {
+                      ...p,
+                      homeExploreHouse: {
+                        ...p.homeExploreHouse,
+                        giftingImage: "",
+                        giftingImagePublicId: undefined,
+                      },
+                    }
+                  : p,
+                )
+              }
+            >
+              Remove gifting image
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-dashed border-emerald-200 bg-[#f9f9f9] p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+          Homepage label preview
+        </p>
+        <p className="mt-1 text-xs text-gray-500">
+          Live preview of card title + label — updates as you type.
+        </p>
+        <div className="mt-4 flex flex-wrap items-end justify-center gap-4">
+          <ExploreHouseShowcaseCard
+            disableLoader
+            className="!w-[112px] !min-w-0 !max-w-[112px] !flex-none sm:!w-[128px] sm:!max-w-[128px]"
+            card={exploreHouseSalePreviewCard}
+          />
+          <ExploreHouseShowcaseCard
+            disableLoader
+            className="!w-[112px] !min-w-0 !max-w-[112px] !flex-none sm:!w-[128px] sm:!max-w-[128px]"
+            card={exploreHouseGiftingPreviewCard}
+          />
+        </div>
+      </div>
     </div>
   )}
 </section>
@@ -1277,7 +1560,214 @@ export default function AdminStorefrontPage() {
   )}
 </section>
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mt-4">
+  <div
+    onClick={() => setActiveSection(activeSection === "middleBanner" ? null : "middleBanner")}
+    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "middleBanner" ? "bg-fuchsia-50 border-b border-fuchsia-100" : "hover:bg-gray-50/80"}`}
+  >
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-fuchsia-100 text-fuchsia-600">
+        <ImageIcon className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="font-semibold text-gray-900 text-sm">Home Middle Banner</h2>
+        <p className="text-xs text-gray-500 mt-0.5">The banner displayed between Explore Categories and Saree Collections</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-gray-400">{activeSection === "middleBanner" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+  </div>
+
+  {activeSection === "middleBanner" && (
+    <div className="px-5 pb-5 space-y-3 mt-4">
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={settings.homeMiddleBanner?.isActive !== false}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      isActive: e.target.checked,
+                    },
+                  }
+                : p
+            )
+          }
+        />
+        Show middle banner on homepage
+      </label>
+
+      <ImageUploader
+        maxFiles={1}
+        aspectRatio="16:9"
+        maxSizeMB={5}
+        existingImages={
+          homeMiddleBannerFile
+            ? []
+            : settings.homeMiddleBanner?.image
+            ? [settings.homeMiddleBanner.image]
+            : []
+        }
+        onChange={(files) => setHomeMiddleBannerFile(files[0] || null)}
+        label="Middle banner background image"
+      />
+
+      {settings.homeMiddleBanner?.image && !homeMiddleBannerFile && (
+        <button
+          type="button"
+          className="text-xs text-red-600"
+          onClick={() =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      image: "",
+                      imagePublicId: undefined,
+                    },
+                  }
+                : p
+            )
+          }
+        >
+          Remove current banner image
+        </button>
+      )}
+
+      {homeMiddleBannerFile && (
+        <button
+          type="button"
+          className="text-xs text-red-600"
+          onClick={() => setHomeMiddleBannerFile(null)}
+        >
+          Remove newly selected image
+        </button>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+        <input
+          className={inputCls}
+          value={settings.homeMiddleBanner?.title || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      title: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Banner Title"
+        />
+        <input
+          className={inputCls}
+          value={settings.homeMiddleBanner?.subtitle || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      subtitle: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Banner Subtitle"
+        />
+        <input
+          className={inputCls}
+          value={settings.homeMiddleBanner?.linkText || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      linkText: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Button Text"
+        />
+        <input
+          className={inputCls}
+          value={settings.homeMiddleBanner?.linkUrl || ""}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      linkUrl: e.target.value,
+                    },
+                  }
+                : p
+            )
+          }
+          placeholder="Button Link URL (e.g. /about)"
+        />
+        <select
+          className={inputCls}
+          value={settings.homeMiddleBanner?.textAlignment || "center"}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      textAlignment: e.target.value as any,
+                    },
+                  }
+                : p
+            )
+          }
+        >
+          <option value="left">Left Aligned</option>
+          <option value="center">Center Aligned</option>
+          <option value="right">Right Aligned</option>
+        </select>
+        <select
+          className={inputCls}
+          value={settings.homeMiddleBanner?.textColor || "light"}
+          onChange={(e) =>
+            setSettings((p) =>
+              p
+                ? {
+                    ...p,
+                    homeMiddleBanner: {
+                      ...p.homeMiddleBanner,
+                      textColor: e.target.value as any,
+                    },
+                  }
+                : p
+            )
+          }
+        >
+          <option value="light">Light Text (For Dark Images)</option>
+          <option value="dark">Dark Text (For Light Images)</option>
+        </select>
+      </div>
+    </div>
+  )}
+</section>
+
+<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mt-4">
   <div
     onClick={() => setActiveSection(activeSection === "homeGift" ? null : "homeGift")}
     className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "homeGift" ? "bg-pink-50 border-b border-pink-100" : "hover:bg-gray-50/80"}`}

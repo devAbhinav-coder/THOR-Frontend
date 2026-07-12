@@ -120,22 +120,22 @@ export default function GiftingLayout({
         {
           "@type": "OfferCatalog",
           name: "Wedding Gifts",
-          url: `${appUrl}/gifting?occasion=Wedding`,
+          url: `${appUrl}/gifting/wedding-gifts`,
         },
         {
           "@type": "OfferCatalog",
           name: "Corporate Gifts",
-          url: `${appUrl}/gifting?occasion=Corporate`,
+          url: `${appUrl}/gifting/corporate-gifts`,
         },
         {
           "@type": "OfferCatalog",
           name: "Festival Gifts",
-          url: `${appUrl}/gifting?occasion=Festival`,
+          url: `${appUrl}/gifting/festival-gifts`,
         },
         {
           "@type": "OfferCatalog",
           name: "Birthday Gifts",
-          url: `${appUrl}/gifting?occasion=Birthday`,
+          url: `${appUrl}/gifting/birthday-gifts`,
         },
       ],
     },

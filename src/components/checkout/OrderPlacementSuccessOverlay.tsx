@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { clearPostCheckoutAuthGuard } from "@/lib/checkoutSuccessGuard";
 import {
   heritageOverlayBody,
   heritageOverlayCard,
@@ -72,6 +73,7 @@ export default function OrderPlacementSuccessOverlay({
       );
       redirectTimer = window.setTimeout(
         () => {
+          clearPostCheckoutAuthGuard();
           router.push(`/dashboard/orders/${encodeURIComponent(orderId)}`);
         },
         reduceMotion ? 1200 : 3600,

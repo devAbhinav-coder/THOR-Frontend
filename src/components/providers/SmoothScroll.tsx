@@ -115,10 +115,10 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       root
       options={{
         autoRaf: true,
-        lerp: 0.1,
+        lerp: 0.14,
         duration: 1,
         smoothWheel: true,
-        wheelMultiplier: 1,
+        wheelMultiplier: 1.05,
         syncTouch: false,
       }}
     >

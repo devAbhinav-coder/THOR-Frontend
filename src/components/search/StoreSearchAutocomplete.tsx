@@ -5,6 +5,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useSyncExternalStore,
   memo,
   useMemo,
   useRef,
@@ -12,11 +13,23 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Search, X } from "lucide-react";
+import { Loader2, Mic, MicOff, Search, X } from "lucide-react";
 import { giftingApi, productApi } from "@/lib/api";
 import type { Product } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  getVoiceSearchSnapshot,
+  startVoiceSearch,
+  stopVoiceSearch,
+  subscribeVoiceSearch,
+} from "@/lib/voiceSearchController";
+import {
+  SEARCH_QUERY_MAX_LEN,
+  formatIntentAsQuery,
+  parseSearchQueryIntent,
+  type ParsedSearchIntent,
+} from "@/lib/searchQueryParser";
 import {
   buildStoreSearchHref,
   type StoreSearchScope,
@@ -31,13 +44,60 @@ import {
 
 export type { StoreSearchScope };
 
-const DEFAULT_MAX_LEN = 30;
+const DEFAULT_MAX_LEN = SEARCH_QUERY_MAX_LEN;
 const SUGGEST_MIN = 2;
 const SUGGEST_LIMIT = 5;
 const FETCH_DEBOUNCE_MS = 260;
+const RECENT_SEARCHES_KEY = "pia-recent-searches";
+const RECENT_SEARCHES_LIMIT = 5;
+
+type SuggestPayload = {
+  products: Product[];
+  querySuggestions: string[];
+  collectionSuggestions: Array<{ name: string; url: string; image?: string }>;
+  didYouMean?: string;
+  intent?: ParsedSearchIntent;
+};
+
+function readRecentSearches(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_SEARCHES_KEY);
+    const parsed = raw ? (JSON.parse(raw) as string[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, RECENT_SEARCHES_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function uniqueQuerySuggestions(items: string[], exclude?: string): string[] {
+  const excludeKey = exclude?.trim().toLowerCase() ?? "";
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = item.trim().toLowerCase();
+    if (!key || key === excludeKey || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function pushRecentSearch(query: string) {
+  if (typeof window === "undefined") return;
+  const q = query.trim();
+  if (q.length < SUGGEST_MIN) return;
+  try {
+    const next = [q, ...readRecentSearches().filter((x) => x !== q)].slice(
+      0,
+      RECENT_SEARCHES_LIMIT,
+    );
+    window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+  } catch {
+    // ignore quota errors
+  }
+}
 
 const PLACEHOLDER_BY_SCOPE: Record<StoreSearchScope, string> = {
-  shop: "Search sarees, lehengas, kurtis…",
+  shop: "Try red saree, salwar suit under 500…",
   gifting: "Search gifts by name or occasion…",
 };
 
@@ -71,9 +131,11 @@ async function fetchSuggestions(
   scope: StoreSearchScope,
   q: string,
   maxLen: number,
-): Promise<Product[]> {
+): Promise<SuggestPayload> {
   const trimmed = q.trim().slice(0, maxLen);
-  if (trimmed.length < SUGGEST_MIN) return [];
+  if (trimmed.length < SUGGEST_MIN) {
+    return { products: [], querySuggestions: [], collectionSuggestions: [] };
+  }
   try {
     if (scope === "gifting") {
       const res = await giftingApi.getProducts({
@@ -81,12 +143,15 @@ async function fetchSuggestions(
         page: 1,
         limit: SUGGEST_LIMIT,
       });
-      return (res.data?.products || []) as Product[];
+      return {
+        products: (res.data?.products || []) as Product[],
+        querySuggestions: [],
+        collectionSuggestions: [],
+      };
     }
-    // Use advanced autocomplete for better fuzzy matching and typo tolerance
     const res = await productApi.autocomplete(trimmed, SUGGEST_LIMIT);
     const raw = res.data?.suggestions || [];
-    return raw.map((s) => {
+    const products = raw.map((s) => {
       const item = s as {
         id?: string;
         _id?: string;
@@ -106,17 +171,30 @@ async function fetchSuggestions(
         images: item.image ? [{ url: item.image, publicId: "", alt: item.name }] : [],
       } as Product;
     });
+    return {
+      products,
+      querySuggestions: uniqueQuerySuggestions(
+        res.data?.querySuggestions ?? [],
+        res.data?.didYouMean ?? res.data?.searchIntent?.didYouMean,
+      ),
+      collectionSuggestions: res.data?.collectionSuggestions ?? [],
+      didYouMean: res.data?.didYouMean ?? res.data?.searchIntent?.didYouMean,
+      intent: res.data?.searchIntent as ParsedSearchIntent | undefined,
+    };
   } catch {
-    // Fallback to basic search if advanced autocomplete fails
     try {
       const res = await productApi.getAll({
         search: trimmed,
         page: 1,
         limit: SUGGEST_LIMIT,
       });
-      return (res.data?.products || []) as Product[];
+      return {
+        products: (res.data?.products || []) as Product[],
+        querySuggestions: [],
+        collectionSuggestions: [],
+      };
     } catch {
-      return [];
+      return { products: [], querySuggestions: [], collectionSuggestions: [] };
     }
   }
 }
@@ -164,6 +242,13 @@ function StoreSearchAutocomplete({
 
   const debouncedQ = useDebouncedValue(inputValue.trim(), FETCH_DEBOUNCE_MS);
   const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [querySuggestions, setQuerySuggestions] = useState<string[]>([]);
+  const [collectionSuggestions, setCollectionSuggestions] = useState<
+    Array<{ name: string; url: string; image?: string }>
+  >([]);
+  const [didYouMean, setDidYouMean] = useState<string | undefined>();
+  const [searchIntent, setSearchIntent] = useState<ParsedSearchIntent | undefined>();
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [open, setOpen] = useState(false);
   /** Fixed viewport position so the panel doesn’t extend the page / cause scroll */
@@ -174,18 +259,74 @@ function StoreSearchAutocomplete({
   } | null>(null);
 
   const isLuxuryPanel = variant !== "gifting-inline";
+  const showVoice = scope === "shop" && (variant === "nav-dark" || variant === "nav-mobile");
+
+  const navigateToQuery = useCallback(
+    (query: string) => {
+      const q = query.trim().slice(0, maxLen);
+      if (!q.length) return;
+      pushRecentSearch(q);
+      setOpen(false);
+      onNavigate?.();
+      router.push(buildStoreSearchHref(scope, q, maxLen));
+    },
+    [router, scope, maxLen, onNavigate],
+  );
+
+  const voiceActive = useSyncExternalStore(
+    subscribeVoiceSearch,
+    () => getVoiceSearchSnapshot().active,
+    () => false,
+  );
+
+  const handleVoiceResult = useCallback(
+    (transcript: string) => {
+      const parsed = parseSearchQueryIntent(transcript);
+      const next = formatIntentAsQuery(parsed) || transcript.trim();
+      setInputValue(next.slice(0, maxLen));
+      navigateToQuery(next);
+    },
+    [maxLen, navigateToQuery, setInputValue],
+  );
+
+  const handleMicPress = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (voiceActive) {
+        stopVoiceSearch();
+        return;
+      }
+      // Sync call — must stay in click handler (no async wrapper).
+      startVoiceSearch("en-IN", { onResult: handleVoiceResult });
+    },
+    [voiceActive, handleVoiceResult],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setRecentSearches(readRecentSearches());
+  }, [open]);
 
   useEffect(() => {
     let cancelled = false;
     if (debouncedQ.length < SUGGEST_MIN) {
       setSuggestions([]);
+      setQuerySuggestions([]);
+      setCollectionSuggestions([]);
+      setDidYouMean(undefined);
+      setSearchIntent(undefined);
       setSuggestLoading(false);
       return;
     }
     setSuggestLoading(true);
-    void fetchSuggestions(scope, debouncedQ, maxLen).then((list) => {
+    void fetchSuggestions(scope, debouncedQ, maxLen).then((payload) => {
       if (!cancelled) {
-        setSuggestions(list.slice(0, SUGGEST_LIMIT));
+        setSuggestions(payload.products.slice(0, SUGGEST_LIMIT));
+        setQuerySuggestions(payload.querySuggestions.slice(0, 4));
+        setCollectionSuggestions(payload.collectionSuggestions.slice(0, 3));
+        setDidYouMean(payload.didYouMean);
+        setSearchIntent(payload.intent);
         setSuggestLoading(false);
       }
     });
@@ -213,23 +354,50 @@ function StoreSearchAutocomplete({
       e.preventDefault();
       const q = inputValue.trim().slice(0, maxLen);
       if (!q.length) return;
-      setOpen(false);
-      onNavigate?.();
-      router.push(buildStoreSearchHref(scope, inputValue, maxLen));
+      navigateToQuery(q);
     },
-    [router, scope, inputValue, maxLen, onNavigate],
+    [inputValue, maxLen, navigateToQuery],
   );
 
   const onClear = useCallback(() => {
     setInputValue("");
     setSuggestions([]);
+    setQuerySuggestions([]);
+    setCollectionSuggestions([]);
+    setDidYouMean(undefined);
+    setSearchIntent(undefined);
     inputRef.current?.focus({ preventScroll: true });
   }, [setInputValue]);
 
+  const applySuggestion = useCallback(
+    (query: string) => {
+      const cleaned = query
+        .replace(/\s*[·•|,]+\s*/g, " ")
+        .replace(/Under\s*₹?\s*([\d,]+)/gi, "under $1")
+        .replace(/Above\s*₹?\s*([\d,]+)/gi, "above $1")
+        .replace(/\s+/g, " ")
+        .trim();
+      const parsed = parseSearchQueryIntent(cleaned);
+      const next = (formatIntentAsQuery(parsed) || cleaned).slice(0, maxLen);
+      setInputValue(next);
+      navigateToQuery(next);
+    },
+    [navigateToQuery, setInputValue, maxLen],
+  );
+
+  const trimmedInput = inputValue.trim();
+  const showRecentPanel =
+    open && trimmedInput.length === 0 && recentSearches.length > 0;
   const showPanel =
     open &&
-    inputValue.trim().length >= SUGGEST_MIN &&
-    (suggestLoading || suggestions.length > 0);
+    (showRecentPanel ||
+      (trimmedInput.length >= SUGGEST_MIN &&
+        (suggestLoading ||
+          suggestions.length > 0 ||
+          querySuggestions.length > 0 ||
+          collectionSuggestions.length > 0 ||
+          Boolean(didYouMean) ||
+          Boolean(searchIntent?.displayLabel))));
 
   const updatePanelBox = useCallback(() => {
     const el = rootRef.current;
@@ -309,10 +477,13 @@ function StoreSearchAutocomplete({
     variant === "nav-dark" ?
       cn(
         "w-full rounded-none border border-navy-600/80 bg-navy-800/90 py-2 pl-9 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24",
-        inputValue ? "pr-9" : "pr-3",
+        showVoice ? (inputValue ? "pr-16" : "pr-10") : inputValue ? "pr-9" : "pr-3",
       )
     : variant === "nav-mobile" ?
-      "w-full rounded-none border border-navy-600 bg-navy-800 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24"
+      cn(
+        "w-full rounded-none border border-navy-600 bg-navy-800 py-2.5 pl-9 text-sm text-white placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24",
+        showVoice ? "pr-16" : "pr-10",
+      )
     : "w-full rounded-none border border-gray-200/80 bg-white py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-500 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/20 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden";
 
   const iconLeft =
@@ -366,6 +537,25 @@ function StoreSearchAutocomplete({
             placeholder={placeholderText}
             className={cn(inputBase, inputClassName)}
           />
+          {showVoice ?
+            <button
+              type='button'
+              onClick={handleMicPress}
+              className={cn(
+                "absolute top-1/2 z-10 -translate-y-1/2 rounded-md p-1.5",
+                inputValue ? "right-8" : "right-2",
+                voiceActive ?
+                  "animate-pulse bg-red-500/20 text-red-400"
+                : "text-white/45 hover:bg-navy-700 hover:text-white",
+              )}
+              aria-label={voiceActive ? "Stop voice search" : "Voice search"}
+              aria-pressed={voiceActive}
+            >
+              {voiceActive ?
+                <MicOff className='h-3.5 w-3.5' />
+              : <Mic className='h-3.5 w-3.5' />}
+            </button>
+          : null}
           {inputValue ?
             <button
               type='button'
@@ -415,13 +605,93 @@ function StoreSearchAutocomplete({
               </div>
 
               <div className={navLuxuryDropdownNav}>
-                {suggestLoading ?
+                {showRecentPanel ?
+                  <ul>
+                    <li className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1a2b48]/45">
+                      Recent searches
+                    </li>
+                    {recentSearches.map((q) => (
+                      <li key={q} className="border-b border-[#c5a059]/15 last:border-b-0">
+                        <button
+                          type="button"
+                          role="option"
+                          onClick={() => applySuggestion(q)}
+                          className="block w-full px-5 py-3 text-left font-serif text-[14px] text-[#1a2b48] transition-colors hover:bg-white"
+                        >
+                          {q}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                : suggestLoading ?
                   <div className="flex items-center justify-center gap-2 px-5 py-8 text-[13px] text-[#1a2b48]/60">
                     <Loader2 className="h-4 w-4 animate-spin text-[#c5a059]" />
                     Searching…
                   </div>
-                : <ul>
-                    {suggestions.map((p) => {
+                : <>
+                    {didYouMean && didYouMean.toLowerCase() !== trimmedInput.toLowerCase() ?
+                      <div className="border-b border-[#c5a059]/15 px-5 py-3">
+                        <button
+                          type="button"
+                          onClick={() => applySuggestion(didYouMean)}
+                          className="text-left text-[13px] text-[#1a2b48]"
+                        >
+                          Did you mean{" "}
+                          <span className="font-semibold text-[#c5a059]">{didYouMean}</span>?
+                        </button>
+                      </div>
+                    : null}
+                    {searchIntent?.displayLabel &&
+                    searchIntent.displayLabel.toLowerCase() !== trimmedInput.toLowerCase() ?
+                      <div className="border-b border-[#c5a059]/15 px-5 py-2 text-[12px] text-[#1a2b48]/70">
+                        {searchIntent.displayLabel}
+                      </div>
+                    : null}
+                    {querySuggestions.length > 0 ?
+                      <ul>
+                        {querySuggestions.map((q, index) => (
+                          <li
+                            key={`${q}-${index}`}
+                            className="border-b border-[#c5a059]/15 last:border-b-0"
+                          >
+                            <button
+                              type="button"
+                              role="option"
+                              onClick={() => applySuggestion(q)}
+                              className="block w-full px-5 py-2.5 text-left text-[13px] text-[#1a2b48] transition-colors hover:bg-white"
+                            >
+                              {q}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    : null}
+                    {collectionSuggestions.length > 0 ?
+                      <ul>
+                        <li className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1a2b48]/45">
+                          Collections
+                        </li>
+                        {collectionSuggestions.map((item) => (
+                          <li
+                            key={item.url}
+                            className="border-b border-[#c5a059]/15 last:border-b-0"
+                          >
+                            <Link
+                              href={item.url}
+                              onClick={() => {
+                                setOpen(false);
+                                onNavigate?.();
+                              }}
+                              className="block px-5 py-2.5 text-left text-[13px] text-[#1a2b48] transition-colors hover:bg-white"
+                            >
+                              {item.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    : null}
+                    <ul>
+                      {suggestions.map((p) => {
                       const img = p.images?.[0]?.url;
                       return (
                         <li
@@ -459,11 +729,13 @@ function StoreSearchAutocomplete({
                         </li>
                       );
                     })}
-                  </ul>
+                    </ul>
+                  </>
                 }
               </div>
 
-              <div className={cn(navLuxuryDropdownFooter, "text-center")}>
+              {trimmedInput.length >= SUGGEST_MIN ?
+                <div className={cn(navLuxuryDropdownFooter, "text-center")}>
                 <Link
                   href={resultsHref}
                   onClick={() => {
@@ -474,15 +746,82 @@ function StoreSearchAutocomplete({
                 >
                   See all matching products
                 </Link>
-              </div>
+                </div>
+              : null}
             </>
           : <>
-              {suggestLoading ?
+              {showRecentPanel ?
+                <ul className="py-1">
+                  <li className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    Recent searches
+                  </li>
+                  {recentSearches.map((q) => (
+                    <li key={q} role="option" className="px-1">
+                      <button
+                        type="button"
+                        onClick={() => applySuggestion(q)}
+                        className="block w-full rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]"
+                      >
+                        {q}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              : suggestLoading ?
                 <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-500">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Searching…
                 </div>
-              : <ul className="py-1">
+              : <>
+                  {didYouMean && didYouMean.toLowerCase() !== trimmedInput.toLowerCase() ?
+                    <div className="border-b border-gray-100 px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => applySuggestion(didYouMean)}
+                        className="text-left text-sm text-gray-700"
+                      >
+                        Did you mean{" "}
+                        <span className="font-semibold text-[#c5a059]">{didYouMean}</span>?
+                      </button>
+                    </div>
+                  : null}
+                  {querySuggestions.length > 0 ?
+                    <ul className="border-b border-gray-100 py-1">
+                      {querySuggestions.map((q, index) => (
+                        <li key={`${q}-${index}`} role="option" className="px-1">
+                          <button
+                            type="button"
+                            onClick={() => applySuggestion(q)}
+                            className="block w-full rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]"
+                          >
+                            {q}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  : null}
+                  {collectionSuggestions.length > 0 ?
+                    <ul className="border-b border-gray-100 py-1">
+                      <li className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                        Collections
+                      </li>
+                      {collectionSuggestions.map((item) => (
+                        <li key={item.url} role="option" className="px-1">
+                          <Link
+                            href={item.url}
+                            onClick={() => {
+                              setOpen(false);
+                              onNavigate?.();
+                            }}
+                            className="block rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]"
+                          >
+                            {item.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  : null}
+                  <ul className="py-1">
                   {suggestions.map((p) => {
                     const img = p.images?.[0]?.url;
                     return (
@@ -517,9 +856,11 @@ function StoreSearchAutocomplete({
                       </li>
                     );
                   })}
-                </ul>
+                  </ul>
+                </>
               }
-              <div className="border-t border-gray-100 px-3 py-2 text-center text-[11px] text-gray-500">
+              {trimmedInput.length >= SUGGEST_MIN ?
+                <div className="border-t border-gray-100 px-3 py-2 text-center text-[11px] text-gray-500">
                 <Link
                   href={resultsHref}
                   onClick={() => {
@@ -530,7 +871,8 @@ function StoreSearchAutocomplete({
                 >
                   See all matching products
                 </Link>
-              </div>
+                </div>
+              : null}
             </>
           }
         </div>

@@ -1,14 +1,57 @@
 import { ReadonlyURLSearchParams } from "next/navigation";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
+import { SEARCH_QUERY_MAX_LEN } from "@/lib/searchQueryParser";
 
-export const SHOP_SEARCH_MAX_LEN = 30;
+export const SHOP_SEARCH_MAX_LEN = SEARCH_QUERY_MAX_LEN;
 export const SHOP_DEFAULT_SORT = "-createdAt";
 export const SHOP_PAGE_LIMIT = 12;
 export const SHOP_PRICE_FILTER_MIN = 499;
-export const SHOP_PRICE_FILTER_MAX = 10000;
+export const SHOP_PRICE_FILTER_MAX = 3500;
+
+export function normalizeShopSortValue(sort: string): string {
+  const trimmed = String(sort || "").trim();
+  if (!trimmed || trimmed === "featured") return SHOP_DEFAULT_SORT;
+  if (trimmed === "-ratings.count" || trimmed === "ratings.count") {
+    return trimmed.startsWith("-") ? "-soldCount" : "soldCount";
+  }
+  return trimmed;
+}
+
+export function resolveShopSortForApi(sort: string): {
+  listSort: string;
+  searchSortBy: string;
+  searchSortOrder: "asc" | "desc";
+} {
+  const normalized = normalizeShopSortValue(sort);
+  switch (normalized) {
+    case "price":
+      return { listSort: "price", searchSortBy: "price", searchSortOrder: "asc" };
+    case "-price":
+      return { listSort: "-price", searchSortBy: "price", searchSortOrder: "desc" };
+    case "-ratings.average":
+      return {
+        listSort: "-ratings.average",
+        searchSortBy: "ratings.average",
+        searchSortOrder: "desc",
+      };
+    case "-soldCount":
+      return { listSort: "-soldCount", searchSortBy: "soldCount", searchSortOrder: "desc" };
+    case "soldCount":
+      return { listSort: "soldCount", searchSortBy: "soldCount", searchSortOrder: "asc" };
+    case "-createdAt":
+    default:
+      return {
+        listSort: "-createdAt",
+        searchSortBy: "createdAt",
+        searchSortOrder: "desc",
+      };
+  }
+}
 
 export type ShopFilters = {
   categories: string[];
+  subcategories: string[];
+  occasions: string[];
   fabrics: string[];
   minPrice: string;
   maxPrice: string;
@@ -16,18 +59,22 @@ export type ShopFilters = {
   sort: string;
   search: string;
   isFeatured: string;
+  onSale: string;
 };
 
 export type ShopCategoryContext = {
   name: string;
   slug: string;
+  subcategory?: { name: string; slug: string };
   description?: string;
 } | null;
 
-export type ShopMultiFilterKey = "categories" | "fabrics" | "ratings";
+export type ShopMultiFilterKey = "categories" | "fabrics" | "ratings" | "subcategories" | "occasions";
 
 export const EMPTY_SHOP_FILTERS: ShopFilters = {
   categories: [],
+  subcategories: [],
+  occasions: [],
   fabrics: [],
   minPrice: "",
   maxPrice: "",
@@ -35,6 +82,7 @@ export const EMPTY_SHOP_FILTERS: ShopFilters = {
   sort: SHOP_DEFAULT_SORT,
   search: "",
   isFeatured: "",
+  onSale: "",
 };
 
 type SearchParamsLike =
@@ -187,6 +235,8 @@ export function parseShopFiltersFromUrl(
   categoryContext: ShopCategoryContext = null,
 ): ShopFilters {
   const categories = readListParam(searchParams, "categories", "category");
+  const subcategories = readListParam(searchParams, "subcategories", "subcategory");
+  const occasions = readListParam(searchParams, "occasions", "occasion");
   const fabrics = readListParam(searchParams, "fabrics", "fabric");
   const ratings = readListParam(searchParams, "ratings", "rating", "minRating");
 
@@ -199,23 +249,39 @@ export function parseShopFiltersFromUrl(
           categoryContext.name,
         ]
       : [],
+    subcategories:
+      subcategories.length > 0 ?
+        subcategories
+      : categoryContext?.subcategory ?
+        [categoryContext.subcategory.name]
+      : [],
+    occasions,
     fabrics,
     minPrice: readScalarParam(searchParams, "minPrice"),
     maxPrice: readScalarParam(searchParams, "maxPrice"),
     ratings: ratings.filter((r) => /^[1-5]$/.test(r)),
-    sort: readScalarParam(searchParams, "sort") || SHOP_DEFAULT_SORT,
-    search: readScalarParam(searchParams, "search").slice(0, SHOP_SEARCH_MAX_LEN),
+    sort: normalizeShopSortValue(
+      readScalarParam(searchParams, "sort") || SHOP_DEFAULT_SORT,
+    ),
+    search: readScalarParam(searchParams, "search")
+      .replace(/\s*[·•|,]+\s*/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, SHOP_SEARCH_MAX_LEN),
     isFeatured: readScalarParam(searchParams, "isFeatured"),
+    onSale: readScalarParam(searchParams, "onSale"),
   };
 
   return mergeCategoryContextFilters(parsed, categoryContext);
 }
 
+export const SHOP_COLLECTIONS_PATH = "/shop/collections";
+
 export function getShopRouteBasePath(
   categoryContext: ShopCategoryContext = null,
 ): string {
-  if (!categoryContext?.slug) return "/shop";
-  return `/shop/category/${encodeURIComponent(categoryContext.slug)}`;
+  if (!categoryContext?.slug) return SHOP_COLLECTIONS_PATH;
+  return `${SHOP_COLLECTIONS_PATH}/${encodeURIComponent(categoryContext.slug)}`;
 }
 
 export function buildShopQueryString(
@@ -225,6 +291,12 @@ export function buildShopQueryString(
   const params = new URLSearchParams();
   if (!options.omitCategories && filters.categories.length) {
     params.set("categories", filters.categories.join(","));
+  }
+  if (filters.subcategories.length) {
+    params.set("subcategories", filters.subcategories.join(","));
+  }
+  if (filters.occasions.length) {
+    params.set("occasions", filters.occasions.join(","));
   }
   if (filters.fabrics.length) {
     params.set("fabrics", filters.fabrics.join(","));
@@ -236,6 +308,7 @@ export function buildShopQueryString(
   if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
   if (filters.search) params.set("search", filters.search);
   if (filters.isFeatured) params.set("isFeatured", filters.isFeatured);
+  if (filters.onSale) params.set("onSale", filters.onSale);
   if (filters.sort && filters.sort !== SHOP_DEFAULT_SORT) {
     params.set("sort", filters.sort);
   }
@@ -244,12 +317,15 @@ export function buildShopQueryString(
 
 export function hasSecondaryShopFilters(filters: ShopFilters): boolean {
   return (
+    filters.subcategories.length > 0 ||
+    filters.occasions.length > 0 ||
     filters.fabrics.length > 0 ||
     filters.ratings.length > 0 ||
     Boolean(filters.minPrice) ||
     Boolean(filters.maxPrice) ||
     Boolean(filters.search) ||
     Boolean(filters.isFeatured) ||
+    Boolean(filters.onSale) ||
     filters.sort !== SHOP_DEFAULT_SORT
   );
 }
@@ -257,12 +333,31 @@ export function hasSecondaryShopFilters(filters: ShopFilters): boolean {
 export function shouldUseCategoryPath(filters: ShopFilters): boolean {
   return (
     filters.categories.length === 1 &&
+    filters.subcategories.length === 0 &&
+    filters.occasions.length === 0 &&
     filters.fabrics.length === 0 &&
     !filters.minPrice &&
     !filters.maxPrice &&
     filters.ratings.length === 0 &&
     !filters.search &&
     !filters.isFeatured &&
+    !filters.onSale &&
+    filters.sort === SHOP_DEFAULT_SORT
+  );
+}
+
+export function shouldUseSubcategoryPath(filters: ShopFilters): boolean {
+  return (
+    filters.categories.length === 1 &&
+    filters.subcategories.length === 1 &&
+    filters.occasions.length === 0 &&
+    filters.fabrics.length === 0 &&
+    !filters.minPrice &&
+    !filters.maxPrice &&
+    filters.ratings.length === 0 &&
+    !filters.search &&
+    !filters.isFeatured &&
+    !filters.onSale &&
     filters.sort === SHOP_DEFAULT_SORT
   );
 }
@@ -279,11 +374,14 @@ export function countActiveShopFilters(
       ).length
     : filters.categories.length;
   count += categoryCount;
+  count += filters.subcategories.length;
+  count += filters.occasions.length;
   count += filters.fabrics.length;
   count += filters.ratings.length;
   if (filters.minPrice) count += 1;
   if (filters.maxPrice) count += 1;
   if (filters.search) count += 1;
+  if (filters.onSale) count += 1;
   return count;
 }
 
@@ -303,24 +401,42 @@ export function resolveShopFilterNavigation(
   value: string | number,
   categoryContext: ShopCategoryContext = null,
 ): string {
-  let next: ShopFilters = filters;
+  return resolveCanonicalShopUrl(
+    resolveNextShopFilters(filters, key, value),
+    categoryContext,
+  );
+}
 
+export function resolveNextShopFilters(
+  filters: ShopFilters,
+  key: keyof ShopFilters,
+  value: string | number,
+): ShopFilters {
   if (key === "categories") {
-    next = toggleShopCategoryFilter(filters, String(value));
-  } else if (key === "fabrics" || key === "ratings") {
-    next = toggleShopListFilter(filters, key, String(value));
-  } else {
-    next = { ...filters, [key]: String(value) };
+    return toggleShopCategoryFilter(filters, String(value));
   }
-
-  return resolveCanonicalShopUrl(next, categoryContext);
+  if (
+    key === "fabrics" ||
+    key === "ratings" ||
+    key === "subcategories" ||
+    key === "occasions"
+  ) {
+    return toggleShopListFilter(filters, key, String(value));
+  }
+  if (key === "onSale") {
+    return {
+      ...filters,
+      onSale: filters.onSale === "true" ? "" : "true",
+    };
+  }
+  return { ...filters, [key]: String(value) };
 }
 
 export function resolveClearShopFiltersNavigation(): {
   path: string;
   filters: ShopFilters;
 } {
-  return { path: "/shop", filters: { ...EMPTY_SHOP_FILTERS } };
+  return { path: SHOP_COLLECTIONS_PATH, filters: { ...EMPTY_SHOP_FILTERS } };
 }
 
 function joinFilterLabels(values: string[], fallback: string): string {
@@ -332,6 +448,10 @@ function joinFilterLabels(values: string[], fallback: string): string {
 
 export function formatShopCategoriesLabel(categories: string[]): string {
   return joinFilterLabels(categories, "");
+}
+
+export function formatShopSubcategoriesLabel(subcategories: string[]): string {
+  return joinFilterLabels(subcategories, "");
 }
 
 export function formatShopFabricsLabel(fabrics: string[]): string {
@@ -393,55 +513,64 @@ export function buildShopProductQueryParams(
   const effective = mergeCategoryContextFilters(filters, categoryContext);
   const search = effective.search.trim().slice(0, SHOP_SEARCH_MAX_LEN);
   const minRating = resolveEffectiveMinRating(effective.ratings);
+  const sortParams = resolveShopSortForApi(effective.sort);
 
   if (search) {
     const params: Record<string, string | number> = {
       q: search,
       page,
       limit,
+      sortBy: sortParams.searchSortBy,
+      sortOrder: sortParams.searchSortOrder,
     };
-
-    if (effective.sort === "price") params.sortBy = "price";
-    else if (effective.sort === "-price") {
-      params.sortBy = "price";
-      params.sortOrder = "desc";
-    } else if (effective.sort === "-ratings.average") {
-      params.sortBy = "ratings.average";
-    } else if (effective.sort === "-ratings.count") {
-      params.sortBy = "soldCount";
-    } else {
-      params.sortBy = "relevance";
-    }
 
     if (effective.categories.length) {
       params.categories = effective.categories.join(",");
     }
+    if (effective.subcategories.length) {
+      params.subcategories = effective.subcategories.join(",");
+    }
     if (effective.fabrics.length) {
       params.fabrics = effective.fabrics.join(",");
+    }
+    if (effective.occasions.length) {
+      params.occasions = effective.occasions.join(",");
     }
     if (minRating !== undefined) params.minRating = minRating;
     if (effective.minPrice) params.minPrice = Number(effective.minPrice);
     if (effective.maxPrice) params.maxPrice = Number(effective.maxPrice);
     if (effective.isFeatured) params.isFeatured = effective.isFeatured;
+    if (effective.onSale) params.onSale = effective.onSale;
 
     return { mode: "search", params };
   }
 
   const params: Record<string, string | number> = {
-    sort: effective.sort,
+    sort: sortParams.listSort,
     page,
     limit,
   };
+
+  if (effective.categories.length === 0 && !hasSecondaryShopFilters(effective)) {
+    params.isRandom = "true";
+  }
   if (effective.categories.length) {
     params.categories = effective.categories.join(",");
   }
+  if (effective.subcategories.length) {
+    params.subcategories = effective.subcategories.join(",");
+  }
   if (effective.fabrics.length) {
     params.fabrics = effective.fabrics.join(",");
+  }
+  if (effective.occasions.length) {
+    params.occasions = effective.occasions.join(",");
   }
   if (minRating !== undefined) params.minRating = minRating;
   if (effective.minPrice) params["price[gte]"] = effective.minPrice;
   if (effective.maxPrice) params["price[lte]"] = effective.maxPrice;
   if (effective.isFeatured) params.isFeatured = effective.isFeatured;
+  if (effective.onSale) params.onSale = effective.onSale;
 
   return { mode: "list", params };
 }
@@ -450,22 +579,29 @@ export function resolveCanonicalShopUrl(
   filters: ShopFilters,
   categoryContext: ShopCategoryContext = null,
 ): string {
-  // Use explicit filter state only — do not re-inject route category (breaks uncheck).
-  if (filters.categories.length === 1 && hasSecondaryShopFilters(filters)) {
-    const slug =
-      toShopCategorySlug(filters.categories[0]) || categoryContext?.slug;
-    if (slug) {
-      const qs = buildShopQueryString(filters, { omitCategories: true });
-      const base = `/shop/category/${encodeURIComponent(slug)}`;
-      return qs ? `${base}?${qs}` : base;
+  const catSlug =
+    toShopCategorySlug(filters.categories[0]) || categoryContext?.slug;
+
+  if (shouldUseSubcategoryPath(filters) && catSlug) {
+    const subSlug =
+      categoryContext?.subcategory?.slug ||
+      toShopCategorySlug(filters.subcategories[0]);
+    if (subSlug) {
+      return `${SHOP_COLLECTIONS_PATH}/${encodeURIComponent(catSlug)}/${encodeURIComponent(subSlug)}`;
     }
   }
 
-  if (shouldUseCategoryPath(filters)) {
-    const slug = toShopCategorySlug(filters.categories[0]);
-    if (slug) return `/shop/category/${encodeURIComponent(slug)}`;
+  // Use explicit filter state only — do not re-inject route category (breaks uncheck).
+  if (filters.categories.length === 1 && hasSecondaryShopFilters(filters) && catSlug) {
+    const qs = buildShopQueryString(filters, { omitCategories: true });
+    const base = `${SHOP_COLLECTIONS_PATH}/${encodeURIComponent(catSlug)}`;
+    return qs ? `${base}?${qs}` : base;
+  }
+
+  if (shouldUseCategoryPath(filters) && catSlug) {
+    return `${SHOP_COLLECTIONS_PATH}/${encodeURIComponent(catSlug)}`;
   }
 
   const qs = buildShopQueryString(filters);
-  return qs ? `/shop?${qs}` : "/shop";
+  return qs ? `${SHOP_COLLECTIONS_PATH}?${qs}` : SHOP_COLLECTIONS_PATH;
 }

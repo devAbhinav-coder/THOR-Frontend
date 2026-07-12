@@ -78,12 +78,12 @@ export function CategoryRevenueBarChart({
   return (
     <div className={cn('w-full', className)}>
       {(title || subtitle) && (
-        <div className="mb-4 px-1">
-          {title && <h3 className="font-serif text-lg font-bold text-gray-900 tracking-tight">{title}</h3>}
-          {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+        <div className="mb-2 px-1">
+          {title && <h3 className="text-sm font-bold text-gray-900 tracking-tight">{title}</h3>}
+          {subtitle && <p className="text-[10px] text-gray-500 mt-0.5">{subtitle}</p>}
         </div>
       )}
-      <div style={{ height }} className="w-full min-h-[240px]">
+      <div style={{ height }} className="w-full min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}

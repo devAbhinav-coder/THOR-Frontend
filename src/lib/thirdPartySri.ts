@@ -7,6 +7,8 @@
  * because those URLs vary by account or change more often than Razorpay.
  */
 
+import { getGaMeasurementId } from "@/lib/gaConfig";
+
 /** https://checkout.razorpay.com/v1/checkout.js — verified 2026-06-11 */
 export const RAZORPAY_CHECKOUT_JS_INTEGRITY =
   "sha384-GhsbifIunpkc+86jD9UsOYrz9J/NErn5qoTc6Bw/OfNHbL4HIWeDxj9fOQ6FMu+x";
@@ -25,9 +27,9 @@ export function fbEventsJsIntegrity(): string | undefined {
 export function gtagJsIntegrity(): string | undefined {
   const fromEnv = process.env.NEXT_PUBLIC_GTAG_JS_INTEGRITY?.trim();
   if (fromEnv) return fromEnv;
-  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+  const gaId = getGaMeasurementId();
   /** Known production stream — hash from `node scripts/compute-third-party-sri.mjs` (rotate if GA updates gtag). */
-  if (gaId === "G-563PKNCB4J") {
+  if (gaId === "G-563PKNCB4J" || gaId === "G-Q7HGE5BW4N") {
     return "sha384-S3r1mEfYMFT36ZDVWXfB3D7Qp2Ki4PYpefsbRfjjstQT8FfJkjiJsjPHYu3Q5BpB";
   }
   return undefined;

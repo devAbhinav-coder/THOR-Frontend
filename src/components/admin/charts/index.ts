@@ -3,3 +3,4 @@ export { OrdersVolumeTrendChart } from './OrdersVolumeTrendChart';
 export { CategoryRevenueBarChart } from './CategoryRevenueBarChart';
 export { OrdersMixPieChart } from './OrdersMixPieChart';
 export { DailyOrdersRevenueChart } from './DailyOrdersRevenueChart';
+export { DailySiteVisitsChart } from './DailySiteVisitsChart';

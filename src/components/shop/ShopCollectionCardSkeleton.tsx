@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/SkeletonLoader";
 
 export default function ShopCollectionCardSkeleton() {
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col p-1 sm:p-1.5">
       <Skeleton className="mb-3 aspect-[3/4] w-full shrink-0 rounded-none bg-gray-100 sm:mb-4" />
       <div className="flex flex-1 flex-col">
         <Skeleton className="h-[1.375rem] w-4/5 rounded-md sm:h-[1.5625rem]" />

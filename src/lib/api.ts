@@ -7,6 +7,7 @@ import axios, {
 import { refreshAccessToken } from "@/lib/authRefresh";
 import { env } from "@/lib/env";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
+import { isPostCheckoutAuthGuardActive } from "@/lib/checkoutSuccessGuard";
 import { unwrapAxios, parseApiResponse } from "@/lib/parseApi";
 import * as schemas from "@/lib/api-schemas";
 import {
@@ -81,6 +82,9 @@ api.interceptors.response.use(
           delete originalRequest.headers.Authorization;
         }
         return api(originalRequest);
+      }
+      if (isPostCheckoutAuthGuardActive()) {
+        return Promise.reject({ message: "Session expired", status: 401 });
       }
       const path = `${window.location.pathname}${window.location.search || ""}`;
       if (!path.startsWith("/auth") && !isAuthMeRequest(originalRequest)) {
@@ -230,7 +234,11 @@ export const productApi = {
   getFeatured: () =>
     unwrapAxios("products.featured", api.get("/products/featured"), schemas.productsFeatured),
   getByCategory: (category: string, params?: Record<string, string | number>) =>
-    unwrapAxios("products.byCategory", api.get(`/products/category/${category}`, { params }), schemas.productsPaginated),
+    unwrapAxios(
+      "products.byCategory",
+      api.get(`/products/category/${encodeURIComponent(category)}`, { params }),
+      schemas.productsPaginated,
+    ),
   getFilterOptions: (params?: { category?: string }) =>
     unwrapAxios(
       "products.filters",
@@ -413,6 +421,24 @@ export const categoryApi = {
     unwrapAxios("categories.getAll", api.get("/categories", { params }), schemas.categoriesList),
   getStats: () => unwrapAxios("categories.stats", api.get("/categories/stats"), schemas.categoryStats),
   getById: (id: string) => unwrapAxios("categories.getById", api.get(`/categories/${id}`), schemas.categorySingle),
+  getSubcategories: (categorySlug: string) => 
+    unwrapAxios("categories.getSubcategories", api.get(`/categories/slug/${categorySlug}/subcategories`), schemas.subcategoriesList),
+};
+
+export const navigationApi = {
+  getMegaMenu: () =>
+    unwrapAxios("navigation.megaMenu", api.get("/navigation/mega-menu"), schemas.megaMenu),
+};
+
+export const collectionApi = {
+  getCollection: (catSlug: string) =>
+    unwrapAxios("collections.getCollection", api.get(`/collections/${catSlug}`), schemas.looseDataResponse),
+  getCollectionProducts: (catSlug: string, params?: Record<string, string | number>) =>
+    unwrapAxios("collections.getProducts", api.get(`/collections/${catSlug}/products`, { params }), schemas.productsPaginated),
+  getSubcollection: (catSlug: string, subSlug: string) =>
+    unwrapAxios("collections.getSubcollection", api.get(`/collections/${catSlug}/${subSlug}`), schemas.looseDataResponse),
+  getSubcollectionProducts: (catSlug: string, subSlug: string, params?: Record<string, string | number>) =>
+    unwrapAxios("collections.getSubcollectionProducts", api.get(`/collections/${catSlug}/${subSlug}/products`, { params }), schemas.productsPaginated),
 };
 
 export const storefrontApi = {
@@ -441,6 +467,26 @@ export const storefrontApi = {
       });
     return storefrontSettingsInFlight;
   },
+  recordVisit: (data: {
+    sessionKey: string;
+    path?: string;
+    referrer?: string;
+    marketingAttribution?: {
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      utmContent?: string;
+      utmTerm?: string;
+      fbclid?: string;
+      landingPath?: string;
+      capturedAt?: string;
+    };
+  }) =>
+    unwrapAxios(
+      'storefront.visit',
+      api.post('/storefront/visit', data),
+      schemas.storeVisitRecorded,
+    ),
 };
 
 export const adminApi = {
@@ -572,6 +618,13 @@ export const adminApi = {
       schemas.categorySingle,
     ),
   deleteCategory: (id: string) => del204("admin.categories.delete", api.delete(`/admin/categories/${id}`)),
+  getSubcategories: (params?: object) =>
+    unwrapAxios("admin.subcategories", api.get("/admin/subcategories", { params }), schemas.subcategoriesList),
+  createSubcategory: (data: object) =>
+    unwrapAxios("admin.subcategories.create", api.post("/admin/subcategories", data), schemas.subcategorySingle),
+  updateSubcategory: (id: string, data: object) =>
+    unwrapAxios("admin.subcategories.update", api.patch(`/admin/subcategories/${id}`, data), schemas.subcategorySingle),
+  deleteSubcategory: (id: string) => del204("admin.subcategories.delete", api.delete(`/admin/subcategories/${id}`)),
   /* ── Sales invoices (B2B / bulk-order tax invoices) ── */
   listSalesInvoices: (params?: { page?: number; limit?: number; search?: string }) =>
     unwrapAxios(
@@ -896,4 +949,20 @@ export const giftingApi = {
     unwrapAxios("gifting.getRequests", api.get("/gifting/requests", { params }), schemas.giftingRequestsList),
   updateRequest: (id: string, data: Record<string, unknown>) => 
     unwrapAxios("gifting.updateRequest", api.patch(`/gifting/requests/${id}`, data), schemas.giftingRequestSingle),
+};
+
+export const raniCareApi = {
+  getStatus: () =>
+    unwrapAxios("raniCare.status", api.get("/rani-care/status"), schemas.raniCareStatus),
+  chat: (body: {
+    message: string;
+    isAuthenticated?: boolean;
+    localIntent?: string;
+    recentMessages?: Array<{ role: "user" | "bot"; text: string }>;
+  }) =>
+    unwrapAxios(
+      "raniCare.chat",
+      api.post("/rani-care/chat", body, { timeout: 32000 }),
+      schemas.raniCareChatReply,
+    ),
 };

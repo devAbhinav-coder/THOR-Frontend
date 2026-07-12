@@ -23,6 +23,26 @@ export async function fetchHomeCategoryStats(): Promise<
   }
 }
 
+/** Saree subcategories for home page section. */
+export async function fetchHomeSareeSubcategories(): Promise<Category[] | null> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  try {
+    const res = await fetch(`${base}/categories/slug/sarees/subcategories`, {
+      next: { revalidate: 3600 },
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      data?: { subcategories?: Category[] };
+    };
+    const list = json?.data?.subcategories;
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Latest published blogs for home Heritage Stories — hides section when empty. */
 export async function fetchHomeLatestBlogs(limit = 3): Promise<Blog[] | null> {
   const base = await getBuildSafeApiBase();

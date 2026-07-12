@@ -40,6 +40,7 @@ import { getMaxRefundableInr, getNonRefundableFeesInr } from '@/lib/orderRefundP
 import AdminOrderPackingSlip4R from '@/components/admin/AdminOrderPackingSlip4R';
 import { AdminAiExplainButton } from '@/components/admin/ai';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import OrderMarketingAttributionCard from '@/components/admin/orders/OrderMarketingAttributionCard';
 
 function adminPaymentMethodLabel(pm: Order['paymentMethod']): string {
   switch (pm) {
@@ -1589,6 +1590,8 @@ export default function AdminOrderDetailsPage() {
             <p className="text-xs text-gray-500 mt-1">{user?.email || ''}</p>
             {user?.phone && <p className="text-xs text-gray-500 mt-1">{user.phone}</p>}
           </div>
+
+          <OrderMarketingAttributionCard attribution={order.marketingAttribution} />
 
           <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow">
             <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">

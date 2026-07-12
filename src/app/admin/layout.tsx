@@ -67,6 +67,7 @@ const navSections: NavSection[] = [
     title: "Catalog",
     items: [
       { label: "Categories", href: "/admin/categories", icon: LayoutGrid },
+      { label: "Subcategories", href: "/admin/subcategories", icon: LayoutGrid },
       { label: "Products", href: "/admin/products", icon: Package },
       { label: "Inventory", href: "/admin/inventory", icon: Warehouse },
       { label: "Gifting", href: "/admin/gifting", icon: Gift },

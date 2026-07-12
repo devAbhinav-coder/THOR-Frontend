@@ -47,6 +47,7 @@ export function resolveShopBannerH1(options: {
   search?: string | null;
   fabric?: string | null;
   isFeatured?: string | null;
+  onSale?: string | null;
   bannerTitle?: string | null;
 }): string {
   const search = String(options.search || "").trim();
@@ -61,6 +62,7 @@ export function resolveShopBannerH1(options: {
   const fabric = String(options.fabric || "").trim();
   if (fabric) return `${fabric} Sarees Online India`;
   if (options.isFeatured === "true") return "Featured Sarees & Ethnic Wear Online India";
+  if (options.onSale === "true") return "Sale Sarees & Ethnic Wear Online India";
   const banner = String(options.bannerTitle || "").trim();
   if (banner && !GENERIC_SHOP_BANNER_TITLES.has(banner.toLowerCase())) return banner;
   return SHOP_H1_DEFAULT;
@@ -71,6 +73,7 @@ export function resolveShopListHeading(options: {
   search?: string | null;
   fabric?: string | null;
   isFeatured?: string | null;
+  onSale?: string | null;
 }): string {
   const search = String(options.search || "").trim();
   if (search) {
@@ -82,6 +85,7 @@ export function resolveShopListHeading(options: {
   const fabric = String(options.fabric || "").trim();
   if (fabric) return `${fabric} Sarees`;
   if (options.isFeatured === "true") return "Featured Sarees";
+  if (options.onSale === "true") return "Sale & Offers";
   return "All Sarees";
 }
 

@@ -18,6 +18,8 @@ import { PDP_MAIN_LENS_PX, PDP_MAIN_LENS_ZOOM } from "./constants";
 
 export interface PdpImageGalleryProps {
   productId: string;
+  /** Changes when color/images switch — resets selected thumbnail. */
+  galleryKey?: string;
   name: string;
   images: { url: string; alt?: string }[];
   isGiftMarketingContext: boolean;
@@ -31,6 +33,7 @@ export interface PdpImageGalleryProps {
 
 export function PdpImageGallery({
   productId,
+  galleryKey,
   name,
   images,
   isGiftMarketingContext,
@@ -59,7 +62,7 @@ export function PdpImageGallery({
   useEffect(() => {
     setSelectedImage(0);
     setImageLightboxOpen(false);
-  }, [productId]);
+  }, [productId, galleryKey, images]);
 
   useEffect(() => {
     setPdpLensVisible(false);
@@ -141,7 +144,7 @@ export function PdpImageGallery({
           >
             {images.map((img, i) => (
               <button
-                key={i}
+                key={img.url || i}
                 type='button'
                 onMouseEnter={() => setSelectedImage(i)}
                 onClick={() => setSelectedImage(i)}

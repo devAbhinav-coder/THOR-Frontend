@@ -162,4 +162,24 @@ export function buildFinancialSnapshot(
 
 }
 
+/** Revenue growth badge + subtitle for admin dashboards. */
+export function formatRevenueGrowthSub(
+  growth: number | null | undefined,
+  monthRevenue = 0,
+): string {
+  if (growth === null || growth === undefined) {
+    return monthRevenue > 0 ? 'New — no last month to compare' : 'No revenue this month';
+  }
+  if (growth === 0 && monthRevenue === 0) return 'No revenue this month';
+  return `${growth >= 0 ? '+' : ''}${growth}% vs last month`;
+}
+
+/** Only show growth badge when there is a real month-over-month baseline. */
+export function revenueGrowthBadgeValue(
+  growth: number | null | undefined,
+): number | undefined {
+  if (growth === null || growth === undefined) return undefined;
+  return growth;
+}
+
 

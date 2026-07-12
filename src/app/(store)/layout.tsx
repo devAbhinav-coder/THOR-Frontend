@@ -4,6 +4,7 @@ import Footer from '@/components/layout/Footer';
 import { StoreErrorBoundary } from '@/components/StoreErrorBoundary';
 import { StoreRaniCare } from '@/components/support/StoreRaniCare';
 import StoreAuthModal from '@/components/auth/StoreAuthModal';
+import StoreVisitTracker from '@/components/analytics/StoreVisitTracker';
 import { fetchStorefrontSettingsHome } from '@/lib/storefrontServer';
 import { fetchShopNavCategoriesServer } from '@/lib/categoryServer';
 
@@ -37,6 +38,7 @@ export default async function StoreLayout({
 
   return (
     <>
+      <StoreVisitTracker />
       <Suspense fallback={<NavbarShellFallback />}>
         <Navbar
           initialAnnouncementMessages={initialAnnouncementMessages}

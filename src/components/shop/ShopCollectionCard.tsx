@@ -14,9 +14,19 @@ import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { hasInStockVariant } from "@/lib/productStock";
+import { resolveShopCardImage } from "@/lib/pdpImages";
+import {
+  isInStockForColor,
+  shopProductHref,
+} from "@/lib/shopProductListing";
+import { buildProductMetaLine } from "@/lib/productCardMeta";
 
 interface ShopCollectionCardProps {
   product: Product;
+  /** When set (multi-color listing), card shows this shade's photos. */
+  displayColor?: string | null;
+  /** PDP rows: fall back to first image when shade has no tagged photo yet. */
+  allowImageFallback?: boolean;
   className?: string;
 }
 
@@ -26,6 +36,8 @@ function toMerchantPrice(n: number): string {
 
 function ShopCollectionCardInner({
   product,
+  displayColor = null,
+  allowImageFallback = false,
   className,
 }: ShopCollectionCardProps) {
   const [primaryImageError, setPrimaryImageError] = useState(false);
@@ -33,34 +45,41 @@ function ShopCollectionCardInner({
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
   const inWishlist = isInWishlist(product._id);
-  const isOutOfStock = !hasInStockVariant(product);
+  const isOutOfStock =
+    displayColor ?
+      !isInStockForColor(product, displayColor)
+    : !hasInStockVariant(product);
   const hasReviews = product.ratings.count > 0;
+  const productHref = shopProductHref(product.slug, displayColor);
 
   const primaryUrl = useMemo(() => {
+    if (displayColor) {
+      const strict = resolveShopCardImage(product, displayColor);
+      if (strict) {
+        return (
+          normalizeCloudinaryDeliveryUrl(strict) || strict
+        );
+      }
+      if (allowImageFallback) {
+        const url = product.images[0]?.url;
+        return (
+          normalizeCloudinaryDeliveryUrl(url) || String(url || "").trim()
+        );
+      }
+      return "";
+    }
+    const url = product.images[0]?.url;
     return (
-      normalizeCloudinaryDeliveryUrl(product.images[0]?.url) ||
-      String(product.images[0]?.url || "").trim()
+      normalizeCloudinaryDeliveryUrl(url) || String(url || "").trim()
     );
-  }, [product.images]);
+  }, [product, displayColor, allowImageFallback]);
 
   const showPrimaryImage = Boolean(primaryUrl) && !primaryImageError;
 
-  const fabricLine = useMemo(() => {
-    const line = product.fabric?.trim() || product.subcategory?.trim();
-    return line ? line.toUpperCase() : "";
-  }, [product.fabric, product.subcategory]);
-
-  const categoryLine = useMemo(() => {
-    const line = product.category?.trim();
-    return line ? line.toUpperCase() : "";
-  }, [product.category]);
-
-  const metaLine = useMemo(() => {
-    return [fabricLine, categoryLine]
-      .filter(Boolean)
-      .filter((part, i, arr) => arr.indexOf(part) === i)
-      .join(" · ");
-  }, [categoryLine, fabricLine]);
+  const metaLine = useMemo(
+    () => buildProductMetaLine(product),
+    [product.category, product.fabric, product.subcategory],
+  );
 
   const hasDiscount =
     Boolean(product.comparePrice && product.comparePrice > product.price) ||
@@ -155,7 +174,7 @@ function ShopCollectionCardInner({
       )}
 
       <Link
-        href={`/shop/${encodeURIComponent(product.slug)}`}
+        href={productHref}
         className='flex h-full min-h-0 flex-col outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/40 focus-visible:ring-offset-2'
         aria-label={`View ${product.name}${isOutOfStock ? " (Sold Out)" : ""}`}
       >
@@ -187,7 +206,7 @@ function ShopCollectionCardInner({
           )}
 
           {isOutOfStock && (
-            <span className='absolute bottom-3 left-3 text-[9px] font-semibold uppercase tracking-widest text-navy-900/50 sm:text-[10px]'>
+            <span className='absolute bottom-3 left-3 z-10 text-[9px] font-semibold uppercase tracking-widest text-navy-900/50 sm:text-[10px]'>
               Sold Out
             </span>
           )}

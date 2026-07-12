@@ -29,10 +29,10 @@ export const raniActionChip =
   "border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-navy-900 transition-colors hover:border-[#c5a059]/50 hover:bg-[#c5a059]/5 active:scale-[0.98]";
 
 export const raniUserBubble =
-  "rounded-none bg-navy-900 px-3.5 py-2.5 text-[13px] leading-relaxed text-white shadow-sm";
+  "whitespace-pre-line rounded-none bg-navy-900 px-3.5 py-2.5 text-[13px] leading-relaxed text-white shadow-sm";
 
 export const raniBotBubble =
-  "rounded-none border border-gray-200/80 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-gray-700 shadow-sm";
+  "whitespace-pre-line rounded-none border border-gray-200/80 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-gray-700 shadow-sm";
 
 export const raniAvatarBot =
   "flex h-8 w-8 shrink-0 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059]";

@@ -64,8 +64,10 @@ import {
   heritageSummaryCard,
 } from "@/components/checkout/checkoutHeritageTheme";
 import { trackPurchase, trackInitiateCheckout } from "@/lib/metaPixel";
+import { getMarketingAttributionForCheckout } from "@/lib/marketingAttribution";
 import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
+import { armPostCheckoutAuthGuard } from "@/lib/checkoutSuccessGuard";
 
 function normalizeIndianMobileDigits(val: string): string {
   let d = val.replace(/\D/g, "");
@@ -300,6 +302,7 @@ export default function CheckoutClient() {
   const [lineBusySku, setLineBusySku] = useState<string | null>(null);
   const [showShippingForm, setShowShippingForm] = useState(false);
   const shippingFieldsRef = useRef<HTMLDivElement>(null);
+  const checkoutFormRef = useRef<HTMLFormElement>(null);
   const didInitDefaultSavedAddress = useRef(false);
   /** Step 1 shipping → 2 payment → 3 review & place order (all screen sizes) */
   const [checkoutStep, setCheckoutStep] = useState(1);
@@ -458,6 +461,14 @@ export default function CheckoutClient() {
     existingOrder,
   ]);
 
+  /** Drop stale coupon label when server no longer applies a discount. */
+  useEffect(() => {
+    if (buyNowItem || existingOrder) return;
+    if ((cart?.discount ?? 0) <= 0 && appliedCouponCode) {
+      useCartStore.setState({ appliedCouponCode: null });
+    }
+  }, [cart?.discount, appliedCouponCode, buyNowItem, existingOrder]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     const amountForEligibility =
@@ -518,12 +529,21 @@ export default function CheckoutClient() {
         existingOrder.total
       : subtotalAfterDiscount + shippingCharge + tax + codFee;
     const hasAppliedCoupon =
-      existingOrder ? !!existingOrder.coupon
-      : buyNowItem ? !!buyNowCouponCode
-      : (cart?.discount ?? 0) > 0 || Boolean(appliedCouponCode);
-    const activeCouponCode = buyNowItem ? buyNowCouponCode : appliedCouponCode;
+      existingOrder ?
+        !!existingOrder.coupon && (existingOrder.discount ?? 0) > 0
+      : buyNowItem ?
+        !!buyNowCouponCode && buyNowCouponDiscount > 0
+      : (cart?.discount ?? 0) > 0;
+    const activeCouponCode =
+      hasAppliedCoupon ?
+        buyNowItem ? buyNowCouponCode
+        : appliedCouponCode
+      : null;
     const activeCouponDiscount =
-      buyNowItem ? buyNowCouponDiscount : cart?.discount || 0;
+      hasAppliedCoupon ?
+        buyNowItem ? buyNowCouponDiscount
+        : cart?.discount || 0
+      : 0;
     return {
       subtotal,
       discount,
@@ -618,13 +638,20 @@ export default function CheckoutClient() {
   const applySelectedCoupon = useCallback(
     async (code: string) => {
       if (buyNowItem) {
-        const orderAmount = buyNowItem.price * buyNowItem.quantity;
-        const res = await couponApi.validate(code, orderAmount);
-        setBuyNowCouponCode(res.data.coupon.code);
-        setBuyNowCouponDiscount(res.data.discount || 0);
-        toast.success(
-          `Coupon applied. You saved ${formatPrice(res.data.discount || 0)}.`,
-        );
+        try {
+          const orderAmount = buyNowItem.price * buyNowItem.quantity;
+          const res = await couponApi.validate(code, orderAmount);
+          setBuyNowCouponCode(res.data.coupon.code);
+          setBuyNowCouponDiscount(res.data.discount || 0);
+          toast.success(
+            `Coupon applied. You saved ${formatPrice(res.data.discount || 0)}.`,
+          );
+        } catch (err: unknown) {
+          const msg =
+            err instanceof Error ? err.message : "This coupon cannot be applied.";
+          toast.error(msg);
+          throw err;
+        }
         return;
       }
       await applyCoupon(code);
@@ -863,6 +890,8 @@ export default function CheckoutClient() {
 
   const finalizeSuccessfulOrder = useCallback(
     async (order: Order) => {
+      armPostCheckoutAuthGuard();
+      setPendingOrderSuccessId(order._id);
       trackPurchase(order);
       trackGaPurchase(order);
       if (buyNowItem) {
@@ -873,7 +902,6 @@ export default function CheckoutClient() {
       } else {
         await purgeCartAfterCheckout();
       }
-      setPendingOrderSuccessId(order._id);
       setIsPlacingOrder(false);
     },
     [buyNowItem, purgeCartAfterCheckout],
@@ -992,11 +1020,16 @@ export default function CheckoutClient() {
               buyNowCouponCode || undefined
             : getCartAppliedCouponCodeForOrder() || undefined;
 
+          const marketingAttribution = getMarketingAttributionForCheckout();
+
           const res = await orderApi.create(
             {
               shippingAddress: { ...addressData, phone: normalizedPhone },
               paymentMethod: paymentMethodForApi,
               ...(couponCodeForOrder ? { couponCode: couponCodeForOrder } : {}),
+              ...(marketingAttribution ?
+                { marketingAttribution }
+              : {}),
               ...(buyNowItem ?
                 {
                   buyNowItem: {
@@ -1422,6 +1455,7 @@ export default function CheckoutClient() {
         )}
 
         <form
+          ref={checkoutFormRef}
           className='min-w-0'
           onSubmit={(e) => {
             if (showCheckoutWizard && checkoutStep < 3) {
@@ -2081,8 +2115,8 @@ export default function CheckoutClient() {
                       );
                       const maxLineQty =
                         buyNowItem && !existingOrder ?
-                          Math.min(10, Math.max(1, buyNowItem.maxStock ?? 10))
-                        : Math.min(10, row.variant.stock ?? 10);
+                          Math.max(1, buyNowItem.maxStock ?? 1)
+                        : Math.max(1, row.variant.stock ?? 1);
                       const showCartLineControls = Boolean(cartLine && sku);
                       const showBuyNowLineControls = Boolean(
                         buyNowItem && !existingOrder && buyNowSku,
@@ -2516,8 +2550,7 @@ export default function CheckoutClient() {
             <button
               type='button'
               onClick={() => {
-                const form = document.querySelector('form');
-                if (form) form.requestSubmit();
+                checkoutFormRef.current?.requestSubmit();
               }}
               className={heritageCta}
               disabled={isPlacingOrder}

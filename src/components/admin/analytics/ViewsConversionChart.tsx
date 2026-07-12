@@ -54,12 +54,12 @@ export default function ViewsConversionChart({ rows }: { rows: Row[] }) {
   }, [rows]);
 
   if (!mounted) {
-    return <div className="h-[280px] rounded-xl bg-gray-50 animate-pulse" />;
+    return <div className="h-[180px] rounded-lg bg-gray-50 animate-pulse" />;
   }
 
   if (!chartData.length) {
     return (
-      <div className="h-[200px] flex items-center justify-center text-sm text-gray-500">
+      <div className="h-[140px] flex items-center justify-center text-xs text-gray-500">
         No view data to chart yet
       </div>
     );
@@ -68,7 +68,7 @@ export default function ViewsConversionChart({ rows }: { rows: Row[] }) {
   const maxConv = Math.max(...chartData.map((d) => d.conversionPercent), 1);
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[180px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />

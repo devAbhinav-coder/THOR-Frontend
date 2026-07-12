@@ -124,12 +124,12 @@ function CatalogLineEditor({
     }
     let cancelled = false;
     patch(lineId, { searchLoading: true });
-    productApi
-      .getAll({ search: d, limit: 14, page: 1 })
+    adminApi
+      .searchProducts({ q: d, limit: 14, page: 1, isActive: "true" })
       .then((res) => {
         if (cancelled) return;
         patch(lineId, {
-          searchHits: res.data.products.filter((p) => p.isActive),
+          searchHits: res.data.products,
           searchLoading: false,
         });
       })

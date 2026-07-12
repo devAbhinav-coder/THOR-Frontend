@@ -167,7 +167,8 @@ export default function ImageUploader({
     (rawFiles: FileList | null) => {
       if (!rawFiles?.length) return;
 
-      const currentTotal = existingImages.length + previews.length;
+      const currentTotal =
+        existingImages.length + previewsRef.current.length;
       const remaining = maxFiles - currentTotal;
       if (remaining <= 0) {
         setErrors([`Maximum ${maxFiles} image${maxFiles > 1 ? 's' : ''} allowed`]);

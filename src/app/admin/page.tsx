@@ -25,6 +25,7 @@ import {
 import { adminApi, inventoryApi } from '@/lib/api';
 import { DashboardAnalytics } from '@/types';
 import { formatPrice, formatDate, getOrderStatusColor, cn } from '@/lib/utils';
+import { revenueGrowthBadgeValue } from '@/lib/revenueMetrics';
 import AdminErrorState from '@/components/admin/AdminErrorState';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
@@ -233,7 +234,7 @@ export default function AdminDashboardPage() {
                   value={formatPrice(overview.totalRevenue)}
                   sub={`${formatPrice(overview.monthRevenue)} MTD · gross`}
                   icon={TrendingUp}
-                  growth={overview.revenueGrowth}
+                  growth={revenueGrowthBadgeValue(overview.revenueGrowth)}
                   className="hover:-translate-y-1 transition-transform duration-300"
                 />
                 <AdminMetricCard

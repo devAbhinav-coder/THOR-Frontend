@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { orderApi } from "@/lib/api";
+import { orderApi, raniCareApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Order } from "@/types";
 import {
@@ -20,6 +20,7 @@ import { MAX_MESSAGES, RECENT_ORDER_LIMIT } from "./constants";
 import {
   FOLLOW_UP_ACTIONS,
   inferPendingFromActions,
+  isAbuse,
   isAnythingElse,
   isGoodbye,
   isGreeting,
@@ -35,17 +36,54 @@ import {
   INTENT_USER_LABEL,
 } from "./intent";
 import {
+  formatOrderAnswer,
+  isHinglishQuery,
+  resolveOrdersFromQuery,
+  resolvePickReply,
+} from "./orderResolver";
+import {
   botMessage,
   formatOrderDetailText,
+  formatOrderFacts,
   summarizeOrder,
   userMessage,
 } from "./orderFormat";
-import type { ChatMessage, OrderSummary, QuickAction } from "./types";
+import { normalizeForIntent } from "./textNormalize";
+import type { ChatMessage, Intent, OrderSummary, QuickAction } from "./types";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 const SUPPORT_PHONE = "8340311033";
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
 const GREETING = "Hi! How can I help you today?";
+
+function looksLikePickAttempt(text: string): boolean {
+  const q = normalizeForIntent(text);
+  if (/^\d+$/.test(q)) return true;
+  if (/\b(pehla|dusra|teesra|first|second|third)\b/.test(q)) return true;
+  if (/\b[A-Z]{2,}[\w#-]*\d{2,}\b/i.test(text)) return true;
+  return q.length <= 14;
+}
+
+const TRANSACTIONAL_INTENTS = new Set<Intent>([
+  "show_orders",
+  "cancel_help",
+  "returns",
+]);
+
+function isComplexMessage(text: string): boolean {
+  const t = text.trim();
+  if (t.length > 48) return true;
+  if (/\b\d{6}\b/.test(t)) return true;
+  return /\b(address|pata|ghar|gali|road|mumbai|delhi|bangalore|hyderabad|kolkata|chennai|pincode|pin code|area|city|state)\b/i.test(
+    t,
+  );
+}
+
+function shouldTryAiFirst(intent: Intent, text: string): boolean {
+  if (TRANSACTIONAL_INTENTS.has(intent)) return false;
+  if (intent === "general") return true;
+  return isComplexMessage(text);
+}
 
 export function useRaniCareChat() {
   const { isAuthenticated } = useAuthStore();
@@ -128,6 +166,81 @@ export function useRaniCareChat() {
     setMessages((prev) => [...prev, userMessage(text)].slice(-MAX_MESSAGES));
   };
 
+  const recentChatForAi = (currentUserText?: string) => {
+    const base = messages
+      .slice(-6)
+      .map((m) => ({
+        role: m.sender === "user" ? ("user" as const) : ("bot" as const),
+        text: m.text.slice(0, 400),
+      }));
+    if (!currentUserText?.trim()) return base;
+    return [
+      ...base,
+      { role: "user" as const, text: currentUserText.trim().slice(0, 400) },
+    ].slice(-6);
+  };
+
+  const tryAiAssist = async (
+    rawInput: string,
+    localIntent: Intent,
+  ): Promise<boolean> => {
+    if (!shouldTryAiFirst(localIntent, rawInput)) return false;
+
+    setTyping(true);
+    try {
+      const res = await raniCareApi.chat({
+        message: rawInput,
+        isAuthenticated,
+        localIntent,
+        recentMessages: recentChatForAi(rawInput),
+      });
+      const ai = res.data;
+      const route = ai.routeIntent;
+
+      if (route === "show_orders") {
+        setTyping(false);
+        await smartOrderAssist(rawInput, "show_orders");
+        return true;
+      }
+      if (route === "cancel_help") {
+        setTyping(false);
+        await smartOrderAssist(rawInput, "cancel_help");
+        return true;
+      }
+      if (route === "returns") {
+        setTyping(false);
+        await smartOrderAssist(rawInput, "returns");
+        return true;
+      }
+      if (route === "contact") {
+        setTyping(false);
+        pushBot(
+          ai.answer ||
+            `Contact us:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nPlease include your order number when writing about an order.`,
+          ai.suggestedActions?.length ?
+            ai.suggestedActions
+          : [
+              { label: "Call", value: "call support" },
+              { label: "Email", value: "email support" },
+            ],
+          undefined,
+          180,
+        );
+        return true;
+      }
+
+      const actions: QuickAction[] =
+        ai.suggestedActions?.length ?
+          ai.suggestedActions
+        : MENU_ACTIONS.slice(0, 4);
+      pushBot(ai.answer, actions, undefined, 220);
+      return true;
+    } catch {
+      setTyping(false);
+      return false;
+    }
+  };
+
   const fetchRecentOrders = async (): Promise<Order[]> => {
     const body = await orderApi.getMyOrders({
       page: 1,
@@ -195,7 +308,69 @@ export function useRaniCareChat() {
     }
   };
 
-  const presentOrderDetail = async (orderId: string) => {
+  const smartOrderAssist = async (rawInput: string, intent: Intent) => {
+    if (!isAuthenticated) {
+      pushBot(
+        "Apne orders dekhne ke liye pehle **sign in** karo.",
+        [
+          { label: "Sign in", value: "sign in" },
+          { label: "Delivery info", value: "shipping time" },
+        ],
+      );
+      return;
+    }
+
+    setLoadingOrders(true);
+    try {
+      const list = await fetchRecentOrders();
+      const result = resolveOrdersFromQuery(list, rawInput, intent);
+
+      if (result.kind === "single") {
+        await presentOrderDetail(result.orderId, result.intro);
+        return;
+      }
+
+      if (result.kind === "pick") {
+        setPending({
+          type: "pick_order",
+          orderIds: result.orderIds,
+          purpose: result.purpose,
+          query: rawInput,
+        });
+        const summaries = list
+          .filter((o) => result.orderIds.includes(o._id))
+          .map(summarizeOrder);
+        pushBot(
+          result.intro,
+          [{ label: "Saare orders", value: "action:recent_orders" }],
+          summaries,
+        );
+        return;
+      }
+
+      if (result.kind === "none") {
+        pushBot(result.intro, [
+          { label: "My orders", value: "action:recent_orders" },
+          { label: "Contact", value: "contact support" },
+        ]);
+        return;
+      }
+
+      await presentOrderList({
+        intro: "Yeh rahe aapke recent orders.",
+        cancelHint: intent === "cancel_help",
+        returnHint: intent === "returns",
+      });
+    } catch {
+      pushBot("Orders load nahi ho paye. Thodi der baad try karo.", [
+        { label: "Try again", value: "action:recent_orders" },
+      ]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const presentOrderDetail = async (orderId: string, leadIn?: string) => {
     if (!isAuthenticated) {
       pushBot("Please sign in to view order details.", [
         { label: "Sign in", value: "sign in" },
@@ -225,7 +400,14 @@ export function useRaniCareChat() {
         return;
       }
 
-      const detail = formatOrderDetailText(order);
+      const hi = leadIn ? isHinglishQuery(leadIn) : true;
+      const followUp =
+        hi ?
+          "\n\nKuch aur poochhna ho to bataiye 🙂"
+        : "\n\nAnything else I can help with?";
+      const detail = leadIn ?
+        `${leadIn}\n\n${formatOrderFacts(order)}${followUp}`
+      : `${formatOrderDetailText(order)}${followUp}`;
       const actions: QuickAction[] = [
         { label: "View on website", value: `open_order:${order._id}` },
         { label: "All orders", value: "action:recent_orders" },
@@ -423,6 +605,43 @@ export function useRaniCareChat() {
   const handleShortReply = async (rawInput: string): Promise<boolean> => {
     const trimmed = rawInput.trim();
 
+    const pendingPick = resolvePending();
+    if (pendingPick?.type === "pick_order") {
+      if (!recentOrdersRef.current.length) {
+        try {
+          await fetchRecentOrders();
+        } catch {
+          pushBot("Orders load nahi ho paye. Phir se try karo.", [
+            { label: "My orders", value: "action:recent_orders" },
+          ]);
+          return true;
+        }
+      }
+      const picked = resolvePickReply(
+        trimmed,
+        pendingPick.orderIds,
+        recentOrdersRef.current,
+      );
+      if (picked) {
+        setPending(null);
+        const order = recentOrdersRef.current.find((o) => o._id === picked);
+        const askedQuery = pendingPick.query || trimmed;
+        const intro = order ? formatOrderAnswer(order, askedQuery) : undefined;
+        await presentOrderDetail(picked, intro);
+        return true;
+      }
+      if (looksLikePickAttempt(trimmed)) {
+        pushBot(
+          "Samajh nahi aaya — neeche se order **chuno**, ya **1** / **2** likh kar bhejo.",
+          [{ label: "Saare orders", value: "action:recent_orders" }],
+          undefined,
+          180,
+        );
+        return true;
+      }
+      setPending(null);
+    }
+
     if (isAnythingElse(trimmed)) {
       setPending(null);
       pushBot("What do you need help with?", MENU_ACTIONS, undefined, 160);
@@ -477,31 +696,41 @@ export function useRaniCareChat() {
       return;
     }
 
+    if (isAbuse(trimmed)) {
+      setPending(null);
+      const hiAbuse = isHinglishQuery(trimmed);
+      pushBot(
+        hiAbuse ?
+          "Main aapki madad ke liye yahan hoon. Order, delivery, return ya payment — jo bhi help chahiye, batayiye 🙂"
+        : "I'm here to help you. Tell me what you need — orders, delivery, returns, or payments.",
+        MENU_ACTIONS,
+        undefined,
+        160,
+      );
+      return;
+    }
+
     const intent = detectIntent(rawInput);
 
+    if (await tryAiAssist(trimmed, intent)) return;
+
     if (intent === "show_orders" || intent === "cancel_help") {
-      await presentOrderList({
-        intro:
-          intent === "cancel_help" ?
-            "Select an order below. You can cancel from the details if the status is still pending or confirmed."
-          : "Here are your recent orders.",
-        cancelHint: intent === "cancel_help",
-      });
+      await smartOrderAssist(rawInput, intent);
       return;
     }
 
     if (intent === "returns") {
-      await presentOrderList({
-        intro:
-          "Choose an order below. If it is **delivered** and within **7 days** of delivery, you can **Start a return** from order details.",
-        returnHint: true,
-      });
+      await smartOrderAssist(rawInput, intent);
       return;
     }
 
+    const hi = isHinglishQuery(rawInput);
+
     if (intent === "shipping") {
       pushBot(
-        "Orders are usually processed within 1–3 business days. Delivery within India typically takes 3–10 business days. Cash on delivery may vary by location.",
+        hi ?
+          "Orders aksar **1–3 business days** mein process hote hain. India mein delivery aam taur par **3–10 business days** leti hai. COD location ke hisaab se vary kar sakta hai."
+        : "Orders are usually processed within 1–3 business days. Delivery within India typically takes 3–10 business days. Cash on delivery may vary by location.",
         [
           { label: "Shipping policy", value: "shipping policy" },
           { label: "My orders", value: "action:recent_orders" },
@@ -512,7 +741,9 @@ export function useRaniCareChat() {
 
     if (intent === "payment") {
       pushBot(
-        "If a payment failed but an amount was debited, it usually reverses within 3–7 business days. If it does not, contact us with your transaction reference.",
+        hi ?
+          "Agar payment fail hua par paisa debit ho gaya, to aksar **3–7 business days** mein wapas aa jata hai. Na aaye to transaction reference ke saath humein contact karo."
+        : "If a payment failed but an amount was debited, it usually reverses within 3–7 business days. If it does not, contact us with your transaction reference.",
         [{ label: "Contact support", value: "contact support" }],
       );
       return;
@@ -520,7 +751,9 @@ export function useRaniCareChat() {
 
     if (intent === "coupon") {
       pushBot(
-        "Promotional codes may require a minimum order value, valid dates, or apply only to first-time purchases. Apply your code at checkout, or contact us if it is not accepted.",
+        hi ?
+          "Coupon ke liye minimum order value, valid dates, ya sirf first-time purchase ki shart ho sakti hai. Code checkout par apply karo, ya na chale to contact karo."
+        : "Promotional codes may require a minimum order value, valid dates, or apply only to first-time purchases. Apply your code at checkout, or contact us if it is not accepted.",
         [{ label: "View cart", value: "open cart" }],
       );
       return;
@@ -528,7 +761,9 @@ export function useRaniCareChat() {
 
     if (intent === "sizing") {
       pushBot(
-        "Please compare your measurements with the size chart on the product page. If you are between sizes, the larger size is often more comfortable.",
+        hi ?
+          "Apne measurements ko product page ke **size chart** se compare karo. Do sizes ke beech ho to bada size aksar zyada comfortable rehta hai."
+        : "Please compare your measurements with the size chart on the product page. If you are between sizes, the larger size is often more comfortable.",
         [{ label: "Shop", value: "open shop" }],
       );
       return;
@@ -536,22 +771,29 @@ export function useRaniCareChat() {
 
     if (intent === "privacy") {
       pushBot(
-        "How we use your information is described in our privacy policy.",
+        hi ?
+          "Hum aapki information kaise use karte hain, ye privacy policy mein diya hai."
+        : "How we use your information is described in our privacy policy.",
         [{ label: "Privacy policy", value: "privacy policy" }],
       );
       return;
     }
 
     if (intent === "terms") {
-      pushBot("Our terms of service cover purchases and use of this website.", [
-        { label: "Terms", value: "terms policy" },
-      ]);
+      pushBot(
+        hi ?
+          "Humari terms of service purchases aur website use ko cover karti hain."
+        : "Our terms of service cover purchases and use of this website.",
+        [{ label: "Terms", value: "terms policy" }],
+      );
       return;
     }
 
     if (intent === "contact") {
       pushBot(
-        `Contact us:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nPlease include your order number when writing about an order.`,
+        hi ?
+          `Humse contact karo:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nOrder ke baare mein likhte waqt apna order number zaroor dein.`
+        : `Contact us:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nPlease include your order number when writing about an order.`,
         [
           { label: "Call", value: "call support" },
           { label: "Email", value: "email support" },
@@ -569,7 +811,9 @@ export function useRaniCareChat() {
         if (!recentOrdersRef.current.length) await fetchRecentOrders();
         const id = findOrderIdByNumber(rawInput, recentOrdersRef.current);
         if (id) {
-          await presentOrderDetail(id);
+          const order = recentOrdersRef.current.find((o) => o._id === id);
+          const intro = order ? formatOrderAnswer(order, rawInput) : undefined;
+          await presentOrderDetail(id, intro);
           return;
         }
         pushBot(
@@ -590,7 +834,9 @@ export function useRaniCareChat() {
     if (isAuthenticated && recentOrdersRef.current.length) {
       const id = findOrderIdByNumber(rawInput, recentOrdersRef.current);
       if (id) {
-        await presentOrderDetail(id);
+        const order = recentOrdersRef.current.find((o) => o._id === id);
+        const intro = order ? formatOrderAnswer(order, rawInput) : undefined;
+        await presentOrderDetail(id, intro);
         return;
       }
     }
@@ -627,11 +873,7 @@ export function useRaniCareChat() {
     }
     if (value === "action:cancel_help") {
       pushUser("I want to cancel an order");
-      await presentOrderList({
-        intro:
-          "Select an order to review. You may cancel from the details if the status is pending or confirmed.",
-        cancelHint: true,
-      });
+      await smartOrderAssist("cancel my order", "cancel_help");
       return;
     }
     if (value === "return refund") {
@@ -640,11 +882,7 @@ export function useRaniCareChat() {
     }
     if (value === "action:return_help") {
       pushUser("I need returns or refund help");
-      await presentOrderList({
-        intro:
-          "Pick an order below. Delivered orders within 7 days can use **Start a return** from the order details.",
-        returnHint: true,
-      });
+      await smartOrderAssist("return refund", "returns");
       return;
     }
     if (value.startsWith("return_start:")) {
@@ -682,8 +920,16 @@ export function useRaniCareChat() {
     }
     if (value.startsWith("order_pick:")) {
       const id = value.slice("order_pick:".length);
-      pushUser(`Open order details`);
-      await presentOrderDetail(id);
+      const pending = resolvePending();
+      const askedQuery =
+        pending?.type === "pick_order" ? pending.query : undefined;
+      setPending(null);
+      pushUser("Open order details");
+      const order = recentOrdersRef.current.find((o) => o._id === id);
+      const intro =
+        order ? formatOrderAnswer(order, askedQuery ?? "order details", true)
+        : undefined;
+      await presentOrderDetail(id, intro);
       return;
     }
     if (value.startsWith("cancel_ask:")) {

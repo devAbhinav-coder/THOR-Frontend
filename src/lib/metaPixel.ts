@@ -1,18 +1,42 @@
 import { Product } from "@/types";
+import {
+  getMetaCatalogItemId,
+  type MetaCatalogVariantRef,
+} from "@/lib/metaCatalogId";
 
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
-// Define the global window object to include fbq
 declare global {
   interface Window {
     fbq: any;
   }
 }
 
-/**
- * Ensures the pixel is available and initialized.
- * Guarded to prevent double initialization.
- */
+function metaProductPayload(
+  product: Product,
+  variant: MetaCatalogVariantRef | undefined,
+  quantity: number,
+  priceOverride?: number,
+) {
+  const itemId = getMetaCatalogItemId(product._id, variant);
+  const unitPrice = priceOverride ?? product.price;
+
+  return {
+    content_name: product.name,
+    content_ids: [itemId],
+    content_type: "product",
+    value: unitPrice * quantity,
+    currency: "INR",
+    contents: [
+      {
+        id: itemId,
+        quantity,
+        item_price: unitPrice,
+      },
+    ],
+  };
+}
+
 export const initPixel = () => {
   if (typeof window === "undefined" || !window.fbq) return;
   if (!META_PIXEL_ID) return;
@@ -22,168 +46,111 @@ export const initPixel = () => {
   }
 };
 
-/**
- * Tracks a standard PageView event.
- */
 export const trackPageView = () => {
   if (typeof window === "undefined" || !window.fbq) return;
   window.fbq("track", "PageView");
 };
 
-/**
- * Tracks the ViewContent event for a product page.
- */
-export const trackViewContent = (product: Product) => {
+export const trackViewContent = (
+  product: Product,
+  variant?: MetaCatalogVariantRef,
+) => {
   if (typeof window === "undefined" || !window.fbq) return;
-  
-  const eventId = `vc_${product._id}_${Date.now()}`;
 
-  window.fbq(
-    "track", 
-    "ViewContent", 
-    {
-      content_name: product.name,
-      content_ids: [product._id],
-      content_type: "product_group",
-      value: product.price,
-      currency: "INR", // Adjust based on your default store currency
-      contents: [
-        {
-          id: product._id,
-          quantity: 1,
-          item_price: product.price,
-        }
-      ]
-    },
-    { eventID: eventId }
-  );
+  const payload = metaProductPayload(product, variant, 1, product.price);
+  const eventId = `vc_${payload.content_ids[0]}_${Date.now()}`;
+
+  window.fbq("track", "ViewContent", payload, { eventID: eventId });
 };
 
-/**
- * Tracks the AddToCart event.
- */
-export const trackAddToCart = (product: Product, quantity: number = 1, priceOverride?: number) => {
+export const trackAddToCart = (
+  product: Product,
+  quantity: number = 1,
+  priceOverride?: number,
+  variant?: MetaCatalogVariantRef,
+) => {
   if (typeof window === "undefined" || !window.fbq) return;
-  
-  const value = (priceOverride || product.price) * quantity;
-  const eventId = `atc_${product._id}_${Date.now()}`;
-  
-  window.fbq(
-    "track", 
-    "AddToCart", 
-    {
-      content_name: product.name,
-      content_ids: [product._id],
-      content_type: "product_group",
-      value: value,
-      currency: "INR",
-      contents: [
-        {
-          id: product._id,
-          quantity: quantity,
-          item_price: priceOverride || product.price,
-        }
-      ]
-    },
-    { eventID: eventId }
-  );
+
+  const payload = metaProductPayload(product, variant, quantity, priceOverride);
+  const eventId = `atc_${payload.content_ids[0]}_${Date.now()}`;
+
+  window.fbq("track", "AddToCart", payload, { eventID: eventId });
 };
 
-/**
- * Tracks the Purchase event on order success.
- * Using 'any' for order since its type might vary, but assuming standard fields.
- */
 export const trackPurchase = (order: any) => {
   if (typeof window === "undefined" || !window.fbq) return;
-  
-  const contentIds = order.items?.map((item: any) => {
-    if (typeof item.product === 'object' && item.product) return item.product._id;
-    if (typeof item.product === 'string') return item.product;
-    return item._id || item.id;
-  }) || [];
 
-  const contents = order.items?.map((item: any) => {
-    const productObj = typeof item.product === 'object' ? item.product : null;
-    const productId = productObj?._id || productObj?.id || (typeof item.product === 'string' ? item.product : (item._id || item.id));
+  const contents =
+    order.items?.map((item: any) => {
+      const productObj =
+        typeof item.product === "object" && item.product ? item.product : null;
+      const productId =
+        productObj?._id ||
+        productObj?.id ||
+        (typeof item.product === "string" ? item.product : undefined);
 
-    return {
-      id: productId,
-      quantity: item.quantity || 1,
-      item_price: item.price || 0,
-    };
-  }) || [];
+      const itemId = getMetaCatalogItemId(productId, item.variant);
+
+      return {
+        id: itemId,
+        quantity: item.quantity || 1,
+        item_price: item.price || 0,
+      };
+    }) || [];
+
+  const contentIds = contents.map((c: { id: string }) => c.id);
 
   window.fbq(
-    "track", 
-    "Purchase", 
+    "track",
+    "Purchase",
     {
       content_ids: contentIds,
-      content_type: "product_group",
+      content_type: "product",
       value: order.totalAmount || order.total || order.amount || 0,
       currency: order.currency || "INR",
       num_items: order.items?.length || 1,
-      contents: contents,
+      contents,
     },
-    { eventID: `order_${order._id || order.id}` }
+    { eventID: `order_${order._id || order.id}` },
   );
 };
 
-/**
- * Tracks the InitiateCheckout event.
- */
-export const trackInitiateCheckout = (cartOrItemValue: number = 0, numItems: number = 1) => {
+export const trackInitiateCheckout = (
+  cartOrItemValue: number = 0,
+  numItems: number = 1,
+) => {
   if (typeof window === "undefined" || !window.fbq) return;
-  
+
   const eventId = `ic_${Date.now()}`;
-  
+
   window.fbq(
-    "track", 
-    "InitiateCheckout", 
+    "track",
+    "InitiateCheckout",
     {
       value: cartOrItemValue,
       currency: "INR",
       num_items: numItems,
     },
-    { eventID: eventId }
+    { eventID: eventId },
   );
 };
 
-/**
- * Tracks the AddToWishlist event.
- */
-export const trackAddToWishlist = (product: Product) => {
+export const trackAddToWishlist = (
+  product: Product,
+  variant?: MetaCatalogVariantRef,
+) => {
   if (typeof window === "undefined" || !window.fbq) return;
-  
-  const eventId = `atw_${product._id}_${Date.now()}`;
 
-  window.fbq(
-    "track", 
-    "AddToWishlist", 
-    {
-      content_name: product.name,
-      content_ids: [product._id],
-      content_type: "product_group",
-      value: product.price,
-      currency: "INR",
-      contents: [
-        {
-          id: product._id,
-          quantity: 1,
-          item_price: product.price,
-        }
-      ]
-    },
-    { eventID: eventId }
-  );
+  const payload = metaProductPayload(product, variant, 1, product.price);
+  const eventId = `atw_${payload.content_ids[0]}_${Date.now()}`;
+
+  window.fbq("track", "AddToWishlist", payload, { eventID: eventId });
 };
 
-/**
- * Tracks the Search event.
- */
 export const trackSearch = (searchQuery: string) => {
   if (typeof window === "undefined" || !window.fbq) return;
   if (!searchQuery.trim()) return;
-  
+
   window.fbq("track", "Search", {
     search_string: searchQuery,
   });

@@ -7,9 +7,11 @@ import {
   buildProductMetaDescription,
   buildProductPageTitle,
 } from "@/lib/pageSeo";
+import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 type ProductReviewLite = {
@@ -41,13 +43,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     const data = await res.json();
     const product = data.data.product;
+    const seoContext = {
+      name: product.name,
+      category: product.category,
+      subcategory: product.subcategory,
+      fabric: product.fabric,
+      price: product.price,
+    };
     const descRaw = buildProductMetaDescription(
       product.seoDescription,
       product.shortDescription,
       product.description,
+      seoContext,
     );
     const ogImage = product.images?.[0]?.url;
-    const pageTitle = buildProductPageTitle(product.name, product.seoTitle);
+    const pageTitle = buildProductPageTitle(
+      product.name,
+      product.seoTitle,
+      seoContext,
+    );
 
     return {
       title: pageTitle,
@@ -89,8 +103,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ProductDetailPage({ params }: Props) {
+export default async function ProductDetailPage({
+  params,
+  searchParams,
+}: Props) {
   const { slug } = await params;
+  const sp = await searchParams;
+  const rawColor = sp.color;
+  const initialColor =
+    typeof rawColor === "string" ?
+      decodeURIComponent(rawColor.trim())
+    : undefined;
   const initialProduct = await fetchProductBySlugServer(slug);
   const safeSlug = encodeURIComponent(slug);
   const apiUrl = await getBuildSafeApiBase();
@@ -173,15 +196,16 @@ export default async function ProductDetailPage({ params }: Props) {
               "@type": "ListItem",
               position: 2,
               name: "Shop",
-              item: `${appUrl}/shop`,
+              item: `${appUrl}/shop/collections`,
             },
           ];
           if (product.category) {
+            const categorySlug = toShopCategorySlug(product.category);
             breadcrumbItems.push({
               "@type": "ListItem",
               position: 3,
               name: product.category,
-              item: `${appUrl}/shop?category=${encodeURIComponent(product.category)}`,
+              item: `${appUrl}/shop/collections/${encodeURIComponent(categorySlug)}`,
             });
           }
           breadcrumbItems.push({
@@ -315,7 +339,12 @@ export default async function ProductDetailPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
         />
       )}
-      <ProductDetailClient slug={slug} initialProduct={initialProduct} />
+      <ProductDetailClient
+        key={slug}
+        slug={slug}
+        initialProduct={initialProduct}
+        initialColor={initialColor}
+      />
     </>
   );
 }

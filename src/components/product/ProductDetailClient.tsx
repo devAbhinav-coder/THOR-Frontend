@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -30,11 +30,19 @@ import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
 import RichTextContent from "@/components/ui/RichTextContent";
-import { isLowInStockVariant } from "@/lib/inventoryConstants";
+import { getVariantStockDisplay } from "@/lib/stockDisplay";
+import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
+import { colorHasTaggedImages, resolvePdpImages } from "@/lib/pdpImages";
+import { clampPurchaseQty, maxPurchasableQty } from "@/lib/variantLimits";
+import { pickVariantForColor } from "@/lib/shopProductListing";
+import {
+  colorsMatch,
+  normProductColor,
+} from "@/lib/productColorImages";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
@@ -64,6 +72,30 @@ const MAX_REVIEW_IMAGES = 3;
 const MAX_REVIEW_IMAGE_SIZE_MB = UPLOAD_MAX_MB.review;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
 const REVIEW_IMAGE_MAX_DIMENSION = 1600;
+/** Generic catalog words — weak signals for related-product name matching. */
+const RELATED_NAME_STOPWORDS = new Set([
+  "saree",
+  "sari",
+  "suit",
+  "suits",
+  "silk",
+  "cotton",
+  "women",
+  "womens",
+  "woman",
+  "designer",
+  "with",
+  "the",
+  "and",
+  "for",
+  "new",
+  "party",
+  "wear",
+  "ethnic",
+  "indian",
+  "house",
+  "rani",
+]);
 type RatingDistributionBucket = { _id: number | string; count: number };
 
 async function compressReviewImageToWebp(file: File): Promise<File> {
@@ -144,6 +176,15 @@ interface Props {
   slug: string;
   /** Server-rendered product — skips full-page skeleton while reviews/related load. */
   initialProduct?: Product | null;
+  /** From ?color= query — pre-select shade from shop listing. */
+  initialColor?: string;
+}
+
+function normalizeVariants(variants: ProductVariant[]): ProductVariant[] {
+  return variants.map((v) => ({
+    ...v,
+    size: v.size?.trim() || "Free Size",
+  }));
 }
 
 function canHydrateFromInitial(
@@ -156,7 +197,18 @@ function canHydrateFromInitial(
   );
 }
 
-export default function ProductDetailClient({ slug, initialProduct }: Props) {
+export default function ProductDetailClient({
+  slug,
+  initialProduct,
+  initialColor,
+}: Props) {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const preferredColor =
+    searchParams.get("color")?.trim() ||
+    initialColor?.trim() ||
+    "";
+
   /* Core — initialize from SSR product so first paint is not a duplicate skeleton after loading.tsx */
   const [product, setProduct] = useState<Product | null>(() => {
     if (!canHydrateFromInitial(slug, initialProduct)) return null;
@@ -168,8 +220,8 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     () => {
       if (!canHydrateFromInitial(slug, initialProduct)) return null;
-      const variants = initialProduct.variants || [];
-      return variants.find((v) => v.stock > 0) || variants[0] || null;
+      const variants = normalizeVariants(initialProduct.variants || []);
+      return pickVariantForColor(variants, initialColor || null);
     },
   );
   const [isLoading, setIsLoading] = useState(
@@ -247,6 +299,19 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
   const router = useRouter();
   const reviewEligibilityRequestKeyRef = useRef<string | null>(null);
 
+  const selectColorVariant = useCallback(
+    (v: ProductVariant) => {
+      setSelectedVariant(v);
+      setQuantity((q) => clampPurchaseQty(q, v));
+      const c = v.color?.trim();
+      if (!c) return;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("color", c);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
   const needsCustomization = useMemo(
     () => (product ? productNeedsCustomization(product) : false),
     [product],
@@ -262,11 +327,14 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
   /* Initial fetch */
   useEffect(() => {
+    let cancelled = false;
     const hydratedFromServer =
       initialProduct &&
       String(initialProduct.slug).toLowerCase() === String(slug).toLowerCase();
     if (!hydratedFromServer) {
       setIsLoading(true);
+      setProduct(null);
+      setSelectedVariant(null);
     }
     setReviews([]);
     setRelatedProducts([]);
@@ -282,37 +350,50 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
             ...initialProduct,
             images: normalizeProductImages(initialProduct.images),
           };
-          setProduct(p);
-          const variants = p.variants || [];
-          setSelectedVariant(variants.find((v) => v.stock > 0) || variants[0]);
-          setIsLoading(false);
+          if (!cancelled) {
+            setProduct(p);
+            const variants = normalizeVariants(p.variants || []);
+            setSelectedVariant(
+              pickVariantForColor(variants, preferredColor || null),
+            );
+            setIsLoading(false);
+          }
         }
 
         try {
           const main = await productApi.getBySlug(slug);
+          if (cancelled) return;
           p = main.data.product as Product;
           setProduct({
             ...p,
             images: normalizeProductImages(p.images),
           });
-          const variants = p.variants || [];
+          const variants = normalizeVariants(p.variants || []);
           setSelectedVariant(
-            (prev) =>
-              variants.find((v) => v.sku === prev?.sku) ||
-              variants.find((v) => v.stock > 0) ||
-              variants[0],
+            pickVariantForColor(variants, preferredColor || null),
           );
         } catch {
           if (!p) throw new Error("Failed to fetch product");
         }
-        if (!p) throw new Error("Product unavailable");
+        if (!p || cancelled) return;
+
+        const shadeKey = normProductColor(
+          preferredColor ||
+            pickVariantForColor(normalizeVariants(p.variants || []), preferredColor)
+              ?.color,
+        );
 
         let bestRelated: Product[] = [];
         const [reviewsRes, relatedRes, moreRes] = await Promise.allSettled([
           reviewApi.getProductReviews(p._id),
-          productApi.getByCategory(p.category, { limit: 40 }),
+          productApi.getByCategory(p.category, {
+            limit: 60,
+            sort: "-soldCount",
+          }),
           productApi.getAll({ limit: 48, sort: "-createdAt" }),
         ]);
+
+        if (cancelled) return;
 
         if (reviewsRes.status === "fulfilled") {
           const rv = reviewsRes.value;
@@ -367,12 +448,12 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
               if (isGiftingCategory) {
                 // Gifting Specific Logic
                 const baseOccasions = new Set(
-                  (p.giftOccasions || []).map((o) =>
+                  (p.occasions || []).map((o) =>
                     String(o).toLowerCase().trim(),
                   ),
                 );
                 const rOccasions = new Set(
-                  (r.giftOccasions || []).map((o) =>
+                  (r.occasions || []).map((o) =>
                     String(o).toLowerCase().trim(),
                   ),
                 );
@@ -403,6 +484,14 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                 if (baseSub && rSub && baseSub === rSub) score += 60;
                 if (baseFab && rFab && baseFab === rFab) score += 40;
 
+                if (shadeKey) {
+                  const rHasShade = (r.variants || []).some(
+                    (v) => normProductColor(v.color) === shadeKey,
+                  );
+                  if (rHasShade) score += 35;
+                  if (colorHasTaggedImages(r, shadeKey)) score += 25;
+                }
+
                 const rColors = new Set(
                   (r.variants || [])
                     .map((v) => v.color)
@@ -428,7 +517,11 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
               // Name Similarity Scoring
               const pLower = p.name.toLowerCase();
               const rLower = r.name.toLowerCase();
-              const pKeywords = pLower.split(/\s+/).filter((k) => k.length > 2);
+              const pKeywords = pLower
+                .split(/\s+/)
+                .filter(
+                  (k) => k.length > 2 && !RELATED_NAME_STOPWORDS.has(k),
+                );
               let nameMatchScore = 0;
               pKeywords.forEach((keyword) => {
                 if (rLower.includes(keyword)) nameMatchScore += 15;
@@ -450,9 +543,9 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
             ...r,
             images: normalizeProductImages(r.images),
           }));
-          setRelatedProducts(bestRelated);
+          if (!cancelled) setRelatedProducts(bestRelated);
         }
-        if (moreRes.status === "fulfilled") {
+        if (moreRes.status === "fulfilled" && !cancelled) {
           const all: Product[] = moreRes.value.data?.products || [];
           const scoped =
             isGiftBaseProduct ?
@@ -482,11 +575,21 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
       } catch {
         /* not found */
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
-    fetchAll();
-  }, [slug, initialProduct]);
+    void fetchAll();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, initialProduct?.slug]);
+
+  useEffect(() => {
+    if (!product?.variants?.length || !preferredColor) return;
+    const variants = normalizeVariants(product.variants);
+    const next = pickVariantForColor(variants, preferredColor);
+    if (next) setSelectedVariant(next);
+  }, [preferredColor, product?._id, product?.variants]);
 
   /* Review eligibility (only when authenticated & product loaded) */
   useEffect(() => {
@@ -534,11 +637,11 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
 
   /* Analytics & Meta Pixel: Track ViewContent / view_item */
   useEffect(() => {
-    if (product && product._id) {
-      trackViewContent(product);
+    if (product && product._id && selectedVariant) {
+      trackViewContent(product, selectedVariant);
       trackGaViewItem(product);
     }
-  }, [product?._id]);
+  }, [product?._id, selectedVariant?.sku]);
 
   /* Derived */
   const inWishlist = product ? isInWishlist(product._id) : false;
@@ -549,31 +652,58 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
     : 0;
   const productMetaLine = useMemo(() => {
     if (!product) return "";
-    const fabric = product.fabric?.trim() || product.subcategory?.trim();
-    const category = product.category?.trim();
-    const parts = [
-      fabric ? fabric.toUpperCase() : "",
-      category ? category.toUpperCase() : "",
-    ].filter(Boolean);
-    const unique = parts.filter((part, index) => parts.indexOf(part) === index);
-    return unique.join(" · ");
+    return buildProductMetaLine(product);
   }, [product]);
   const isOutOfStock = !selectedVariant || selectedVariant.stock === 0;
-  const variants = product?.variants || [];
-  const sizes = useMemo(
-    () =>
-      Array.from(new Set(variants.filter((v) => v.size).map((v) => v.size!))),
-    [variants],
+  const variants = useMemo(
+    () => normalizeVariants(product?.variants || []),
+    [product?.variants],
   );
-  const colors = useMemo(
-    () =>
-      Array.from(new Set(variants.filter((v) => v.color).map((v) => v.color!))),
-    [variants],
-  );
+  const colors = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const v of variants) {
+      const c = v.color?.trim();
+      if (!c) continue;
+      const key = normProductColor(c);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(c);
+    }
+    return out;
+  }, [variants]);
+  const sizes = useMemo(() => {
+    const colorKey = normProductColor(selectedVariant?.color);
+    const scoped =
+      colors.length > 0 && colorKey ?
+        variants.filter((v) => normProductColor(v.color) === colorKey)
+      : variants;
+    return Array.from(
+      new Set(scoped.filter((v) => v.size).map((v) => v.size!)),
+    );
+  }, [variants, colors.length, selectedVariant?.color]);
   const getVariant = (size?: string, color?: string) =>
     variants.find(
-      (v) => (!size || v.size === size) && (!color || v.color === color),
+      (v) =>
+        (!size || v.size === size) &&
+        (!color || colorsMatch(v.color, color)),
     );
+
+  const activeColorKey = normProductColor(selectedVariant?.color);
+
+  const galleryImages = useMemo(
+    () =>
+      product ?
+        resolvePdpImages(product, selectedVariant?.color || preferredColor || undefined)
+      : [],
+    [product, product?.images, selectedVariant?.color, preferredColor],
+  );
+
+  const maxQty = maxPurchasableQty(selectedVariant);
+
+  useEffect(() => {
+    setQuantity((q) => clampPurchaseQty(q, selectedVariant));
+  }, [selectedVariant?.sku, selectedVariant?.stock]);
   const totalReviews = useMemo(() => {
     const fromPagination = Number(reviewsPagination.total || 0);
     return fromPagination > 0 ? fromPagination : reviews.length;
@@ -672,7 +802,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
         answersArray.length > 0 ? answersArray : undefined,
         product,
       );
-      trackAddToCart(product, quantity, selectedVariant.price);
+      trackAddToCart(product, quantity, selectedVariant.price, selectedVariant);
       trackGaAddToCart(product, quantity, selectedVariant.price);
     } catch {
       /* handled */
@@ -739,7 +869,7 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
     if (!isAuthenticated) return requireAuth("Sign in to save to wishlist");
     await toggleWishlist(product._id, product);
     if (!inWishlist) {
-      trackAddToWishlist(product);
+      trackAddToWishlist(product, selectedVariant ?? undefined);
       trackGaAddToWishlist(product);
     }
   };
@@ -989,14 +1119,14 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
           >
             {product.category}
           </Link>
-          {isGiftMarketingContext && product.giftOccasions?.[0] && (
+          {isGiftMarketingContext && product.occasions?.[0] && (
             <>
               <ChevronRight className='h-3 w-3' />
               <Link
                 href='/gift'
                 className='hover:text-brand-600 transition-colors'
               >
-                {product.giftOccasions?.[0]}
+                {product.occasions?.[0]}
               </Link>
             </>
           )}
@@ -1012,8 +1142,9 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 xl:gap-10 min-w-0'>
           <PdpImageGallery
             productId={product._id}
+            galleryKey={`${product._id}-${activeColorKey || "default"}`}
             name={product.name}
-            images={product.images}
+            images={galleryImages}
             isGiftMarketingContext={isGiftMarketingContext}
             isFeatured={product.isFeatured}
             isOutOfStock={isOutOfStock}
@@ -1136,11 +1267,10 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
               </div>
             )}
 
-            {/* Colors */}
-            {colors.length > 0 && (
+            {colors.length > 1 && (
               <div>
                 <p className='mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900'>
-                  Select Shade
+                  Select shade
                   {selectedVariant?.color ?
                     <span className='ml-2 font-medium normal-case tracking-normal text-gray-500'>
                       · {selectedVariant.color}
@@ -1149,41 +1279,50 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                 </p>
                 <div className='flex flex-wrap gap-2'>
                   {colors.map((color) => {
-                    const v = getVariant(selectedVariant?.size, color);
+                    const v =
+                      getVariant(selectedVariant?.size, color) ||
+                      variants.find(
+                        (x) =>
+                          colorsMatch(x.color, color) && x.stock > 0,
+                      ) ||
+                      variants.find((x) => colorsMatch(x.color, color));
                     const ok = v && v.stock > 0;
                     const swatch = variantSwatchBackground(
                       color,
                       (v as ProductVariant & { colorCode?: string })?.colorCode,
                     );
+                    const selected = colorsMatch(selectedVariant?.color, color);
                     return (
                       <button
                         key={color}
-                        onClick={() => v && setSelectedVariant(v)}
+                        type='button'
+                        aria-label={`${color}${ok ? "" : " — out of stock"}`}
+                        aria-pressed={selected}
+                        onClick={() => {
+                          if (!v) return;
+                          selectColorVariant(v);
+                        }}
                         disabled={!ok}
+                        title={color}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-1 rounded-xl border-2 text-sm font-medium transition-all",
-                          selectedVariant?.color === color ?
-                            "border-transparent  shadow-md ring-2 ring-brand-100"
+                          "flex h-11 w-11 items-center justify-center rounded-xl border-2 transition-all sm:h-12 sm:w-12",
+                          selected ?
+                            "border-[#c5a059] shadow-md ring-2 ring-[#c5a059]/25"
                           : ok ?
-                            "border-gray-200 text-gray-700 hover:border-brand-400 hover:bg-brand-50"
-                          : "border-gray-100 text-gray-300 cursor-not-allowed",
+                            "border-gray-200 hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/60"
+                          : "cursor-not-allowed border-gray-100 opacity-40",
                         )}
-                        style={{ backgroundColor: "white", color: "black" }}
                       >
-                        {swatch && (
+                        {swatch ?
                           <span
-                            className={cn(
-                              "h-6 w-6 rounded-full shadow-inner",
-                              selectedVariant?.color === color ?
-                                "border border-white/80"
-                              : "border border-white/50",
-                            )}
-                            style={{
-                              background: swatch,
-                            }}
+                            className='h-8 w-8 rounded-full border border-white/80 shadow-inner'
+                            style={{ background: swatch }}
+                            aria-hidden
                           />
-                        )}
-                        {color}
+                        : <span className='px-1 text-[10px] font-semibold uppercase tracking-wide text-gray-700'>
+                            {color.slice(0, 3)}
+                          </span>
+                        }
                       </button>
                     );
                   })}
@@ -1209,30 +1348,31 @@ export default function ProductDetailClient({ slug, initialProduct }: Props) {
                   </span>
                   <button
                     onClick={() =>
-                      setQuantity(
-                        Math.min(selectedVariant?.stock || 10, quantity + 1),
-                      )
+                      setQuantity((q) => clampPurchaseQty(q + 1, selectedVariant))
                     }
-                    disabled={quantity >= (selectedVariant?.stock || 10)}
+                    disabled={quantity >= maxQty || maxQty < 1}
                     className='px-3.5 py-2.5 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40'
                   >
                     <Plus className='h-4 w-4' />
                   </button>
                 </div>
               </div>
-              {selectedVariant && (
-                <div className='pt-5'>
-                  {selectedVariant.stock === 0 ?
-                    <span className='text-sm font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full'>
-                      Out of Stock
+              {selectedVariant && (() => {
+                const stock = getVariantStockDisplay(selectedVariant.stock);
+                return (
+                  <div className='pt-5'>
+                    <span
+                      className={cn(
+                        "text-sm font-semibold px-3 py-1.5 rounded-full",
+                        stock.tone === "out" && "text-red-600 bg-red-50",
+                        stock.tone === "in" && "text-emerald-700 bg-emerald-50",
+                      )}
+                    >
+                      {stock.label}
                     </span>
-                  : isLowInStockVariant(selectedVariant.stock) ?
-                    <span className='text-sm font-semibold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full animate-pulse'>
-                      Only a few left!
-                    </span>
-                  : null}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Inline Gifting Fields */}

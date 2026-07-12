@@ -8,6 +8,7 @@ import {
   fetchAllSitemapProducts,
 } from "@/lib/sitemapData";
 import { SEO_SITEMAP_STATIC } from "@/lib/seoCrawl";
+import type { MegaMenuCategory, MegaMenuSubcategory } from "@/types";
 
 type ProductLite = {
   slug?: string;
@@ -66,17 +67,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!apiUrl) return baseRoutes;
 
   try {
-    const [products, blogs, giftingProducts, categoryRes] = await Promise.all([
+    const [products, blogs, giftingProducts, megaMenuRes] = await Promise.all([
       fetchAllSitemapProducts(),
       fetchAllSitemapBlogs(),
       fetchAllSitemapGiftingProducts(),
-      fetch(`${apiUrl}/categories?active=true`, {
+      fetch(`${apiUrl}/navigation/mega-menu`, {
         next: { revalidate: 3600 },
       }),
     ]);
 
-    const categoryJson = categoryRes.ok ? await categoryRes.json() : null;
-    const categories: CategoryLite[] = categoryJson?.data?.categories || [];
+    const megaMenuJson = megaMenuRes.ok ? await megaMenuRes.json() : null;
+    const categories: MegaMenuCategory[] = megaMenuJson?.data?.categories || [];
 
     // Track slugs already emitted to avoid duplicates
     const emittedSlugs = new Set<string>();
@@ -143,21 +144,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const emittedCategorySlugs = new Set<string>();
     const categoryUrls: MetadataRoute.Sitemap = categories
-      .filter((c): c is CategoryLite => Boolean(c?.name))
-      .filter((c) => isShopCatalogCategoryLite(c))
+      .filter((c) => Boolean(c?.name))
       .flatMap((c) => {
         const slugSource = c.slug ?? c.name ?? "";
         const slug = toShopCategorySlug(slugSource);
         if (!slug || emittedCategorySlugs.has(slug)) return [];
         emittedCategorySlugs.add(slug);
-        return [
-          {
-            url: `${appUrl}/shop/category/${encodeURIComponent(slug)}`,
+        
+        const catRoute = {
+          url: `${appUrl}/shop/collections/${encodeURIComponent(slug)}`,
+          lastModified: now,
+          changeFrequency: "daily" as const,
+          priority: 0.82,
+        };
+        
+        const subRoutes = (c.subcategories || []).map((sub) => {
+          return {
+            url: `${appUrl}/shop/collections/${encodeURIComponent(slug)}/${encodeURIComponent(sub.slug)}`,
             lastModified: now,
             changeFrequency: "daily" as const,
-            priority: 0.82,
-          },
-        ];
+            priority: 0.80,
+          };
+        });
+
+        return [catRoute, ...subRoutes];
       });
 
     return [

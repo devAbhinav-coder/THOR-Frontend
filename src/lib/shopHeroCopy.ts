@@ -23,6 +23,7 @@ export function resolveShopHeroContent(options: {
   search?: string | null;
   fabric?: string | null;
   isFeatured?: string | null;
+  onSale?: string | null;
   bannerTitle?: string | null;
 }): ShopHeroContent {
   const search = String(options.search || "").trim();
@@ -76,6 +77,18 @@ export function resolveShopHeroContent(options: {
       subtitle:
         "A rotating selection of bestsellers and new arrivals — premium fabrics, statement drapes, ready to ship.",
       h1Accessible: "Featured premium sarees and ethnic wear online India",
+      perks: DEFAULT_PERKS,
+    };
+  }
+
+  if (options.onSale === "true") {
+    return {
+      eyebrow: "Limited-time savings",
+      titleLine1: "Sale sarees",
+      titleLine2: "& ethnic wear",
+      subtitle:
+        "Handpicked styles with special pricing — premium weaves and celebration-ready drapes at reduced rates.",
+      h1Accessible: "Sale sarees and ethnic wear online India",
       perks: DEFAULT_PERKS,
     };
   }

@@ -5,6 +5,7 @@ import {
   fetchHomeCategoryStats,
   fetchHomeFeaturedProducts,
   fetchHomeLatestBlogs,
+  fetchHomeSareeSubcategories,
 } from "@/lib/storePrefetch";
 import {
   fetchStorefrontHeroSlides,
@@ -23,6 +24,8 @@ import { absolutePageTitle } from "@/lib/pageSeo";
 
 const CategorySection = dynamic(() => import("@/components/home/CategorySection"));
 const FeaturedProducts = dynamic(() => import("@/components/home/FeaturedProducts"));
+const SareeCollections = dynamic(() => import("@/components/home/SareeCollections"));
+const HomeMiddleBanner = dynamic(() => import("@/components/home/HomeMiddleBanner"));
 const HomeBanner = dynamic(() => import("@/components/home/HomeBanner"));
 const ExploreCollection = dynamic(() => import("@/components/home/ExploreCollection"));
 const HomeGiftShowcase = dynamic(() => import("@/components/home/HomeGiftShowcase"));
@@ -76,13 +79,14 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [heroSlides, categoryStats, featuredProducts, storefrontSettings, latestBlogs] =
+  const [heroSlides, categoryStats, featuredProducts, storefrontSettings, latestBlogs, sareeSubcategories] =
     await Promise.all([
       fetchStorefrontHeroSlides(),
       fetchHomeCategoryStats(),
       fetchHomeFeaturedProducts(),
       fetchStorefrontSettingsHome(),
       fetchHomeLatestBlogs(3),
+      fetchHomeSareeSubcategories(),
     ]);
 
   /**
@@ -282,7 +286,14 @@ export default async function HomePage() {
         initialSlides={heroSlides}
         announcementMessages={storefrontSettings?.announcementMessages ?? []}
       />
-      <CategorySection initialCategories={categoryStats} />
+      <CategorySection
+        initialCategories={categoryStats}
+        exploreHouseImages={storefrontSettings?.homeExploreHouse}
+      />
+      {storefrontSettings?.homeMiddleBanner && (
+        <HomeMiddleBanner banner={storefrontSettings.homeMiddleBanner} />
+      )}
+      <SareeCollections subcategories={sareeSubcategories} />
       <FeaturedProducts initialProducts={featuredProducts} />
       <HomeBanner initialSettings={storefrontSettings} />
       <ExploreCollection />

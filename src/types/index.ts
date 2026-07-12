@@ -54,6 +54,7 @@ export interface ProductImage {
   url: string;
   publicId: string;
   alt?: string;
+  color?: string;
 }
 
 export interface Product {
@@ -78,7 +79,7 @@ export interface Product {
   isGiftable?: boolean;
   isCustomizable?: boolean;
   minOrderQty?: number;
-  giftOccasions?: string[];
+  occasions?: string[];
   customFields?: {
     _id: string;
     label: string;
@@ -275,6 +276,17 @@ export interface AdminSalesInvoice extends AdminSalesInvoiceWriteBody {
   totalGst: number;
 }
 
+export interface MarketingAttribution {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  utmTerm?: string;
+  fbclid?: string;
+  landingPath?: string;
+  capturedAt?: string;
+}
+
 export interface Order {
   _id: string;
   orderNumber: string;
@@ -289,6 +301,7 @@ export interface Order {
     fulfillment: 'delhivery' | 'offline_handover';
     createdByAdmin?: string;
   };
+  marketingAttribution?: MarketingAttribution;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   subtotal: number;
@@ -429,9 +442,19 @@ export interface RazorpayResponse {
   razorpay_signature: string;
 }
 
+export interface FilterCategoryTreeItem {
+  name: string;
+  slug: string;
+  subcategories: Array<{ name: string; slug: string }>;
+}
+
 export interface FilterOptions {
   categories: string[];
   fabrics: string[];
+  subcategories?: string[];
+  occasions?: string[];
+  tags?: string[];
+  categoryTree?: FilterCategoryTreeItem[];
   priceRange: { minPrice: number; maxPrice: number };
 }
 
@@ -441,6 +464,11 @@ export interface Category {
   slug: string;
   description?: string;
   image?: string;
+  imagePublicId?: string;
+  heroBannerImage?: { url: string; publicId: string };
+  metaTitle?: string;
+  metaDescription?: string;
+  sortOrder?: number;
   subcategories: string[];
   isActive: boolean;
   isGiftCategory?: boolean;
@@ -450,11 +478,53 @@ export interface Category {
   createdAt: string;
 }
 
+export interface SubCategory {
+  _id: string;
+  categoryId: string | Category;
+  categorySlug: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image?: string;
+  imagePublicId?: string;
+  heroBannerImage?: { url: string; publicId: string };
+  metaTitle?: string;
+  metaDescription?: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface MegaMenuSubcategory {
+  _id: string;
+  name: string;
+  slug: string;
+  categorySlug: string;
+  image?: string;
+  productCount: number;
+}
+
+export interface MegaMenuCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  image?: string;
+  heroBannerImage?: { url: string; publicId: string };
+  metaTitle?: string;
+  subcategories: MegaMenuSubcategory[];
+}
+
 export interface DashboardAnalytics {
   overview: {
     totalRevenue: number;
     monthRevenue: number;
-    revenueGrowth: number;
+    revenueGrowth: number | null;
+    totalPdpViews?: number;
+    productsWithViews?: number;
+    firstTimeBuyers?: number;
+    totalSiteVisits?: number;
+    siteVisitsToday?: number;
+    siteVisitsMtd?: number;
     totalOrders: number;
     monthOrders: number;
     totalUsers: number;
@@ -527,6 +597,27 @@ export interface DashboardAnalytics {
   }[];
   revenueByCategory: { _id: string; revenue: number; units: number }[];
   revenueByDay?: { date: string; revenue: number; orders: number }[];
+  visitsByDay?: { date: string; visits: number }[];
+  visitInsights?: {
+    byCountry: { code: string; label: string; visits: number }[];
+    bySource: { source: string; visits: number }[];
+    byDevice: { device: string; visits: number }[];
+    byLandingPage: { page: string; visits: number }[];
+    byCampaign?: { campaign: string; visits: number }[];
+    recent: {
+      country: string;
+      region: string;
+      source: string;
+      device: string;
+      page: string;
+      campaign?: string;
+      medium?: string;
+      at: string;
+    }[];
+  };
+  marketingInsights?: {
+    ordersByCampaign: { campaign: string; orders: number; revenue: number }[];
+  };
   paymentMethodMix?: { _id: string; revenue: number; count: number }[];
   ordersByHour?: { hour: number; orders: number; revenue: number }[];
   topVariantSizes?: { _id: string; units: number; revenue: number }[];
@@ -637,6 +728,17 @@ export interface HomeEditorialGallery {
   tiles?: HomeEditorialGalleryTile[];
 }
 
+export interface HomeExploreHouse {
+  saleImage?: string;
+  saleImagePublicId?: string;
+  saleName?: string;
+  saleSubtitle?: string;
+  giftingImage?: string;
+  giftingImagePublicId?: string;
+  giftingName?: string;
+  giftingSubtitle?: string;
+}
+
 export interface StorefrontSettings {
   announcementMessages: string[];
   heroSlides: HeroSlide[];
@@ -675,6 +777,19 @@ export interface StorefrontSettings {
     buttonLink?: string;
     isActive?: boolean;
   };
+  homeMiddleBanner?: {
+    image?: string;
+    imagePublicId?: string;
+    title?: string;
+    subtitle?: string;
+    linkText?: string;
+    linkUrl?: string;
+    textAlignment?: "left" | "center" | "right";
+    textColor?: "light" | "dark";
+    isActive?: boolean;
+  };
+  /** Home — “Explore Our House” Sale & Gifting category cards */
+  homeExploreHouse?: HomeExploreHouse;
   giftingHeroBanners?: Array<{
     title?: string;
     description?: string;

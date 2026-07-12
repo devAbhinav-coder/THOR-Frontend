@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useTransition, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
-import { productApi, storefrontApi } from "@/lib/api";
-import { Product, FilterOptions, StorefrontSettings } from "@/types";
+import { productApi, storefrontApi, categoryApi, navigationApi } from "@/lib/api";
+import { Product, Category, FilterOptions, FilterCategoryTreeItem, StorefrontSettings } from "@/types";
 import { Button } from "@/components/ui/button";
-import ShopPageSkeleton from "@/components/shop/ShopPageSkeleton";
+import ShopProductsSkeleton from "@/components/shop/ShopPageSkeleton";
 import ShopCollectionCard from "@/components/shop/ShopCollectionCard";
 import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkeleton";
-import ShopFilterBar from "@/components/shop/ShopFilterBar";
+import ShopFilterBar, { ShopFilterPanel, ShopSortDropdown } from "@/components/shop/ShopFilterBar";
+import ShopCategoryPills from "@/components/shop/ShopCategoryPills";
+import ShopSearchIntentChips from "@/components/shop/ShopSearchIntentChips";
 import { trackSearch } from "@/lib/metaPixel";
 import { trackGaSearch } from "@/lib/googleAnalytics";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
@@ -26,23 +28,74 @@ import {
   countActiveShopFilters,
   parseShopFiltersFromUrl,
   resolveClearShopFiltersNavigation,
-  resolveShopFilterNavigation,
+  resolveNextShopFilters,
   resolveCanonicalShopUrl,
   shouldShowClearShopFilters,
   dedupeShopFilterValues,
   formatShopCategoriesLabel,
   formatShopFabricsLabel,
+  isShopCategoryFilterSelected,
+  resolveShopPriceDraft,
+  shopPriceDraftToFilterStrings,
 } from "@/lib/shopFilters";
+import type { ParsedSearchIntent } from "@/lib/searchQueryParser";
 import { ProductInfiniteGrid } from "@/components/product/ProductInfiniteGrid";
 import { useShopFilterPanel } from "@/components/shop/ShopFilterPanelContext";
+
+import { mergeOccasionOptions } from "@/lib/productCatalogOptions";
+import { expandProductsForShopListing } from "@/lib/shopProductListing";
+import { isShopCatalogCategory } from "@/lib/categoryFilters";
+import { GIFTING_HREF, SHOP_SALE_HREF } from "@/lib/shopSpecialCollections";
+import {
+  SHOP_LOAD_MORE_SKELETON_COUNT,
+  SHOP_PRODUCT_GRID_CLASS,
+} from "@/lib/shopLayout";
+
+function buildShopCategoryTree(
+  megaMenuCategories: Array<{
+    name: string;
+    slug: string;
+    subcategories?: Array<{ name: string; slug: string; productCount?: number }>;
+  }>,
+  productCategories: string[],
+  productSubcategories: string[],
+): FilterCategoryTreeItem[] {
+  const productCatSet = new Set(productCategories.map((c) => c.toLowerCase()));
+  const productSubSet = new Set(productSubcategories.map((s) => s.toLowerCase()));
+
+  return megaMenuCategories
+    .filter(
+      (cat) =>
+        productCatSet.size === 0 ||
+        productCatSet.has(cat.name.toLowerCase()) ||
+        (cat.subcategories ?? []).some((sub) =>
+          productSubSet.has(sub.name.toLowerCase()),
+        ),
+    )
+    .map((cat) => ({
+      name: cat.name,
+      slug: cat.slug,
+      subcategories: (cat.subcategories ?? [])
+        .filter(
+          (sub) =>
+            (sub.productCount ?? 0) > 0 ||
+            productSubSet.size === 0 ||
+            productSubSet.has(sub.name.toLowerCase()),
+        )
+        .map((sub) => ({ name: sub.name, slug: sub.slug })),
+    }))
+    .filter(
+      (cat) =>
+        cat.subcategories.length > 0 ||
+        productCatSet.size === 0 ||
+        productCatSet.has(cat.name.toLowerCase()),
+    );
+}
 
 function formatProductCount(n: number): string {
   const total = Math.max(0, Number(n) || 0);
   return `${total} ${total === 1 ? "product" : "products"}`;
 }
-
-/** Persists across /shop ↔ /shop/category navigations (layout-mounted client). */
-let shopListingHasLoadedOnce = false;
 
 function humanizeCategorySlug(input: string): string {
   const decoded = decodeURIComponent(String(input || "").trim());
@@ -59,21 +112,34 @@ function resolveCategoryContextFromPath(
   pathname: string,
   categoryNames: string[] | undefined,
 ): ShopCategoryContext {
-  const match = pathname.match(/^\/shop\/category\/([^/?#]+)/);
+  const match = pathname.match(/^\/shop\/(?:category|collections)\/([^/?#]+)(?:\/([^/?#]+))?/);
   if (!match) return null;
 
-  const rawSlug = decodeURIComponent(match[1]);
-  const wantedSlug = toShopCategorySlug(rawSlug);
+  const rawCatSlug = decodeURIComponent(match[1]);
+  const rawSubSlug = match[2] ? decodeURIComponent(match[2]) : undefined;
+  
+  const wantedCatSlug = toShopCategorySlug(rawCatSlug);
+  let name = humanizeCategorySlug(rawCatSlug);
 
-  for (const name of categoryNames ?? []) {
-    if (toShopCategorySlug(name) === wantedSlug) {
-      return { name, slug: wantedSlug };
+  for (const n of categoryNames ?? []) {
+    if (toShopCategorySlug(n) === wantedCatSlug) {
+      name = n;
+      break;
     }
   }
 
+  if (rawSubSlug) {
+    const subName = humanizeCategorySlug(rawSubSlug);
+    return {
+      name,
+      slug: wantedCatSlug,
+      subcategory: { name: subName, slug: rawSubSlug }
+    };
+  }
+
   return {
-    name: humanizeCategorySlug(rawSlug),
-    slug: wantedSlug,
+    name,
+    slug: wantedCatSlug,
   };
 }
 
@@ -100,27 +166,94 @@ const defaultShopBanner = {
   isActive: true,
 };
 
-export default function ShopClient() {
+export default function ShopClient({ children }: { children?: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(
-    null,
-  );
-  const [storefrontSettings, setStorefrontSettings] =
-    useState<StorefrontSettings | null>(null);
   const { isFilterOpen, openFilterPanel, closeFilterPanel, toggleFilterPanel } =
     useShopFilterPanel();
 
-  const categoryContext = useMemo(
-    () => resolveCategoryContextFromPath(pathname, filterOptions?.categories),
-    [pathname, filterOptions?.categories],
+  const pathCategoryContext = useMemo(
+    () => resolveCategoryContextFromPath(pathname, undefined),
+    [pathname],
   );
+
+  const { data: filterOptionsData } = useQuery({
+    queryKey: ["shop-filter-options", pathCategoryContext?.name ?? "all"],
+    queryFn: async () => {
+      const res = await productApi.getFilterOptions(
+        pathCategoryContext?.name ?
+          { category: pathCategoryContext.name }
+        : undefined,
+      );
+      return res.data as FilterOptions;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const filterOptions = filterOptionsData ?? null;
+
+  const { data: megaMenuData } = useQuery({
+    queryKey: ["shop-mega-menu"],
+    queryFn: async () => {
+      const res = await navigationApi.getMegaMenu();
+      return res.data?.categories ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categoryTree = useMemo(() => {
+    if (filterOptions?.categoryTree?.length) return filterOptions.categoryTree;
+    if (!megaMenuData?.length) return [];
+    return buildShopCategoryTree(
+      megaMenuData,
+      filterOptions?.categories ?? [],
+      filterOptions?.subcategories ?? [],
+    );
+  }, [
+    filterOptions?.categoryTree,
+    filterOptions?.categories,
+    filterOptions?.subcategories,
+    megaMenuData,
+  ]);
+
+  const occasionOptions = useMemo(
+    () => mergeOccasionOptions(filterOptions?.occasions ?? []),
+    [filterOptions?.occasions],
+  );
+
+  const [, startFilterTransition] = useTransition();
+  const categoryContext = useMemo(() => {
+    const ctx = resolveCategoryContextFromPath(pathname, filterOptions?.categories);
+    if (!ctx?.subcategory || !categoryTree.length) return ctx;
+    for (const cat of categoryTree) {
+      if (toShopCategorySlug(cat.name) !== ctx.slug) continue;
+      const subMatch = cat.subcategories.find(
+        (s) =>
+          s.slug === ctx.subcategory!.slug ||
+          toShopCategorySlug(s.name) === toShopCategorySlug(ctx.subcategory!.slug),
+      );
+      if (subMatch) {
+        return {
+          ...ctx,
+          subcategory: { name: subMatch.name, slug: subMatch.slug },
+        };
+      }
+    }
+    return ctx;
+  }, [pathname, filterOptions?.categories, categoryTree]);
+
+  const [storefrontSettings, setStorefrontSettings] =
+    useState<StorefrontSettings | null>(null);
 
   const [filters, setFilters] = useState(() =>
     parseShopFiltersFromUrl(searchParams, null),
   );
+
+  const [draftMinPrice, setDraftMinPrice] = useState(filters.minPrice);
+  const [draftMaxPrice, setDraftMaxPrice] = useState(filters.maxPrice);
 
   const searchParamsKey = searchParams.toString();
 
@@ -133,6 +266,8 @@ export default function ShopClient() {
         filterOptions?.categories,
       ),
     });
+    setDraftMinPrice(parsed.minPrice);
+    setDraftMaxPrice(parsed.maxPrice);
   }, [
     searchParamsKey,
     searchParams,
@@ -150,10 +285,14 @@ export default function ShopClient() {
     }
   }, [filters.search]);
 
-  const queryKey = useMemo(
+  const productQueryKey = useMemo(
     () =>
       JSON.stringify({
+        routeCategory: categoryContext?.slug ?? "",
+        routeSubcategory: categoryContext?.subcategory?.slug ?? "",
         categories: filters.categories,
+        subcategories: filters.subcategories,
+        occasions: filters.occasions,
         fabrics: filters.fabrics,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
@@ -161,25 +300,10 @@ export default function ShopClient() {
         sort: filters.sort,
         search: filters.search,
         isFeatured: filters.isFeatured,
+        onSale: filters.onSale,
       }),
-    [filters],
+    [filters, categoryContext],
   );
-
-  useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const res = await productApi.getFilterOptions(
-          categoryContext?.name ?
-            { category: categoryContext.name }
-          : undefined,
-        );
-        setFilterOptions(res.data as FilterOptions);
-      } catch {
-        // silent fail
-      }
-    };
-    fetchFilters();
-  }, [categoryContext?.name]);
 
   useEffect(() => {
     storefrontApi
@@ -188,13 +312,59 @@ export default function ShopClient() {
       .catch(() => {});
   }, []);
 
+  const { data: categoriesData } = useQuery({
+    queryKey: ["shop-categories-list"],
+    queryFn: () => categoryApi.getAll({ active: true }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: subcategoriesData } = useQuery({
+    queryKey: ["shop-subcategories-list", categoryContext?.slug],
+    queryFn: () => categoryApi.getSubcategories(categoryContext!.slug),
+    enabled: Boolean(categoryContext?.slug),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categoryPills = useMemo(() => {
+    if (categoryContext?.slug && subcategoriesData?.data?.subcategories) {
+      return subcategoriesData.data.subcategories.map((sub: any) => ({
+        name: sub.name,
+        href: `/shop/collections/${encodeURIComponent(categoryContext.slug)}/${encodeURIComponent(sub.slug)}`,
+        isActive: false
+      }));
+    } else if (!categoryContext?.slug && categoriesData?.data?.categories) {
+      const catalogPills = categoriesData.data.categories
+        .filter(isShopCatalogCategory)
+        .map((cat: Category) => ({
+          name: cat.name,
+          href: `/shop/collections/${encodeURIComponent(cat.slug)}`,
+          isActive: isShopCategoryFilterSelected(filters.categories, cat.name),
+        }));
+
+      return [
+        {
+          name: "Sale",
+          href: SHOP_SALE_HREF,
+          isActive: filters.onSale === "true",
+        },
+        ...catalogPills,
+        {
+          name: "Gifting",
+          href: GIFTING_HREF,
+          isActive: false,
+        },
+      ];
+    }
+    return [];
+  }, [categoryContext, subcategoriesData, categoriesData, filters.categories, filters.onSale]);
+
   useEffect(() => {
     if (!filterOptions?.categories?.length) return;
     const id = window.setTimeout(() => {
       filterOptions.categories.forEach((cat) => {
         const slug = toShopCategorySlug(cat);
         if (!slug) return;
-        router.prefetch(`/shop/category/${encodeURIComponent(slug)}`);
+        router.prefetch(`/shop/collections/${encodeURIComponent(slug)}`);
       });
     }, 300);
     return () => window.clearTimeout(id);
@@ -210,7 +380,7 @@ export default function ShopClient() {
     fetchNextPage,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["shop-products", "v2", queryKey],
+    queryKey: ["shop-products", "v2", productQueryKey],
     queryFn: async ({ pageParam }) => {
       const pg = pageParam as number;
       const { mode, params } = buildShopProductQueryParams(
@@ -235,8 +405,31 @@ export default function ShopClient() {
       getNextNumericPage(lastPage, allPages, SHOP_PAGE_LIMIT),
     // 5-min cache keeps random page-1 stable within a tab; new visit = new $sample
     staleTime: 5 * 60 * 1000,
-    placeholderData: (previousData) => {
+    placeholderData: (previousData, previousQuery) => {
       if (!previousData?.pages?.length) return previousData;
+
+      const prevKeyRaw = previousQuery?.queryKey?.[2];
+      if (typeof prevKeyRaw === "string" && prevKeyRaw !== productQueryKey) {
+        try {
+          const prev = JSON.parse(prevKeyRaw) as {
+            routeCategory?: string;
+            routeSubcategory?: string;
+          };
+          const curr = JSON.parse(productQueryKey) as {
+            routeCategory?: string;
+            routeSubcategory?: string;
+          };
+          if (
+            prev.routeCategory !== curr.routeCategory ||
+            prev.routeSubcategory !== curr.routeSubcategory
+          ) {
+            return undefined;
+          }
+        } catch {
+          /* keep previous placeholder on parse failure */
+        }
+      }
+
       // Keep only page 1 while filters change — avoids stale multi-page scroll state.
       return {
         ...previousData,
@@ -246,20 +439,25 @@ export default function ShopClient() {
     },
   });
 
-  // Flatten pages in deterministic order.
   const products = useMemo(() => {
-    return (data?.pages ?? []).flatMap(
+    const raw = (data?.pages ?? []).flatMap(
       (pg) => (pg.data?.products || []) as Product[],
     );
+    const seen = new Set<string>();
+    const deduplicated: Product[] = [];
+    for (const p of raw) {
+      if (!seen.has(p._id)) {
+        seen.add(p._id);
+        deduplicated.push(p);
+      }
+    }
+    return deduplicated;
   }, [data?.pages]);
 
-  const hasLoadedOnceRef = useRef(shopListingHasLoadedOnce);
-  useEffect(() => {
-    if (products.length > 0 || !isPending) {
-      hasLoadedOnceRef.current = true;
-      shopListingHasLoadedOnce = true;
-    }
-  }, [products.length, isPending]);
+  const listingEntries = useMemo(
+    () => expandProductsForShopListing(products),
+    [products],
+  );
 
   const pagination = useMemo(() => {
     const first = data?.pages?.[0];
@@ -274,6 +472,13 @@ export default function ShopClient() {
     };
   }, [data?.pages, hasNextPage]);
 
+  const searchIntent = useMemo((): ParsedSearchIntent | null => {
+    const first = data?.pages?.[0]?.data as
+      | { searchIntent?: ParsedSearchIntent }
+      | undefined;
+    return first?.searchIntent ?? null;
+  }, [data?.pages]);
+
   const { sentinelRef } = useInfiniteScrollTrigger({
     hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
@@ -284,35 +489,109 @@ export default function ShopClient() {
     enabled: true,
   });
 
-  const updateFilter = (key: string, value: string | number) => {
-    const filterKey = key as keyof typeof filters;
-    router.push(
-      resolveShopFilterNavigation(filters, filterKey, value, categoryContext),
-      { scroll: false },
-    );
-  };
+  const pushFilters = useCallback(
+    (next: typeof filters) => {
+      startFilterTransition(() => {
+        router.push(resolveCanonicalShopUrl(next, categoryContext), {
+          scroll: false,
+        });
+      });
+    },
+    [router, categoryContext, startFilterTransition],
+  );
 
-  const applyPriceFilters = (minPrice: string, maxPrice: string) => {
-    const next = { ...filters, minPrice, maxPrice };
-    router.push(resolveCanonicalShopUrl(next, categoryContext), {
-      scroll: false,
-    });
+  const updateFilter = useCallback(
+    (key: string, value: string | number) => {
+      const filterKey = key as keyof typeof filters;
+      const next = resolveNextShopFilters(filters, filterKey, value);
+      setFilters(next);
+      pushFilters(next);
+    },
+    [filters, pushFilters],
+  );
+
+  const applyPriceFilters = useCallback(
+    (minPrice: string, maxPrice: string) => {
+      const next = { ...filters, minPrice, maxPrice };
+      setFilters(next);
+      pushFilters(next);
+    },
+    [filters, pushFilters],
+  );
+
+  const handleApplyPriceFilters = () => {
+    const { min, max } = resolveShopPriceDraft(draftMinPrice, draftMaxPrice);
+    const { minPrice, maxPrice } = shopPriceDraftToFilterStrings(min, max);
+    applyPriceFilters(minPrice, maxPrice);
   };
 
   const categoryLabel = formatShopCategoriesLabel(filters.categories);
   const fabricLabel = formatShopFabricsLabel(filters.fabrics);
 
-  const clearFilters = () => {
-    const { path } = resolveClearShopFiltersNavigation();
-    router.replace(path, { scroll: false });
-  };
+  const clearFilters = useCallback(() => {
+    const { path, filters: cleared } = resolveClearShopFiltersNavigation();
+    queryClient.removeQueries({ queryKey: ["shop-products", "v2"] });
+    setFilters(cleared);
+    setDraftMinPrice("");
+    setDraftMaxPrice("");
+    startFilterTransition(() => {
+      router.replace(path, { scroll: false });
+    });
+  }, [queryClient, router, startFilterTransition]);
 
   const activeFilterCount = countActiveShopFilters(filters, categoryContext);
   const showClearFilters = shouldShowClearShopFilters(filters, categoryContext);
   const searchTitle =
-    filters.search.length > 28 ?
-      `${filters.search.slice(0, 28)}...`
+    filters.search.length > 48 ?
+      `${filters.search.slice(0, 48)}...`
     : filters.search;
+
+  const applySearchQuery = (query: string) => {
+    router.push(
+      resolveCanonicalShopUrl({ ...filters, search: query }, categoryContext),
+      { scroll: false },
+    );
+  };
+
+  const applyIntentFabric = (fabric: string) => {
+    router.push(
+      resolveCanonicalShopUrl(
+        {
+          ...filters,
+          fabrics: dedupeShopFilterValues([...filters.fabrics, fabric]),
+        },
+        categoryContext,
+      ),
+      { scroll: false },
+    );
+  };
+
+  const applyIntentCategory = (category: string) => {
+    router.push(
+      resolveCanonicalShopUrl(
+        {
+          ...filters,
+          categories: dedupeShopFilterValues([...filters.categories, category]),
+        },
+        categoryContext,
+      ),
+      { scroll: false },
+    );
+  };
+
+  const applyIntentMaxPrice = (maxPrice: string) => {
+    router.push(
+      resolveCanonicalShopUrl({ ...filters, maxPrice }, categoryContext),
+      { scroll: false },
+    );
+  };
+
+  const clearSearchOnly = () => {
+    router.push(
+      resolveCanonicalShopUrl({ ...filters, search: "" }, categoryContext),
+      { scroll: false },
+    );
+  };
   const shopBanner = useMemo(() => {
     const raw =
       ((
@@ -334,6 +613,7 @@ export default function ShopClient() {
     search: filters.search,
     fabric: fabricLabel,
     isFeatured: filters.isFeatured,
+    onSale: filters.onSale,
     bannerTitle: shopBanner.title,
   });
   const headingText = resolveShopListHeading({
@@ -341,6 +621,7 @@ export default function ShopClient() {
     search: filters.search,
     fabric: fabricLabel,
     isFeatured: filters.isFeatured,
+    onSale: filters.onSale,
   });
   const breadcrumbContext = useMemo(() => {
     if (filters.search) return `Search Products: "${searchTitle}"`;
@@ -351,7 +632,8 @@ export default function ShopClient() {
     }
     if (filters.minPrice || filters.maxPrice) return "Price Filter";
     if (filters.isFeatured) return "Featured Products";
-    return "All Sarees";
+    if (filters.onSale === "true") return "Sale & Offers";
+    return "All Collections";
   }, [
     filters.search,
     categoryLabel,
@@ -360,10 +642,10 @@ export default function ShopClient() {
     filters.minPrice,
     filters.maxPrice,
     filters.isFeatured,
+    filters.onSale,
     searchTitle,
   ]);
-  const productGridClass =
-    "grid grid-cols-2 items-stretch gap-y-2 gap-x-1 sm:gap-y-2 sm:gap-x-2 lg:grid-cols-4 lg:gap-x-3 [&>*]:h-full [&>*]:min-h-0";
+  const productGridClass = SHOP_PRODUCT_GRID_CLASS;
 
   const quickFabrics = useMemo(() => {
     const fabrics = filterOptions?.fabrics ?? [];
@@ -375,26 +657,16 @@ export default function ShopClient() {
     return "The Curated Archive";
   }, [activeFilterCount, categoryContext, headingText]);
 
-  const showInitialSkeleton =
-    isPending && !hasLoadedOnceRef.current && products.length === 0;
-
-  if (showInitialSkeleton) {
-    return <ShopPageSkeleton />;
-  }
-
-  const showGridSkeleton =
-    isFetchingNextPage === false &&
-    isPending &&
-    products.length === 0 &&
-    hasLoadedOnceRef.current;
+  const showProductsSkeleton =
+    !isFetchingNextPage && isPending && products.length === 0;
 
   const productCountLabel =
     isLoading ? "Loading…" : formatProductCount(pagination.totalProducts);
 
   return (
     <div className='bg-white selection:bg-brand-100 selection:text-brand-900'>
-      <div className='pb-[calc(3.25rem+env(safe-area-inset-bottom,0px)+2rem)] pt-6 sm:pb-12 sm:pt-8 lg:pb-16 lg:pt-10'>
-        <section className='mb-6 px-4 sm:mb-8 sm:px-6 lg:px-8'>
+      <div className='pb-[calc(3.25rem+env(safe-area-inset-bottom,0px)+2rem)] pt-3 sm:pb-12 sm:pt-4 lg:pb-16 lg:pt-5'>
+        <section className='mb-2 px-4 sm:mb-2.5 sm:px-6 lg:px-8'>
           <div className='mx-auto max-w-7xl'>
             <nav
               aria-label='Breadcrumb'
@@ -408,30 +680,70 @@ export default function ShopClient() {
                 aria-hidden
               />
               <Link
-                href='/shop'
+                href='/shop/collections'
                 className='transition-colors hover:text-[#c5a059]'
               >
                 Shop
               </Link>
-              <ChevronRight
-                className='h-3 w-3 shrink-0 opacity-50'
-                aria-hidden
-              />
-              <span className='truncate normal-case tracking-normal text-gray-600'>
-                {breadcrumbContext}
-              </span>
+              {categoryContext?.subcategory ? (
+                <>
+                  <ChevronRight
+                    className='h-3 w-3 shrink-0 opacity-50'
+                    aria-hidden
+                  />
+                  <Link
+                    href={`/shop/collections/${encodeURIComponent(categoryContext.slug)}`}
+                    className='transition-colors hover:text-[#c5a059]'
+                  >
+                    {categoryContext.name}
+                  </Link>
+                  <ChevronRight
+                    className='h-3 w-3 shrink-0 opacity-50'
+                    aria-hidden
+                  />
+                  <span className='truncate normal-case tracking-normal text-gray-600'>
+                    {categoryContext.subcategory.name}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <ChevronRight
+                    className='h-3 w-3 shrink-0 opacity-50'
+                    aria-hidden
+                  />
+                  <span className='truncate normal-case tracking-normal text-gray-600'>
+                    {breadcrumbContext}
+                  </span>
+                </>
+              )}
             </nav>
 
-            <h1 className='mt-3 line-clamp-2 font-serif text-2xl font-medium italic leading-tight tracking-tight text-[#c5a059] sm:mt-4 sm:text-3xl lg:text-4xl'>
+            <h1 className='mt-2 line-clamp-2 font-serif text-2xl font-medium italic leading-tight tracking-tight text-[#c5a059] sm:mt-2.5 sm:text-3xl lg:text-4xl'>
               <span className='sr-only'>{heroContent.h1Accessible}</span>
               <span aria-hidden='true'>{heroTitle}</span>
             </h1>
+
+            {filters.search ?
+              <ShopSearchIntentChips
+                search={filters.search}
+                filters={filters}
+                searchIntent={searchIntent}
+                onApplySearch={applySearchQuery}
+                onApplyFabric={applyIntentFabric}
+                onApplyCategory={applyIntentCategory}
+                onApplyMaxPrice={applyIntentMaxPrice}
+                onClearSearch={clearSearchOnly}
+              />
+            : null}
           </div>
         </section>
 
         <ShopFilterBar
           filters={filters}
           filterOptions={filterOptions}
+          categoryTree={categoryTree}
+          occasionOptions={occasionOptions}
+          subcategories={subcategoriesData?.data?.subcategories || []}
           activeFilterCount={activeFilterCount}
           showClearFilters={showClearFilters}
           isFilterOpen={isFilterOpen}
@@ -445,13 +757,54 @@ export default function ShopClient() {
           productCountLabel={productCountLabel}
         />
 
-        <section className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
-          {showGridSkeleton ?
-            <div className={productGridClass}>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <ShopCollectionCardSkeleton key={i} />
-              ))}
-            </div>
+        <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:-mt-1 lg:px-8'>
+          <div className='grid grid-cols-1 items-start gap-5 lg:grid-cols-[250px_1fr] lg:gap-8'>
+            <aside 
+              data-lenis-prevent-vertical 
+              className='hidden lg:block lg:sticky lg:top-28 self-start overflow-y-auto max-h-[calc(100vh-7rem)] scrollbar-hide pr-2'
+            >
+              <div className='flex items-center justify-between pb-4 border-b border-gray-200 mb-6'>
+                <h3 className='text-[13px] font-bold uppercase tracking-wider text-navy-900'>Filters</h3>
+                {showClearFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className='text-[11px] uppercase font-bold tracking-wider text-[#c5a059] hover:text-[#a68648]'
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+              <ShopFilterPanel
+                filters={filters}
+                filterOptions={filterOptions}
+                categoryTree={categoryTree}
+                occasionOptions={occasionOptions}
+                subcategories={subcategoriesData?.data?.subcategories || []}
+                draftMinPrice={draftMinPrice}
+                draftMaxPrice={draftMaxPrice}
+                onUpdateFilter={updateFilter}
+                onMinPriceChange={setDraftMinPrice}
+                onMaxPriceChange={setDraftMaxPrice}
+                sidebar={true}
+                onApply={handleApplyPriceFilters}
+              />
+            </aside>
+
+            <section className='min-w-0 flex-1'>
+              {children}
+              <div className='mb-4 flex flex-col gap-3 sm:mb-5'>
+                <div className='hidden lg:flex items-center justify-between border-b border-gray-100 pb-4'>
+                  <p className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider'>{productCountLabel}</p>
+                  <ShopSortDropdown
+                    value={filters.sort}
+                    onChange={(next) => updateFilter("sort", next)}
+                    hoverCapable={true}
+                  />
+                </div>
+              </div>
+              
+              {showProductsSkeleton ?
+                <ShopProductsSkeleton />
           : !isPending && (isError || products.length === 0) ?
             <div className='flex min-h-[240px] flex-col items-start justify-start border border-gray-100 bg-white px-6 pt-10 sm:min-h-[460px]'>
               <p className='mb-4 text-lg text-gray-700'>
@@ -466,23 +819,29 @@ export default function ShopClient() {
           : <>
               <ProductInfiniteGrid
                 gridClassName={productGridClass}
-                items={products}
-                getItemKey={(p) => p._id}
-                renderItem={(product) => (
-                  <ShopCollectionCard product={product} />
+                items={listingEntries}
+                getItemKey={(entry) => entry.listKey}
+                renderItem={(entry) => (
+                  <ShopCollectionCard
+                    product={entry.product}
+                    displayColor={entry.displayColor}
+                    allowImageFallback
+                  />
                 )}
                 isInitialLoading={false}
                 isFetchingNextPage={isFetchingNextPage}
                 hasNextPage={Boolean(hasNextPage)}
                 pageSize={SHOP_PAGE_LIMIT}
-                loadMoreSkeletonCount={4}
+                loadMoreSkeletonCount={SHOP_LOAD_MORE_SKELETON_COUNT}
                 sentinelRef={sentinelRef}
                 renderSkeleton={() => <ShopCollectionCardSkeleton />}
                 endMessage="You've reached the end of the collection."
               />
             </>
           }
-        </section>
+            </section>
+          </div>
+        </div>
       </div>
     </div>
   );

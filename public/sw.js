@@ -9,8 +9,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "New notification";
   const options = {
     body: data.body || "You have a new update.",
-    icon: data.icon || "/favicon.png",
-    badge: data.badge || "/favicon.png",
+    icon: data.icon || "/favicon/web-app-manifest-192x192.png",
+    badge: data.badge || "/favicon/favicon-96x96.png",
     tag: data.tag || "in-app-notification",
     data: {
       link: data.link || "/",

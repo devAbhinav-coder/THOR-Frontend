@@ -1,21 +1,35 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
+import { templatedPageTitle } from "@/lib/pageSeo";
 
 type Props = {
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 };
 
+function humanizeBlogSlug(slug: string): string {
+  const decoded = decodeURIComponent(String(slug || "").trim());
+  if (!decoded) return "Journal Story";
+  return decoded
+    .replace(/[-_]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const apiUrl = await getBuildSafeApiBase();
   const appUrl = getSiteUrl();
   const safeSlug = encodeURIComponent(slug);
+  const fallbackTitle = humanizeBlogSlug(slug);
 
   if (!apiUrl) {
     return {
-      title: "Journal Story",
+      title: templatedPageTitle(fallbackTitle),
+      description: `Read ${fallbackTitle} on The House of Rani Journal — saree styling, ethnic wear tips, and celebration inspiration.`,
       alternates: { canonical: `/blog/${safeSlug}` },
     };
   }
@@ -27,7 +41,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     if (!res.ok) {
       return {
-        title: "Journal Story",
+        title: templatedPageTitle(fallbackTitle),
+        description: `Read ${fallbackTitle} on The House of Rani Journal.`,
         alternates: { canonical: `/blog/${safeSlug}` },
         robots: { index: false, follow: true },
       };
@@ -35,11 +50,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const data = await res.json();
     const blog = data?.data?.blog;
-    const title = blog?.seoTitle || blog?.title || "Journal Story";
+    const title = blog?.seoTitle || blog?.title || fallbackTitle;
     const description = (
       blog?.seoDescription ||
       blog?.excerpt ||
-      (blog?.content || "").replace(/<[^>]*>?/gm, "").trim()
+      (blog?.content || "").replace(/<[^>]*>?/gm, "").trim() ||
+      `Read ${title} on The House of Rani Journal — saree styling and Indian ethnic wear inspiration.`
     ).slice(0, 165);
     const image = blog?.images?.[0]?.url;
     const blogKeywords = [
@@ -55,8 +71,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     return {
       title: title,
-      description:
-        description || "Read this story from The House of Rani Journal.",
+      description,
       keywords: blogKeywords,
       alternates: {
         canonical: `/blog/${safeSlug}`,
@@ -97,7 +112,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   } catch {
     return {
-      title: "Journal Story",
+      title: templatedPageTitle(fallbackTitle),
+      description: `Read ${fallbackTitle} on The House of Rani Journal.`,
       alternates: { canonical: `/blog/${safeSlug}` },
     };
   }

@@ -30,7 +30,7 @@ type Product = Pick<
 > & {
   minOrderQty?: number;
   customFields?: CustomField[];
-  giftOccasions?: string[];
+  occasions?: string[];
 };
 
 interface Props {
@@ -64,7 +64,7 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState("");
   const [quantity, setQuantity] = useState(minOrderQty);
-  const [occasion, setOccasion] = useState(product.giftOccasions?.[0] || "");
+  const [occasion, setOccasion] = useState(product.occasions?.[0] || "");
   const [customOccasion, setCustomOccasion] = useState("");
   const [fieldAnswers, setFieldAnswers] = useState<Record<string, string>>({});
   const [uploadingFieldImages, setUploadingFieldImages] = useState<Record<string, boolean>>({});

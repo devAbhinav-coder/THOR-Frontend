@@ -2,7 +2,16 @@ import { normalizeForIntent } from "./textNormalize";
 import type { QuickAction } from "./types";
 
 /** Active bot prompt the user can answer with yes / no / short replies */
-export type PendingPrompt = { type: "cancel_order"; orderId: string };
+export type OrderPickPurpose = "track" | "cancel" | "return" | "general";
+
+export type PendingPrompt =
+  | { type: "cancel_order"; orderId: string }
+  | {
+      type: "pick_order";
+      orderIds: string[];
+      purpose: OrderPickPurpose;
+      query?: string;
+    };
 
 export const MENU_ACTIONS: QuickAction[] = [
   { label: "My orders", value: "action:recent_orders" },
@@ -57,6 +66,14 @@ export function isAnythingElse(raw: string): boolean {
 
 export function isGoodbye(raw: string): boolean {
   return BYE_RE.test(normalizeForIntent(raw)) || NO_THANKS_RE.test(normalizeForIntent(raw));
+}
+
+const ABUSE_RE =
+  /\b(fuck|fuk|fck|f\*+ck|stfu|shut up|bitch|bastard|asshole|dick|idiot|stupid|nonsense|useless|bekaar|bekar|bakwaas|bakwas|chutiya|chutiye|bhosdi|bhosda|madarchod|madarchd|mc|bc|bhenchod|behenchod|gaali|gali|randi|lund|gaand|gand|harami|kutte|kutta|kamina)\b/i;
+
+/** Profanity / abuse — handle gracefully instead of sending to the AI. */
+export function isAbuse(raw: string): boolean {
+  return ABUSE_RE.test(raw) || ABUSE_RE.test(normalizeForIntent(raw));
 }
 
 /** Infer pending prompt from the latest bot message quick actions */
