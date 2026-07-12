@@ -9,9 +9,9 @@
 
 import { getGaMeasurementId } from "@/lib/gaConfig";
 
-/** https://checkout.razorpay.com/v1/checkout.js — verified 2026-06-11 */
+/** https://checkout.razorpay.com/v1/checkout.js — verified 2026-07-12 */
 export const RAZORPAY_CHECKOUT_JS_INTEGRITY =
-  "sha384-GhsbifIunpkc+86jD9UsOYrz9J/NErn5qoTc6Bw/OfNHbL4HIWeDxj9fOQ6FMu+x";
+  "sha384-se1GRe2lqyJgYUqYjDUfobF6Lg6mtYs6QeQYyE59yvHoedThq8Fy6ljHACVP4BMW";
 
 /** https://connect.facebook.net/en_US/fbevents.js — verified 2026-05-21 */
 export const FB_EVENTS_JS_INTEGRITY_DEFAULT =
