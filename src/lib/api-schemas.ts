@@ -1015,6 +1015,14 @@ export const adminAiProductDraft = z.object({
   }),
 });
 
+export const adminAiCatalogSeoDraft = z.object({
+  status: z.string(),
+  data: adminAiTextPayload.extend({
+    metaTitle: z.string().optional(),
+    metaDescription: z.string().optional(),
+  }),
+});
+
 export const adminAiReviewDraft = z.object({
   status: z.string(),
   data: adminAiTextPayload.extend({

@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp, Megaphone, ImageIcon, Percent, BookOpen, ShoppingBag, Gift, Star, Settings2, LayoutGrid, Save, Loader2, ExternalLink } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
+import StorefrontAdminShell from '@/components/admin/storefront/StorefrontAdminShell';
+import StorefrontSectionPanel from '@/components/admin/storefront/StorefrontSectionPanel';
+import {
+  getStorefrontSection,
+  type StorefrontSectionId,
+} from '@/components/admin/storefront/storefrontSections';
 import { adminApi, categoryApi, giftingApi } from '@/lib/api';
 import {
   Category,
@@ -23,7 +29,7 @@ import { revalidateStorefrontCache } from '@/actions/revalidateStorefrontCache';
 import toast from 'react-hot-toast';
 
 const inputCls =
-  'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400/60 focus:border-brand-300 border-transparent shadow-[inset_0_0_0_1px_theme(colors.gray.200)] transition-all placeholder:text-gray-400';
+  'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400/60 focus:border-transparent transition-all placeholder:text-gray-400';
 
 const labelCls = 'block text-xs font-semibold text-gray-600 mb-1.5 tracking-wide uppercase';
 
@@ -70,12 +76,18 @@ export default function AdminStorefrontPage() {
   const [homeEditorialTileFiles, setHomeEditorialTileFiles] = useState<Record<number, File | null>>({});
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
-  const [activeSection, setActiveSection] = useState<string | null>("announcement");
+  const [activeSection, setActiveSection] = useState<StorefrontSectionId>('announcement');
+  const contentTopRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    contentTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }, [activeSection]);
+
   useEffect(() => {
     if (pendingFocusSlide === null) return;
     const el = slideRefs.current[pendingFocusSlide];
     if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     const firstInput = el.querySelector('input');
     if (firstInput instanceof HTMLInputElement) firstInput.focus();
     setPendingFocusSlide(null);
@@ -338,48 +350,24 @@ export default function AdminStorefrontPage() {
     isActive: p.shopBanner?.isActive !== false,
   });
 
+  const sectionMeta = getStorefrontSection(activeSection);
+
   return (
-    <div className="p-6 xl:p-8 space-y-5">
-      {/* Page header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#14192f] to-brand-900 p-6 shadow-xl">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-10 left-10 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl" />
-        <div className="relative flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-brand-300/80 mb-1">Admin Panel</p>
-            <h1 className="text-2xl font-serif font-bold text-white tracking-tight">Storefront Control</h1>
-            <p className="text-sm text-slate-400 mt-1">Manage hero slides, banners, gifting showcase, and footer content.</p>
-          </div>
-          <button
-            onClick={save}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white text-sm font-bold shadow-lg shadow-brand-900/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-          >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isSaving ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
+    <StorefrontAdminShell
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      onSave={save}
+      isSaving={isSaving}
+    >
+      <div ref={contentTopRef} />
 
-  <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "announcement" ? null : "announcement")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "announcement" ? "bg-amber-50 border-b border-amber-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
-        <Megaphone className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Announcement Strip</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Rotating messages shown at the top of every page</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "announcement" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {activeSection === "announcement" && (
-    <div className="px-5 pb-5 space-y-3">
+      {activeSection === 'announcement' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-3">
 
       <div className="flex flex-col sm:flex-row gap-2">
         <input
@@ -452,29 +440,16 @@ export default function AdminStorefrontPage() {
       </div>
 
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
- <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "hero" ? null : "hero")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "hero" ? "bg-brand-50 border-b border-brand-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
-        <ImageIcon className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Hero Slides</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Full-screen hero carousel on the homepage — {settings.heroSlides.length} slide{settings.heroSlides.length !== 1 ? 's' : ''}</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "hero" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {/* CONTENT */}
-  {activeSection === "hero" && (
-    <div className="px-5 pb-5 space-y-4">
+      {activeSection === 'hero' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={`${sectionMeta.description} — ${settings.heroSlides.length} slide${settings.heroSlides.length !== 1 ? 's' : ''}`}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-4">
 
       <div className="flex items-center justify-between">
         <button
@@ -622,36 +597,16 @@ export default function AdminStorefrontPage() {
       ))}
 
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mt-4">
-  <div
-    onClick={() =>
-      setActiveSection(activeSection === "exploreHouse" ? null : "exploreHouse")
-    }
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "exploreHouse" ? "bg-emerald-50 border-b border-emerald-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-        <LayoutGrid className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Explore Our House</h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Sale &amp; Gifting card images and labels on the homepage
-        </p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">
-      {activeSection === "exploreHouse" ?
-        <ChevronUp className="h-4 w-4" />
-      : <ChevronDown className="h-4 w-4" />}
-    </span>
-  </div>
-
-  {activeSection === "exploreHouse" && (
-    <div className="px-5 pb-5 space-y-5 mt-4">
+      {activeSection === 'exploreHouse' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-5">
       <p className="text-xs text-gray-500">
         Upload portrait images (3:4) and edit card labels. Sale appears first; Gifting last.
         Links are fixed — Sale → shop offers, Gifting → gifting page.
@@ -808,29 +763,16 @@ export default function AdminStorefrontPage() {
         </div>
       </div>
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "promo" ? null : "promo")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "promo" ? "bg-rose-50 border-b border-rose-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
-        <Percent className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Mid-Page Promo Banner</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Promo hero, editorial image grid, and perks on the homepage</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "promo" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {/* CONTENT */}
-  {activeSection === "promo" && (
-    <div className="px-5 pb-5 space-y-3">
+      {activeSection === 'promo' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-3">
 
       <ImageUploader
         maxFiles={1}
@@ -1200,29 +1142,16 @@ export default function AdminStorefrontPage() {
       </div>
 
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
- <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "blog" ? null : "blog")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "blog" ? "bg-sky-50 border-b border-sky-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
-        <BookOpen className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Blog Banner</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Images and text for the blog section banner on the homepage</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "blog" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {/* CONTENT */}
-  {activeSection === "blog" && (
-    <div className="px-5 pb-5 space-y-4">
+      {activeSection === 'blog' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-4">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -1338,28 +1267,16 @@ export default function AdminStorefrontPage() {
       />
 
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "shopBanner" ? null : "shopBanner")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "shopBanner" ? "bg-violet-50 border-b border-violet-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
-        <ShoppingBag className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Shop Page Banner</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Hero banner displayed at the top of the /shop page — supports 1 full-width or 2 side images</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "shopBanner" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {activeSection === "shopBanner" && (
-    <div className="px-5 pb-5 space-y-3">
+      {activeSection === 'shopBanner' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-3">
       <p className="text-xs text-gray-500">
         Prefer single full-width banner image. If center image is present, it overrides side images.
       </p>
@@ -1557,28 +1474,16 @@ export default function AdminStorefrontPage() {
         Show this banner on shop page
       </label>
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mt-4">
-  <div
-    onClick={() => setActiveSection(activeSection === "middleBanner" ? null : "middleBanner")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "middleBanner" ? "bg-fuchsia-50 border-b border-fuchsia-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-fuchsia-100 text-fuchsia-600">
-        <ImageIcon className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Home Middle Banner</h2>
-        <p className="text-xs text-gray-500 mt-0.5">The banner displayed between Explore Categories and Saree Collections</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "middleBanner" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {activeSection === "middleBanner" && (
-    <div className="px-5 pb-5 space-y-3 mt-4">
+      {activeSection === 'middleBanner' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-3">
       <label className="flex items-center gap-2 text-sm text-gray-700">
         <input
           type="checkbox"
@@ -1764,28 +1669,16 @@ export default function AdminStorefrontPage() {
         </select>
       </div>
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mt-4">
-  <div
-    onClick={() => setActiveSection(activeSection === "homeGift" ? null : "homeGift")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "homeGift" ? "bg-pink-50 border-b border-pink-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-100 text-pink-600">
-        <Gift className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Homepage Gifting Showcase</h2>
-        <p className="text-xs text-gray-500 mt-0.5">3 gift cards above &quot;Why Choose Us&quot; — each has a shop link + gifting link</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "homeGift" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {activeSection === "homeGift" && settings && (
-    <div className="px-5 pb-5 space-y-4">
+      {activeSection === 'homeGift' && settings && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-4">
       <label className="inline-flex items-center gap-2 text-sm text-gray-700">
         <input
           type="checkbox"
@@ -2210,29 +2103,16 @@ export default function AdminStorefrontPage() {
         </div>
       ))}
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "gifting1" ? null : "gifting1")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "gifting1" ? "bg-fuchsia-50 border-b border-fuchsia-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-fuchsia-100 text-fuchsia-600">
-        <LayoutGrid className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Gifting Hero Slider</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Rotating hero banners at the top of the /gifting page — add 4–5 slides</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "gifting1" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {/* CONTENT */}
-  {activeSection === "gifting1" && (
-    <div className="px-5 pb-5 space-y-4">
+      {activeSection === 'gifting1' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-4">
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">
@@ -2405,29 +2285,16 @@ export default function AdminStorefrontPage() {
       ))}
 
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-<section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "gifting2" ? null : "gifting2")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "gifting2" ? "bg-orange-50 border-b border-orange-100" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
-        <Star className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Gifting Secondary Cards</h2>
-        <p className="text-xs text-gray-500 mt-0.5">1–2 featured gift category cards below the hero slider on /gifting</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "gifting2" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {/* CONTENT */}
-  {activeSection === "gifting2" && (
-    <div className="px-5 pb-5 space-y-4">
+      {activeSection === 'gifting2' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-4">
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">
@@ -2606,29 +2473,16 @@ export default function AdminStorefrontPage() {
       ))}
 
     </div>
-  )}
-</section>
+    </StorefrontSectionPanel>
+      )}
 
-    <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-  <div
-    onClick={() => setActiveSection(activeSection === "footer" ? null : "footer")}
-    className={`cursor-pointer flex items-center justify-between gap-3 p-4 transition-colors ${activeSection === "footer" ? "bg-slate-50 border-b border-slate-200" : "hover:bg-gray-50/80"}`}
-  >
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-        <Settings2 className="h-4 w-4" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-gray-900 text-sm">Footer Settings</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Contact info, social media links, and footer description</p>
-      </div>
-    </div>
-    <span className="shrink-0 text-gray-400">{activeSection === "footer" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-  </div>
-
-  {/* CONTENT */}
-  {activeSection === "footer" && (
-    <div className="px-5 pb-5 space-y-3">
+      {activeSection === 'footer' && (
+    <StorefrontSectionPanel
+      title={sectionMeta.label}
+      description={sectionMeta.description}
+      icon={sectionMeta.icon}
+    >
+    <div className="space-y-3">
 
       <textarea
         className={inputCls}
@@ -2806,8 +2660,8 @@ export default function AdminStorefrontPage() {
       </div>
 
     </div>
-  )}
-</section>
-    </div>
+    </StorefrontSectionPanel>
+      )}
+    </StorefrontAdminShell>
   );
 }

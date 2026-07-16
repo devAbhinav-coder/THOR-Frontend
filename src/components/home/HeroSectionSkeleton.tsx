@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/ui/SkeletonLoader";
 import { heroLayout } from "@/lib/heroSectionLayout";
+import { cn } from "@/lib/utils";
 
 /** Pixel-matched hero shimmer — image + transparent bottom dock overlay. */
 export default function HeroSectionSkeleton() {
@@ -17,12 +18,12 @@ export default function HeroSectionSkeleton() {
               <div className={heroLayout.subtitleSlot}>
                 <Skeleton className="h-4 w-44 rounded-sm bg-gold-200/25 sm:h-5 sm:w-52" />
               </div>
-              <Skeleton className="h-3 w-36 rounded-sm bg-white/25 sm:w-44" />
-              <Skeleton className="mt-3 h-px w-14 bg-white/25 sm:mt-4 sm:w-20" />
+              <Skeleton className="hidden h-3 w-36 rounded-sm bg-white/25 sm:block sm:w-44" />
+              <Skeleton className="mt-3 hidden h-px w-14 bg-white/25 sm:mt-4 sm:block sm:w-20" />
               <div className={heroLayout.titleSlot}>
                 <Skeleton className="h-full w-full max-w-xl rounded-md bg-white/22" />
               </div>
-              <div className={heroLayout.descriptionSlot}>
+              <div className={cn(heroLayout.descriptionSlot, "hidden sm:block")}>
                 <div className="space-y-2">
                   <Skeleton className="h-3 w-full max-w-lg rounded-sm bg-white/18" />
                   <Skeleton className="h-3 w-[88%] max-w-md rounded-sm bg-white/14" />
@@ -44,12 +45,12 @@ export default function HeroSectionSkeleton() {
           </div>
           <div className={heroLayout.footer}>
             <div className={heroLayout.footerRow}>
-              <div className="flex flex-wrap gap-5">
+              <div className="hidden flex-wrap gap-5 sm:flex">
                 <Skeleton className="h-3 w-32 rounded-sm bg-white/18" />
                 <Skeleton className="h-3 w-28 rounded-sm bg-white/18" />
                 <Skeleton className="h-3 w-28 rounded-sm bg-white/18" />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-end gap-3 sm:justify-start">
                 <Skeleton className="h-3 w-10 rounded-sm bg-white/18" />
                 <Skeleton className="h-px w-8 rounded-full bg-white/25" />
                 <Skeleton className="h-px w-3 rounded-full bg-white/18" />

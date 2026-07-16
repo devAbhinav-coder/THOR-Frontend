@@ -141,7 +141,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                   loading={i === 0 ? "eager" : "lazy"}
                   sizes='100vw'
                   quality={i === 0 ? 68 : 62}
-                  className='object-cover object-[center_25%]'
+                  className='object-cover object-center sm:object-[center_25%]'
                 />
               : null}
             </div>
@@ -188,11 +188,11 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                 </div>
               )}
 
-              <p className='text-[10px] font-medium uppercase tracking-[0.32em] text-white/90 sm:text-[11px]'>
+              <p className='hidden text-[10px] font-medium uppercase tracking-[0.32em] text-white/90 sm:block sm:text-[11px]'>
                 The House of Rani
               </p>
               <div
-                className="mt-3 h-px w-14 bg-gradient-to-r from-gold-300/90 to-transparent sm:mt-4 sm:w-20"
+                className="mt-3 hidden h-px w-14 bg-gradient-to-r from-gold-300/90 to-transparent sm:mt-4 sm:block sm:w-20"
                 aria-hidden
               />
 
@@ -207,7 +207,10 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
 
               {hasDescription && (
                 <div
-                  className={cn(heroLayout.descriptionSlot, "overflow-hidden")}
+                  className={cn(
+                    heroLayout.descriptionSlot,
+                    "hidden overflow-hidden sm:block",
+                  )}
                 >
                   {description ?
                     <p
@@ -258,7 +261,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
           <div className={heroLayout.footer}>
             <div className={heroLayout.footerRow}>
               <ul
-                className='flex flex-wrap gap-x-5 gap-y-1.5 text-[10px] uppercase tracking-[0.18em] text-white/80 sm:gap-x-6 sm:text-[11px]'
+                className='hidden flex-wrap gap-x-5 gap-y-1.5 text-[10px] uppercase tracking-[0.18em] text-white/80 sm:flex sm:gap-x-6 sm:text-[11px]'
                 aria-label='Shopping benefits'
               >
                 {TRUST_SIGNALS.map((signal, i) => (
@@ -276,7 +279,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
 
               {slides.length > 1 && (
                 <div
-                  className='flex shrink-0 items-center gap-3'
+                  className='flex shrink-0 items-center justify-end gap-3 sm:justify-start'
                   role='tablist'
                   aria-label='Hero slides'
                 >

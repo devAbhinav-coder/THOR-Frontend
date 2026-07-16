@@ -97,16 +97,18 @@ function matchPresetSlug(categoryName: string, slug: string): string {
   const normalized = toShopCategorySlug(slug || categoryName);
   if (CATEGORY_PRESETS[normalized]) return normalized;
   const name = categoryName.toLowerCase();
-  if (name.includes("silk")) return "silk";
+  // Exact / whole-word-ish matches only — never map every "*saree*" slug to the generic sarees preset
+  // (that caused identical titles for Chanderi, Chiffon, Jamdani, etc. in Bing).
+  if (normalized === "sarees" || normalized === "saree") return "sarees";
+  if (name.includes("silk") && !name.includes("cotton")) return "silk";
   if (name.includes("cotton")) return "cotton";
   if (name.includes("bridal") || name.includes("wedding")) return "bridal";
   if (name.includes("kalamkari") || name.includes("handpaint")) return "kalamkari";
   if (name.includes("festive") || name.includes("party")) return "festive";
   if (name.includes("salwar")) return "salwar-suits";
   if (name.includes("corset")) return "corsets";
-  if (name.includes("lehenga")) return "lehengas";
+  if (name.includes("lehenga") || name.includes("chaniya")) return "lehengas";
   if (name.includes("gift")) return "gifts";
-  if (name.includes("saree")) return "sarees";
   return normalized;
 }
 
@@ -116,14 +118,16 @@ export function resolveCategoryPageSeo(categoryName: string, slug: string): Cate
   if (preset) return preset;
 
   const name = categoryName.trim() || "Ethnic Wear";
+  const isSareeLike = /saree|sari/i.test(name);
   return {
-    title: `${name} Sarees & Ethnic Wear Online India`,
+    title: isSareeLike
+      ? `Buy ${name} Online India`
+      : `Shop ${name} Online India`,
     description: `Shop ${name} at The House of Rani — premium Indian ethnic wear with pan-India delivery, free shipping over ₹1,099, and easy 7-day returns.`,
     keywords: [
-      `${name} sarees online`,
-      `${name} ethnic wear India`,
-      `buy ${name} sarees online`,
-      "The House of Rani",
+      `${name} online India`,
+      `buy ${name} online`,
+      `${name} The House of Rani`,
       "Indian ethnic wear online",
     ],
   };

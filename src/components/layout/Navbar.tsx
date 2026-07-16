@@ -46,7 +46,10 @@ import {
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useNavDropdown } from "@/hooks/useNavDropdown";
 import { useMobileNavAutoHide } from "@/hooks/useMobileNavAutoHide";
-import { isStoreProductDetailPath, isStoreShopListingPath } from "@/lib/storeRoutes";
+import {
+  isStoreProductDetailPath,
+  isStoreShopListingPath,
+} from "@/lib/storeRoutes";
 import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 import {
   mobileTabClass,
@@ -136,11 +139,8 @@ export default function Navbar({
   });
   const announcementMessages = useMemo(() => {
     const live = storefrontSettings?.announcementMessages;
-    const source =
-      live && live.length > 0 ? live : initialAnnouncementMessages;
-    return source
-      .map((m) => String(m || "").trim())
-      .filter(Boolean);
+    const source = live && live.length > 0 ? live : initialAnnouncementMessages;
+    return source.map((m) => String(m || "").trim()).filter(Boolean);
   }, [storefrontSettings?.announcementMessages, initialAnnouncementMessages]);
 
   useEffect(() => {
@@ -258,18 +258,19 @@ export default function Navbar({
   const { href: authHref, open: openAuth } = authModal;
 
   const ordersHref =
-    isAuthedStable ? "/dashboard/orders" : authHref("login", "/dashboard/orders");
+    isAuthedStable ? "/dashboard/orders" : (
+      authHref("login", "/dashboard/orders")
+    );
 
   const navActive = useStoreNavActive();
 
-  const isCheckoutFlow = pathname === "/cart" || pathname.startsWith("/checkout");
+  const isCheckoutFlow =
+    pathname === "/cart" || pathname.startsWith("/checkout");
   const isProductDetailPage = isStoreProductDetailPath(pathname);
   const isShopListingPage = isStoreShopListingPath(pathname);
   /** Shop + PDP mobile: persistent search bar, cart/wishlist top-right (no search icon). */
-  const showCommerceMobileShell =
-    isProductDetailPage || isShopListingPage;
-  const navAutoHideEnabled =
-    !isCheckoutFlow && !isMenuOpen && !isSearchOpen;
+  const showCommerceMobileShell = isProductDetailPage || isShopListingPage;
+  const navAutoHideEnabled = !isCheckoutFlow && !isMenuOpen && !isSearchOpen;
   const navChromeVisible = useMobileNavAutoHide({
     enabled: navAutoHideEnabled,
   });
@@ -330,309 +331,336 @@ export default function Navbar({
   return (
     <>
       <BrowserNotificationPrompt />
-      <div className={navStickyShellClass(navChromeVisible)} data-store-sticky-nav>
-      {announcementMessages.length > 0 && !navActive.home && !isCheckoutFlow && (
-        <div className={navAnnouncementShell}>
-          <p className={navAnnouncementText}>
-            {announcementMessages[announcementIndex]}
-          </p>
-        </div>
-      )}
+      <div
+        className={navStickyShellClass(navChromeVisible)}
+        data-store-sticky-nav
+      >
+        {announcementMessages.length > 0 &&
+          !navActive.home &&
+          !isCheckoutFlow && (
+            <div className={navAnnouncementShell}>
+              <p className={navAnnouncementText}>
+                {announcementMessages[announcementIndex]}
+              </p>
+            </div>
+          )}
 
-      <header className={navShellClass(isScrolled)}>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
-          <div className={cn('flex items-center justify-between gap-3', isCheckoutFlow ? "h-12 lg:h-[4.25rem]" : "h-[4.25rem]")}>
-            <div className='flex items-center gap-1 sm:gap-2 lg:gap-0'>
-              <button
-                type='button'
-                onClick={() => setIsMenuOpen((o) => !o)}
-                className={cn(navIconButton, "lg:hidden -ml-1", isCheckoutFlow && "hidden")}
-                aria-label={
-                  isMenuOpen ? "Close navigation menu" : "Open navigation menu"
-                }
-                aria-expanded={isMenuOpen}
-                aria-controls='mobile-nav-drawer'
-              >
-                <Menu
-                  className='h-6 w-6'
-                  strokeWidth={1.5}
-                  aria-hidden='true'
-                />
-              </button>
-              {/* Logo — left on mobile, desktop flow */}
-              {isCheckoutFlow && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (pathname.startsWith("/checkout")) {
-                      setShowExitConfirm(true);
-                    } else {
-                      router.back();
-                    }
-                  }}
-                  className="lg:hidden flex items-center gap-1.5 text-white/80 hover:text-white transition -ml-2 p-2"
-                >
-                  <ChevronDown className="w-5 h-5 rotate-90" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">Back</span>
-                </button>
+        <header className={navShellClass(isScrolled)}>
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
+            <div
+              className={cn(
+                "flex items-center justify-between gap-3",
+                isCheckoutFlow ? "h-12 lg:h-[4.25rem]" : "h-[4.25rem]",
               )}
-              <Link
-                href='/'
-                className={cn(
-                  'flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0',
-                  isCheckoutFlow && "max-lg:hidden",
-                )}
-                aria-label='The House of Rani — Home'
-              >
-                <Image
-                  src='/logo.png'
-                  alt='The House of Rani'
-                  width={200}
-                  height={58}
-                  className='h-11 w-auto max-w-[168px] sm:max-w-none sm:h-[3.35rem] lg:h-[3.5rem] object-contain object-left'
-                  priority
-                  fetchPriority='high'
-                />
-              </Link>
-            </div>
-
-            <nav className='hidden lg:flex items-center gap-0.5 flex-1 justify-center mx-4'>
-              <Link href='/' className={navLinkClass(navActive.home)}>
-                Home
-              </Link>
-
-              <div
-                ref={shopMenu.containerRef}
-                className='relative'
-                {...shopMenu.zoneProps}
-              >
+            >
+              <div className='flex items-center gap-1 sm:gap-2 lg:gap-0'>
                 <button
                   type='button'
-                  className={navLinkClass(navActive.shop)}
-                  aria-label='Shop categories'
-                  aria-haspopup='menu'
-                  aria-expanded={shopMenu.isOpen}
-                  onClick={shopMenu.handleTriggerClick}
-                >
-                  <span className='inline-flex items-center gap-1'>
-                    Shop{" "}
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 opacity-70 transition-transform duration-300 ease-out",
-                        shopMenu.isOpen && "rotate-180",
-                      )}
-                      aria-hidden
-                    />
-                  </span>
-                </button>
-                <MegaMenu
-                  isOpen={shopMenu.isOpen}
-                  pathname={pathname}
-                  categories={navCategories}
-                  onNavigate={shopMenu.close}
-                />
-              </div>
-
-              <Link href='/gifting' className={navLinkClass(navActive.gifting)}>
-                Gifting
-              </Link>
-              <Link
-                href='/about'
-                className={navLinkClass(pathname.startsWith("/about"))}
-              >
-                About
-              </Link>
-              <Link
-                href='/blog'
-                className={navLinkClass(pathname.startsWith("/blog"))}
-              >
-                Blog
-              </Link>
-            </nav>
-
-            <div className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'>
-              <StoreSearchAutocomplete
-                scope={navActive.gifting ? "gifting" : "shop"}
-                variant='nav-dark'
-                searchInstance='desktop'
-                urlSearch={urlSearchForNav}
-                inputClassName={navSearchInputClass}
-              />
-            </div>
-
-            {/* Right actions */}
-            <div className={cn('flex items-center justify-end gap-0.5 sm:gap-1 shrink-0', isCheckoutFlow && "max-lg:hidden")}>
-              {showCommerceMobileShell ?
-                <button
-                  type='button'
-                  onClick={handleWishlistPress}
-                  className={cn(navIconButton, "relative lg:hidden")}
-                  aria-label='Wishlist'
-                >
-                  <Heart className='h-5 w-5' strokeWidth={1.75} />
-                  {isAuthedStable && wishlistProducts.length > 0 && (
-                    <span className={navBadgeCount}>
-                      {wishlistProducts.length}
-                    </span>
-                  )}
-                </button>
-              : null}
-
-              {isAuthedStable ?
-                <Link
-                  href='/wishlist'
+                  onClick={() => setIsMenuOpen((o) => !o)}
                   className={cn(
                     navIconButton,
-                    "relative",
-                    showCommerceMobileShell && "hidden lg:inline-flex",
+                    "lg:hidden -ml-1",
+                    isCheckoutFlow && "hidden",
                   )}
-                  aria-label='Wishlist'
+                  aria-label={
+                    isMenuOpen ?
+                      "Close navigation menu"
+                    : "Open navigation menu"
+                  }
+                  aria-expanded={isMenuOpen}
+                  aria-controls='mobile-nav-drawer'
                 >
-                  <Heart className='h-5 w-5' strokeWidth={1.75} />
-                  {wishlistProducts.length > 0 && (
-                    <span className={navBadgeCount}>
-                      {wishlistProducts.length}
-                    </span>
-                  )}
-                </Link>
-              : null}
-
-              <Link
-                href='/cart'
-                className={cn(
-                  navIconButton,
-                  "relative",
-                  showCommerceMobileShell ?
-                    "inline-flex"
-                  : "hidden lg:inline-flex",
-                )}
-                aria-label='Cart'
-              >
-                <ShoppingBag className='h-5 w-5' strokeWidth={1.75} />
-                {itemCount > 0 && (
-                  <span className={navBadgeCount}>
-                    {itemCount > 9 ? "9+" : itemCount}
-                  </span>
-                )}
-              </Link>
-
-              {!showCommerceMobileShell && (
-                <button
-                  type='button'
-                  onClick={() => {
-                    if (isSearchOpen) setIsSearchOpen(false);
-                    else openMobileSearch();
-                  }}
-                  className={cn(navIconButton, "lg:hidden")}
-                  aria-label={isSearchOpen ? "Close search" : "Open search"}
-                  aria-expanded={isSearchOpen}
-                  aria-controls='mobile-search-panel'
-                >
-                  <Search className='h-5 w-5' aria-hidden='true' />
+                  <Menu
+                    className='h-6 w-6'
+                    strokeWidth={1.5}
+                    aria-hidden='true'
+                  />
                 </button>
-              )}
+                {/* Logo — left on mobile, desktop flow */}
+                {isCheckoutFlow && (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      if (pathname.startsWith("/checkout")) {
+                        setShowExitConfirm(true);
+                      } else {
+                        router.back();
+                      }
+                    }}
+                    className='lg:hidden flex items-center gap-1.5 text-white/80 hover:text-white transition -ml-2 p-2'
+                  >
+                    <ChevronDown className='w-5 h-5 rotate-90' />
+                    <span className='text-[11px] font-semibold uppercase tracking-wider'>
+                      Back
+                    </span>
+                  </button>
+                )}
+                <Link
+                  href='/'
+                  className={cn(
+                    "flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0",
+                    isCheckoutFlow && "max-lg:hidden",
+                  )}
+                  aria-label='The House of Rani — Home'
+                >
+                  <Image
+                    src='/logo.png'
+                    alt='The House of Rani'
+                    width={200}
+                    height={58}
+                    className='h-11 w-auto max-w-[168px] sm:max-w-none sm:h-[3.35rem] lg:h-[3.5rem] object-contain object-left'
+                    priority
+                    fetchPriority='high'
+                  />
+                </Link>
+              </div>
 
-              {isAuthedStable && <NotificationBell variant="navbar" />}
+              <nav className='hidden lg:flex items-center gap-0.5 flex-1 justify-center mx-4'>
+                <Link href='/' className={navLinkClass(navActive.home)}>
+                  Home
+                </Link>
 
-              {isAuthedStable ?
                 <div
-                  ref={userMenu.containerRef}
-                  className='relative hidden lg:block'
-                  {...userMenu.zoneProps}
+                  ref={shopMenu.containerRef}
+                  className='relative'
+                  {...shopMenu.zoneProps}
                 >
                   <button
                     type='button'
-                    onClick={userMenu.handleTriggerClick}
-                    className={navAvatarButton}
-                    aria-label='Account menu'
-                    aria-expanded={userMenu.isOpen}
+                    className={navLinkClass(navActive.shop)}
+                    aria-label='Shop categories'
                     aria-haspopup='menu'
+                    aria-expanded={shopMenu.isOpen}
+                    onClick={shopMenu.handleTriggerClick}
                   >
-                    <div className={navAvatarRing}>
-                      {user?.avatar ?
-                        <Image
-                          src={user.avatar}
-                          alt=''
-                          width={32}
-                          height={32}
-                          loading='lazy'
-                          unoptimized
-                          className='h-full w-full object-cover'
-                        />
-                      : <span
-                          className='text-sm font-semibold text-white'
-                          aria-hidden='true'
-                        >
-                          {String(user?.name || "U")
-                            .charAt(0)
-                            .toUpperCase()}
-                        </span>
-                      }
-                    </div>
+                    <span className='inline-flex items-center gap-1'>
+                      Shop{" "}
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 opacity-70 transition-transform duration-300 ease-out",
+                          shopMenu.isOpen && "rotate-180",
+                        )}
+                        aria-hidden
+                      />
+                    </span>
                   </button>
-
-                  <div
-                    className={navUserMenuShellClass(userMenu.isOpen)}
-                    aria-hidden={!userMenu.isOpen}
-                  >
-                    <NavProfileDropdown
-                      isOpen={userMenu.isOpen}
-                      pathname={pathname}
-                      user={{
-                        name: user?.name,
-                        email: user?.email,
-                        avatar: user?.avatar,
-                        role: user?.role,
-                      }}
-                      onLogout={handleLogout}
-                      onNavigate={userMenu.close}
-                    />
-                  </div>
+                  <MegaMenu
+                    isOpen={shopMenu.isOpen}
+                    pathname={pathname}
+                    categories={navCategories}
+                    onNavigate={shopMenu.close}
+                  />
                 </div>
-              : <button
-                  type="button"
-                  onClick={() => openAuth("login")}
-                  className={cn(
-                    navLinkClass(false),
-                    "hidden lg:inline-flex items-center gap-1.5",
-                  )}
+
+                <Link
+                  href='/gifting'
+                  className={navLinkClass(navActive.gifting)}
                 >
-                  <User className='h-4 w-4' strokeWidth={1.75} />
-                  <span>Sign In</span>
-                </button>
-              }
+                  Gifting
+                </Link>
+                <Link
+                  href='/about'
+                  className={navLinkClass(pathname.startsWith("/about"))}
+                >
+                  About
+                </Link>
+                <Link
+                  href='/blog'
+                  className={navLinkClass(pathname.startsWith("/blog"))}
+                >
+                  Blog
+                </Link>
+              </nav>
+
+              <div className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'>
+                <StoreSearchAutocomplete
+                  scope={navActive.gifting ? "gifting" : "shop"}
+                  variant='nav-dark'
+                  searchInstance='desktop'
+                  urlSearch={urlSearchForNav}
+                  inputClassName={navSearchInputClass}
+                />
+              </div>
+
+              {/* Right actions */}
+              <div
+                className={cn(
+                  "flex items-center justify-end gap-0.5 sm:gap-1 shrink-0",
+                  isCheckoutFlow && "max-lg:hidden",
+                )}
+              >
+                {showCommerceMobileShell ?
+                  <button
+                    type='button'
+                    onClick={handleWishlistPress}
+                    className={cn(navIconButton, "relative lg:hidden")}
+                    aria-label='Wishlist'
+                  >
+                    <Heart className='h-5 w-5' strokeWidth={1.75} />
+                    {isAuthedStable && wishlistProducts.length > 0 && (
+                      <span className={navBadgeCount}>
+                        {wishlistProducts.length}
+                      </span>
+                    )}
+                  </button>
+                : null}
+
+                {isAuthedStable ?
+                  <Link
+                    href='/wishlist'
+                    className={cn(
+                      navIconButton,
+                      "relative",
+                      showCommerceMobileShell && "hidden lg:inline-flex",
+                    )}
+                    aria-label='Wishlist'
+                  >
+                    <Heart className='h-5 w-5' strokeWidth={1.75} />
+                    {wishlistProducts.length > 0 && (
+                      <span className={navBadgeCount}>
+                        {wishlistProducts.length}
+                      </span>
+                    )}
+                  </Link>
+                : null}
+
+                <Link
+                  href='/cart'
+                  className={cn(
+                    navIconButton,
+                    "relative",
+                    showCommerceMobileShell ? "inline-flex" : (
+                      "hidden lg:inline-flex"
+                    ),
+                  )}
+                  aria-label='Cart'
+                >
+                  <ShoppingBag className='h-5 w-5' strokeWidth={1.75} />
+                  {itemCount > 0 && (
+                    <span className={navBadgeCount}>
+                      {itemCount > 9 ? "9+" : itemCount}
+                    </span>
+                  )}
+                </Link>
+
+                {!showCommerceMobileShell && (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      if (isSearchOpen) setIsSearchOpen(false);
+                      else openMobileSearch();
+                    }}
+                    className={cn(navIconButton, "lg:hidden")}
+                    aria-label={isSearchOpen ? "Close search" : "Open search"}
+                    aria-expanded={isSearchOpen}
+                    aria-controls='mobile-search-panel'
+                  >
+                    <Search className='h-5 w-5' aria-hidden='true' />
+                  </button>
+                )}
+
+                {isAuthedStable && <NotificationBell variant='navbar' />}
+
+                {isAuthedStable ?
+                  <div
+                    ref={userMenu.containerRef}
+                    className='relative hidden lg:block'
+                    {...userMenu.zoneProps}
+                  >
+                    <button
+                      type='button'
+                      onClick={userMenu.handleTriggerClick}
+                      className={navAvatarButton}
+                      aria-label='Account menu'
+                      aria-expanded={userMenu.isOpen}
+                      aria-haspopup='menu'
+                    >
+                      <div className={navAvatarRing}>
+                        {user?.avatar ?
+                          <Image
+                            src={user.avatar}
+                            alt=''
+                            width={32}
+                            height={32}
+                            loading='lazy'
+                            unoptimized
+                            className='h-full w-full object-cover'
+                          />
+                        : <span
+                            className='text-sm font-semibold text-white'
+                            aria-hidden='true'
+                          >
+                            {String(user?.name || "U")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                        }
+                      </div>
+                    </button>
+
+                    <div
+                      className={navUserMenuShellClass(userMenu.isOpen)}
+                      aria-hidden={!userMenu.isOpen}
+                    >
+                      <NavProfileDropdown
+                        isOpen={userMenu.isOpen}
+                        pathname={pathname}
+                        user={{
+                          name: user?.name,
+                          email: user?.email,
+                          avatar: user?.avatar,
+                          role: user?.role,
+                        }}
+                        onLogout={handleLogout}
+                        onNavigate={userMenu.close}
+                      />
+                    </div>
+                  </div>
+                : <button
+                    type='button'
+                    onClick={() => openAuth("login")}
+                    className={cn(
+                      navLinkClass(false),
+                      "hidden lg:inline-flex items-center gap-1.5",
+                    )}
+                  >
+                    <User className='h-4 w-4' strokeWidth={1.75} />
+                    <span>Sign In</span>
+                  </button>
+                }
+              </div>
+
+              {isCheckoutFlow && (
+                <div className='lg:hidden flex items-center gap-1.5 text-[#c5a059] pr-1'>
+                  <Shield className='w-4 h-4' />
+                  <span className='text-xs font-bold uppercase tracking-wider'>
+                    Secure
+                  </span>
+                </div>
+              )}
             </div>
 
-            {isCheckoutFlow && (
-              <div className="lg:hidden flex items-center gap-1.5 text-[#c5a059] pr-1">
-                <Shield className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Secure</span>
+            {/* Announcement Bar Removed from Header */}
+
+            {/* Mobile search — always open on shop/PDP; toggle elsewhere */}
+            {!isCheckoutFlow && (showCommerceMobileShell || isSearchOpen) && (
+              <div
+                id='mobile-search-panel'
+                className='border-t border-white/10 pb-3 pt-3 lg:hidden'
+              >
+                <StoreSearchAutocomplete
+                  scope={navActive.gifting ? "gifting" : "shop"}
+                  variant='nav-mobile'
+                  searchInstance='mobile'
+                  urlSearch={urlSearchForNav}
+                  onNavigate={() => {
+                    if (!showCommerceMobileShell) setIsSearchOpen(false);
+                  }}
+                />
               </div>
             )}
           </div>
-
-          {/* Announcement Bar Removed from Header */}
-
-          {/* Mobile search — always open on shop/PDP; toggle elsewhere */}
-          {!isCheckoutFlow &&
-            (showCommerceMobileShell || isSearchOpen) && (
-            <div
-              id='mobile-search-panel'
-              className='border-t border-white/10 pb-3 pt-3 lg:hidden'
-            >
-              <StoreSearchAutocomplete
-                scope={navActive.gifting ? "gifting" : "shop"}
-                variant='nav-mobile'
-                searchInstance='mobile'
-                urlSearch={urlSearchForNav}
-                onNavigate={() => {
-                  if (!showCommerceMobileShell) setIsSearchOpen(false);
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </header>
+        </header>
       </div>
 
       {/* Mobile drawer — above bottom tab bar */}
@@ -751,7 +779,10 @@ export default function Navbar({
 
               {/* Categories */}
               {navCategories.length > 0 && (
-                <MobileMegaMenu categories={navCategories} onClose={() => setIsMenuOpen(false)} />
+                <MobileMegaMenu
+                  categories={navCategories}
+                  onClose={() => setIsMenuOpen(false)}
+                />
               )}
 
               {/* Account Section */}
@@ -766,28 +797,32 @@ export default function Navbar({
                       href='/dashboard'
                       className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <User className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Dashboard
+                      <User className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
+                      Dashboard
                     </Link>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
                       href='/dashboard/orders'
                       className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <Package className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> My Orders
+                      <Package className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
+                      My Orders
                     </Link>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
                       href='/cart'
                       className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <ShoppingBag className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Cart
+                      <ShoppingBag className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
+                      Cart
                     </Link>
                     <Link
                       onClick={() => setIsMenuOpen(false)}
                       href='/dashboard/gifting'
                       className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <Gift className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Custom Gifting
+                      <Gift className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
+                      Custom Gifting
                     </Link>
 
                     {user?.role === "admin" && (
@@ -805,7 +840,8 @@ export default function Navbar({
                       className='flex items-center justify-between border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
                       <span className='flex items-center gap-3'>
-                        <Heart className='w-4 h-4 shrink-0 text-[#c5a059]/70' /> Wishlist
+                        <Heart className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
+                        Wishlist
                       </span>
                       {wishlistProducts.length > 0 && (
                         <span className='bg-[#c5a059]/15 px-2 py-0.5 text-[10px] font-bold text-[#c5a059]'>
@@ -823,7 +859,7 @@ export default function Navbar({
                   </div>
                 : <div className='mt-2 flex gap-2.5'>
                     <button
-                      type="button"
+                      type='button'
                       onClick={() => {
                         setIsMenuOpen(false);
                         openAuth("login");
@@ -833,7 +869,7 @@ export default function Navbar({
                       Sign In
                     </button>
                     <button
-                      type="button"
+                      type='button'
                       onClick={() => {
                         setIsMenuOpen(false);
                         openAuth("signup");
@@ -856,81 +892,82 @@ export default function Navbar({
           className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(20,25,47,0.55)] [color-scheme:dark]'
           aria-label='Primary'
         >
-        <div className='mx-auto grid min-h-[3.25rem] w-full max-w-xl grid-cols-6 px-0.5'>
-          {mobileBottomNavItems.map(
-            ({ id, label, Icon, href, activeKey, showCartBadge }) => {
-              const isOn = navActive[activeKey];
-              const linkClass = mobileTabClass(isOn);
-              const iconClass = mobileTabIconClass(isOn);
-              const cartAriaSuffix =
-                showCartBadge && itemCount > 0 ?
-                  `, ${itemCount} item${itemCount === 1 ? "" : "s"} in cart`
-                : "";
-              return (
-                <Link
-                  key={id}
-                  href={href}
-                  className={linkClass}
-                  aria-current={isOn ? "page" : undefined}
-                  aria-label={`${label}${cartAriaSuffix}`}
-                >
-                  {showCartBadge ?
-                    <span className='relative inline-flex' aria-hidden='true'>
-                      <Icon
+          <div className='mx-auto grid min-h-[3.25rem] w-full max-w-xl grid-cols-6 px-0.5'>
+            {mobileBottomNavItems.map(
+              ({ id, label, Icon, href, activeKey, showCartBadge }) => {
+                const isOn = navActive[activeKey];
+                const linkClass = mobileTabClass(isOn);
+                const iconClass = mobileTabIconClass(isOn);
+                const cartAriaSuffix =
+                  showCartBadge && itemCount > 0 ?
+                    `, ${itemCount} item${itemCount === 1 ? "" : "s"} in cart`
+                  : "";
+                return (
+                  <Link
+                    key={id}
+                    href={href}
+                    className={linkClass}
+                    aria-current={isOn ? "page" : undefined}
+                    aria-label={`${label}${cartAriaSuffix}`}
+                  >
+                    {showCartBadge ?
+                      <span className='relative inline-flex' aria-hidden='true'>
+                        <Icon
+                          className={iconClass}
+                          strokeWidth={isOn ? 2.5 : 2}
+                        />
+                        {itemCount > 0 && (
+                          <span className='absolute -right-1.5 -top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full border border-navy-900 bg-brand-600 px-0.5 text-[8px] font-bold leading-none text-white'>
+                            {itemCount > 9 ? "9+" : itemCount}
+                          </span>
+                        )}
+                      </span>
+                    : <Icon
                         className={iconClass}
                         strokeWidth={isOn ? 2.5 : 2}
+                        aria-hidden='true'
                       />
-                      {itemCount > 0 && (
-                        <span className='absolute -right-1.5 -top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full border border-navy-900 bg-brand-600 px-0.5 text-[8px] font-bold leading-none text-white'>
-                          {itemCount > 9 ? "9+" : itemCount}
-                        </span>
-                      )}
-                    </span>
-                  : <Icon
-                      className={iconClass}
-                      strokeWidth={isOn ? 2.5 : 2}
-                      aria-hidden='true'
-                    />
-                  }
-                  <span aria-hidden='true'>{label}</span>
-                </Link>
-              );
-            },
-          )}
-        </div>
-      </nav>
+                    }
+                    <span aria-hidden='true'>{label}</span>
+                  </Link>
+                );
+              },
+            )}
+          </div>
+        </nav>
       )}
 
       {/* Checkout Exit Confirmation Modal */}
       {showExitConfirm && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-navy-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm border border-gray-200 bg-white shadow-2xl">
-            <div className="border-b border-gray-100 p-5 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#fff8eb] text-[#c5a059]">
-                <AlertTriangle className="h-6 w-6" />
+        <div className='fixed inset-0 z-[300] flex items-center justify-center bg-navy-900/40 p-4 backdrop-blur-sm'>
+          <div className='w-full max-w-sm border border-gray-200 bg-white shadow-2xl'>
+            <div className='border-b border-gray-100 p-5 text-center'>
+              <div className='mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#fff8eb] text-[#c5a059]'>
+                <AlertTriangle className='h-6 w-6' />
               </div>
-              <h3 className="font-serif text-xl font-medium text-navy-900">
+              <h3 className='font-serif text-xl font-medium text-navy-900'>
                 Leave Checkout?
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                Your progress will be saved, but you are almost done placing your order.
+              <p className='mt-2 text-sm leading-relaxed text-gray-500'>
+                Your progress will be saved, but you are almost done placing
+                your order.
               </p>
             </div>
-            <div className="flex flex-col gap-2 p-4">
+            <div className='flex flex-col gap-2 p-4'>
               <button
-                type="button"
+                type='button'
                 onClick={() => setShowExitConfirm(false)}
-                className="w-full bg-[#c5a059] py-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d]"
+                className='w-full bg-[#c5a059] py-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d]'
               >
                 Continue Checkout
               </button>
               <button
-                type="button"
+                type='button'
                 onClick={() => {
                   setShowExitConfirm(false);
                   router.back();
                 }}
-                className="w-full border border-gray-200 bg-white py-3 text-[11px] font-bold uppercase tracking-widest text-gray-600 transition-colors hover:border-gray-300 hover:text-navy-900"
+                className='w-full border border-gray-200 bg-white py-3 text-[11px] font-bold uppercase tracking-widest text-gray-600 transition-colors hover:border-gray-300 hover:text-navy-900'
               >
                 Exit
               </button>

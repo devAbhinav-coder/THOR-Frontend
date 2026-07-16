@@ -7,6 +7,7 @@ import { Category } from '@/types';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, Tag, X, Check, Loader2, LayoutGrid, List } from 'lucide-react';
+import { AdminAiCatalogSeoButton } from '@/components/admin/ai';
 
 const inputCls =
   'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all placeholder:text-gray-300';
@@ -314,6 +315,14 @@ export default function AdminCategoriesPage() {
               {/* SEO Section */}
               <div className="space-y-4 pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-semibold text-gray-900">Search Engine Optimisation</h3>
+                <AdminAiCatalogSeoButton
+                  kind="category"
+                  name={form.name}
+                  description={form.description}
+                  onApply={({ metaTitle, metaDescription }) => {
+                    setForm((prev) => ({ ...prev, metaTitle, metaDescription }));
+                  }}
+                />
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                     Meta Title
@@ -322,10 +331,13 @@ export default function AdminCategoriesPage() {
                     type="text"
                     value={form.metaTitle}
                     onChange={(e) => set('metaTitle', e.target.value)}
-                    placeholder="e.g. Buy Premium Sarees Online | House of Rani"
+                    placeholder="e.g. Buy Premium Sarees Online India"
                     className={inputCls}
+                    maxLength={70}
                   />
-                  <p className="mt-1.5 text-[11px] text-gray-400">Leave blank to use category name.</p>
+                  <p className="mt-1.5 text-[11px] text-gray-400">
+                    {form.metaTitle.length}/70 · Brand is added automatically if missing
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -337,8 +349,11 @@ export default function AdminCategoriesPage() {
                     placeholder="Explore our exquisite collection of handcrafted sarees..."
                     rows={2}
                     className={`${inputCls} resize-none`}
+                    maxLength={160}
                   />
-                  <p className="mt-1.5 text-[11px] text-gray-400">Keep it between 150-160 characters for best results.</p>
+                  <p className="mt-1.5 text-[11px] text-gray-400">
+                    {form.metaDescription.length}/160 · Aim for 140–160 characters
+                  </p>
                 </div>
               </div>
 

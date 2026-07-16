@@ -63,9 +63,9 @@ export function navLuxuryDropdownPanelClass(
   return cn(
     navLuxuryDropdownMotion,
     minWidth === "17.5rem" ? "min-w-[17.5rem]" : "min-w-[15.5rem]",
-    open
-      ? "visible translate-y-0 opacity-100"
-      : "invisible -translate-y-1.5 opacity-0",
+    open ?
+      "visible translate-y-0 opacity-100"
+    : "invisible -translate-y-1.5 opacity-0",
   );
 }
 
@@ -77,9 +77,7 @@ export const navLuxuryDropdownNav = "bg-[#fcf9f8]";
 export function navLuxuryDropdownItem(active = false) {
   return cn(
     "block w-full border-b border-[#c5a059]/15 px-5 py-3.5 text-left font-serif text-[14px] leading-snug text-[#1a2b48] transition-colors last:border-b-0",
-    active
-      ? "bg-white text-[#c5a059]"
-      : "hover:bg-white hover:text-[#c5a059]",
+    active ? "bg-white text-[#c5a059]" : "hover:bg-white hover:text-[#c5a059]",
   );
 }
 

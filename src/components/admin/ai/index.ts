@@ -3,6 +3,7 @@ export { AdminAiBriefCard } from "./AdminAiBriefCard";
 export { AdminAiActionSuggestions } from "./AdminAiActionSuggestions";
 export { AdminAiExplainButton } from "./AdminAiExplainButton";
 export { AdminAiProductCopySection, applyProductCopyDraft } from "./AdminAiProductCopySection";
+export { AdminAiCatalogSeoButton } from "./AdminAiCatalogSeoButton";
 export { mergeFabricIntoProductDetails } from "@/lib/productDetailsBulk";
 export type { ProductCopyDraft } from "./AdminAiProductCopySection";
 export { AdminAiReviewDraftButton } from "./AdminAiReviewDraftButton";

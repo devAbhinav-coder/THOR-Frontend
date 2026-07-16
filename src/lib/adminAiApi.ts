@@ -75,6 +75,18 @@ export const adminAiApi = {
       schemas.adminAiProductDraft,
     ),
 
+  draftCatalogSeo: (body: {
+    kind: "category" | "subcategory";
+    name: string;
+    parentCategoryName?: string;
+    description?: string;
+  }) =>
+    unwrapAxios(
+      "admin.ai.draftCatalogSeo",
+      api.post("/admin/ai/draft/catalog-seo", body, { timeout: AI_TIMEOUT }),
+      schemas.adminAiCatalogSeoDraft,
+    ),
+
   draftReviewReply: (reviewId: string) =>
     unwrapAxios(
       "admin.ai.draftReview",

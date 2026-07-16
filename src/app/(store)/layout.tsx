@@ -1,12 +1,12 @@
-import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
-import Footer from '@/components/layout/Footer';
-import { StoreErrorBoundary } from '@/components/StoreErrorBoundary';
-import { StoreRaniCare } from '@/components/support/StoreRaniCare';
-import StoreAuthModal from '@/components/auth/StoreAuthModal';
-import StoreVisitTracker from '@/components/analytics/StoreVisitTracker';
-import { fetchStorefrontSettingsHome } from '@/lib/storefrontServer';
-import { fetchShopNavCategoriesServer } from '@/lib/categoryServer';
+import { Suspense } from "react";
+import dynamic from "next/dynamic";
+import Footer from "@/components/layout/Footer";
+import { StoreErrorBoundary } from "@/components/StoreErrorBoundary";
+import { StoreRaniCare } from "@/components/support/StoreRaniCare";
+import StoreAuthModal from "@/components/auth/StoreAuthModal";
+import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
+import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
+import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
 
 function NavbarShellFallback() {
   return (
@@ -18,7 +18,7 @@ function NavbarShellFallback() {
   );
 }
 
-const Navbar = dynamic(() => import('@/components/layout/Navbar'), {
+const Navbar = dynamic(() => import("@/components/layout/Navbar"), {
   loading: () => <NavbarShellFallback />,
 });
 
@@ -45,7 +45,7 @@ export default async function StoreLayout({
           initialNavCategories={initialNavCategories}
         />
       </Suspense>
-      <main className="pb-0 lg:pb-0 min-h-screen flex flex-col ">
+      <main className='pb-0 lg:pb-0 min-h-screen flex flex-col '>
         <StoreErrorBoundary>{children}</StoreErrorBoundary>
       </main>
       <Footer />
