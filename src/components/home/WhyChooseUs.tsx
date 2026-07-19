@@ -18,7 +18,7 @@ const TRUST_ITEMS = [
   {
     icon: RotateCcw,
     title: "Easy Returns",
-    description: "Seamless 7-Day Boutique Exchange Policy",
+    description: "Seamless 5-Day Boutique Exchange Policy",
   },
 ] as const;
 

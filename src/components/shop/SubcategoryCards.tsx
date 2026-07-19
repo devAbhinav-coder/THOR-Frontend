@@ -3,10 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Category, SubCategory } from "@/types";
-import {
-  horizontalScrollSurfaceClassName,
-  horizontalScrollSurfaceProps,
-} from "@/lib/scrollSurface";
+import ScrollRowWithArrows from "@/components/ui/ScrollRowWithArrows";
 
 interface SubcategoryCardsProps {
   category: Category;
@@ -20,10 +17,7 @@ export default function SubcategoryCards({ category, subcategories }: Subcategor
 
   return (
     <div className="w-full mb-3 sm:mb-4">
-      <div
-        {...horizontalScrollSurfaceProps}
-        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 scrollbar-hide sm:gap-4 ${horizontalScrollSurfaceClassName}`}
-      >
+      <ScrollRowWithArrows className="flex snap-x snap-mandatory gap-3 pb-1 sm:gap-4">
         {sortedSubcategories.map((sub) => (
           <Link
             key={sub._id}
@@ -44,7 +38,7 @@ export default function SubcategoryCards({ category, subcategories }: Subcategor
             </div>
           </Link>
         ))}
-      </div>
+      </ScrollRowWithArrows>
     </div>
   );
 }

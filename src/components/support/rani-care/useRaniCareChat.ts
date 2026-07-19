@@ -16,7 +16,7 @@ import {
   persistMessages,
   saveOpenState,
 } from "./chatStorage";
-import { MAX_MESSAGES, RECENT_ORDER_LIMIT } from "./constants";
+import { MAX_MESSAGES, OPEN_EVENT, ORDER_LIST_DISPLAY_LIMIT, RECENT_ORDER_LIMIT } from "./constants";
 import {
   FOLLOW_UP_ACTIONS,
   inferPendingFromActions,
@@ -37,7 +37,6 @@ import {
 } from "./intent";
 import {
   formatOrderAnswer,
-  isHinglishQuery,
   resolveOrdersFromQuery,
   resolvePickReply,
 } from "./orderResolver";
@@ -49,12 +48,52 @@ import {
   userMessage,
 } from "./orderFormat";
 import { normalizeForIntent } from "./textNormalize";
-import type { ChatMessage, Intent, OrderSummary, QuickAction } from "./types";
+import type {
+  ChatMessage,
+  Intent,
+  OrderSummary,
+  ProductCard,
+  QuickAction,
+} from "./types";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 const SUPPORT_PHONE = "8340311033";
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
-const GREETING = "Hi! How can I help you today?";
+const GREETING =
+  "Namaste! I'm **Rani Care**, your personal assistant at The House of Rani.\nI can help you track orders, manage cancellations or returns, answer delivery questions, or find the perfect saree — just ask 🙂";
+const GREETING_ACTIONS: QuickAction[] = [
+  { label: "My orders", value: "action:recent_orders" },
+  { label: "Track order", value: "where is my order" },
+  { label: "Find a saree", value: "saree recommend karo" },
+  { label: "Returns", value: "action:return_help" },
+  { label: "Contact us", value: "contact support" },
+];
+
+const AFTER_HELP_ACTIONS: QuickAction[] = [
+  { label: "More help", value: "action:menu" },
+  { label: "My orders", value: "action:recent_orders" },
+  { label: "That's all", value: "no thanks" },
+];
+
+function appendNeedMoreHelp(text: string): string {
+  const trimmed = text.trimEnd();
+  // Never stack a second question — the answer may already end with one.
+  if (/[?？]\s*$/.test(trimmed)) return text;
+  if (/\bkuch aur|anything else|aur madad|need more help\b/i.test(text)) return text;
+  return `${trimmed}\n\nAnything else I can help with?`;
+}
+
+/** Friendly user-bubble labels for chips whose value is machine-ish text. */
+const ACTION_TEXT_LABEL: Record<string, string> = {
+  "where is my order": "Track my order",
+  "saree recommend karo": "Find a saree",
+  "saree under 2000": "Saree under ₹2000",
+  "shipping time": "Delivery info",
+  "contact support": "Contact support",
+  "no thanks": "That's all",
+  "aapke paas kya kya milega": "Available categories",
+  "open shop": "Open shop",
+};
 
 function looksLikePickAttempt(text: string): boolean {
   const q = normalizeForIntent(text);
@@ -70,19 +109,10 @@ const TRANSACTIONAL_INTENTS = new Set<Intent>([
   "returns",
 ]);
 
-function isComplexMessage(text: string): boolean {
-  const t = text.trim();
-  if (t.length > 48) return true;
-  if (/\b\d{6}\b/.test(t)) return true;
-  return /\b(address|pata|ghar|gali|road|mumbai|delhi|bangalore|hyderabad|kolkata|chennai|pincode|pin code|area|city|state)\b/i.test(
-    t,
-  );
-}
-
-function shouldTryAiFirst(intent: Intent, text: string): boolean {
-  if (TRANSACTIONAL_INTENTS.has(intent)) return false;
-  if (intent === "general") return true;
-  return isComplexMessage(text);
+/** Route everything except secure order actions through the RAG assistant so
+ *  it can answer naturally (FAQ, products, sizing, delivery, general chat). */
+function shouldTryAiFirst(intent: Intent): boolean {
+  return !TRANSACTIONAL_INTENTS.has(intent);
 }
 
 export function useRaniCareChat() {
@@ -119,6 +149,12 @@ export function useRaniCareChat() {
   }, []);
 
   useEffect(() => {
+    const onOpenRequest = () => setOpen(true);
+    window.addEventListener(OPEN_EVENT, onOpenRequest);
+    return () => window.removeEventListener(OPEN_EVENT, onOpenRequest);
+  }, []);
+
+  useEffect(() => {
     if (messages.length) persistMessages(messages);
   }, [messages]);
 
@@ -142,22 +178,33 @@ export function useRaniCareChat() {
     window.setTimeout(() => {
       setMessages((prev) => {
         if (prev.length) return prev;
-        return [botMessage(GREETING, MENU_ACTIONS)];
+        return [botMessage(GREETING, GREETING_ACTIONS)];
       });
     }, 320);
   }, [open, messages.length]);
+
+  /** Chat must always start with the bot's namaste — even when the user's
+   *  first move is a starter chip click before the delayed greeting lands. */
+  const ensureGreeted = () => {
+    greetedRef.current = true;
+    setMessages((prev) => {
+      if (prev.length) return prev;
+      return [botMessage(GREETING)];
+    });
+  };
 
   const pushBot = (
     text: string,
     actions?: QuickAction[],
     orders?: OrderSummary[],
     delay = 420,
+    products?: ProductCard[],
   ) => {
     setTyping(true);
     window.setTimeout(() => {
       setTyping(false);
       setMessages((prev) =>
-        [...prev, botMessage(text, actions, orders)].slice(-MAX_MESSAGES),
+        [...prev, botMessage(text, actions, orders, products)].slice(-MAX_MESSAGES),
       );
     }, delay);
   };
@@ -184,7 +231,7 @@ export function useRaniCareChat() {
     rawInput: string,
     localIntent: Intent,
   ): Promise<boolean> => {
-    if (!shouldTryAiFirst(localIntent, rawInput)) return false;
+    if (!shouldTryAiFirst(localIntent)) return false;
 
     setTyping(true);
     try {
@@ -229,11 +276,19 @@ export function useRaniCareChat() {
         return true;
       }
 
+      const products = ai.products as ProductCard[] | undefined;
       const actions: QuickAction[] =
         ai.suggestedActions?.length ?
           ai.suggestedActions
-        : MENU_ACTIONS.slice(0, 4);
-      pushBot(ai.answer, actions, undefined, 220);
+        : products?.length ?
+          [
+            { label: "Shop all", value: "open shop" },
+            { label: "More options", value: "action:menu" },
+            { label: "That's all", value: "no thanks" },
+          ]
+        : AFTER_HELP_ACTIONS;
+      const answer = appendNeedMoreHelp(ai.answer);
+      pushBot(answer, actions, undefined, 220, products);
       return true;
     } catch {
       setTyping(false);
@@ -272,30 +327,36 @@ export function useRaniCareChat() {
       const list = await fetchRecentOrders();
       if (!list.length) {
         pushBot(
-          "You have no orders yet. After you place an order, it will appear here for tracking.",
+          "You don't have any orders yet. Once you place one, you can track it right here 🙂",
           [
-            { label: "Continue shopping", value: "open shop" },
-            { label: "Delivery information", value: "shipping time" },
+            { label: "Shop sarees", value: "open shop" },
+            { label: "Delivery info", value: "shipping time" },
           ],
         );
         return;
       }
 
-      const summaries = list.map(summarizeOrder);
+      const shown = list.slice(0, ORDER_LIST_DISPLAY_LIMIT);
+      const summaries = shown.map(summarizeOrder);
+      const more =
+        list.length > shown.length ?
+          `\n(Showing the **${shown.length}** most recent of **${list.length}** — send an order number or say “last 2 orders”.)`
+        : "";
       const cancelNote =
         opts.cancelHint ?
-          "\n\nCancellations are available only while your order is pending or confirmed (before dispatch). For shipped orders, please contact us about returns."
+          "\n\nCancellation is available only for **pending / confirmed** orders (before dispatch)."
         : "";
       const returnNote =
         opts.returnHint ?
-          "\n\n**Returns:** delivered orders only, within **7 days** of delivery, and no return already in progress. Tap an order to open details, or use **Start a return** when you see it."
+          "\n\n**Returns:** delivered orders, within **5 days**, with tags intact."
         : "";
 
       pushBot(
-        `${opts.intro}\nUp to ${RECENT_ORDER_LIMIT} recent orders are shown below.${cancelNote}${returnNote}`,
+        `${opts.intro}${more}${cancelNote}${returnNote}\n\nWhich one would you like to open?`,
         [
           { label: "Refresh", value: "action:recent_orders" },
           { label: "Contact support", value: "contact support" },
+          { label: "That's all", value: "no thanks" },
         ],
         summaries,
       );
@@ -311,7 +372,7 @@ export function useRaniCareChat() {
   const smartOrderAssist = async (rawInput: string, intent: Intent) => {
     if (!isAuthenticated) {
       pushBot(
-        "Apne orders dekhne ke liye pehle **sign in** karo.",
+        "Please **sign in** first to view your orders.",
         [
           { label: "Sign in", value: "sign in" },
           { label: "Delivery info", value: "shipping time" },
@@ -339,10 +400,14 @@ export function useRaniCareChat() {
         });
         const summaries = list
           .filter((o) => result.orderIds.includes(o._id))
+          .slice(0, ORDER_LIST_DISPLAY_LIMIT)
           .map(summarizeOrder);
         pushBot(
           result.intro,
-          [{ label: "Saare orders", value: "action:recent_orders" }],
+          [
+            { label: "Recent orders", value: "action:recent_orders" },
+            { label: "That's all", value: "no thanks" },
+          ],
           summaries,
         );
         return;
@@ -357,12 +422,12 @@ export function useRaniCareChat() {
       }
 
       await presentOrderList({
-        intro: "Yeh rahe aapke recent orders.",
+        intro: "Here are your **recent** orders:",
         cancelHint: intent === "cancel_help",
         returnHint: intent === "returns",
       });
     } catch {
-      pushBot("Orders load nahi ho paye. Thodi der baad try karo.", [
+      pushBot("We couldn't load your orders. Please try again in a moment.", [
         { label: "Try again", value: "action:recent_orders" },
       ]);
     } finally {
@@ -400,17 +465,12 @@ export function useRaniCareChat() {
         return;
       }
 
-      const hi = leadIn ? isHinglishQuery(leadIn) : true;
-      const followUp =
-        hi ?
-          "\n\nKuch aur poochhna ho to bataiye 🙂"
-        : "\n\nAnything else I can help with?";
       const detail = leadIn ?
-        `${leadIn}\n\n${formatOrderFacts(order)}${followUp}`
-      : `${formatOrderDetailText(order)}${followUp}`;
+        appendNeedMoreHelp(`${leadIn}\n\n${formatOrderFacts(order)}`)
+      : appendNeedMoreHelp(formatOrderDetailText(order));
       const actions: QuickAction[] = [
         { label: "View on website", value: `open_order:${order._id}` },
-        { label: "All orders", value: "action:recent_orders" },
+        { label: "Recent orders", value: "action:recent_orders" },
       ];
       if (order.status === "pending" || order.status === "confirmed") {
         actions.unshift({
@@ -428,6 +488,7 @@ export function useRaniCareChat() {
           value: "action:return_help",
         });
       }
+      actions.push(...AFTER_HELP_ACTIONS.filter((a) => !actions.some((x) => x.value === a.value)));
 
       pushBot(detail, actions, undefined, 280);
     } catch {
@@ -474,7 +535,7 @@ export function useRaniCareChat() {
       const full = ob.data?.order as Order | undefined;
       if (!full || !isOrderReturnEligible(full)) {
         pushBot(
-          "This order can’t be returned from chat right now. It must be **delivered**, within **7 days** of delivery, with no return already in progress.",
+          "This order can’t be returned from chat right now. It must be **delivered**, within **5 days** of delivery, with no return already in progress.",
           [
             { label: "My orders", value: "action:recent_orders" },
             { label: "Contact support", value: "contact support" },
@@ -598,7 +659,7 @@ export function useRaniCareChat() {
     setPending(null);
     if (withWelcome) {
       greetedRef.current = true;
-      pushBot(GREETING, MENU_ACTIONS, undefined, 200);
+      pushBot(GREETING, GREETING_ACTIONS, undefined, 200);
     }
   };
 
@@ -611,7 +672,7 @@ export function useRaniCareChat() {
         try {
           await fetchRecentOrders();
         } catch {
-          pushBot("Orders load nahi ho paye. Phir se try karo.", [
+          pushBot("We couldn't load your orders. Please try again.", [
             { label: "My orders", value: "action:recent_orders" },
           ]);
           return true;
@@ -632,8 +693,8 @@ export function useRaniCareChat() {
       }
       if (looksLikePickAttempt(trimmed)) {
         pushBot(
-          "Samajh nahi aaya — neeche se order **chuno**, ya **1** / **2** likh kar bhejo.",
-          [{ label: "Saare orders", value: "action:recent_orders" }],
+          "I didn't catch that — **pick an order** below, or reply with **1** / **2**.",
+          [{ label: "All orders", value: "action:recent_orders" }],
           undefined,
           180,
         );
@@ -644,19 +705,29 @@ export function useRaniCareChat() {
 
     if (isAnythingElse(trimmed)) {
       setPending(null);
-      pushBot("What do you need help with?", MENU_ACTIONS, undefined, 160);
+      pushBot("Of course — what do you need help with?", GREETING_ACTIONS, undefined, 160);
       return true;
     }
 
     if (isGoodbye(trimmed)) {
       setPending(null);
-      pushBot("Take care.", [{ label: "My orders", value: "action:recent_orders" }], undefined, 160);
+      pushBot(
+        "Take care — come back anytime. Happy shopping!",
+        [{ label: "My orders", value: "action:recent_orders" }],
+        undefined,
+        160,
+      );
       return true;
     }
 
     if (isThanks(trimmed)) {
       setPending(null);
-      pushBot("You're welcome.", FOLLOW_UP_ACTIONS, undefined, 160);
+      pushBot(
+        "You're welcome! Need anything else?",
+        AFTER_HELP_ACTIONS,
+        undefined,
+        160,
+      );
       return true;
     }
 
@@ -671,17 +742,27 @@ export function useRaniCareChat() {
         await executeCancel(pending.orderId);
       } else {
         pushUser("No");
-        pushBot("Okay — your order is unchanged.", FOLLOW_UP_ACTIONS, undefined, 200);
+        pushBot(
+          "Okay — your order stays as it is. Anything else?",
+          AFTER_HELP_ACTIONS,
+          undefined,
+          200,
+        );
       }
       return true;
     }
 
     if (aff === "yes") {
-      pushBot("Choose what you need below.", MENU_ACTIONS, undefined, 160);
+      pushBot("What do you need help with?", GREETING_ACTIONS, undefined, 160);
       return true;
     }
 
-    pushBot("Okay.", FOLLOW_UP_ACTIONS, undefined, 160);
+    pushBot(
+      "Alright! I'm here whenever you need help 🙂",
+      AFTER_HELP_ACTIONS,
+      undefined,
+      160,
+    );
     return true;
   };
 
@@ -692,18 +773,15 @@ export function useRaniCareChat() {
 
     if (isGreeting(trimmed)) {
       setPending(null);
-      pushBot(GREETING, MENU_ACTIONS, undefined, 160);
+      pushBot(GREETING, GREETING_ACTIONS, undefined, 160);
       return;
     }
 
     if (isAbuse(trimmed)) {
       setPending(null);
-      const hiAbuse = isHinglishQuery(trimmed);
       pushBot(
-        hiAbuse ?
-          "Main aapki madad ke liye yahan hoon. Order, delivery, return ya payment — jo bhi help chahiye, batayiye 🙂"
-        : "I'm here to help you. Tell me what you need — orders, delivery, returns, or payments.",
-        MENU_ACTIONS,
+        "I'm here to help. Tell me what you need — orders, delivery, returns, or shopping.",
+        GREETING_ACTIONS,
         undefined,
         160,
       );
@@ -724,13 +802,9 @@ export function useRaniCareChat() {
       return;
     }
 
-    const hi = isHinglishQuery(rawInput);
-
     if (intent === "shipping") {
       pushBot(
-        hi ?
-          "Orders aksar **1–3 business days** mein process hote hain. India mein delivery aam taur par **3–10 business days** leti hai. COD location ke hisaab se vary kar sakta hai."
-        : "Orders are usually processed within 1–3 business days. Delivery within India typically takes 3–10 business days. Cash on delivery may vary by location.",
+        "Orders are usually processed within 1–3 business days. Delivery within India typically takes 3–10 business days. Cash on delivery may vary by location.",
         [
           { label: "Shipping policy", value: "shipping policy" },
           { label: "My orders", value: "action:recent_orders" },
@@ -741,9 +815,7 @@ export function useRaniCareChat() {
 
     if (intent === "payment") {
       pushBot(
-        hi ?
-          "Agar payment fail hua par paisa debit ho gaya, to aksar **3–7 business days** mein wapas aa jata hai. Na aaye to transaction reference ke saath humein contact karo."
-        : "If a payment failed but an amount was debited, it usually reverses within 3–7 business days. If it does not, contact us with your transaction reference.",
+        "If a payment failed but an amount was debited, it usually reverses within 3–7 business days. If it does not, contact us with your transaction reference.",
         [{ label: "Contact support", value: "contact support" }],
       );
       return;
@@ -751,9 +823,7 @@ export function useRaniCareChat() {
 
     if (intent === "coupon") {
       pushBot(
-        hi ?
-          "Coupon ke liye minimum order value, valid dates, ya sirf first-time purchase ki shart ho sakti hai. Code checkout par apply karo, ya na chale to contact karo."
-        : "Promotional codes may require a minimum order value, valid dates, or apply only to first-time purchases. Apply your code at checkout, or contact us if it is not accepted.",
+        "Promotional codes may require a minimum order value, valid dates, or apply only to first-time purchases. Apply your code at checkout, or contact us if it is not accepted.",
         [{ label: "View cart", value: "open cart" }],
       );
       return;
@@ -761,9 +831,7 @@ export function useRaniCareChat() {
 
     if (intent === "sizing") {
       pushBot(
-        hi ?
-          "Apne measurements ko product page ke **size chart** se compare karo. Do sizes ke beech ho to bada size aksar zyada comfortable rehta hai."
-        : "Please compare your measurements with the size chart on the product page. If you are between sizes, the larger size is often more comfortable.",
+        "Please compare your measurements with the size chart on the product page. If you are between sizes, the larger size is often more comfortable.",
         [{ label: "Shop", value: "open shop" }],
       );
       return;
@@ -771,9 +839,7 @@ export function useRaniCareChat() {
 
     if (intent === "privacy") {
       pushBot(
-        hi ?
-          "Hum aapki information kaise use karte hain, ye privacy policy mein diya hai."
-        : "How we use your information is described in our privacy policy.",
+        "How we use your information is described in our privacy policy.",
         [{ label: "Privacy policy", value: "privacy policy" }],
       );
       return;
@@ -781,9 +847,7 @@ export function useRaniCareChat() {
 
     if (intent === "terms") {
       pushBot(
-        hi ?
-          "Humari terms of service purchases aur website use ko cover karti hain."
-        : "Our terms of service cover purchases and use of this website.",
+        "Our terms of service cover purchases and use of this website.",
         [{ label: "Terms", value: "terms policy" }],
       );
       return;
@@ -791,9 +855,7 @@ export function useRaniCareChat() {
 
     if (intent === "contact") {
       pushBot(
-        hi ?
-          `Humse contact karo:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nOrder ke baare mein likhte waqt apna order number zaroor dein.`
-        : `Contact us:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nPlease include your order number when writing about an order.`,
+        `Contact us:\nPhone: ${contactPhone}\nEmail: ${contactEmail}\nPlease include your order number when writing about an order.`,
         [
           { label: "Call", value: "call support" },
           { label: "Email", value: "email support" },
@@ -848,27 +910,33 @@ export function useRaniCareChat() {
         label: s.label.charAt(0).toUpperCase() + s.label.slice(1),
         value: s.actionValue,
       }));
-      actions.push(...MENU_ACTIONS.slice(0, 3));
+      actions.push(...GREETING_ACTIONS.slice(0, 3));
       pushBot(
-        `Did you mean **${hint}**? Tap below, or send your order number.`,
+        `Did you mean **${hint}**? Pick an option below, or send an order number — I'll figure it out 🙂`,
         actions,
       );
       return;
     }
 
-    pushBot("Choose an option below or send your order number.", MENU_ACTIONS);
+    pushBot(
+      "I didn't quite get that — no worries. Pick an option below, or type it in your own words (typos are fine).",
+      GREETING_ACTIONS,
+    );
   };
 
   const handleAction = async (value: string) => {
+    ensureGreeted();
     if (value === "action:menu") {
       setPending(null);
       pushUser("Menu");
-      pushBot("What do you need help with?", MENU_ACTIONS, undefined, 160);
+      pushBot("What do you need help with?", GREETING_ACTIONS, undefined, 160);
       return;
     }
     if (value === "action:recent_orders") {
       pushUser("Show my orders");
-      await presentOrderList({ intro: "Here are your recent orders." });
+      await presentOrderList({
+        intro: "Here are your **recent** orders:",
+      });
       return;
     }
     if (value === "action:cancel_help") {
@@ -927,7 +995,7 @@ export function useRaniCareChat() {
       pushUser("Open order details");
       const order = recentOrdersRef.current.find((o) => o._id === id);
       const intro =
-        order ? formatOrderAnswer(order, askedQuery ?? "order details", true)
+        order ? formatOrderAnswer(order, askedQuery ?? "order details")
         : undefined;
       await presentOrderDetail(id, intro);
       return;
@@ -970,7 +1038,8 @@ export function useRaniCareChat() {
       const isMachine =
         value.startsWith("action:") || /^[a-z]+:/.test(value);
       if (!isMachine) {
-        const label = INTENT_USER_LABEL[detectIntent(value)];
+        const label =
+          ACTION_TEXT_LABEL[value] ?? INTENT_USER_LABEL[detectIntent(value)];
         pushUser(label ?? value);
       }
       await respondWithIntent(value);
@@ -980,6 +1049,7 @@ export function useRaniCareChat() {
   const submitUserText = async (text: string): Promise<boolean> => {
     const trimmed = text.trim();
     if (!trimmed || typing || loadingOrders) return false;
+    ensureGreeted();
     setInput("");
     setMessages((prev) => [...prev, userMessage(trimmed)].slice(-MAX_MESSAGES));
     await respondWithIntent(trimmed);

@@ -55,7 +55,7 @@ export function resolveFooterCategoryLimit(
   maxAvailable: number,
 ): number {
   const n = Number(raw);
-  const fallback = 7;
+  const fallback = 5;
   const base = Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
   return Math.min(Math.max(base, 1), Math.max(maxAvailable, 1), 20);
 }

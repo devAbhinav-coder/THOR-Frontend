@@ -258,7 +258,7 @@ function buildStaticInternalLinks(): AboutInternalLink[] {
     {
       href: "/returns",
       label: "Returns & exchanges",
-      description: "7-day hassle-free returns explained clearly.",
+      description: "5-day hassle-free returns explained clearly.",
       group: "help",
     },
     {

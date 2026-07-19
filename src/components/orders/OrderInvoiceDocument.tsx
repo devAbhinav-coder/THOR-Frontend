@@ -390,7 +390,7 @@ export default function OrderInvoiceDocument({ order }: Props) {
             <p className='font-semibold text-gray-700 mb-0.5'>Return Policy:</p>
             <p>
               Please inspect goods immediately upon delivery. Returns are
-              subject to our verified policy terms within 7 days of receipt.
+              subject to our verified policy terms within 5 days of receipt.
             </p>
             <p className='mt-0.5 uppercase tracking-wider font-semibold text-gray-400'>
               This is a computer generated invoice and does not require a

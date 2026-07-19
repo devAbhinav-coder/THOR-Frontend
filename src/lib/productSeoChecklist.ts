@@ -45,7 +45,7 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
     : "Add product name first";
   const suggestedDescription =
     name ?
-      `Shop ${fabricBit}${categoryBit}${name} at The House of Rani. Premium Indian ethnic wear, free delivery over ₹1,099, easy 7-day returns across India.`.slice(
+      `Shop ${fabricBit}${categoryBit}${name} at The House of Rani. Premium Indian ethnic wear, free delivery over ₹1,099, easy 5-day returns across India.`.slice(
         0,
         MAX_META_DESC,
       )
@@ -107,7 +107,7 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
     detail:
       INDIA_INTENT.test(effectiveDesc) || INDIA_INTENT.test(seoTitle) ?
         "Description or title mentions India, saree, delivery, or returns."
-      : "Add “India”, “free delivery”, “7-day returns”, or “saree” in the meta description.",
+      : "Add “India”, “free delivery”, “5-day returns”, or “saree” in the meta description.",
     status:
       INDIA_INTENT.test(effectiveDesc) || INDIA_INTENT.test(seoTitle) ? "pass" : "warn",
   });

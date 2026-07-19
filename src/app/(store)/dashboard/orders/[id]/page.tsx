@@ -793,7 +793,7 @@ export default function OrderDetailPage() {
                     />
                   </div>
                   <p className='text-xs text-gray-400'>
-                    Eligible within 7 days of delivery. See our return policy
+                    Eligible within 5 days of delivery. See our return policy
                     for details.
                   </p>
                 </>

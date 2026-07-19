@@ -114,7 +114,7 @@ export function buildProductMetaDescription(
     : "";
   const attrBit = attrs.length ? ` — ${attrs.join(" · ")}` : "";
 
-  return `Shop ${name}${attrBit}${priceBit} at The House of Rani. Premium Indian ethnic wear with free delivery over ₹1,099 and 7-day returns across India.`.slice(
+  return `Shop ${name}${attrBit}${priceBit} at The House of Rani. Premium Indian ethnic wear with free delivery over ₹1,099 and 5-day returns across India.`.slice(
     0,
     160,
   );

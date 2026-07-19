@@ -15,10 +15,7 @@ import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { hasInStockVariant } from "@/lib/productStock";
 import { resolveShopCardImage } from "@/lib/pdpImages";
-import {
-  isInStockForColor,
-  shopProductHref,
-} from "@/lib/shopProductListing";
+import { isInStockForColor, shopProductHref } from "@/lib/shopProductListing";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
 
 interface ShopCollectionCardProps {
@@ -56,22 +53,16 @@ function ShopCollectionCardInner({
     if (displayColor) {
       const strict = resolveShopCardImage(product, displayColor);
       if (strict) {
-        return (
-          normalizeCloudinaryDeliveryUrl(strict) || strict
-        );
+        return normalizeCloudinaryDeliveryUrl(strict) || strict;
       }
       if (allowImageFallback) {
         const url = product.images[0]?.url;
-        return (
-          normalizeCloudinaryDeliveryUrl(url) || String(url || "").trim()
-        );
+        return normalizeCloudinaryDeliveryUrl(url) || String(url || "").trim();
       }
       return "";
     }
     const url = product.images[0]?.url;
-    return (
-      normalizeCloudinaryDeliveryUrl(url) || String(url || "").trim()
-    );
+    return normalizeCloudinaryDeliveryUrl(url) || String(url || "").trim();
   }, [product, displayColor, allowImageFallback]);
 
   const showPrimaryImage = Boolean(primaryUrl) && !primaryImageError;

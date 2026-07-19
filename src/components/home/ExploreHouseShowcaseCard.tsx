@@ -6,7 +6,7 @@ import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { cn } from "@/lib/utils";
 
 export const EXPLORE_HOUSE_CARD_CLASS =
-  "group relative block aspect-[3/4] w-[104px] shrink-0 snap-start sm:w-[120px] md:w-[140px] lg:min-w-[172px] lg:w-auto lg:flex-1 lg:max-w-[200px] xl:max-w-[215px] 2xl:max-w-[228px]";
+  "group relative block aspect-[3/4] w-[clamp(104px,28vw,150px)] shrink-0 snap-start md:w-[160px] lg:w-[180px] xl:w-[200px] 2xl:w-[215px]";
 
 export type ExploreHouseCard = {
   id: string;
@@ -38,7 +38,7 @@ export default function ExploreHouseShowcaseCard({
         fill
         loader={disableLoader ? undefined : cloudinaryLoader}
         unoptimized={disableLoader}
-        sizes="(max-width: 640px) 104px, (max-width: 1024px) 140px, 215px"
+        sizes="(max-width: 640px) 30vw, (max-width: 1024px) 160px, 215px"
         className={cn(
           "card-hover-zoom object-cover transition-transform duration-500 ease-out",
           !card.comingSoon && "group-hover:scale-105",

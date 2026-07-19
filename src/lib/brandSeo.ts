@@ -12,7 +12,7 @@ export const HOME_TITLE =
 
 /** Meta description — matches what we want in Google blue link text. */
 export const HOME_META_DESCRIPTION =
-  "Shop premium sarees, salwar suits, and Indian ethnic wear at The House of Rani. Designer weaves, festive & bridal styles, gift hampers, free delivery over ₹1,099, and easy 7-day returns across India.";
+  "Shop premium sarees, salwar suits, and Indian ethnic wear at The House of Rani. Designer weaves, festive & bridal styles, gift hampers, free delivery over ₹1,099, and easy 5-day returns across India.";
 
 export const ROOT_DEFAULT_TITLE =
   "The House of Rani | Premium Sarees & Indian Ethnic Wear Online";

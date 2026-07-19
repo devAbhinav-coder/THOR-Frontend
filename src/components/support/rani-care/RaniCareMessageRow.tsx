@@ -1,6 +1,16 @@
 "use client";
 
-import { Ban, Bot, Package, Truck, UserRound } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import {
+  ArrowUpRight,
+  Ban,
+  Bot,
+  Package,
+  Star,
+  Truck,
+  UserRound,
+} from "lucide-react";
 import { cn, formatDate, formatPrice } from "@/lib/utils";
 import { ChatMessageBody } from "./ChatMessageBody";
 import { formatChatTime } from "./formatChat";
@@ -27,6 +37,11 @@ function statusClass(status: string) {
     return "border-gray-300 bg-gray-50 text-gray-700";
   }
   return "border-gray-200 bg-gray-100 text-gray-600";
+}
+
+function discountPercent(price: number, compare?: number): number | null {
+  if (!compare || compare <= price || price <= 0) return null;
+  return Math.round(((compare - price) / compare) * 100);
 }
 
 export function RaniCareMessageRow({
@@ -126,6 +141,88 @@ export function RaniCareMessageRow({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {!isUser && message.products && message.products.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {message.products.map((p, pi) => {
+                const discount = discountPercent(p.priceInr, p.comparePriceInr);
+                return (
+                  <Link
+                    key={p.slug}
+                    href={`/shop/${p.slug}`}
+                    className={cn(
+                      "group flex flex-col overflow-hidden border border-gray-200 bg-white shadow-[0_2px_10px_rgba(20,25,47,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#c5a059]/60 hover:shadow-[0_8px_22px_rgba(20,25,47,0.12)]",
+                      isNew && "animate-rani-msg-bot motion-reduce:animate-none",
+                    )}
+                    style={
+                      isNew ?
+                        { animationDelay: `${Math.min(staggerIndex * 45 + pi * 60, 280)}ms` }
+                      : undefined
+                    }
+                  >
+                    <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#f4f1eb]">
+                      {p.image ?
+                        <Image
+                          src={p.image}
+                          alt={p.name}
+                          fill
+                          sizes="(max-width: 640px) 44vw, 180px"
+                          className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                        />
+                      : <div className="flex h-full flex-col items-center justify-center gap-1 text-gray-400">
+                          <Package className="h-6 w-6" />
+                          <span className="text-[9px] uppercase tracking-wider">
+                            Image unavailable
+                          </span>
+                        </div>
+                      }
+                      <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-navy-900/30 to-transparent" />
+                      {discount && (
+                        <span className="absolute left-1.5 top-1.5 bg-[#c5a059] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+                          {discount}% off
+                        </span>
+                      )}
+                      {!p.inStock && (
+                        <span className="absolute right-1.5 top-1.5 bg-navy-900/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+                          Sold out
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col p-2.5">
+                      {(p.category || p.fabric) && (
+                        <p className="mb-1 truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-[#a7823d]">
+                          {[p.category, p.fabric].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      <p className="line-clamp-2 font-serif text-[12px] font-semibold leading-snug text-navy-900">
+                        {p.name}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                        <span className="text-xs font-bold text-navy-900">
+                          {formatPrice(p.priceInr)}
+                        </span>
+                        {p.comparePriceInr && (
+                          <span className="text-[10px] text-gray-400 line-through">
+                            {formatPrice(p.comparePriceInr)}
+                          </span>
+                        )}
+                        {p.rating ? (
+                          <span className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-[#a7823d]">
+                            <Star className="h-2.5 w-2.5 fill-current" />
+                            {p.rating}
+                          </span>
+                        ) : null}
+                      </div>
+                      <span className="mt-2 flex items-center justify-between border-t border-gray-100 pt-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-navy-900 transition-colors group-hover:text-[#a7823d]">
+                        View product
+                        <ArrowUpRight className="h-3 w-3" />
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
 

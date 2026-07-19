@@ -14,7 +14,7 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
   sarees: {
     title: "Premium Sarees Collection — Shop Online India",
     description:
-      "Shop premium sarees online at The House of Rani — designer weaves, festive & bridal styles, free delivery over ₹1,099, and 7-day returns across India.",
+      "Shop premium sarees online at The House of Rani — designer weaves, festive & bridal styles, free delivery over ₹1,099, and 5-day returns across India.",
     keywords: [
       "sarees online India",
       "buy sarees online",
@@ -50,13 +50,13 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
   festive: {
     title: "Festive Sarees Online India",
     description:
-      "Festive sarees for Diwali, weddings, and celebrations. Curated ethnic wear with fast dispatch and easy 7-day returns.",
+      "Festive sarees for Diwali, weddings, and celebrations. Curated ethnic wear with fast dispatch and easy 5-day returns.",
     keywords: ["festive sarees India", "party wear sarees", "celebration sarees online"],
   },
   "salwar-suits": {
     title: "Salwar Suits & Ethnic Sets Online India",
     description:
-      "Shop salwar suits, ethnic co-ord sets, and women’s Indian wear online at The House of Rani. Premium fabrics, festive styles, free delivery over ₹1,099, and 7-day returns.",
+      "Shop salwar suits, ethnic co-ord sets, and women’s Indian wear online at The House of Rani. Premium fabrics, festive styles, free delivery over ₹1,099, and 5-day returns.",
     keywords: [
       "salwar suits online India",
       "buy salwar suits online",
@@ -123,7 +123,7 @@ export function resolveCategoryPageSeo(categoryName: string, slug: string): Cate
     title: isSareeLike
       ? `Buy ${name} Online India`
       : `Shop ${name} Online India`,
-    description: `Shop ${name} at The House of Rani — premium Indian ethnic wear with pan-India delivery, free shipping over ₹1,099, and easy 7-day returns.`,
+    description: `Shop ${name} at The House of Rani — premium Indian ethnic wear with pan-India delivery, free shipping over ₹1,099, and easy 5-day returns.`,
     keywords: [
       `${name} online India`,
       `buy ${name} online`,

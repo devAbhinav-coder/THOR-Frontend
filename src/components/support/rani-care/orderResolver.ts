@@ -25,8 +25,9 @@ export function isHinglishQuery(query: string): boolean {
   return HINGLISH_TOKENS.test(query.toLowerCase());
 }
 
-function prefersHinglish(query: string): boolean {
-  return isHinglishQuery(query);
+/** Bot policy: always reply in English, even when the customer writes Hinglish. */
+function prefersHinglish(_query: string): boolean {
+  return false;
 }
 
 export type OrderAspect =
@@ -184,11 +185,11 @@ function formatTotalAnswer(order: Order, hinglish: boolean): string {
     : `Order **${num}** total is **${total}** (${itemNames(order)}).`;
 }
 
-/** Answer the SPECIFIC thing the customer asked about one order, in their language. */
+/** Answer the SPECIFIC thing the customer asked about one order (English only). */
 export function formatOrderAnswer(
   order: Order,
   query: string,
-  hinglish = isHinglishQuery(query),
+  hinglish = prefersHinglish(query),
 ): string {
   const aspect = detectOrderAspect(query);
   switch (aspect) {
@@ -210,11 +211,57 @@ export function formatOrderAnswer(
 
 const YESTERDAY_RE = /\b(kal|kl|kaal|yesterday|pichle din|previous day)\b/;
 const TODAY_RE = /\b(aaj|aj|aaz|today)\b/;
-const LATEST_RE = /\b(last order|latest|recent|sabse naya|naya order|abhi wala|newest)\b/;
+const LATEST_RE =
+  /\b(last order|latest order|recent order|sabse naya|naya order|abhi wala|newest|mera last|my last)\b/;
+
+const WORD_NUM: Record<string, number> = {
+  one: 1,
+  ek: 1,
+  two: 2,
+  do: 2,
+  dono: 2,
+  three: 3,
+  teen: 3,
+  four: 4,
+  char: 4,
+  five: 5,
+  paanch: 5,
+  panch: 5,
+  six: 6,
+  chhe: 6,
+  chhah: 6,
+};
+
+/** "last 2 orders" / "last two orr" / "pichle 3" → N, else null. */
+export function parseLastNOrders(query: string): number | null {
+  const q = normalizeForIntent(query);
+  // last 2 / last two / recent 3 orders
+  let m = q.match(
+    /\b(?:last|latest|recent)\s+(?:(\d+)|(one|ek|two|do|dono|three|teen|four|char|five|paanch|panch|six|chhe|chhah))\s*(?:orders?)?\b/,
+  );
+  if (m) {
+    const n = m[1] ? parseInt(m[1], 10) : WORD_NUM[m[2]];
+    if (n && n >= 1 && n <= 12) return n;
+  }
+  // pichle 2 order / pichhle teen
+  m = q.match(
+    /\b(?:pichle|pichhle|previous)\s+(?:(\d+)|(one|ek|two|do|dono|three|teen|four|char|five|paanch|panch|six))\s*(?:orders?)?\b/,
+  );
+  if (m) {
+    const n = m[1] ? parseInt(m[1], 10) : WORD_NUM[m[2]];
+    if (n && n >= 1 && n <= 12) return n;
+  }
+  return null;
+}
 
 function temporalFilter(orders: Order[], query: string): Order[] | null {
   const q = normalizeForIntent(query);
   const todayKey = istDateKey(new Date());
+
+  const lastN = parseLastNOrders(query);
+  if (lastN != null) {
+    return orders.slice(0, lastN);
+  }
 
   if (YESTERDAY_RE.test(q)) {
     const y = new Date();
@@ -343,11 +390,15 @@ function buildPickIntro(
   const hinglish = prefersHinglish(query);
   const n = matches.length;
   const q = normalizeForIntent(query);
+  const lastN = parseLastNOrders(query);
 
   // Hinglish uses a prefix ("kal ke"), English uses a suffix ("from yesterday").
   let whenHi = "";
   let whenEn = "";
-  if (YESTERDAY_RE.test(q)) {
+  if (lastN != null) {
+    whenHi = `last ${lastN} `;
+    whenEn = ` (last ${lastN})`;
+  } else if (YESTERDAY_RE.test(q)) {
     whenHi = "kal ke ";
     whenEn = " from yesterday";
   } else if (TODAY_RE.test(q)) {
@@ -364,7 +415,7 @@ function buildPickIntro(
     if (purpose === "return") {
       return `Aapke **${whenHi}${n} ${plural}** hain. Kis order ka **return** karna hai — neeche chuno.`;
     }
-    return `Aapke **${whenHi}${n} ${plural}** hain. **Kaunsa** order dekhna hai — neeche chuno ya **1 / 2** likh kar bhejo.`;
+    return `Aapke **${whenHi}${n} ${plural}** hain. **Kaunsa** dekhna hai — neeche chuno, ya **1 / 2** likh kar bhejo.`;
   }
 
   if (purpose === "cancel") {
@@ -373,7 +424,7 @@ function buildPickIntro(
   if (purpose === "return") {
     return `You have **${n} ${plural}**${whenEn}. Which order to **return**? Pick below.`;
   }
-  return `You have **${n} ${plural}**${whenEn}. **Which one** should I open? Pick below or reply **1** / **2**.`;
+  return `Here ${n === 1 ? "is" : "are"} your **${n} ${plural}**${whenEn}. **Which one** should I open? Pick below or reply **1** / **2**.`;
 }
 
 function purposeFromIntent(intent: Intent): OrderPickPurpose {
@@ -440,22 +491,36 @@ export function resolveOrdersFromQuery(
   if (byProduct) pool = byProduct;
 
   if (pool.length === 1) return single(pool[0]);
-  if (pool.length > 0 && pool.length < orders.length) return pick(pool);
+  if (pool.length > 0 && pool.length < orders.length) {
+    return pick(pool.slice(0, 6));
+  }
 
-  // 4) Vague question with no filter match — use active orders only.
+  // 4) Vague "where is my order / status" — answer the LATEST active order,
+  //    never dump the full history. User can tap "All orders" for more.
   const aspect = detectOrderAspect(query);
   const isVagueOrderQuestion =
     (purpose === "track" || purpose === "general") &&
     (aspect !== "general" ||
-      /\b(kahan|where|track|status|kab|paid|payment|eta)\b/.test(
+      /\b(kahan|where|track|tracking|status|kab|paid|payment|eta|my order|order)\b/.test(
         normalizeForIntent(query),
       ));
   if (isVagueOrderQuestion) {
     const act = activeOrders(orders);
     if (act.length === 1) return single(act[0]);
-    if (act.length > 1) return pick(act);
+    if (act.length > 1) {
+      // Singular phrasing ("mera order", "kahan hai") → latest one with a clear answer
+      const singular =
+        /\b(mera order|my order|last|latest|kahan|where|status|kab)\b/.test(
+          normalizeForIntent(query),
+        ) && parseLastNOrders(query) == null;
+      if (singular || purpose === "track") {
+        return single(act[0]);
+      }
+      return pick(act.slice(0, 5));
+    }
   }
 
+  // 5) Explicit "show all / my orders" list — caller will cap the display.
   return { kind: "all" };
 }
 

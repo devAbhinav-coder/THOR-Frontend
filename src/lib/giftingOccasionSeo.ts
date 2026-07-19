@@ -19,7 +19,7 @@ const OCCASION_PRESETS: Record<GiftingOccasionKey, OccasionSeoPreset> = {
     occasionFilter: "Corporate",
     title: "Corporate Gift Sets & Ethnic Hampers for Business India",
     description:
-      "Shop corporate gift sets, saree hampers, and premium ethnic gifting for employees, clients, and partners. Bulk orders, pan-India delivery, and 7-day returns at The House of Rani.",
+      "Shop corporate gift sets, saree hampers, and premium ethnic gifting for employees, clients, and partners. Bulk orders, pan-India delivery, and 5-day returns at The House of Rani.",
     h1: "Corporate Gift Sets & Ethnic Hampers Online India",
     keywords: [
       "corporate gifts India",
@@ -165,7 +165,7 @@ export function buildGiftingOccasionJsonLd(key: GiftingOccasionKey) {
             name: `Does The House of Rani offer ${preset.occasionFilter.toLowerCase()} gifting across India?`,
             acceptedAnswer: {
               "@type": "Answer",
-              text: `Yes. The House of Rani ships ${preset.occasionFilter.toLowerCase()} gift sets and ethnic hampers pan-India with free delivery on orders over ₹1,099 and a 7-day return policy.`,
+              text: `Yes. The House of Rani ships ${preset.occasionFilter.toLowerCase()} gift sets and ethnic hampers pan-India with free delivery on orders over ₹1,099 and a 5-day return policy.`,
             },
           },
           {

@@ -5,18 +5,18 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/returns",
-  title: "Returns & Refunds — Sarees & Ethnic Wear (7 Days)",
+  title: "Returns & Refunds — Sarees & Ethnic Wear (5 Days)",
   description:
-    "7-day returns, refunds, and order cancellations for sarees and ethnic wear at The House of Rani — including COD and shipping charge rules.",
+    "5-day returns, refunds, and order cancellations for sarees and ethnic wear at The House of Rani — including COD and shipping charge rules.",
   priority: "support",
 });
 
 export default function ReturnsPage() {
   return (
     <LegalPageLayout
-      title='Returns & Refunds — Sarees & Ethnic Wear (7 Days)'
+      title='Returns & Refunds — Sarees & Ethnic Wear (5 Days)'
       description='We want you to love every piece you order. This page sets out how returns, refunds, and cancellations work for purchases made on our website, so expectations are clear from the start.'
-      lastUpdated='22 April 2026'
+      lastUpdated='17 July 2026'
     >
       <h2>1. Overview</h2>
       <p>
@@ -106,11 +106,11 @@ export default function ReturnsPage() {
 
       <h2>6. Timelines</h2>
       <p>
-        Return windows and processing times may vary by product category and
-        promotion; the applicable window will be stated on the product page,
-        checkout, or in your order email where we offer returns. Refunds, after
-        approval, are typically initiated within a reasonable number of working
-        days after we receive the return; your bank or wallet may take
+        Eligible returns must be requested within{" "}
+        <strong>5 days of delivery</strong>, unless a different window is
+        stated on the product page, checkout, or your order email. Refunds,
+        after approval, are typically initiated within a reasonable number of
+        working days after we receive the return; your bank or wallet may take
         additional time to show the credit.
       </p>
 

@@ -1,8 +1,18 @@
 import type { Order } from "@/types";
 import { formatDate, formatPrice } from "@/lib/utils";
-import type { ChatMessage, OrderSummary, QuickAction } from "./types";
+import type {
+  ChatMessage,
+  OrderSummary,
+  ProductCard,
+  QuickAction,
+} from "./types";
 
-export function botMessage(text: string, actions?: QuickAction[], orders?: OrderSummary[]): ChatMessage {
+export function botMessage(
+  text: string,
+  actions?: QuickAction[],
+  orders?: OrderSummary[],
+  products?: ProductCard[],
+): ChatMessage {
   return {
     id: `b_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     sender: "bot",
@@ -10,6 +20,7 @@ export function botMessage(text: string, actions?: QuickAction[], orders?: Order
     timestamp: Date.now(),
     actions,
     orders,
+    products,
   };
 }
 

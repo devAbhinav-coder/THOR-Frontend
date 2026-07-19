@@ -188,10 +188,10 @@ export function RaniCareChatPanel(props: ChatProps) {
                       <Bot className="h-5 w-5 text-[#c5a059]" />
                     </div>
                     <p className="font-serif text-sm font-semibold text-navy-900">
-                      How may we assist you?
+                      Namaste — I&apos;m Rani Care
                     </p>
                     <p className="mt-1 text-[11px] text-gray-500">
-                      Orders, delivery, returns, or styling guidance.
+                      Orders, delivery, returns, or the perfect saree — just ask.
                     </p>
                     <div className="mt-3 flex flex-wrap justify-center gap-1.5">
                       {STARTER_PROMPTS.map((s, i) => (

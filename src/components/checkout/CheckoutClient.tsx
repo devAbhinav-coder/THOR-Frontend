@@ -63,7 +63,11 @@ import {
   heritageSectionCard,
   heritageSummaryCard,
 } from "@/components/checkout/checkoutHeritageTheme";
-import { trackPurchase, trackInitiateCheckout } from "@/lib/metaPixel";
+import {
+  getMetaBrowserIdentifiers,
+  trackPurchase,
+  trackInitiateCheckout,
+} from "@/lib/metaPixel";
 import { getMarketingAttributionForCheckout } from "@/lib/marketingAttribution";
 import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
@@ -945,6 +949,7 @@ export default function CheckoutClient() {
             addressData.phone.replace(/\s+/g, ""),
             "IN",
           )?.number || addressData.phone;
+        const metaBrowser = getMetaBrowserIdentifiers();
 
         if (existingOrder) {
           const prepRes = await orderApi.preparePayment(existingOrder._id);
@@ -975,6 +980,7 @@ export default function CheckoutClient() {
                   razorpayOrderId: response.razorpay_order_id,
                   razorpayPaymentId: response.razorpay_payment_id,
                   razorpaySignature: response.razorpay_signature,
+                  metaBrowser,
                 });
                 holdPlacingUntilOverlay = true;
                 await finalizeSuccessfulOrder(verifyRes.data.order);
@@ -1030,6 +1036,7 @@ export default function CheckoutClient() {
               ...(marketingAttribution ?
                 { marketingAttribution }
               : {}),
+              metaBrowser,
               ...(buyNowItem ?
                 {
                   buyNowItem: {
@@ -1113,6 +1120,7 @@ export default function CheckoutClient() {
                       razorpayOrderId: response.razorpay_order_id,
                       razorpayPaymentId: response.razorpay_payment_id,
                       razorpaySignature: response.razorpay_signature,
+                      metaBrowser,
                     });
                     holdPlacingUntilOverlay = true;
                     await finalizeSuccessfulOrder(verifyRes.data.order);

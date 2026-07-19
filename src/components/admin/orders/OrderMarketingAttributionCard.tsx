@@ -5,9 +5,9 @@ const FIELDS: { key: keyof MarketingAttribution; label: string }[] = [
   { key: 'utmSource', label: 'Source' },
   { key: 'utmMedium', label: 'Medium' },
   { key: 'utmCampaign', label: 'Campaign' },
-  { key: 'utmContent', label: 'Ad / content' },
+  { key: 'utmContent', label: 'Ad' },
   { key: 'utmTerm', label: 'Term' },
-  { key: 'landingPath', label: 'Landing page' },
+  { key: 'landingPath', label: 'Landing' },
 ];
 
 export default function OrderMarketingAttributionCard({
@@ -26,7 +26,7 @@ export default function OrderMarketingAttributionCard({
     <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-4 space-y-3">
       <div>
         <p className="text-[10px] font-bold uppercase tracking-wide text-brand-700">
-          Meta / ad attribution
+          Ad source
         </p>
         {summary ?
           <p className="text-sm font-semibold text-gray-900 mt-1">{summary}</p>
@@ -47,9 +47,7 @@ export default function OrderMarketingAttributionCard({
         </dl>
       : null}
       {attribution.fbclid ?
-        <p className="text-[10px] text-gray-500 break-all">
-          Meta click id (fbclid) captured
-        </p>
+        <p className="text-[10px] text-gray-500">Meta click saved</p>
       : null}
     </div>
   );

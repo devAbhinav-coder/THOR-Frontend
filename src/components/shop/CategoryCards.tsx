@@ -11,10 +11,7 @@ import {
   resolveGiftingCardImage,
   resolveSaleCardImage,
 } from "@/lib/shopSpecialCollections";
-import {
-  horizontalScrollSurfaceClassName,
-  horizontalScrollSurfaceProps,
-} from "@/lib/scrollSurface";
+import ScrollRowWithArrows from "@/components/ui/ScrollRowWithArrows";
 
 interface CategoryCardsProps {
   categories: Category[];
@@ -47,10 +44,7 @@ export default function CategoryCards({
 
   return (
     <div className="w-full mb-3 sm:mb-4">
-      <div
-        {...horizontalScrollSurfaceProps}
-        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 scrollbar-hide sm:gap-4 ${horizontalScrollSurfaceClassName}`}
-      >
+      <ScrollRowWithArrows className="flex snap-x snap-mandatory gap-3 pb-1 sm:gap-4">
         {cards.map((cat) => (
           <Link
             key={cat.id}
@@ -71,7 +65,7 @@ export default function CategoryCards({
             </div>
           </Link>
         ))}
-      </div>
+      </ScrollRowWithArrows>
     </div>
   );
 }

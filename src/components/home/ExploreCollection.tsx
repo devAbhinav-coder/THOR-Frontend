@@ -69,27 +69,27 @@ export default function ExploreCollection() {
     <section
       className={cn(homeSectionStyles.pageBg, "py-12 sm:py-16 lg:py-20")}
       style={{ contain: "layout" }}
-      aria-labelledby="explore-collection-heading"
+      aria-labelledby='explore-collection-heading'
     >
       <div className={homeSectionStyles.container}>
-        <div className="mb-8 text-center sm:mb-12">
-          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs">
+        <div className='mb-8 text-center sm:mb-12'>
+          <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs'>
             Curation
           </p>
           <h2
-            id="explore-collection-heading"
-            className="mt-3 font-serif text-3xl font-medium leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]"
+            id='explore-collection-heading'
+            className='mt-3 font-serif text-3xl font-medium leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]'
           >
-            Explore the{" "}
-            <span className="italic text-navy-900">Collection</span>
+            Explore the <span className='italic text-navy-900'>Collection</span>
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-gray-500 sm:mt-4 sm:text-base">
-            Discover sarees that beautifully blend tradition with modern elegance.
+          <p className='mx-auto mt-3 max-w-xl text-sm leading-relaxed text-gray-500 sm:mt-4 sm:text-base'>
+            Discover sarees that beautifully blend tradition with modern
+            elegance.
           </p>
         </div>
 
         <ProductInfiniteGrid
-          gridClassName="grid grid-cols-2 items-stretch gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 [&>*]:h-full [&>*]:min-h-0"
+          gridClassName='grid grid-cols-2 items-stretch gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 [&>*]:h-full [&>*]:min-h-0'
           items={listingEntries}
           getItemKey={(entry) => entry.listKey}
           renderItem={(entry) => (
@@ -108,10 +108,10 @@ export default function ExploreCollection() {
           renderSkeleton={() => <ShopCollectionCardSkeleton />}
         />
 
-        <div className="mt-10 sm:mt-12">
+        <div className='mt-10 sm:mt-12'>
           <Link
-            href="/shop"
-            className="mx-auto flex w-full max-w-sm items-center justify-center bg-navy-900 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-white transition-colors hover:bg-navy-800 sm:text-xs"
+            href='/shop'
+            className='mx-auto flex w-full max-w-sm items-center justify-center bg-navy-900 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-white transition-colors hover:bg-navy-800 sm:text-xs'
           >
             Delve Deeper
           </Link>

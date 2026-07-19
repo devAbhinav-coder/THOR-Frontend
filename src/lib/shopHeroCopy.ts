@@ -13,7 +13,7 @@ export type ShopHeroContent = {
 
 const DEFAULT_PERKS = [
   "Free delivery over ₹1,099",
-  "7-day easy returns",
+  "5-day easy returns",
   "Pan-India shipping",
 ] as const;
 
@@ -116,7 +116,7 @@ export function resolveShopHeroContent(options: {
     titleLine1: "Sarees woven for",
     titleLine2: "every celebration",
     subtitle:
-      "Discover designer silk, cotton, and festive drapes with story-led motifs — free delivery over ₹1,099 & hassle-free 7-day returns.",
+      "Discover designer silk, cotton, and festive drapes with story-led motifs — free delivery over ₹1,099 & hassle-free 5-day returns.",
     h1Accessible:
       "Premium sarees and Indian ethnic wear — shop online at The House of Rani",
     perks: DEFAULT_PERKS,

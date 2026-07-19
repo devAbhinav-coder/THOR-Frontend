@@ -12,7 +12,7 @@ export async function GET() {
 ## About
 The House of Rani is an Indian e-commerce brand for premium ethnic wear and gifting.
 Primary categories: sarees, salwar suits, lehengas, corsets, and curated gift hampers.
-Free delivery on orders over ₹1,099. 7-day returns. Pan-India shipping.
+Free delivery on orders over ₹1,099. 5-day returns. Pan-India shipping.
 
 ## Key pages
 - Home: ${siteUrl}/

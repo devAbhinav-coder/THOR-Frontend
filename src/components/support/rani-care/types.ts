@@ -5,6 +5,19 @@ export type QuickAction = {
   value: string;
 };
 
+/** Product recommendation card returned by the RAG assistant */
+export type ProductCard = {
+  name: string;
+  slug: string;
+  priceInr: number;
+  comparePriceInr?: number;
+  image?: string;
+  category?: string;
+  fabric?: string;
+  inStock: boolean;
+  rating?: number;
+};
+
 /** Minimal order snapshot for chat UI + localStorage */
 export type OrderSummary = {
   id: string;
@@ -27,6 +40,7 @@ export type ChatMessage = {
   timestamp: number;
   actions?: QuickAction[];
   orders?: OrderSummary[];
+  products?: ProductCard[];
 };
 
 export type Intent =

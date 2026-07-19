@@ -25,7 +25,7 @@ export function buildSubcategoryMetaDescription(
 ): string {
   const custom = metaDescription?.trim();
   if (custom) return custom.slice(0, 160);
-  return `Browse ${subcategoryName} ${categoryName} at The House of Rani — premium Indian ethnic wear, free delivery over ₹1,099, secure checkout, and 7-day returns across India.`.slice(
+  return `Browse ${subcategoryName} ${categoryName} at The House of Rani — premium Indian ethnic wear, free delivery over ₹1,099, secure checkout, and 5-day returns across India.`.slice(
     0,
     160,
   );

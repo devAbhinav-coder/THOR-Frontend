@@ -9,10 +9,7 @@ import {
   resolveSaleCard,
 } from "@/lib/shopSpecialCollections";
 import { Category, HomeExploreHouse } from "@/types";
-import {
-  horizontalScrollSurfaceClassName,
-  horizontalScrollSurfaceProps,
-} from "@/lib/scrollSurface";
+import ScrollRowWithArrows from "@/components/ui/ScrollRowWithArrows";
 import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
 import ExploreHouseShowcaseCard, {
   type ExploreHouseCard,
@@ -20,7 +17,8 @@ import ExploreHouseShowcaseCard, {
 
 const FALLBACK_IMAGES: Record<string, string> = {
   saree: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85",
-  leheng: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=85",
+  leheng:
+    "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=85",
 };
 
 function getImageForCategory(cat: Category): string {
@@ -38,17 +36,19 @@ type CategorySectionProps = {
 };
 
 function categorySubtitle(productCount?: number): string {
-  return (productCount ?? 0) > 0 ? "THE COLLECTION" : "COMING SOON";
+  return (productCount ?? 0) > 0 ? "" : "COMING SOON";
 }
 
 export default function CategorySection({
   initialCategories,
   exploreHouseImages,
 }: CategorySectionProps = {}) {
-  const [categories, setCategories] = useState<(Category & { productCount: number })[]>(() =>
-    Array.isArray(initialCategories) ? initialCategories : []
+  const [categories, setCategories] = useState<
+    (Category & { productCount: number })[]
+  >(() => (Array.isArray(initialCategories) ? initialCategories : []));
+  const [loading, setLoading] = useState(
+    () => !Array.isArray(initialCategories),
   );
-  const [loading, setLoading] = useState(() => !Array.isArray(initialCategories));
 
   useEffect(() => {
     if (Array.isArray(initialCategories)) {
@@ -62,9 +62,12 @@ export default function CategorySection({
         setCategories(
           ((res.data as { categories: Category[] }).categories || []).filter(
             (c): c is Category =>
-              !!c && typeof c === "object" && typeof c.name === "string" && c.name.trim().length > 0
-          )
-        )
+              !!c &&
+              typeof c === "object" &&
+              typeof c.name === "string" &&
+              c.name.trim().length > 0,
+          ),
+        ),
       )
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -107,31 +110,33 @@ export default function CategorySection({
   if (showcaseCards.length === 0) return null;
 
   return (
-    <section className="bg-[#f9f9f9] py-16 sm:py-20 lg:py-24">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
-        
+    <section className='bg-[#f9f9f9] py-16 sm:py-20 lg:py-24'>
+      <div className='mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8'>
         {/* Header */}
-        <div className="mb-12 flex flex-col items-center justify-center text-center sm:mb-16">
-          <h2 className="font-serif text-3xl text-[#1a1a1a] sm:text-4xl lg:text-[2.75rem] tracking-wide">
-            Explore <span className="relative inline-block">
+        <div className='mb-12 flex flex-col items-center justify-center text-center sm:mb-16'>
+          <h2 className='font-serif text-3xl text-[#1a1a1a] sm:text-4xl lg:text-[2.75rem] tracking-wide'>
+            Explore{" "}
+            <span className='relative inline-block'>
               Our
-              <span className="absolute -bottom-2 left-0 right-0 h-[1px] bg-[#c5a059]" />
-            </span> House
+              <span className='absolute -bottom-2 left-0 right-0 h-[1px] bg-[#c5a059]' />
+            </span>{" "}
+            House
           </h2>
         </div>
 
-        <div
-          {...horizontalScrollSurfaceProps}
-          className={`flex flex-nowrap justify-start gap-2.5 overflow-x-auto pb-1 sm:justify-center sm:gap-3 md:gap-4 lg:gap-5 lg:overflow-x-visible ${horizontalScrollSurfaceClassName} scrollbar-hide snap-x snap-mandatory`}
-        >
-          {showcaseCards.map((card, idx) => (
-            <ExploreHouseShowcaseCard
-              key={card.id}
-              card={card}
-              priority={idx < 4}
-            />
-          ))}
-        </div>
+        <ScrollRowWithArrows className='pb-1 snap-x snap-mandatory'>
+          {/* w-max + mx-auto: centers the row when it fits, scrolls from the
+              left edge (no clipping) when it doesn't. */}
+          <div className='mx-auto flex w-max flex-nowrap gap-2.5 sm:gap-3 md:gap-4 lg:gap-5'>
+            {showcaseCards.map((card, idx) => (
+              <ExploreHouseShowcaseCard
+                key={card.id}
+                card={card}
+                priority={idx < 4}
+              />
+            ))}
+          </div>
+        </ScrollRowWithArrows>
       </div>
     </section>
   );

@@ -892,7 +892,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                         value={form.seoDescription}
                         onChange={(e) => set("seoDescription", e.target.value)}
                         rows={3}
-                        placeholder='120–160 chars: fabric, occasion, free delivery over ₹1,099, 7-day returns across India.'
+                        placeholder='120–160 chars: fabric, occasion, free delivery over ₹1,099, 5-day returns across India.'
                         maxLength={160}
                       />
                       <p

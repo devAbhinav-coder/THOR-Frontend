@@ -2,6 +2,7 @@ import {
   CHAT_RETENTION_MS,
   MAX_MESSAGES,
   META_KEY,
+  OPEN_EVENT,
   OPEN_KEY,
   STORAGE_KEY,
 } from "./constants";
@@ -85,6 +86,16 @@ export function loadOpenState(): boolean {
 export function saveOpenState(open: boolean): void {
   try {
     localStorage.setItem(OPEN_KEY, open ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
+
+/** Open Rani Care from footer / other UI (works across the store layout). */
+export function requestOpenRaniCare(): void {
+  saveOpenState(true);
+  try {
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT));
   } catch {
     // ignore
   }

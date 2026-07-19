@@ -536,7 +536,10 @@ export default function AdminDashboardPage() {
               {/* Marketing Strip */}
               {topViewed.length > 0 && (
                 <div className="hover:-translate-y-1 transition-transform duration-300">
-                  <MarketingPulseStrip topViewed={topViewed} />
+                  <MarketingPulseStrip
+                    topViewed={topViewed}
+                    attributedOrders={analytics.marketingInsights?.attributedOrders}
+                  />
                 </div>
               )}
 

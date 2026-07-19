@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperType } from "swiper";
 import { Autoplay } from "swiper/modules";
@@ -34,18 +33,6 @@ export default function SareeCollections({ subcategories }: SareeCollectionsProp
 
   const handleSwiperLock = useCallback(() => setIsSwiperLocked(true), []);
   const handleSwiperUnlock = useCallback(() => setIsSwiperLocked(false), []);
-
-  const handleSlidePrev = useCallback(() => {
-    if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
-      swiperReady.slidePrev();
-    }
-  }, [swiperReady, isSwiperLocked]);
-
-  const handleSlideNext = useCallback(() => {
-    if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
-      swiperReady.slideNext();
-    }
-  }, [swiperReady, isSwiperLocked]);
 
   const pauseAuto = useCallback(() => {
     if (swiperReady && !swiperReady.destroyed && !isSwiperLocked) {
@@ -85,7 +72,7 @@ export default function SareeCollections({ subcategories }: SareeCollectionsProp
         <div
           data-lenis-prevent-horizontal
           className={cn(
-            "relative min-h-[360px] overflow-hidden sm:min-h-[420px] lg:min-h-[480px]",
+            "relative min-h-[230px] overflow-hidden sm:min-h-[420px] lg:min-h-[480px]",
             isSwiperLocked && "[&_.swiper-wrapper]:justify-center"
           )}
           onMouseEnter={pauseAuto}
@@ -94,26 +81,6 @@ export default function SareeCollections({ subcategories }: SareeCollectionsProp
           onPointerUp={resumeAuto}
           onPointerCancel={resumeAuto}
         >
-          {!isSwiperLocked && (
-            <>
-              <button
-                type="button"
-                onClick={handleSlidePrev}
-                className="absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-[#c5a059] shadow-md transition-colors hover:bg-white sm:left-1 sm:h-10 sm:w-10"
-                aria-label="Previous subcategories"
-              >
-                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleSlideNext}
-                className="absolute right-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#c5a059]/35 bg-white/95 text-[#c5a059] shadow-md transition-colors hover:bg-white sm:right-1 sm:h-10 sm:w-10"
-                aria-label="Next subcategories"
-              >
-                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-            </>
-          )}
           <style jsx global>{`
             .category-collection-swiper .swiper-wrapper {
               transition-timing-function: linear !important;
@@ -151,7 +118,7 @@ export default function SareeCollections({ subcategories }: SareeCollectionsProp
             {sortedSubcategories.map((sub, index) => (
               <SwiperSlide
                 key={sub._id}
-                className="!w-[78vw] sm:!w-[300px] lg:!w-[calc((100%-3rem)/4)] lg:max-w-[300px]"
+                className="!w-[44vw] sm:!w-[300px] lg:!w-[calc((100%-3rem)/4)] lg:max-w-[300px]"
               >
                 <Link
                   href={`/shop/collections/sarees/${encodeURIComponent(sub.slug)}`}
@@ -167,7 +134,7 @@ export default function SareeCollections({ subcategories }: SareeCollectionsProp
                         alt={sub.name}
                         fill
                         loader={cloudinaryLoader}
-                        sizes="(max-width: 1024px) 82vw, 25vw"
+                        sizes="(max-width: 640px) 46vw, (max-width: 1024px) 300px, 25vw"
                         className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                         priority={index === 0}
                         loading={index === 0 ? "eager" : "lazy"}

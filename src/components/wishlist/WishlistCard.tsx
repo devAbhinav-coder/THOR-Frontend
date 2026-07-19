@@ -15,6 +15,7 @@ import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { hasInStockVariant } from "@/lib/productStock";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { trackAddToCart } from "@/lib/metaPixel";
 
 interface WishlistCardProps {
   product: Product;
@@ -139,6 +140,12 @@ function WishlistCardInner({ product, className, onRemoved }: WishlistCardProps)
           undefined,
           bagProduct,
           { successToast: false },
+        );
+        trackAddToCart(
+          bagProduct,
+          1,
+          variant.price ?? bagProduct.price,
+          variant,
         );
         setIsRemoving(true);
         await toggleWishlist(product._id, bagProduct, { silent: true });

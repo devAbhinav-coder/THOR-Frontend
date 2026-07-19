@@ -11,10 +11,14 @@ export function normalizeForIntent(input: string): string {
     [/\b(thnks|thnx|thanx|thanku|dhanyavaad|shukriya)\b/g, "thanks"],
     [/\b(plz|pls|plis|krdo|kardo)\b/g, "please"],
     [/\b(cancell?ation|cancell?|cancle|cncl|cancel karo|band karo)\b/g, "cancel"],
-    [/\b(ordre?s?|odrer|ordeer|order)\b/g, "order"],
+    // Common typos: orr / ordr / oders → order; mra / mre → mera
+    [/\b(mra|mre|mera|mere|meri)\b/g, "mera"],
+    [/\b(ordre?s?|odrer|ordeer|orr|ordr|oders?|odr|order)\b/g, "order"],
     [/\b(mera order|mere order|meri order)\b/g, "my order"],
     [/\b(delivry|delivary|delievery|delevery|dilevery|delivery)\b/g, "delivery"],
     [/\b(ship+ing|shippment|shipment|bhej|bhejna|bhejoge)\b/g, "shipping"],
+    // kihar / kha / khr → kahan; kabhi kabhi typo-heavy Hinglish
+    [/\b(kihar|khr|khaa?n?|kaha|kahan|kidhar|kidhr)\b/g, "kahan"],
     [/\b(track+ing|trakking|traking|kahan hai|kaha hai|kidhar)\b/g, "tracking"],
     [/\b(refnd|refundd|refun|paisa wapas|money back)\b/g, "refund"],
     [/\b(retrn|retrun|retun|wapas|wapisi)\b/g, "return"],
@@ -23,7 +27,7 @@ export function normalizeForIntent(input: string): string {
     [/\b(suport|supprt|suppot|madad|sahayata)\b/g, "support"],
     [/\b(helpp+|halp|help chahiye)\b/g, "help"],
     [/\b(wher+is|wheris)\b/g, "where is"],
-    [/\b(staus|statu?s|hal)\b/g, "status"],
+    [/\b(staus|statu?s|hal|sts)\b/g, "status"],
     [/\b(exchnge|exchage|badalna)\b/g, "exchange"],
     [/\b(damagd|damged|kharab|tuta)\b/g, "damaged"],
     [/\b(namste|namaskar|namaste)\b/g, "namaste"],
@@ -32,6 +36,7 @@ export function normalizeForIntent(input: string): string {
     [/\b(size|naap|measurement|2xl|3xl|blouse)\b/g, "size"],
     [/\b(haan|han|ji|ha)\b/g, "yes"],
     [/\b(nahi|nah|na|mat)\b/g, "no"],
+    [/\b(dono)\b/g, "two"],
   ];
 
   for (const [re, word] of replacements) {

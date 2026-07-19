@@ -1,4 +1,5 @@
 import type { Order } from "@/types";
+import { RETURN_WINDOW_DAYS } from "@/lib/returnPolicy";
 
 export const RETURN_REASON_OPTIONS = [
   "Size/Fit Issue",
@@ -14,7 +15,7 @@ export function getReturnReasonByIndex(index: number): string | undefined {
   return RETURN_REASON_OPTIONS[index];
 }
 
-/** Same rules as backend: delivered, within 7 days of deliveredAt, no active return. */
+/** Same rules as backend: delivered, within RETURN_WINDOW_DAYS of deliveredAt, no active return. */
 export function isOrderReturnEligible(order: Order): boolean {
   if (order.status !== "delivered" || !order.deliveredAt) return false;
   const rs = (order as { returnStatus?: string }).returnStatus;
@@ -22,5 +23,5 @@ export function isOrderReturnEligible(order: Order): boolean {
   const deliveredTime = new Date(order.deliveredAt).getTime();
   const daysSinceDelivery =
     (Date.now() - deliveredTime) / (1000 * 60 * 60 * 24);
-  return daysSinceDelivery <= 7;
+  return daysSinceDelivery <= RETURN_WINDOW_DAYS;
 }

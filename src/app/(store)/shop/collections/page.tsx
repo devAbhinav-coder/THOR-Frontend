@@ -61,7 +61,7 @@ export async function generateMetadata({
     description = `Search results for "${search}" — premium sarees, lehengas, and ethnic wear at The House of Rani. Free delivery across India.`;
   } else if (featured) {
     description =
-      "Handpicked featured sarees and ethnic wear at The House of Rani. Free delivery · 7-day returns · In stock items only.";
+      "Handpicked featured sarees and ethnic wear at The House of Rani. Free delivery · 5-day returns · In stock items only.";
   }
 
   const appUrl = SITE_URL;
@@ -220,7 +220,7 @@ export default async function ShopPage({
           "@id": `${SITE_URL}/shop/collections#collectionpage`,
           name: "Shop — Premium Sarees, Salwar Suits & Indian Ethnic Wear",
           description:
-            "Browse the full collection of premium sarees, salwar suits, lehengas, and ethnic wear at The House of Rani. Free delivery · 7-day free returns.",
+            "Browse the full collection of premium sarees, salwar suits, lehengas, and ethnic wear at The House of Rani. Free delivery · 5-day free returns.",
           url: `${SITE_URL}/shop/collections`,
           inLanguage: "en-IN",
           isPartOf: { "@id": `${SITE_URL}/#website` },

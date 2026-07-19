@@ -12,10 +12,6 @@ export function RaniCareFab({ onOpen }: Props) {
   return (
     <div className="ml-auto flex w-fit flex-col items-end gap-2 motion-reduce:transition-none">
       <div className="relative shrink-0">
-        <span
-          className="pointer-events-none absolute -inset-1 border border-[#c5a059]/25 motion-reduce:animate-none"
-          aria-hidden
-        />
         <button
           type="button"
           onClick={onOpen}
@@ -25,10 +21,10 @@ export function RaniCareFab({ onOpen }: Props) {
           )}
           aria-label="Open customer support chat"
         >
-          <MessageCircle className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.75} />
+          <MessageCircle className="h-5 w-5 sm:h-5 sm:w-5" strokeWidth={1.75} />
         </button>
         <span
-          className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 border border-white bg-[#c5a059] sm:h-3 sm:w-3"
+          className="absolute -right-0.5 -top-0.5 h-2 w-2 border border-white bg-[#c5a059] sm:h-2.5 sm:w-2.5"
           title="Support online"
           aria-hidden
         />

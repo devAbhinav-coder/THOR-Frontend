@@ -13,18 +13,19 @@ export type PendingPrompt =
       query?: string;
     };
 
+export const FOLLOW_UP_ACTIONS: QuickAction[] = [
+  { label: "Haan, aur help", value: "action:menu" },
+  { label: "My orders", value: "action:recent_orders" },
+  { label: "Bas itna", value: "no thanks" },
+];
+
 export const MENU_ACTIONS: QuickAction[] = [
   { label: "My orders", value: "action:recent_orders" },
   { label: "Track order", value: "where is my order" },
+  { label: "Find a saree", value: "saree recommend karo" },
   { label: "Cancel order", value: "action:cancel_help" },
   { label: "Returns", value: "action:return_help" },
   { label: "Contact us", value: "contact support" },
-];
-
-export const FOLLOW_UP_ACTIONS: QuickAction[] = [
-  { label: "My orders", value: "action:recent_orders" },
-  { label: "More help", value: "action:menu" },
-  { label: "Contact", value: "contact support" },
 ];
 
 const YES_RE =

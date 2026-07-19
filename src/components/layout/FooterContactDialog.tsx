@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Mail, MapPin, Phone, X } from "lucide-react";
+import { Mail, MapPin, MessageCircle, Phone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { footerContactIcon } from "@/lib/footerStyles";
 
@@ -11,6 +11,7 @@ type Props = {
   address: string;
   phone: string;
   email: string;
+  whatsappHref?: string;
 };
 
 export default function FooterContactDialog({
@@ -19,6 +20,7 @@ export default function FooterContactDialog({
   address,
   phone,
   email,
+  whatsappHref,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +126,26 @@ export default function FooterContactDialog({
               </a>
             </div>
           </li>
+          {whatsappHref ?
+            <li className='flex items-start gap-3'>
+              <span className={footerContactIcon} aria-hidden='true'>
+                <MessageCircle className='h-4 w-4' strokeWidth={1.75} />
+              </span>
+              <div className='min-w-0 pt-1'>
+                <p className='text-[10px] font-medium uppercase tracking-[0.18em] text-white/45'>
+                  WhatsApp
+                </p>
+                <a
+                  href={whatsappHref}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='mt-1 inline-block text-sm text-white/75 transition-colors hover:text-white'
+                >
+                  Chat on WhatsApp · {phone}
+                </a>
+              </div>
+            </li>
+          : null}
           <li className='flex items-start gap-3'>
             <span className={footerContactIcon} aria-hidden='true'>
               <Mail className='h-4 w-4' strokeWidth={1.75} />

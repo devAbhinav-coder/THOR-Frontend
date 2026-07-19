@@ -41,10 +41,10 @@ export const raniAvatarUser =
   "flex h-8 w-8 shrink-0 items-center justify-center border border-gray-200 bg-white text-navy-900";
 
 export const raniFab =
-  "relative inline-flex h-12 w-12 items-center justify-center border border-[#c5a059]/40 bg-navy-900 text-[#c5a059] shadow-[0_12px_32px_-8px_rgba(20,25,47,0.45)] transition-all hover:bg-navy-800 hover:border-[#c5a059]/60 active:scale-[0.97] sm:h-14 sm:w-14";
+  "relative inline-flex h-10 w-10 items-center justify-center border border-[#c5a059]/40 bg-navy-900 text-[#c5a059] shadow-[0_12px_32px_-8px_rgba(20,25,47,0.45)] transition-all hover:bg-navy-800 hover:border-[#c5a059]/60 active:scale-[0.97] sm:h-11 sm:w-11";
 
 export const raniFabLabel =
-  "hidden border border-gray-200 bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-navy-900 shadow-sm transition-colors hover:border-[#c5a059]/50 sm:inline-flex sm:items-center sm:gap-1.5";
+  "hidden border border-gray-200 bg-white/95 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-navy-900 shadow-sm transition-colors hover:border-[#c5a059]/50 sm:inline-flex sm:items-center sm:gap-1.5";
 
 export const raniComposerWrap =
   "relative flex rounded-none border border-gray-300 bg-white focus-within:border-[#c5a059]/60 focus-within:ring-1 focus-within:ring-[#c5a059]/25 transition-colors";

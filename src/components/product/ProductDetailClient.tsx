@@ -1267,10 +1267,10 @@ export default function ProductDetailClient({
               </div>
             )}
 
-            {colors.length > 1 && (
+            {colors.length > 0 && (
               <div>
                 <p className='mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900'>
-                  Select shade
+                  {colors.length > 1 ? "Select shade" : "Shade"}
                   {selectedVariant?.color ?
                     <span className='ml-2 font-medium normal-case tracking-normal text-gray-500'>
                       · {selectedVariant.color}
@@ -1553,7 +1553,7 @@ export default function ProductDetailClient({
             <div className='grid grid-cols-3 gap-3 border-t border-gray-100 pt-5'>
               {[
                 { icon: Truck, label: "Free Shipping" },
-                { icon: RotateCcw, label: "7 Days Return" },
+                { icon: RotateCcw, label: "5 Days Return" },
                 { icon: ShieldCheck, label: "Safe Payments" },
               ].map(({ icon: Icon, label }) => (
                 <div
@@ -1683,6 +1683,13 @@ export default function ProductDetailClient({
         </div>
       </div>
 
+      <PdpRelatedProductRows
+        product={product}
+        isGiftMarketingContext={isGiftMarketingContext}
+        relatedProducts={relatedProducts}
+        moreProducts={moreProducts}
+      />
+
       <PdpReviewsSection
         product={product}
         isAuthenticated={isAuthenticated}
@@ -1720,13 +1727,6 @@ export default function ProductDetailClient({
         reportDetails={reportDetails}
         setReportDetails={setReportDetails}
         onSubmitReport={handleReportReview}
-      />
-
-      <PdpRelatedProductRows
-        product={product}
-        isGiftMarketingContext={isGiftMarketingContext}
-        relatedProducts={relatedProducts}
-        moreProducts={moreProducts}
       />
 
       {isGiftModalOpen && product && (

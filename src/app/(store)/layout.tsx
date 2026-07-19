@@ -48,7 +48,7 @@ export default async function StoreLayout({
       <main className='pb-0 lg:pb-0 min-h-screen flex flex-col '>
         <StoreErrorBoundary>{children}</StoreErrorBoundary>
       </main>
-      <Footer />
+      <Footer initialNavCategories={initialNavCategories} />
       <StoreRaniCare />
       <Suspense fallback={null}>
         <StoreAuthModal />

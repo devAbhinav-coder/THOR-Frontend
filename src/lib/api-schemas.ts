@@ -199,6 +199,21 @@ export const raniCareChatReply = z.object({
     suggestedActions: z
       .array(z.object({ label: z.string(), value: z.string() }))
       .optional(),
+    products: z
+      .array(
+        z.object({
+          name: z.string(),
+          slug: z.string(),
+          priceInr: z.number(),
+          comparePriceInr: z.number().optional(),
+          image: z.string().optional(),
+          category: z.string().optional(),
+          fabric: z.string().optional(),
+          inStock: z.boolean(),
+          rating: z.number().optional(),
+        }),
+      )
+      .optional(),
     aiUsed: z.boolean().optional(),
     aiEnabled: z.boolean().optional(),
   }),

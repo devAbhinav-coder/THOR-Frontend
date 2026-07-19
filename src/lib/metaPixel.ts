@@ -3,13 +3,101 @@ import {
   getMetaCatalogItemId,
   type MetaCatalogVariantRef,
 } from "@/lib/metaCatalogId";
+import { env } from "@/lib/env";
+import { getStoredMarketingAttribution } from "@/lib/marketingAttribution";
 
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
 declare global {
   interface Window {
-    fbq: any;
+    fbq?: {
+      (...args: unknown[]): void;
+      initialized?: boolean;
+    };
   }
+}
+
+type MetaEventName =
+  | "PageView"
+  | "ViewContent"
+  | "Search"
+  | "AddToCart"
+  | "InitiateCheckout"
+  | "AddToWishlist";
+
+type MetaEventData = Record<string, unknown>;
+
+function createEventId(prefix: string): string {
+  const random =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+  return `${prefix}_${random}`;
+}
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const prefix = `${encodeURIComponent(name)}=`;
+  const match = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return match ? decodeURIComponent(match.slice(prefix.length)) : undefined;
+}
+
+export function getMetaBrowserIdentifiers(): {
+  fbp?: string;
+  fbc?: string;
+} {
+  const fbp = readCookie("_fbp");
+  const cookieFbc = readCookie("_fbc");
+  if (cookieFbc) return { fbp, fbc: cookieFbc };
+
+  const attribution = getStoredMarketingAttribution();
+  if (!attribution?.fbclid) return { fbp };
+  const capturedAt = attribution.capturedAt
+    ? new Date(attribution.capturedAt).getTime()
+    : Date.now();
+  const timestamp = Number.isFinite(capturedAt) ? capturedAt : Date.now();
+  return { fbp, fbc: `fb.1.${timestamp}.${attribution.fbclid}` };
+}
+
+function relayToConversionsApi(
+  eventName: MetaEventName,
+  eventId: string,
+  customData: MetaEventData,
+): void {
+  if (typeof window === "undefined") return;
+  const identifiers = getMetaBrowserIdentifiers();
+
+  void fetch(`${env.NEXT_PUBLIC_API_URL}/storefront/meta-event`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventName,
+      eventId,
+      eventSourceUrl: window.location.href,
+      customData,
+      ...identifiers,
+    }),
+    keepalive: true,
+    credentials: "include",
+  }).catch(() => {
+    // Analytics must never interrupt shopping.
+  });
+}
+
+function trackMatchedEvent(
+  eventName: MetaEventName,
+  customData: MetaEventData = {},
+  prefix = eventName.toLowerCase(),
+): string {
+  const eventId = createEventId(prefix);
+  if (typeof window !== "undefined" && window.fbq) {
+    window.fbq("track", eventName, customData, { eventID: eventId });
+  }
+  relayToConversionsApi(eventName, eventId, customData);
+  return eventId;
 }
 
 function metaProductPayload(
@@ -47,20 +135,15 @@ export const initPixel = () => {
 };
 
 export const trackPageView = () => {
-  if (typeof window === "undefined" || !window.fbq) return;
-  window.fbq("track", "PageView");
+  trackMatchedEvent("PageView", {}, "pv");
 };
 
 export const trackViewContent = (
   product: Product,
   variant?: MetaCatalogVariantRef,
 ) => {
-  if (typeof window === "undefined" || !window.fbq) return;
-
   const payload = metaProductPayload(product, variant, 1, product.price);
-  const eventId = `vc_${payload.content_ids[0]}_${Date.now()}`;
-
-  window.fbq("track", "ViewContent", payload, { eventID: eventId });
+  trackMatchedEvent("ViewContent", payload, `vc_${payload.content_ids[0]}`);
 };
 
 export const trackAddToCart = (
@@ -69,12 +152,8 @@ export const trackAddToCart = (
   priceOverride?: number,
   variant?: MetaCatalogVariantRef,
 ) => {
-  if (typeof window === "undefined" || !window.fbq) return;
-
   const payload = metaProductPayload(product, variant, quantity, priceOverride);
-  const eventId = `atc_${payload.content_ids[0]}_${Date.now()}`;
-
-  window.fbq("track", "AddToCart", payload, { eventID: eventId });
+  trackMatchedEvent("AddToCart", payload, `atc_${payload.content_ids[0]}`);
 };
 
 export const trackPurchase = (order: any) => {
@@ -119,19 +198,14 @@ export const trackInitiateCheckout = (
   cartOrItemValue: number = 0,
   numItems: number = 1,
 ) => {
-  if (typeof window === "undefined" || !window.fbq) return;
-
-  const eventId = `ic_${Date.now()}`;
-
-  window.fbq(
-    "track",
+  trackMatchedEvent(
     "InitiateCheckout",
     {
       value: cartOrItemValue,
       currency: "INR",
       num_items: numItems,
     },
-    { eventID: eventId },
+    "ic",
   );
 };
 
@@ -139,19 +213,16 @@ export const trackAddToWishlist = (
   product: Product,
   variant?: MetaCatalogVariantRef,
 ) => {
-  if (typeof window === "undefined" || !window.fbq) return;
-
   const payload = metaProductPayload(product, variant, 1, product.price);
-  const eventId = `atw_${payload.content_ids[0]}_${Date.now()}`;
-
-  window.fbq("track", "AddToWishlist", payload, { eventID: eventId });
+  trackMatchedEvent("AddToWishlist", payload, `atw_${payload.content_ids[0]}`);
 };
 
 export const trackSearch = (searchQuery: string) => {
-  if (typeof window === "undefined" || !window.fbq) return;
   if (!searchQuery.trim()) return;
 
-  window.fbq("track", "Search", {
-    search_string: searchQuery,
-  });
+  trackMatchedEvent(
+    "Search",
+    { search_string: searchQuery.trim().slice(0, 300) },
+    "search",
+  );
 };

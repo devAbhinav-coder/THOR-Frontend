@@ -233,10 +233,12 @@ export default function AnalyticsPage() {
               )}
 
               <VisitInsightsPanel insights={analytics.visitInsights} />
-              <MarketingInsightsPanel
-                marketingInsights={analytics.marketingInsights}
-                visitCampaigns={analytics.visitInsights?.byCampaign}
-              />
+              <div id="meta-ads">
+                <MarketingInsightsPanel
+                  marketingInsights={analytics.marketingInsights}
+                  visitCampaigns={analytics.visitInsights?.byCampaign}
+                />
+              </div>
 
               {(analytics.revenueByDay?.length ?? 0) > 0 && (
                 <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">

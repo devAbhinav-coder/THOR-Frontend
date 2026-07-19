@@ -616,7 +616,14 @@ export interface DashboardAnalytics {
     }[];
   };
   marketingInsights?: {
+    metaTracking?: {
+      pixelConfigured: boolean;
+      capiConfigured: boolean;
+    };
+    attributedOrders?: number;
+    fbclidOrders?: number;
     ordersByCampaign: { campaign: string; orders: number; revenue: number }[];
+    ordersBySource?: { source: string; orders: number; revenue: number }[];
   };
   paymentMethodMix?: { _id: string; revenue: number; count: number }[];
   ordersByHour?: { hour: number; orders: number; revenue: number }[];

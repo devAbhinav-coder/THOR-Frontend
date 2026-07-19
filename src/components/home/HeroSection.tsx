@@ -14,7 +14,7 @@ let hasPlayedHeroTextEntrance = false;
 const TRUST_SIGNALS = [
   "Authentic craftsmanship",
   "Pan-India delivery",
-  "7-day easy returns",
+  "5-day easy returns",
 ] as const;
 
 type Props = {

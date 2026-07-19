@@ -44,7 +44,7 @@ const faqItems = [
   },
   {
     q: "Can I cancel or return an order?",
-    a: "Eligibility depends on product type and order stage. Please review terms and shipping policy for full details.",
+    a: "You can cancel before dispatch from your account. Delivered orders may be returned within 5 days if unused and with tags. See our Returns page for full rules.",
   },
   {
     q: "Are shipping and COD fees refunded if I return an item?",
