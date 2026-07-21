@@ -28,6 +28,86 @@ import { useShopFilterStickyPin } from "@/hooks/useShopFilterStickyPin";
 const shopFilterCheckboxClass =
   "h-4 w-4 shrink-0 rounded-none border-gray-300 accent-[#c5a059] text-[#c5a059] focus:ring-[#c5a059]";
 
+const COLOR_KEYWORDS: Record<string, string> = {
+  "red": "#ef4444",
+  "blue": "#3b82f6",
+  "green": "#22c55e",
+  "yellow": "#eab308",
+  "black": "#000000",
+  "white": "#ffffff",
+  "orange": "#f97316",
+  "purple": "#a855f7",
+  "pink": "#ec4899",
+  "brown": "#78350f",
+  "gray": "#6b7280",
+  "grey": "#6b7280",
+  "silver": "#d1d5db",
+  "gold": "#fbbf24",
+  "navy": "#1e3a8a",
+  "teal": "#14b8a6",
+  "maroon": "#800000",
+  "beige": "#f5f5dc",
+  "cream": "#fffdd0",
+  "peach": "#ffdab9",
+  "mustard": "#ffdb58",
+  "olive": "#808000",
+  "cyan": "#06b6d4",
+  "magenta": "#d946ef",
+  "lavender": "#e6e6fa",
+  "turquoise": "#40e0d0",
+  "coral": "#ff7f50",
+  "rust": "#b7410e",
+  "wine": "#722f37",
+  "copper": "#b87333",
+  "bronze": "#cd7f32",
+  "champagne": "#f7e7ce",
+  "mint": "#98ff98",
+  "indigo": "#4b0082",
+  "violet": "#ee82ee",
+};
+
+export function ColorSwatch({ colorName, className }: { colorName: string; className?: string }) {
+  const name = colorName.toLowerCase().trim();
+  const isMulti = name === "multicolor" || name === "multicolour" || name === "multi" || name.includes("multi");
+
+  if (isMulti) {
+    return (
+      <span
+        className={cn(
+          "inline-block rounded-full border border-gray-200 shadow-sm",
+          className
+        )}
+        style={{
+          background: "conic-gradient(#ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444)",
+        }}
+        aria-hidden
+      />
+    );
+  }
+
+  let hex = COLOR_KEYWORDS[name];
+  if (!hex) {
+    for (const [key, value] of Object.entries(COLOR_KEYWORDS)) {
+      if (name.includes(key)) {
+        hex = value;
+        break;
+      }
+    }
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-block rounded-full border shadow-sm",
+        name === "white" ? "border-gray-300" : "border-gray-200/50",
+        className
+      )}
+      style={{ backgroundColor: hex || name.replace(/[^a-zA-Z]/g, '') }}
+      aria-hidden
+    />
+  );
+}
+
 const FILTER_CLOSE_DELAY_MS = 160;
 const MOBILE_BAR_HEIGHT =
   "calc(3.25rem + env(safe-area-inset-bottom, 0px))";
@@ -70,7 +150,7 @@ type Props = {
   onUpdateFilter: (key: string, value: string | number) => void;
   onClearFilters: () => void;
   onApplyPriceFilters: (minPrice: string, maxPrice: string) => void;
-  quickFabrics: string[];
+  quickColors: string[];
   productCountLabel: string;
 };
 
@@ -104,7 +184,7 @@ export default function ShopFilterBar(props: Props) {
     onUpdateFilter,
     onClearFilters,
     onApplyPriceFilters,
-    quickFabrics,
+    quickColors,
     productCountLabel,
   } = props;
 
@@ -263,7 +343,7 @@ export default function ShopFilterBar(props: Props) {
             <div className="mx-auto flex w-full max-w-7xl items-center px-4 py-3.5 min-h-[3.25rem]">
               <ShopFilterToolbar
                 {...toolbarProps}
-                quickFabrics={[]}
+                quickColors={[]}
                 sortDropUp
                 mobileBar
               />
@@ -343,7 +423,7 @@ type ToolbarProps = {
   filterMenuId: string;
   productCountLabel: string;
   hoverCapable: boolean;
-  quickFabrics: string[];
+  quickColors: string[];
   onFilterTriggerClick: () => void;
   onClearFilters: () => void;
   onUpdateFilter: (key: string, value: string | number) => void;
@@ -359,7 +439,7 @@ function ShopFilterToolbar({
   filterMenuId,
   productCountLabel,
   hoverCapable,
-  quickFabrics,
+  quickColors,
   onFilterTriggerClick,
   onClearFilters,
   onUpdateFilter,
@@ -414,20 +494,21 @@ function ShopFilterToolbar({
                 "scrollbar-hide",
               )}
             >
-              {quickFabrics.map((fabric) => (
+              {quickColors.map((color) => (
                 <button
-                  key={fabric}
+                  key={color}
                   type="button"
-                  onClick={() => onUpdateFilter("fabrics", fabric)}
+                  onClick={() => onUpdateFilter("colors", color)}
                   className={cn(
                     shopBarItemClass,
-                    "font-semibold transition-colors",
-                    isShopListFilterSelected(filters.fabrics, fabric) ?
+                    "font-semibold transition-colors flex items-center gap-2",
+                    isShopListFilterSelected(filters.colors, color) ?
                       "text-[#c5a059]"
                     : "text-gray-500 hover:text-[#c5a059]",
                   )}
                 >
-                  {fabric}
+                  <ColorSwatch colorName={color} className="h-3.5 w-3.5 shrink-0" />
+                  {color}
                 </button>
               ))}
             </div>
@@ -650,7 +731,7 @@ export function ShopFilterPanel({
       categoryTreeProp
     : (filterOptions?.categoryTree ?? []);
   const flatCategories = filterOptions?.categories ?? [];
-  const fabrics = filterOptions?.fabrics ?? [];
+  const colors = filterOptions?.colors ?? [];
   const occasions = occasionOptionsProp ?? filterOptions?.occasions ?? [];
 
   const filterCheckboxList = (
@@ -678,6 +759,9 @@ export function ShopFilterPanel({
                 onChange={() => onUpdateFilter(filterKey, item)}
                 className={shopFilterCheckboxClass}
               />
+              {filterKey === "colors" && (
+                <ColorSwatch colorName={item} className="h-3.5 w-3.5 shrink-0" />
+              )}
               <span className={cn(sidebar ? "text-[13px] leading-snug" : "text-sm")}>
                 {item}
               </span>
@@ -748,10 +832,10 @@ export function ShopFilterPanel({
         : <p className="text-sm text-gray-400">No collections available</p>}
       </FilterColumn>
 
-      <FilterColumn title="Fabric" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
-        {fabrics.length > 0 ?
-          filterCheckboxList(fabrics, filters.fabrics, "fabrics")
-        : <p className="text-sm text-gray-400">No fabrics available</p>}
+      <FilterColumn title="Color" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+        {colors.length > 0 ?
+          filterCheckboxList(colors, filters.colors, "colors")
+        : <p className="text-sm text-gray-400">No colors available</p>}
       </FilterColumn>
 
       <FilterColumn title="Occasion" defaultOpen={columnDefaultOpen} sidebar={sidebar}>

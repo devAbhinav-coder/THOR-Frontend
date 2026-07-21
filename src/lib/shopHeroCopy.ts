@@ -21,7 +21,7 @@ export function resolveShopHeroContent(options: {
   categoryName?: string | null;
   categoryDescription?: string | null;
   search?: string | null;
-  fabric?: string | null;
+  color?: string | null;
   isFeatured?: string | null;
   onSale?: string | null;
   bannerTitle?: string | null;
@@ -56,15 +56,15 @@ export function resolveShopHeroContent(options: {
     };
   }
 
-  const fabric = String(options.fabric || "").trim();
-  if (fabric) {
+  const color = String(options.color || "").trim();
+  if (color) {
     return {
-      eyebrow: `${fabric} edit`,
+      eyebrow: `${color} edit`,
       titleLine1: "Shop",
-      titleLine2: `${fabric} sarees`,
+      titleLine2: `${color} sarees`,
       subtitle:
-        `Explore ${fabric} weaves styled for weddings, festivities, and elevated everyday moments — only at The House of Rani.`,
-      h1Accessible: `${fabric} sarees online India`,
+        `Explore ${color} weaves styled for weddings, festivities, and elevated everyday moments — only at The House of Rani.`,
+      h1Accessible: `${color} sarees online India`,
       perks: DEFAULT_PERKS,
     };
   }

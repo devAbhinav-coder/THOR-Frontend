@@ -52,7 +52,7 @@ export type ShopFilters = {
   categories: string[];
   subcategories: string[];
   occasions: string[];
-  fabrics: string[];
+  colors: string[];
   minPrice: string;
   maxPrice: string;
   ratings: string[];
@@ -69,13 +69,13 @@ export type ShopCategoryContext = {
   description?: string;
 } | null;
 
-export type ShopMultiFilterKey = "categories" | "fabrics" | "ratings" | "subcategories" | "occasions";
+export type ShopMultiFilterKey = "categories" | "colors" | "ratings" | "subcategories" | "occasions";
 
 export const EMPTY_SHOP_FILTERS: ShopFilters = {
   categories: [],
   subcategories: [],
   occasions: [],
-  fabrics: [],
+  colors: [],
   minPrice: "",
   maxPrice: "",
   ratings: [],
@@ -237,7 +237,7 @@ export function parseShopFiltersFromUrl(
   const categories = readListParam(searchParams, "categories", "category");
   const subcategories = readListParam(searchParams, "subcategories", "subcategory");
   const occasions = readListParam(searchParams, "occasions", "occasion");
-  const fabrics = readListParam(searchParams, "fabrics", "fabric");
+  const colors = readListParam(searchParams, "colors", "color");
   const ratings = readListParam(searchParams, "ratings", "rating", "minRating");
 
   const parsed: ShopFilters = {
@@ -256,7 +256,7 @@ export function parseShopFiltersFromUrl(
         [categoryContext.subcategory.name]
       : [],
     occasions,
-    fabrics,
+    colors,
     minPrice: readScalarParam(searchParams, "minPrice"),
     maxPrice: readScalarParam(searchParams, "maxPrice"),
     ratings: ratings.filter((r) => /^[1-5]$/.test(r)),
@@ -298,8 +298,8 @@ export function buildShopQueryString(
   if (filters.occasions.length) {
     params.set("occasions", filters.occasions.join(","));
   }
-  if (filters.fabrics.length) {
-    params.set("fabrics", filters.fabrics.join(","));
+  if (filters.colors.length) {
+    params.set("colors", filters.colors.join(","));
   }
   if (filters.ratings.length) {
     params.set("ratings", filters.ratings.join(","));
@@ -319,7 +319,7 @@ export function hasSecondaryShopFilters(filters: ShopFilters): boolean {
   return (
     filters.subcategories.length > 0 ||
     filters.occasions.length > 0 ||
-    filters.fabrics.length > 0 ||
+    filters.colors.length > 0 ||
     filters.ratings.length > 0 ||
     Boolean(filters.minPrice) ||
     Boolean(filters.maxPrice) ||
@@ -335,7 +335,7 @@ export function shouldUseCategoryPath(filters: ShopFilters): boolean {
     filters.categories.length === 1 &&
     filters.subcategories.length === 0 &&
     filters.occasions.length === 0 &&
-    filters.fabrics.length === 0 &&
+    filters.colors.length === 0 &&
     !filters.minPrice &&
     !filters.maxPrice &&
     filters.ratings.length === 0 &&
@@ -351,7 +351,7 @@ export function shouldUseSubcategoryPath(filters: ShopFilters): boolean {
     filters.categories.length === 1 &&
     filters.subcategories.length === 1 &&
     filters.occasions.length === 0 &&
-    filters.fabrics.length === 0 &&
+    filters.colors.length === 0 &&
     !filters.minPrice &&
     !filters.maxPrice &&
     filters.ratings.length === 0 &&
@@ -376,7 +376,7 @@ export function countActiveShopFilters(
   count += categoryCount;
   count += filters.subcategories.length;
   count += filters.occasions.length;
-  count += filters.fabrics.length;
+  count += filters.colors.length;
   count += filters.ratings.length;
   if (filters.minPrice) count += 1;
   if (filters.maxPrice) count += 1;
@@ -416,7 +416,7 @@ export function resolveNextShopFilters(
     return toggleShopCategoryFilter(filters, String(value));
   }
   if (
-    key === "fabrics" ||
+    key === "colors" ||
     key === "ratings" ||
     key === "subcategories" ||
     key === "occasions"
@@ -454,8 +454,8 @@ export function formatShopSubcategoriesLabel(subcategories: string[]): string {
   return joinFilterLabels(subcategories, "");
 }
 
-export function formatShopFabricsLabel(fabrics: string[]): string {
-  return joinFilterLabels(fabrics, "");
+export function formatShopColorsLabel(colors: string[]): string {
+  return joinFilterLabels(colors, "");
 }
 
 function clampShopPrice(value: number, min: number, max: number): number {
@@ -530,8 +530,8 @@ export function buildShopProductQueryParams(
     if (effective.subcategories.length) {
       params.subcategories = effective.subcategories.join(",");
     }
-    if (effective.fabrics.length) {
-      params.fabrics = effective.fabrics.join(",");
+    if (effective.colors.length) {
+      params.colors = effective.colors.join(",");
     }
     if (effective.occasions.length) {
       params.occasions = effective.occasions.join(",");
@@ -560,8 +560,8 @@ export function buildShopProductQueryParams(
   if (effective.subcategories.length) {
     params.subcategories = effective.subcategories.join(",");
   }
-  if (effective.fabrics.length) {
-    params.fabrics = effective.fabrics.join(",");
+  if (effective.colors.length) {
+    params.colors = effective.colors.join(",");
   }
   if (effective.occasions.length) {
     params.occasions = effective.occasions.join(",");

@@ -44,6 +44,32 @@ export async function generateMetadata({
     return Array.isArray(v) ? v.length > 0 : false;
   });
 
+  const categoriesRaw =
+    typeof sp.categories === "string" ? sp.categories.trim() : "";
+  const legacyCategory =
+    typeof sp.category === "string" ? sp.category.trim() : "";
+  const categoryList = (categoriesRaw || legacyCategory)
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (categoryList.length === 1 && !sp.fabrics) {
+    const categorySlug = toShopCategorySlug(categoryList[0]);
+    if (categorySlug) {
+      const q = new URLSearchParams();
+      for (const [key, value] of Object.entries(sp)) {
+        if (key === "category" || key === "categories") continue;
+        if (typeof value === "string" && value.trim()) q.set(key, value);
+      }
+      const qs = q.toString();
+      permanentRedirect(
+        qs ?
+          `/shop/collections/${encodeURIComponent(categorySlug)}?${qs}`
+        : `/shop/collections/${encodeURIComponent(categorySlug)}`,
+      );
+    }
+  }
+
   let title = baseTitle;
   if (onSale) title = "Sale Sarees & Ethnic Wear Online India";
   else if (featured) title = "Featured Sarees & Ethnic Wear Online India";
@@ -163,31 +189,6 @@ export default async function ShopPage({
   searchParams: SearchParams;
 }) {
   const sp = await searchParams;
-  const categoriesRaw =
-    typeof sp.categories === "string" ? sp.categories.trim() : "";
-  const legacyCategory =
-    typeof sp.category === "string" ? sp.category.trim() : "";
-  const categoryList = (categoriesRaw || legacyCategory)
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (categoryList.length === 1 && !sp.fabrics) {
-    const categorySlug = toShopCategorySlug(categoryList[0]);
-    if (categorySlug) {
-      const q = new URLSearchParams();
-      for (const [key, value] of Object.entries(sp)) {
-        if (key === "category" || key === "categories") continue;
-        if (typeof value === "string" && value.trim()) q.set(key, value);
-      }
-      const qs = q.toString();
-      permanentRedirect(
-        qs ?
-          `/shop/collections/${encodeURIComponent(categorySlug)}?${qs}`
-        : `/shop/collections/${encodeURIComponent(categorySlug)}`,
-      );
-    }
-  }
   const isFiltered = Object.values(sp).some((v) => v !== undefined);
 
   // Only inject rich JSON-LD on the unfiltered base /shop page —

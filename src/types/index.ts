@@ -450,8 +450,8 @@ export interface FilterCategoryTreeItem {
 
 export interface FilterOptions {
   categories: string[];
-  fabrics: string[];
-  subcategories?: string[];
+  colors: string[];
+  subcategories: string[];
   occasions?: string[];
   tags?: string[];
   categoryTree?: FilterCategoryTreeItem[];

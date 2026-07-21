@@ -45,7 +45,7 @@ export function getHeroSlideDisplayTitle(slideTitle?: string | null): string {
 export function resolveShopBannerH1(options: {
   categoryName?: string | null;
   search?: string | null;
-  fabric?: string | null;
+  color?: string | null;
   isFeatured?: string | null;
   onSale?: string | null;
   bannerTitle?: string | null;
@@ -59,8 +59,8 @@ export function resolveShopBannerH1(options: {
   if (category) {
     return resolveCategoryPageSeo(category, category).title;
   }
-  const fabric = String(options.fabric || "").trim();
-  if (fabric) return `${fabric} Sarees Online India`;
+  const color = String(options.color || "").trim();
+  if (color) return `${color} Sarees Online India`;
   if (options.isFeatured === "true") return "Featured Sarees & Ethnic Wear Online India";
   if (options.onSale === "true") return "Sale Sarees & Ethnic Wear Online India";
   const banner = String(options.bannerTitle || "").trim();
@@ -71,7 +71,7 @@ export function resolveShopBannerH1(options: {
 export function resolveShopListHeading(options: {
   categoryName?: string | null;
   search?: string | null;
-  fabric?: string | null;
+  color?: string | null;
   isFeatured?: string | null;
   onSale?: string | null;
 }): string {
@@ -82,8 +82,8 @@ export function resolveShopListHeading(options: {
   }
   const category = String(options.categoryName || "").trim();
   if (category) return `${category} Collection`;
-  const fabric = String(options.fabric || "").trim();
-  if (fabric) return `${fabric} Sarees`;
+  const color = String(options.color || "").trim();
+  if (color) return `${color} Sarees`;
   if (options.isFeatured === "true") return "Featured Sarees";
   if (options.onSale === "true") return "Sale & Offers";
   return "All Sarees";

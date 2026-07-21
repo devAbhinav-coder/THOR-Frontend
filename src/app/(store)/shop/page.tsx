@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 export default async function ShopRedirectPage({
   searchParams,
@@ -7,5 +7,5 @@ export default async function ShopRedirectPage({
 }) {
   const sp = await searchParams;
   const qs = new URLSearchParams(sp as any).toString();
-  redirect(`/shop/collections${qs ? `?${qs}` : ""}`);
+  permanentRedirect(`/shop/collections${qs ? `?${qs}` : ""}`);
 }

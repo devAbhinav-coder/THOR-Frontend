@@ -13,7 +13,7 @@ type Props = {
   filters: ShopFilters;
   searchIntent?: ParsedSearchIntent | null;
   onApplySearch: (query: string) => void;
-  onApplyFabric: (fabric: string) => void;
+  onApplyColor: (color: string) => void;
   onApplyCategory: (category: string) => void;
   onApplyMaxPrice: (maxPrice: string) => void;
   onClearSearch: () => void;
@@ -30,7 +30,7 @@ export default function ShopSearchIntentChips({
   filters,
   searchIntent,
   onApplySearch,
-  onApplyFabric,
+  onApplyColor,
   onApplyCategory,
   onApplyMaxPrice,
   onClearSearch,
@@ -57,15 +57,15 @@ export default function ShopSearchIntentChips({
     });
   }
 
-  for (const fabric of intent.fabrics) {
-    const label = titleCase(fabric);
-    const applied = filters.fabrics.some(
-      (f) => f.toLowerCase() === fabric.toLowerCase(),
+  for (const color of intent.colors) {
+    const label = titleCase(color);
+    const applied = filters.colors.some(
+      (c) => c.toLowerCase() === color.toLowerCase(),
     );
     chips.push({
-      key: `fabric-${fabric}`,
-      label: applied ? `${label} fabric` : `Add ${label}`,
-      onClick: applied ? undefined : () => onApplyFabric(label),
+      key: `color-${color}`,
+      label: applied ? `${label} color` : `Add ${label}`,
+      onClick: applied ? undefined : () => onApplyColor(label),
       applied,
     });
   }

@@ -67,12 +67,12 @@ export default function ExploreCollection() {
 
   return (
     <section
-      className={cn(homeSectionStyles.pageBg, "py-12 sm:py-16 lg:py-20")}
+      className={cn(homeSectionStyles.pageBg, "py-6 sm:py-16 lg:py-20")}
       style={{ contain: "layout" }}
       aria-labelledby='explore-collection-heading'
     >
       <div className={homeSectionStyles.container}>
-        <div className='mb-8 text-center sm:mb-12'>
+        <div className='mb-4 text-center sm:mb-12'>
           <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs'>
             Curation
           </p>
@@ -89,7 +89,7 @@ export default function ExploreCollection() {
         </div>
 
         <ProductInfiniteGrid
-          gridClassName='grid grid-cols-2 items-stretch gap-y-8 gap-x-4 sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 [&>*]:h-full [&>*]:min-h-0'
+          gridClassName='grid grid-cols-2 items-stretch gap-y-2  sm:gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 [&>*]:h-full [&>*]:min-h-0'
           items={listingEntries}
           getItemKey={(entry) => entry.listKey}
           renderItem={(entry) => (

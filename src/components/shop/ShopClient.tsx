@@ -33,7 +33,7 @@ import {
   shouldShowClearShopFilters,
   dedupeShopFilterValues,
   formatShopCategoriesLabel,
-  formatShopFabricsLabel,
+  formatShopColorsLabel,
   isShopCategoryFilterSelected,
   resolveShopPriceDraft,
   shopPriceDraftToFilterStrings,
@@ -293,7 +293,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
         categories: filters.categories,
         subcategories: filters.subcategories,
         occasions: filters.occasions,
-        fabrics: filters.fabrics,
+        colors: filters.colors,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
         ratings: filters.ratings,
@@ -489,6 +489,15 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     enabled: true,
   });
 
+  const applyColor = useCallback(
+    (color: string) => {
+      const next = resolveNextShopFilters(filters, "colors", color);
+      const url = resolveCanonicalShopUrl(next, categoryContext);
+      router.push(url, { scroll: true });
+    },
+    [filters, categoryContext, router],
+  );
+
   const pushFilters = useCallback(
     (next: typeof filters) => {
       startFilterTransition(() => {
@@ -526,7 +535,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   };
 
   const categoryLabel = formatShopCategoriesLabel(filters.categories);
-  const fabricLabel = formatShopFabricsLabel(filters.fabrics);
+  const colorLabel = formatShopColorsLabel(filters.colors);
 
   const clearFilters = useCallback(() => {
     const { path, filters: cleared } = resolveClearShopFiltersNavigation();
@@ -549,19 +558,6 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   const applySearchQuery = (query: string) => {
     router.push(
       resolveCanonicalShopUrl({ ...filters, search: query }, categoryContext),
-      { scroll: false },
-    );
-  };
-
-  const applyIntentFabric = (fabric: string) => {
-    router.push(
-      resolveCanonicalShopUrl(
-        {
-          ...filters,
-          fabrics: dedupeShopFilterValues([...filters.fabrics, fabric]),
-        },
-        categoryContext,
-      ),
       { scroll: false },
     );
   };
@@ -611,7 +607,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     categoryName: categoryLabel || categoryContext?.name,
     categoryDescription: categoryContext?.description,
     search: filters.search,
-    fabric: fabricLabel,
+    color: colorLabel,
     isFeatured: filters.isFeatured,
     onSale: filters.onSale,
     bannerTitle: shopBanner.title,
@@ -619,14 +615,15 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   const headingText = resolveShopListHeading({
     categoryName: categoryLabel || categoryContext?.name,
     search: filters.search,
-    fabric: fabricLabel,
+    color: colorLabel,
     isFeatured: filters.isFeatured,
     onSale: filters.onSale,
   });
+
   const breadcrumbContext = useMemo(() => {
     if (filters.search) return `Search Products: "${searchTitle}"`;
     if (categoryLabel) return categoryLabel;
-    if (fabricLabel) return `${fabricLabel} Collection`;
+    if (colorLabel) return `${colorLabel} Collection`;
     if (filters.ratings.length) {
       return `${Math.min(...filters.ratings.map(Number))}★ & Above`;
     }
@@ -637,7 +634,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   }, [
     filters.search,
     categoryLabel,
-    fabricLabel,
+    colorLabel,
     filters.ratings,
     filters.minPrice,
     filters.maxPrice,
@@ -647,10 +644,10 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   ]);
   const productGridClass = SHOP_PRODUCT_GRID_CLASS;
 
-  const quickFabrics = useMemo(() => {
-    const fabrics = filterOptions?.fabrics ?? [];
-    return fabrics.slice(0, 5);
-  }, [filterOptions?.fabrics]);
+  const quickColors = useMemo(() => {
+    const colors = filterOptions?.colors ?? [];
+    return colors.slice(0, 5);
+  }, [filterOptions?.colors]);
 
   const heroTitle = useMemo(() => {
     if (activeFilterCount > 0 || categoryContext) return headingText;
@@ -729,7 +726,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
                 filters={filters}
                 searchIntent={searchIntent}
                 onApplySearch={applySearchQuery}
-                onApplyFabric={applyIntentFabric}
+                onApplyColor={applyColor}
                 onApplyCategory={applyIntentCategory}
                 onApplyMaxPrice={applyIntentMaxPrice}
                 onClearSearch={clearSearchOnly}
@@ -753,7 +750,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
           onUpdateFilter={updateFilter}
           onClearFilters={clearFilters}
           onApplyPriceFilters={applyPriceFilters}
-          quickFabrics={quickFabrics}
+          quickColors={quickColors}
           productCountLabel={productCountLabel}
         />
 
