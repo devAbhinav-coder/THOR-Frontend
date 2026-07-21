@@ -71,10 +71,27 @@ export function mergeOccasionOptions(
   for (const value of [...PRODUCT_OCCASIONS, ...fromProducts, ...custom]) {
     const trimmed = String(value || "").trim();
     if (!trimmed) continue;
-    const key = trimmed.toLowerCase();
-    if (seen.has(key)) continue;
+    const key = trimmed.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(trimmed);
   }
   return out;
+}
+
+export function mergeFabricOptions(
+  fromProducts: string[] = [],
+  custom: string[] = [],
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of [...PRODUCT_FABRICS, ...fromProducts, ...custom]) {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }

@@ -70,6 +70,14 @@ export default function ShopSearchIntentChips({
     });
   }
 
+  for (const fabric of intent.fabrics) {
+    chips.push({
+      key: `fabric-${fabric}`,
+      label: `${titleCase(fabric)} fabric`,
+      applied: true,
+    });
+  }
+
   for (const category of intent.categories) {
     const label = titleCase(category);
     const applied = filters.categories.some(
@@ -80,14 +88,6 @@ export default function ShopSearchIntentChips({
       label: applied ? label : `Category: ${label}`,
       onClick: applied ? undefined : () => onApplyCategory(label),
       applied,
-    });
-  }
-
-  for (const color of intent.colors) {
-    chips.push({
-      key: `color-${color}`,
-      label: titleCase(color),
-      applied: true,
     });
   }
 

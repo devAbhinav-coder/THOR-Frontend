@@ -225,6 +225,7 @@ export const filterOptions = z.object({
     .object({
       categories: z.array(z.union([z.string(), z.any()])).optional().default([]),
       colors: z.array(z.union([z.string(), z.any()])).optional().default([]),
+      fabrics: z.array(z.union([z.string(), z.any()])).optional().default([]),
       subcategories: z.array(z.union([z.string(), z.any()])).optional(),
       occasions: z.array(z.union([z.string(), z.any()])).optional(),
       categoryTree: z

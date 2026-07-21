@@ -18,7 +18,10 @@ import {
   pairsFromBulkInput,
 } from "@/lib/productDetailsBulk";
 import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
-import { PRODUCT_OCCASIONS } from "@/lib/productCatalogOptions";
+import { PRODUCT_FABRICS, PRODUCT_OCCASIONS } from "@/lib/productCatalogOptions";
+import { resolveColorAgainstCatalog } from "@/lib/catalogAttributes";
+import { useQuery } from "@tanstack/react-query";
+import type { FilterOptions } from "@/types";
 import { cn } from "@/lib/utils";
 import {
   AdminAiProductCopySection,
@@ -44,20 +47,6 @@ interface Props {
   onClose: () => void;
   onSave: (savedProduct?: Product) => void;
 }
-
-const FABRICS = [
-  "Silk",
-  "Cotton",
-  "Chiffon",
-  "Georgette",
-  "Banarasi",
-  "Kanjeevaram",
-  "Linen",
-  "Crepe",
-  "Net",
-  "Velvet",
-  "Other",
-];
 
 const Field = ({
   label,
@@ -85,6 +74,16 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [loadingProduct, setLoadingProduct] = useState(!!product?._id);
   const [loadedProduct, setLoadedProduct] = useState<Product | null>(null);
   const editingProduct = loadedProduct ?? product;
+
+  const { data: catalogFilterOptions } = useQuery({
+    queryKey: ["admin-catalog-color-options"],
+    queryFn: async () => {
+      const res = await productApi.getFilterOptions();
+      return res.data as FilterOptions;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const suggestedColors = catalogFilterOptions?.colors ?? [];
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [allSubcategories, setAllSubcategories] = useState<SubCategory[]>([]);
@@ -325,27 +324,46 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newFiles = collectNewImageFiles(colorGroups);
-    const imagesMeta = buildImagesMetaFromGroups(colorGroups);
 
-    if (totalImageCount < 1) {
+    const colorErr = validateColorGroupsForSave(colorGroups);
+    if (colorErr) return toast.error(colorErr);
+
+    const normalizedGroups = colorGroups.map((g) => {
+      const color = resolveColorAgainstCatalog(g.color, suggestedColors);
+      return {
+        ...g,
+        color,
+        existingImages: g.existingImages.map((img) => ({
+          ...img,
+          color: color || img.color,
+        })),
+      };
+    });
+    setColorGroups(normalizedGroups);
+
+    const newFiles = collectNewImageFiles(normalizedGroups);
+    const imagesMeta = buildImagesMetaFromGroups(normalizedGroups);
+    const variantsToSave = flattenColorGroups(normalizedGroups);
+    const imageCount = normalizedGroups.reduce(
+      (n, g) => n + g.existingImages.length + g.newFiles.length,
+      0,
+    );
+
+    if (imageCount < 1) {
       return toast.error("Upload at least one product image (per color)");
     }
-    if (totalImageCount > MAX_PRODUCT_IMAGES) {
+    if (imageCount > MAX_PRODUCT_IMAGES) {
       return toast.error(
         `Maximum ${MAX_PRODUCT_IMAGES} images per product across all colors.`,
       );
     }
     if (!form.category) return toast.error("Please select a category");
-    if (!flattenedVariants.length) {
+    if (!variantsToSave.length) {
       return toast.error("Add at least one size with a SKU");
     }
-    if (flattenedVariants.some((v) => !v.sku.trim())) {
+    if (variantsToSave.some((v) => !v.sku.trim())) {
       return toast.error("Every variant needs a SKU");
     }
-
-    const colorErr = validateColorGroupsForSave(colorGroups);
-    if (colorErr) return toast.error(colorErr);
 
     const expectedNewUploads = imagesMeta.filter((m) => !m.publicId).length;
     if (expectedNewUploads !== newFiles.length) {
@@ -380,7 +398,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       fd.append(
         "variants",
         JSON.stringify(
-          flattenedVariants.map((row) => ({
+          variantsToSave.map((row) => ({
             sku: row.sku,
             size: row.size,
             color: row.color,
@@ -657,7 +675,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                       onChange={(e) => set("fabric", e.target.value)}
                     >
                       <option value=''>Select fabric</option>
-                      {FABRICS.map((f) => (
+                      {PRODUCT_FABRICS.map((f) => (
                         <option key={f} value={f}>
                           {f}
                         </option>
@@ -773,6 +791,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 <ProductColorVariantEditor
                   groups={colorGroups}
                   onChange={setColorGroups}
+                  suggestedColors={suggestedColors}
                   productId={editingProduct?._id}
                   untaggedImageCount={untaggedImageCount}
                   onDeleteExistingImage={handleDeleteExistingImage}

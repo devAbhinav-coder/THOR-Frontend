@@ -1,6 +1,8 @@
-/** Shared color key for variant ↔ image matching (case-insensitive). */
+import { catalogMatchKey } from "@/lib/catalogAttributes";
+
+/** Shared color key for variant ↔ image matching (case/space/punct-insensitive). */
 export function normProductColor(value: string | undefined | null): string {
-  return String(value ?? "").trim().toLowerCase();
+  return catalogMatchKey(value);
 }
 
 export function colorsMatch(
@@ -19,7 +21,7 @@ export function imagesForProductColor(
   colorKey: string,
 ): typeof images {
   const key = normProductColor(colorKey);
-  if (!key || colorKey === "Default") {
+  if (!key || colorKey === "Default" || colorKey === "default") {
     return images.filter((img) => !normProductColor(img.color));
   }
   return images.filter((img) => colorsMatch(img.color, colorKey));

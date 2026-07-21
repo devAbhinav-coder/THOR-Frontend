@@ -6,7 +6,9 @@ import type { Product, ProductImage, ProductVariant } from "@/types";
 import ImageUploader from "@/components/ui/ImageUploader";
 import { cn } from "@/lib/utils";
 import {
+  MULTICOLOR_SWATCH_BG,
   VARIANT_MULTICOLOR_MARKER,
+  isMulticolorLabel,
   variantSwatchBackground,
 } from "@/lib/variantSwatch";
 import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
@@ -15,6 +17,11 @@ import {
   imagesForProductColor,
   normProductColor,
 } from "@/lib/productColorImages";
+import { resolveColorAgainstCatalog } from "@/lib/catalogAttributes";
+import {
+  guessHexFromColorName,
+  toColorPickerValue,
+} from "@/lib/normalizeCssColor";
 import {
   isPresetProductSize,
   nextUnusedProductSize,
@@ -109,7 +116,7 @@ export function colorGroupsFromProduct(product: Product | null): ColorVariantGro
 
   for (const v of product.variants) {
     const rawColor = (v.color || "").trim();
-    const colorKey = rawColor || "Default";
+    const colorKey = normProductColor(rawColor) || "default";
     const kind =
       v.colorCode === VARIANT_MULTICOLOR_MARKER ? "multicolor" : "solid";
     if (!byColor.has(colorKey)) {
@@ -231,14 +238,140 @@ export function collectNewImageFiles(groups: ColorVariantGroup[]): File[] {
 type Props = {
   groups: ColorVariantGroup[];
   onChange: (groups: ColorVariantGroup[]) => void;
+  suggestedColors?: string[];
   productId?: string;
   untaggedImageCount?: number;
   onDeleteExistingImage?: (publicId: string, groupId: string) => void | Promise<void>;
 };
 
+function patchFromColorName(
+  group: ColorVariantGroup,
+  rawName: string,
+  catalog: string[],
+): Partial<ColorVariantGroup> {
+  const color = resolveColorAgainstCatalog(rawName, catalog);
+  const multi = isMulticolorLabel(color);
+  const guessed = guessHexFromColorName(color);
+  return {
+    color,
+    kind: multi ? "multicolor" : group.kind === "multicolor" && !multi ? "solid" : group.kind,
+    colorCode: multi ?
+      VARIANT_MULTICOLOR_MARKER
+    : guessed ||
+      (group.colorCode === VARIANT_MULTICOLOR_MARKER ?
+        "#8b4513"
+      : toColorPickerValue(group.colorCode, color)),
+    existingImages: group.existingImages.map((img) => ({
+      ...img,
+      color: color || img.color,
+    })),
+    sizes: group.sizes.map((row) => ({
+      ...row,
+      sku: row.sku.trim() ? row.sku : generateSku(color, row.size),
+    })),
+  };
+}
+
+function ColorNameCombobox({
+  value,
+  suggestions,
+  onChange,
+  onCommit,
+}: {
+  value: string;
+  suggestions: string[];
+  onChange: (value: string) => void;
+  onCommit: (value: string) => void;
+}) {
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    const list = suggestions.filter(Boolean);
+    if (!q) return list;
+    return list.filter((c) => c.toLowerCase().includes(q));
+  }, [suggestions, value]);
+
+  if (!suggestions.length) {
+    return (
+      <input
+        className={inputCls}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => onCommit(value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onCommit(value);
+          }
+        }}
+        placeholder='e.g. Red, Navy Blue…'
+        autoComplete='off'
+      />
+    );
+  }
+
+  return (
+    <div className='space-y-2'>
+      <input
+        className={inputCls}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => onCommit(value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onCommit(value);
+          }
+        }}
+        placeholder='Type new or pick below…'
+        autoComplete='off'
+      />
+      <div className='flex flex-wrap gap-1.5'>
+        {filtered.map((color) => {
+          const selected =
+            value.trim().toLowerCase() === color.trim().toLowerCase();
+          const swatch =
+            variantSwatchBackground(color, guessHexFromColorName(color)) ||
+            (isMulticolorLabel(color) ? MULTICOLOR_SWATCH_BG : "#d1d5db");
+          return (
+            <button
+              key={color}
+              type='button'
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(color);
+                onCommit(color);
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
+                selected ?
+                  "border-brand-400 bg-brand-50 text-brand-700"
+                : "border-gray-200 bg-white text-gray-700 hover:border-brand-300 hover:bg-brand-50/60",
+              )}
+              title={color}
+            >
+              <span
+                className='inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-gray-200'
+                style={{ background: swatch }}
+                aria-hidden
+              />
+              {color}
+            </button>
+          );
+        })}
+        {filtered.length === 0 ?
+          <p className='text-[10px] text-gray-400'>
+            No match — naya color name save ho jayega
+          </p>
+        : null}
+      </div>
+    </div>
+  );
+}
+
 export default function ProductColorVariantEditor({
   groups,
   onChange,
+  suggestedColors = [],
   productId,
   untaggedImageCount = 0,
   onDeleteExistingImage,
@@ -248,6 +381,34 @@ export default function ProductColorVariantEditor({
       onChange(groups.map((g) => (g.id === id ? { ...g, ...patch } : g)));
     },
     [groups, onChange],
+  );
+
+  const applyColorName = useCallback(
+    (id: string, raw: string) => {
+      const group = groups.find((g) => g.id === id);
+      if (!group) return;
+      updateGroup(id, patchFromColorName(group, raw, suggestedColors));
+    },
+    [groups, suggestedColors, updateGroup],
+  );
+
+  const setSwatchKind = useCallback(
+    (id: string, kind: "solid" | "multicolor") => {
+      const group = groups.find((g) => g.id === id);
+      if (!group) return;
+      if (kind === "multicolor") {
+        updateGroup(id, {
+          kind: "multicolor",
+          colorCode: VARIANT_MULTICOLOR_MARKER,
+        });
+        return;
+      }
+      const hex =
+        guessHexFromColorName(group.color) ||
+        toColorPickerValue(null, group.color, "#8b4513");
+      updateGroup(id, { kind: "solid", colorCode: hex });
+    },
+    [groups, updateGroup],
   );
 
   const totalImages = useMemo(
@@ -277,9 +438,8 @@ export default function ProductColorVariantEditor({
             Colors &amp; Sizes <span className='text-brand-500'>*</span>
           </h3>
           <p className='mt-1 max-w-xl text-xs leading-relaxed text-gray-500'>
-            Har color ke liye alag photos upload karo. Size dropdown se choose
-            karo — naya color add karoge to pehle color ke sizes auto copy
-            ho jayenge (SKU khud ban jayega).
+            Catalog se color chip choose karo ya naya type karo — swatch auto
+            update hoga. Multicolor pe rainbow swatch dikhega.
           </p>
         </div>
         <button
@@ -291,7 +451,19 @@ export default function ProductColorVariantEditor({
         </button>
       </div>
 
-      {groups.map((group, groupIndex) => (
+      {groups.map((group, groupIndex) => {
+        const isMulti =
+          group.kind === "multicolor" ||
+          group.colorCode === VARIANT_MULTICOLOR_MARKER ||
+          isMulticolorLabel(group.color);
+        const previewBg =
+          variantSwatchBackground(
+            group.color,
+            isMulti ? VARIANT_MULTICOLOR_MARKER : group.colorCode,
+          ) ??
+          (isMulti ? MULTICOLOR_SWATCH_BG : undefined);
+
+        return (
         <div
           key={group.id}
           className='space-y-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm'
@@ -317,13 +489,22 @@ export default function ProductColorVariantEditor({
               <label className='mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
                 Color name
               </label>
-              <input
-                className={inputCls}
+              <ColorNameCombobox
                 value={group.color}
-                onChange={(e) => {
-                  const color = e.target.value;
+                suggestions={suggestedColors}
+                onChange={(color) => {
+                  const guessed = guessHexFromColorName(color);
+                  const multi = isMulticolorLabel(color);
                   updateGroup(group.id, {
                     color,
+                    ...(multi ?
+                      {
+                        kind: "multicolor" as const,
+                        colorCode: VARIANT_MULTICOLOR_MARKER,
+                      }
+                    : group.kind === "solid" && guessed ?
+                      { colorCode: guessed }
+                    : null),
                     existingImages: group.existingImages.map((img) => ({
                       ...img,
                       color: color.trim() || img.color,
@@ -337,49 +518,53 @@ export default function ProductColorVariantEditor({
                     })),
                   });
                 }}
-                placeholder='Maroon, Navy Blue…'
+                onCommit={(color) => applyColorName(group.id, color)}
               />
             </div>
             <div>
               <label className='mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
                 Swatch
               </label>
-              <div className='flex gap-2'>
+              <div className='flex items-center gap-2'>
                 <select
-                  className={cn(inputCls, "w-28 shrink-0")}
-                  value={group.kind}
+                  className={cn(inputCls, "w-32 shrink-0")}
+                  value={isMulti ? "multicolor" : "solid"}
                   onChange={(e) =>
-                    updateGroup(group.id, {
-                      kind: e.target.value as "solid" | "multicolor",
-                    })
+                    setSwatchKind(
+                      group.id,
+                      e.target.value as "solid" | "multicolor",
+                    )
                   }
                 >
                   <option value='solid'>Solid</option>
                   <option value='multicolor'>Multicolor</option>
                 </select>
-                {group.kind === "solid" ?
+                {!isMulti ?
                   <input
                     type='color'
                     className='h-10 w-14 cursor-pointer rounded-lg border border-gray-200'
-                    value={
-                      group.colorCode.startsWith("#") ?
-                        group.colorCode
-                      : "#8B4513"
-                    }
+                    value={toColorPickerValue(group.colorCode, group.color)}
                     onChange={(e) =>
-                      updateGroup(group.id, { colorCode: e.target.value })
+                      updateGroup(group.id, {
+                        kind: "solid",
+                        colorCode: e.target.value,
+                      })
                     }
+                    title='Pick swatch color'
                   />
                 : null}
                 <span
-                  className='inline-flex h-10 w-10 shrink-0 rounded-full border border-gray-200'
-                  style={{
-                    background:
-                      variantSwatchBackground(group.color, group.colorCode) ??
-                      undefined,
-                  }}
+                  className='inline-flex h-10 w-10 shrink-0 rounded-full border border-gray-200 shadow-sm'
+                  style={{ background: previewBg }}
+                  title={isMulti ? "Multicolor" : group.color || "Swatch"}
+                  aria-hidden
                 />
               </div>
+              {isMulti ?
+                <p className='mt-1 text-[10px] text-gray-400'>
+                  Multicolor / print — storefront pe rainbow swatch dikhega
+                </p>
+              : null}
             </div>
           </div>
 
@@ -576,7 +761,8 @@ export default function ProductColorVariantEditor({
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       <p className='text-xs text-gray-400'>
         {totalImages} / 20 total images across all colors

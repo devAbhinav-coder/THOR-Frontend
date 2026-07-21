@@ -38,11 +38,14 @@ import {
   resolveShopPriceDraft,
   shopPriceDraftToFilterStrings,
 } from "@/lib/shopFilters";
+import { dedupeCatalogLabels } from "@/lib/catalogAttributes";
+import {
+  mergeFabricOptions,
+  mergeOccasionOptions,
+} from "@/lib/productCatalogOptions";
 import type { ParsedSearchIntent } from "@/lib/searchQueryParser";
 import { ProductInfiniteGrid } from "@/components/product/ProductInfiniteGrid";
 import { useShopFilterPanel } from "@/components/shop/ShopFilterPanelContext";
-
-import { mergeOccasionOptions } from "@/lib/productCatalogOptions";
 import { expandProductsForShopListing } from "@/lib/shopProductListing";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { GIFTING_HREF, SHOP_SALE_HREF } from "@/lib/shopSpecialCollections";
@@ -193,7 +196,14 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     staleTime: 5 * 60 * 1000,
   });
 
-  const filterOptions = filterOptionsData ?? null;
+  const filterOptions = useMemo((): FilterOptions | null => {
+    if (!filterOptionsData) return null;
+    return {
+      ...filterOptionsData,
+      colors: dedupeCatalogLabels(filterOptionsData.colors ?? []),
+      fabrics: mergeFabricOptions(filterOptionsData.fabrics ?? []),
+    };
+  }, [filterOptionsData]);
 
   const { data: megaMenuData } = useQuery({
     queryKey: ["shop-mega-menu"],
@@ -293,6 +303,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
         categories: filters.categories,
         subcategories: filters.subcategories,
         occasions: filters.occasions,
+        fabrics: filters.fabrics,
         colors: filters.colors,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
@@ -645,7 +656,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   const productGridClass = SHOP_PRODUCT_GRID_CLASS;
 
   const quickColors = useMemo(() => {
-    const colors = filterOptions?.colors ?? [];
+    const colors = dedupeCatalogLabels(filterOptions?.colors ?? []);
     return colors.slice(0, 5);
   }, [filterOptions?.colors]);
 
