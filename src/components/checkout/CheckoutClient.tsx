@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -295,7 +294,6 @@ export default function CheckoutClient() {
   const [couponCode, setCouponCode] = useState("");
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
-  const [isAllCouponsOpen, setIsAllCouponsOpen] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
   const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(null);
   const [buyNowCouponCode, setBuyNowCouponCode] = useState<string | null>(null);
@@ -661,11 +659,21 @@ export default function CheckoutClient() {
       if (buyNowItem) {
         try {
           const orderAmount = buyNowItem.price * buyNowItem.quantity;
-          const res = await couponApi.validate(code, orderAmount);
+          const res = await couponApi.validate(code, orderAmount, [
+            {
+              productId: String(buyNowItem.productId),
+              price: buyNowItem.price,
+              quantity: buyNowItem.quantity,
+            },
+          ]);
+          const saved = res.data.discount || 0;
+          if (saved <= 0) {
+            throw new Error("This coupon does not reduce the price of this item.");
+          }
           setBuyNowCouponCode(res.data.coupon.code);
-          setBuyNowCouponDiscount(res.data.discount || 0);
+          setBuyNowCouponDiscount(saved);
           toast.success(
-            `Coupon applied. You saved ${formatPrice(res.data.discount || 0)}.`,
+            `Coupon applied. You saved ${formatPrice(saved)}.`,
           );
         } catch (err: unknown) {
           const msg =
@@ -1959,14 +1967,10 @@ export default function CheckoutClient() {
                       <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
                         Promotional Code
                       </p>
-                      {eligibleCoupons.length > 2 && (
-                        <button
-                          type='button'
-                          onClick={() => setIsAllCouponsOpen(true)}
-                          className='shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] hover:text-navy-900'
-                        >
-                          View all
-                        </button>
+                      {eligibleCoupons.length > 0 && (
+                        <span className='shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400'>
+                          {eligibleCoupons.length} available
+                        </span>
                       )}
                     </div>
 
@@ -2037,8 +2041,8 @@ export default function CheckoutClient() {
                         No coupons are available for this order.
                       </p>
                     ) : (
-                      <div className='mt-3 grid min-w-0 grid-cols-1 gap-2'>
-                        {eligibleCoupons.slice(0, 2).map((c) => (
+                      <div className='mt-3 grid max-h-72 min-w-0 grid-cols-1 gap-2 overflow-y-auto pr-0.5'>
+                        {eligibleCoupons.map((c) => (
                           <button
                             key={c._id}
                             type='button'
@@ -2590,67 +2594,6 @@ export default function CheckoutClient() {
             </button>
           )}
         </div>
-
-        {/* See all coupons modal — portal + z-index above sticky nav (z-50) */}
-        {typeof document !== "undefined" &&
-          isAllCouponsOpen &&
-          createPortal(
-            <div className='fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 overflow-x-hidden'>
-              <div
-                className='absolute inset-0'
-                role='presentation'
-                onClick={() => setIsAllCouponsOpen(false)}
-              />
-              <div className='relative max-h-[80vh] w-full min-w-0 max-w-[100vw] overflow-hidden bg-white shadow-2xl sm:max-w-lg'>
-                <div className='flex min-w-0 items-center justify-between gap-2 border-b border-gray-100 p-4 sm:p-5'>
-                  <div className='min-w-0'>
-                    <p className='text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400'>
-                      Promotional Codes
-                    </p>
-                    <h3 className='truncate font-serif text-lg font-medium text-navy-900'>
-                      Available for your order
-                    </h3>
-                  </div>
-                  <button
-                    type='button'
-                    onClick={() => setIsAllCouponsOpen(false)}
-                    className='h-9 w-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center'
-                    aria-label='Close'
-                  >
-                    <span className='text-gray-600 text-lg leading-none'>
-                      ×
-                    </span>
-                  </button>
-                </div>
-                <div className='p-4 overflow-y-auto overflow-x-hidden space-y-2 min-w-0'>
-                  {eligibleCoupons.map((coupon) => (
-                    <button
-                      key={coupon._id}
-                      type='button'
-                      disabled={hasAppliedCoupon || couponBusy}
-                      onClick={async () => {
-                        try {
-                          await applySelectedCoupon(coupon.code);
-                          setIsAllCouponsOpen(false);
-                        } catch {
-                          // store handles toast
-                        }
-                      }}
-                      className={cn(
-                        "w-full min-w-0 border border-gray-200 p-3 text-left transition-all",
-                        hasAppliedCoupon || couponBusy
-                          ? "cursor-not-allowed opacity-50"
-                          : "hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/50",
-                      )}
-                    >
-                      <CouponOfferPreview coupon={coupon} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )}
       </div>
     </div>
   );

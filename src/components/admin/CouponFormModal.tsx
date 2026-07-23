@@ -276,8 +276,9 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
             )}
             {formData.discountType === 'fixed' ? (
               <p className="sm:col-span-2 text-xs text-gray-500">
-                Eligible cart amount will be charged at this price (e.g. ₹1150). Extra above that is
-                the discount.
+                {formData.scopeType === 'all'
+                  ? 'Whole eligible cart pays this price (e.g. ₹1150). Extra above that is the discount.'
+                  : 'Each matching product unit is charged at this price (e.g. ₹1150 each). 5 products ≠ cart at ₹1150 — each item is ₹1150.'}
               </p>
             ) : null}
             <div>

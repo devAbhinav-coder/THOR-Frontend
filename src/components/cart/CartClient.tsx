@@ -8,7 +8,6 @@ import {
   Minus,
   Plus,
   ShoppingBag,
-  X,
   Truck,
   Undo2,
   Heart,
@@ -90,7 +89,6 @@ export default function CartClient() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
-  const [isAllCouponsOpen, setIsAllCouponsOpen] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -564,17 +562,14 @@ export default function CartClient() {
                     </div>
                   )}
 
-                  {eligibleCoupons.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setIsAllCouponsOpen(true)}
-                      className="text-[10px] font-semibold uppercase tracking-widest text-[#ffdea5] hover:text-white"
-                    >
-                      View all offers
-                    </button>
+                  {eligibleCoupons.length > 0 && (
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ffdea5]/80">
+                      {eligibleCoupons.length} offer
+                      {eligibleCoupons.length === 1 ? "" : "s"} available
+                    </p>
                   )}
 
-                  <div className="space-y-2">
+                  <div className="max-h-72 space-y-2 overflow-y-auto pr-0.5">
                     {isLoadingCoupons ? (
                       <p className="text-xs text-white/50">
                         Loading available offers…
@@ -584,7 +579,7 @@ export default function CartClient() {
                         No coupons are available for this cart.
                       </p>
                     ) : (
-                      eligibleCoupons.slice(0, 2).map((c) => (
+                      eligibleCoupons.map((c) => (
                         <button
                           key={c._id}
                           type="button"
@@ -729,64 +724,6 @@ export default function CartClient() {
           {isCheckoutLaunching ? "Opening checkout…" : "Proceed to Checkout"}
         </button>
       </div>
-
-      {isAllCouponsOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center">
-          <div
-            className="absolute inset-0"
-            onClick={() => setIsAllCouponsOpen(false)}
-            aria-hidden
-          />
-          <div className="relative max-h-[80vh] w-full overflow-hidden bg-white shadow-2xl sm:max-w-lg sm:rounded-sm">
-            <div className="flex min-w-0 items-center justify-between gap-2 border-b border-gray-100 p-4 sm:p-5">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">
-                  Promotional Codes
-                </p>
-                <h3 className="truncate font-serif text-lg font-medium text-navy-900">
-                  Available for your cart
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAllCouponsOpen(false)}
-                className="flex h-9 w-9 items-center justify-center bg-gray-100 hover:bg-gray-200"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4 text-gray-600" />
-              </button>
-            </div>
-            <div className="min-w-0 space-y-2 overflow-y-auto overflow-x-hidden p-4 sm:p-5">
-              {eligibleCoupons.map((c) => (
-                <button
-                  key={c._id}
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      setCouponLoading(true);
-                      await applyCoupon(c.code);
-                      setIsAllCouponsOpen(false);
-                    } catch {
-                      // store handles toast
-                    } finally {
-                      setCouponLoading(false);
-                    }
-                  }}
-                  className={cn(
-                    "w-full min-w-0 border border-gray-200 p-3 text-left transition-all",
-                    cart.discount > 0 || couponLoading
-                      ? "cursor-not-allowed opacity-50"
-                      : "hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/50",
-                  )}
-                  disabled={couponLoading || cart.discount > 0}
-                >
-                  <CouponOfferPreview coupon={c} />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

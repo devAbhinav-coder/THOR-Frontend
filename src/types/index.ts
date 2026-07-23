@@ -406,6 +406,8 @@ export interface Testimonial {
     slug?: string;
     image?: string;
   };
+  /** Paired product review (share-link / offline invite). */
+  linkedReviewId?: string;
   sourceKind?: 'story' | 'review';
   status?: 'pending' | 'approved' | 'rejected';
   source?: 'public_link' | 'admin';

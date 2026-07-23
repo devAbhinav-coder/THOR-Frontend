@@ -6,24 +6,26 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft,
+  Banknote,
+  Check,
   HandIcon,
   MapPin,
   PackageSearch,
   PenLine,
   Plus,
+  Smartphone,
   Store,
   Trash2,
   Truck,
   UserRound,
   Wallet,
 } from "lucide-react";
-import { adminApi, productApi, categoryApi } from "@/lib/api";
+import { adminApi, categoryApi } from "@/lib/api";
 import type { AdminCreateOfflineOrderBody, Category, Product } from "@/types";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { cn, formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SearchField } from "@/components/ui/SearchField";
-import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import toast from "react-hot-toast";
 
@@ -38,6 +40,7 @@ export type CatalogDraft = {
   productSearch: string;
   searchHits: Product[];
   searchLoading: boolean;
+  pickLoading: boolean;
   selectedProduct: Product | null;
   variantSku: string;
   quantity: number;
@@ -55,6 +58,32 @@ export type ManualDraft = {
 
 export type DraftLine = CatalogDraft | ManualDraft;
 
+function lineUnitPrice(line: DraftLine): number {
+  const n = Number(line.unitPrice);
+  return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+function lineQty(line: DraftLine): number {
+  return Math.max(1, Math.min(50, Math.floor(Number(line.quantity) || 1)));
+}
+
+function lineLabel(line: DraftLine, shopCategories: Category[]): string {
+  if (line.kind === "catalog") {
+    const p = line.selectedProduct;
+    if (!p) return "Catalog product";
+    const v = p.variants.find((x) => x.sku === line.variantSku);
+    const vLabel = v
+      ? [v.size, v.color].filter(Boolean).join(" · ") || v.sku
+      : line.variantSku;
+    return vLabel ? `${p.name} (${vLabel})` : p.name;
+  }
+  if (line.categorySelect === OTHER_CATEGORY_VALUE) {
+    return line.customTitle.trim() || "Custom line";
+  }
+  const cat = shopCategories.find((c) => c._id === line.categorySelect);
+  return cat?.name || "Category line";
+}
+
 function newLineId(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID ?
       crypto.randomUUID()
@@ -68,6 +97,7 @@ function catalogWithId(id: string): CatalogDraft {
     productSearch: "",
     searchHits: [],
     searchLoading: false,
+    pickLoading: false,
     selectedProduct: null,
     variantSku: "",
     quantity: 1,
@@ -141,23 +171,60 @@ function CatalogLineEditor({
     };
   }, [debouncedSearch, lineId, patch]);
 
-  const pickProduct = (p: Product) => {
-    if (!p.variants?.length) {
+  const applyCatalogPick = (full: Product) => {
+    if (!full.variants?.length) {
       toast.error("This product has no variants.");
+      patch(lineId, {
+        selectedProduct: null,
+        variantSku: "",
+        unitPrice: "",
+        pickLoading: false,
+      });
       return;
     }
-    const first = p.variants[0]!;
+    const first = full.variants[0]!;
     const listed =
       typeof first.price === "number" && first.price >= 0 ?
         first.price
-      : p.price;
+      : full.price;
     patch(lineId, {
-      selectedProduct: p,
-      productSearch: p.name,
+      selectedProduct: full,
+      productSearch: full.name,
       searchHits: [],
       variantSku: first.sku,
       unitPrice: String(listed),
+      pickLoading: false,
     });
+  };
+
+  const pickProduct = async (p: Product) => {
+    // Keep selectedProduct.name in sync so the search effect does not re-fire.
+    patch(lineId, {
+      productSearch: p.name,
+      searchHits: [],
+      pickLoading: true,
+      selectedProduct: p,
+      variantSku: "",
+      unitPrice: "",
+    });
+
+    if (p.variants?.length) {
+      applyCatalogPick(p);
+      return;
+    }
+
+    try {
+      const res = await adminApi.getProductById(p._id);
+      applyCatalogPick(res.data.product as Product);
+    } catch {
+      toast.error("Could not load product variants.");
+      patch(lineId, {
+        selectedProduct: null,
+        variantSku: "",
+        unitPrice: "",
+        pickLoading: false,
+      });
+    }
   };
 
   return (
@@ -186,12 +253,17 @@ function CatalogLineEditor({
               line.selectedProduct &&
               v.trim() !== line.selectedProduct.name.trim()
             ) {
-              patch(lineId, { selectedProduct: null, variantSku: "" });
+              patch(lineId, {
+                selectedProduct: null,
+                variantSku: "",
+                unitPrice: "",
+                pickLoading: false,
+              });
             }
           }}
           placeholder='Search products by name…'
           className='w-full'
-          isLoading={line.searchLoading}
+          isLoading={line.searchLoading || line.pickLoading}
         />
         {line.searchHits.length > 0 && (
           <ul
@@ -235,29 +307,50 @@ function CatalogLineEditor({
         <div className='rounded-lg border border-gray-100 bg-gray-50/60 p-3 space-y-3'>
           <div className='grid gap-3 sm:grid-cols-2'>
             <label className='block space-y-1.5 sm:col-span-2'>
-              <span className='text-xs text-gray-500'>Variant (SKU)</span>
-              <select
-                value={line.variantSku}
-                onChange={(e) => {
-                  const sku = e.target.value;
-                  const v = line.selectedProduct!.variants.find(
-                    (x) => x.sku === sku,
-                  );
-                  const listed =
-                    v && typeof v.price === "number" && v.price >= 0 ?
-                      v.price
-                    : line.selectedProduct!.price;
-                  patch(lineId, { variantSku: sku, unitPrice: String(listed) });
-                }}
-                className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-              >
-                {line.selectedProduct.variants.map((v) => (
-                  <option key={v.sku} value={v.sku}>
-                    {[v.size, v.color].filter(Boolean).join(" · ") || "Default"}{" "}
-                    — {v.sku} (stock {v.stock})
-                  </option>
-                ))}
-              </select>
+              <span className='text-xs text-gray-500'>
+                Choose variant
+                {line.selectedProduct.variants.length > 1 ?
+                  ` (${line.selectedProduct.variants.length} options)`
+                : null}
+              </span>
+              {line.pickLoading ?
+                <div className='flex h-11 items-center rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-500'>
+                  Loading variants…
+                </div>
+              : line.selectedProduct.variants.length === 0 ?
+                <div className='flex h-11 items-center rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm text-amber-800'>
+                  No variants on this product
+                </div>
+              : <select
+                  value={line.variantSku}
+                  onChange={(e) => {
+                    const sku = e.target.value;
+                    const v = line.selectedProduct!.variants.find(
+                      (x) => x.sku === sku,
+                    );
+                    const listed =
+                      v && typeof v.price === "number" && v.price >= 0 ?
+                        v.price
+                      : line.selectedProduct!.price;
+                    patch(lineId, {
+                      variantSku: sku,
+                      unitPrice: String(listed),
+                    });
+                  }}
+                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+                >
+                  {line.selectedProduct.variants.map((v) => {
+                    const label =
+                      [v.size, v.color].filter(Boolean).join(" · ") ||
+                      "Default";
+                    return (
+                      <option key={v.sku} value={v.sku}>
+                        {label} — {v.sku} (stock {v.stock})
+                      </option>
+                    );
+                  })}
+                </select>
+              }
             </label>
             <label className='block space-y-1.5'>
               <span className='text-xs text-gray-500'>Quantity</span>
@@ -462,8 +555,12 @@ export default function AdminOfflineOrderPage() {
   const handleNext = () => {
     if (currentStep === 1) {
       if (customerName.trim().length < 2) return toast.error("Enter customer name");
-      if (email.trim() && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+.[A-Z]{2,}$/i.test(email.trim())) return toast.error("Enter a valid email");
-      if (phone.trim() && !/^[6-9]\d{9}$/.test(phone.replace(/\D/g, "").slice(-10))) return toast.error("Enter a valid 10-digit mobile number");
+      if (email.trim() && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email.trim())) {
+        return toast.error("Enter a valid email");
+      }
+      if (phone.trim() && !/^[6-9]\d{9}$/.test(phone.replace(/\D/g, "").slice(-10))) {
+        return toast.error("Enter a valid 10-digit mobile number");
+      }
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (fulfillment === "delhivery") {
@@ -471,9 +568,13 @@ export default function AdminOfflineOrderPage() {
         if (!shipStreet.trim() || !shipCity.trim() || !shipState.trim() || !/^\d{6}$/.test(pin)) {
           return toast.error("Complete shipping address for Delhivery (street, city, state, 6-digit PIN)");
         }
-        const sp = shipPhone.replace(/\D/g, "").slice(-10);
-        if (shipPhone.trim() && !/^[6-9]\d{9}$/.test(sp)) {
-          return toast.error("Shipping phone must be a valid 10-digit number");
+        const customerPh = phone.replace(/\D/g, "").slice(-10);
+        const shipPh = shipPhone.replace(/\D/g, "").slice(-10);
+        const effectivePh = /^[6-9]\d{9}$/.test(shipPh) ? shipPh
+          : /^[6-9]\d{9}$/.test(customerPh) ? customerPh
+          : "";
+        if (!effectivePh) {
+          return toast.error("Add a valid 10-digit phone (customer or shipping) for Delhivery");
         }
       }
       setCurrentStep(3);
@@ -481,14 +582,19 @@ export default function AdminOfflineOrderPage() {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]!;
         if (line.kind === "catalog") {
-          if (!line.selectedProduct?._id || !line.variantSku) return toast.error(`Line ${i + 1}: select a product and variant`);
-          const up = Number(line.unitPrice);
-          if (!Number.isFinite(up) || up < 0) return toast.error(`Line ${i + 1}: enter a valid unit price`);
+          if (line.pickLoading) return toast.error(`Line ${i + 1}: still loading variants`);
+          if (!line.selectedProduct?._id || !line.variantSku) {
+            return toast.error(`Line ${i + 1}: select a product and variant`);
+          }
+          const up = lineUnitPrice(line);
+          if (!Number.isFinite(up)) return toast.error(`Line ${i + 1}: enter a valid unit price`);
         } else {
-          const up = Number(line.unitPrice);
-          if (!Number.isFinite(up) || up < 0) return toast.error(`Line ${i + 1}: enter a valid unit price`);
+          const up = lineUnitPrice(line);
+          if (!Number.isFinite(up)) return toast.error(`Line ${i + 1}: enter a valid unit price`);
           if (!line.categorySelect) return toast.error(`Line ${i + 1}: choose a category or Other`);
-          if (line.categorySelect === OTHER_CATEGORY_VALUE && !line.customTitle.trim()) return toast.error(`Line ${i + 1}: enter a custom description for Other`);
+          if (line.categorySelect === OTHER_CATEGORY_VALUE && !line.customTitle.trim()) {
+            return toast.error(`Line ${i + 1}: enter a custom description for Other`);
+          }
         }
       }
       setCurrentStep(4);
@@ -497,47 +603,93 @@ export default function AdminOfflineOrderPage() {
 
   const handleBack = () => setCurrentStep((s) => Math.max(1, s - 1));
 
+  const reviewSubtotal = lines.reduce((sum, line) => {
+    const up = lineUnitPrice(line);
+    if (!Number.isFinite(up)) return sum;
+    return sum + up * lineQty(line);
+  }, 0);
+
   const buildPayload = useCallback((): AdminCreateOfflineOrderBody | null => {
     const name = customerName.trim();
+    if (name.length < 2) {
+      toast.error("Enter customer name");
+      return null;
+    }
     const em = email.trim().toLowerCase();
     const ph = phone.replace(/\D/g, "").slice(-10);
-    
+
     const lineItems: AdminCreateOfflineOrderBody["lineItems"] = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
+      const q = lineQty(line);
+      const up = lineUnitPrice(line);
+      if (!Number.isFinite(up)) {
+        toast.error(`Line ${i + 1}: enter a valid unit price`);
+        return null;
+      }
       if (line.kind === "catalog") {
-        const q = Math.max(1, Math.min(50, Math.floor(line.quantity)));
-        const up = Number(line.unitPrice);
-        const v = line.selectedProduct!.variants.find((x) => x.sku === line.variantSku);
-        const listed = v && typeof v.price === "number" && v.price >= 0 ? v.price : line.selectedProduct!.price;
-        const out: any = {
+        if (line.pickLoading) {
+          toast.error(`Line ${i + 1}: still loading variants`);
+          return null;
+        }
+        if (!line.selectedProduct?._id || !line.variantSku) {
+          toast.error(`Line ${i + 1}: select a product and variant`);
+          return null;
+        }
+        lineItems.push({
           type: "catalog",
-          productId: line.selectedProduct!._id,
+          productId: line.selectedProduct._id,
           variantSku: line.variantSku,
           quantity: q,
-        };
-        if (Number.isFinite(listed) && Math.abs(up - listed) > 0.005) {
-          out.unitPrice = up;
-        }
-        lineItems.push(out);
+          unitPrice: up,
+        });
       } else {
-        const up = Number(line.unitPrice);
-        const q = Math.max(1, Math.min(50, Math.floor(line.quantity)));
+        if (!line.categorySelect) {
+          toast.error(`Line ${i + 1}: choose a category or Other`);
+          return null;
+        }
         if (line.categorySelect === OTHER_CATEGORY_VALUE) {
-          lineItems.push({ type: "manual", title: line.customTitle.trim(), quantity: q, unitPrice: up });
+          const title = line.customTitle.trim();
+          if (!title) {
+            toast.error(`Line ${i + 1}: enter a custom description for Other`);
+            return null;
+          }
+          lineItems.push({ type: "manual", title, quantity: q, unitPrice: up });
         } else {
-          lineItems.push({ type: "manual", categoryId: line.categorySelect, quantity: q, unitPrice: up });
+          lineItems.push({
+            type: "manual",
+            categoryId: line.categorySelect,
+            quantity: q,
+            unitPrice: up,
+          });
         }
       }
+    }
+
+    if (lineItems.length === 0) {
+      toast.error("Add at least one product line");
+      return null;
     }
 
     let shippingAddress: AdminCreateOfflineOrderBody["shippingAddress"];
     if (fulfillment === "delhivery") {
       const pin = shipPin.replace(/\D/g, "").slice(0, 6);
-      const sp = shipPhone.replace(/\D/g, "").slice(-10);
+      if (!shipStreet.trim() || !shipCity.trim() || !shipState.trim() || !/^\d{6}$/.test(pin)) {
+        toast.error("Complete shipping address for Delhivery");
+        return null;
+      }
+      const shipPh = shipPhone.replace(/\D/g, "").slice(-10);
+      const effectivePh =
+        /^[6-9]\d{9}$/.test(shipPh) ? shipPh
+        : /^[6-9]\d{9}$/.test(ph) ? ph
+        : "";
+      if (!effectivePh) {
+        toast.error("Add a valid 10-digit phone for Delhivery shipping");
+        return null;
+      }
       shippingAddress = {
         name: shipName.trim() || name,
-        phone: sp || ph || undefined,
+        phone: effectivePh,
         house: shipHouse.trim() || undefined,
         street: shipStreet.trim(),
         landmark: shipLandmark.trim() || undefined,
@@ -551,7 +703,7 @@ export default function AdminOfflineOrderPage() {
     return {
       customerName: name,
       ...(em ? { email: em } : {}),
-      ...(ph && ph.length === 10 ? { phone: ph } : {}),
+      ...(ph && ph.length === 10 && /^[6-9]\d{9}$/.test(ph) ? { phone: ph } : {}),
       orderSource,
       fulfillment,
       paymentMethod,
@@ -559,20 +711,44 @@ export default function AdminOfflineOrderPage() {
       ...(shippingAddress ? { shippingAddress } : {}),
       ...(notes.trim() ? { notes: notes.trim().slice(0, 2000) } : {}),
     };
-  }, [customerName, email, phone, lines, fulfillment, shipPin, shipStreet, shipCity, shipState, shipName, shipPhone, shipHouse, shipLandmark, orderSource, paymentMethod, notes]);
+  }, [
+    customerName,
+    email,
+    phone,
+    lines,
+    fulfillment,
+    shipPin,
+    shipStreet,
+    shipCity,
+    shipState,
+    shipName,
+    shipPhone,
+    shipHouse,
+    shipLandmark,
+    orderSource,
+    paymentMethod,
+    notes,
+  ]);
 
   const handleSubmit = async () => {
+    if (submitting) return;
+    if (!paymentMethod) {
+      toast.error("Select a payment method");
+      return;
+    }
     const body = buildPayload();
     if (!body) return;
     setSubmitting(true);
     try {
       const res = await adminApi.createOfflineOrder(body);
-      const id = (res.data.order as { _id: string })._id;
-      toast.success("Order created — confirmed & paid");
-      if (id) router.push(`/admin/orders/${encodeURIComponent(id)}`);
+      const order = res.data?.order as { _id?: string; id?: string } | undefined;
+      const id = order?._id || order?.id;
+      toast.success("Offline order created — confirmed & paid");
+      if (id) router.push(`/admin/orders/${encodeURIComponent(String(id))}`);
       else router.push("/admin/orders");
     } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || "Could not create order");
+      const msg = (err as { message?: string })?.message;
+      toast.error(msg && msg !== "Something went wrong" ? msg : "Could not create order. Check stock, phone, and line items.");
     } finally {
       setSubmitting(false);
     }
@@ -610,37 +786,55 @@ export default function AdminOfflineOrderPage() {
       </div>
 
       {/* Progress Indicators */}
-      <div className="relative">
-        <div className="absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2 bg-gray-100 rounded-full" />
-        <div 
-          className="absolute top-1/2 left-0 h-0.5 -translate-y-1/2 bg-brand-500 rounded-full transition-all duration-500 ease-in-out" 
-          style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-        />
-        <div className="relative flex justify-between">
+      <div className='px-1 pt-2 pb-1'>
+        <div className='relative flex items-start justify-between'>
+          <div
+            className='pointer-events-none absolute left-5 right-5 top-5 h-0.5 -translate-y-1/2 rounded-full bg-gray-200'
+            aria-hidden
+          />
+          <div
+            className='pointer-events-none absolute left-5 top-5 h-0.5 -translate-y-1/2 rounded-full bg-brand-500 transition-all duration-500 ease-out'
+            style={{
+              width: `calc(${((currentStep - 1) / (steps.length - 1)) * 100}% - 0px)`,
+              maxWidth: "calc(100% - 2.5rem)",
+            }}
+            aria-hidden
+          />
           {steps.map((step) => {
             const Icon = step.icon;
             const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
             return (
-              <div key={step.id} className="flex flex-col items-center gap-2 z-10">
+              <div key={step.id} className='relative z-10 flex w-16 flex-col items-center gap-1.5 sm:w-20'>
                 <button
-                  type="button"
+                  type='button'
+                  aria-current={isActive ? "step" : undefined}
+                  aria-label={`${step.title}${isActive ? " (current)" : isCompleted ? " (done)" : ""}`}
                   onClick={() => {
-                     if (isCompleted || isActive) setCurrentStep(step.id);
+                    if (isCompleted || isActive) setCurrentStep(step.id);
                   }}
                   className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
-                    isActive ? "border-brand-500 bg-brand-50 text-brand-600 scale-110 shadow-sm" : 
-                    isCompleted ? "border-brand-500 bg-brand-500 text-white" : 
-                    "border-gray-200 bg-white text-gray-400"
+                    isActive &&
+                      "border-brand-600 bg-brand-600 text-white shadow-md ring-4 ring-brand-100 scale-105",
+                    isCompleted &&
+                      !isActive &&
+                      "border-brand-500 bg-brand-500 text-white",
+                    !isActive &&
+                      !isCompleted &&
+                      "border-gray-200 bg-white text-gray-400",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  {isCompleted && !isActive ?
+                    <Check className='h-4 w-4' strokeWidth={2.5} />
+                  : <Icon className='h-4 w-4' />}
                 </button>
-                <span className={cn(
-                  "text-[11px] font-bold uppercase tracking-widest transition-colors",
-                  isActive || isCompleted ? "text-gray-900" : "text-gray-400"
-                )}>
+                <span
+                  className={cn(
+                    "text-center text-[10px] font-bold uppercase tracking-wider sm:text-[11px]",
+                    isActive ? "text-brand-700" : isCompleted ? "text-gray-800" : "text-gray-400",
+                  )}
+                >
                   {step.title}
                 </span>
               </div>
@@ -651,7 +845,7 @@ export default function AdminOfflineOrderPage() {
 
       <div>
         {/* Step 1 */}
-        <div className={cn(currentStep === 1 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
+        <div className={cn(currentStep === 1 ? "block" : "hidden")}>
           <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-gray-900">Customer Details</h2>
@@ -693,7 +887,7 @@ export default function AdminOfflineOrderPage() {
         </div>
 
         {/* Step 2 */}
-        <div className={cn(currentStep === 2 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
+        <div className={cn(currentStep === 2 ? "block" : "hidden")}>
           <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-gray-900">Order Context & Fulfillment</h2>
@@ -806,7 +1000,7 @@ export default function AdminOfflineOrderPage() {
         </div>
 
         {/* Step 3 */}
-        <div className={cn(currentStep === 3 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
+        <div className={cn(currentStep === 3 ? "block" : "hidden")}>
           <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm'>
             <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 '>
               <h2 className="text-lg font-bold text-gray-900">Products &amp; Prices</h2>
@@ -848,60 +1042,169 @@ export default function AdminOfflineOrderPage() {
         </div>
 
         {/* Step 4 */}
-        <div className={cn(currentStep === 4 ? "animate-in fade-in slide-in-from-right-4 duration-500" : "hidden")}>
-           <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900">Payment &amp; Review</h2>
-              <div className='flex flex-col sm:flex-row gap-3'>
+        <div className={cn(currentStep === 4 ? "block" : "hidden")}>
+          <section className='space-y-5 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
+            <div>
+              <h2 className='text-lg font-bold text-gray-900'>Payment &amp; confirm</h2>
+              <p className='mt-1 text-sm text-gray-500'>
+                Choose how the customer paid, review the order, then create it.
+              </p>
+            </div>
+
+            <div className='space-y-2'>
+              <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                Payment method <span className='text-red-500'>*</span>
+              </p>
+              <div className='grid gap-3 sm:grid-cols-2'>
                 <button
                   type='button'
                   onClick={() => setPaymentMethod("offline_upi")}
+                  aria-pressed={paymentMethod === "offline_upi"}
                   className={cn(
-                    pill, "flex-1 py-4 text-base",
-                    paymentMethod === "offline_upi" ? "border-emerald-400 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200 shadow-sm" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                    "relative flex items-center gap-3 rounded-xl border-2 px-4 py-4 text-left transition-all",
+                    paymentMethod === "offline_upi"
+                      ? "border-brand-600 bg-brand-50 shadow-sm ring-2 ring-brand-100"
+                      : "border-gray-200 bg-white hover:border-gray-300",
                   )}
                 >
-                  💳 UPI (offline)
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                      paymentMethod === "offline_upi" ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500",
+                    )}
+                  >
+                    <Smartphone className='h-5 w-5' />
+                  </span>
+                  <span className='min-w-0 flex-1'>
+                    <span className='block text-sm font-bold text-gray-900'>UPI</span>
+                    <span className='block text-xs text-gray-500'>Paid at sale via UPI</span>
+                  </span>
+                  {paymentMethod === "offline_upi" ?
+                    <Check className='h-5 w-5 shrink-0 text-brand-600' strokeWidth={2.5} />
+                  : null}
                 </button>
                 <button
                   type='button'
                   onClick={() => setPaymentMethod("offline_cash")}
+                  aria-pressed={paymentMethod === "offline_cash"}
                   className={cn(
-                    pill, "flex-1 py-4 text-base",
-                    paymentMethod === "offline_cash" ? "border-emerald-400 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200 shadow-sm" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                    "relative flex items-center gap-3 rounded-xl border-2 px-4 py-4 text-left transition-all",
+                    paymentMethod === "offline_cash"
+                      ? "border-brand-600 bg-brand-50 shadow-sm ring-2 ring-brand-100"
+                      : "border-gray-200 bg-white hover:border-gray-300",
                   )}
                 >
-                  💵 Cash
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                      paymentMethod === "offline_cash" ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500",
+                    )}
+                  >
+                    <Banknote className='h-5 w-5' />
+                  </span>
+                  <span className='min-w-0 flex-1'>
+                    <span className='block text-sm font-bold text-gray-900'>Cash</span>
+                    <span className='block text-xs text-gray-500'>Paid at sale in cash</span>
+                  </span>
+                  {paymentMethod === "offline_cash" ?
+                    <Check className='h-5 w-5 shrink-0 text-brand-600' strokeWidth={2.5} />
+                  : null}
                 </button>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100">
-              <label className='block space-y-1.5'>
-                <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Internal notes (optional)</span>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  className='w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-                  placeholder='Reference for your team...'
-                />
-              </label>
-            </div>
-            
-            <div className="rounded-xl bg-gray-50 p-4 border border-gray-100">
-               <h3 className="font-semibold text-gray-900 mb-2">Order Summary Overview</h3>
-               <ul className="space-y-2 text-sm text-gray-600">
-                 <li className="flex justify-between"><span>Customer:</span> <span className="font-medium text-gray-900">{customerName || "—"}</span></li>
-                 <li className="flex justify-between"><span>Total Items:</span> <span className="font-medium text-gray-900">{lines.length} Line(s)</span></li>
-                 <li className="flex justify-between"><span>Fulfillment:</span> <span className="font-medium text-gray-900">{fulfillment === "delhivery" ? "Delhivery" : "Handover"}</span></li>
-                 <li className="flex justify-between"><span>Payment:</span> <span className="font-medium text-gray-900">{paymentMethod === "offline_upi" ? "UPI" : "Cash"}</span></li>
-               </ul>
+            <label className='block space-y-1.5'>
+              <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                Internal notes (optional)
+              </span>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className='w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+                placeholder='Reference for your team...'
+              />
+            </label>
+
+            <div className='rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3'>
+              <h3 className='text-sm font-bold text-gray-900'>Order summary</h3>
+              <ul className='space-y-2 text-sm'>
+                <li className='flex justify-between gap-3'>
+                  <span className='text-gray-500'>Customer</span>
+                  <span className='font-medium text-gray-900 text-right'>{customerName || "—"}</span>
+                </li>
+                <li className='flex justify-between gap-3'>
+                  <span className='text-gray-500'>Source</span>
+                  <span className='font-medium text-gray-900'>
+                    {orderSource === "stall" ? "Stall / POS" : "Personal"}
+                  </span>
+                </li>
+                <li className='flex justify-between gap-3'>
+                  <span className='text-gray-500'>Fulfillment</span>
+                  <span className='font-medium text-gray-900'>
+                    {fulfillment === "delhivery" ? "Delhivery" : "In-person handover"}
+                  </span>
+                </li>
+                <li className='flex justify-between gap-3'>
+                  <span className='text-gray-500'>Payment</span>
+                  <span className='font-medium text-gray-900'>
+                    {paymentMethod === "offline_upi" ? "UPI" : "Cash"}
+                  </span>
+                </li>
+              </ul>
+
+              <div className='border-t border-gray-200 pt-3 space-y-2'>
+                {lines.map((line, idx) => {
+                  const up = lineUnitPrice(line);
+                  const q = lineQty(line);
+                  const total = Number.isFinite(up) ? up * q : 0;
+                  return (
+                    <div key={line.id} className='flex justify-between gap-3 text-sm'>
+                      <span className='min-w-0 text-gray-600'>
+                        <span className='text-gray-400'>#{idx + 1}</span>{" "}
+                        {lineLabel(line, shopCategories)}
+                        <span className='text-gray-400'> × {q}</span>
+                      </span>
+                      <span className='shrink-0 font-medium text-gray-900'>
+                        {Number.isFinite(up) ? formatPrice(total) : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className='flex items-center justify-between border-t border-gray-200 pt-3'>
+                <span className='text-sm font-bold text-gray-900'>Total</span>
+                <span className='text-lg font-bold text-brand-700'>{formatPrice(reviewSubtotal)}</span>
+              </div>
+              <p className='text-[11px] text-gray-500'>
+                Order will be saved as <strong>confirmed &amp; paid</strong>
+                {fulfillment === "offline_handover" ? " and marked delivered" : ""}.
+              </p>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-between gap-3">
-              <Button type="button" variant="outline" onClick={handleBack} disabled={submitting} className="w-24 rounded-xl shadow-sm">← Back</Button>
-              <Button type='button' variant='brand' className='min-w-[150px] rounded-xl font-bold shadow-lg' loading={submitting} onClick={() => void handleSubmit()}>✓ Create Order</Button>
+            <div className='sticky bottom-0 -mx-5 sm:-mx-6 border-t border-gray-100 bg-white/95 px-5 sm:px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/90'>
+              <div className='flex items-center justify-between gap-3'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={handleBack}
+                  disabled={submitting}
+                  className='w-24 rounded-xl shadow-sm'
+                >
+                  ← Back
+                </Button>
+                <Button
+                  type='button'
+                  variant='brand'
+                  className='min-w-[160px] rounded-xl font-bold shadow-lg'
+                  loading={submitting}
+                  disabled={!paymentMethod || reviewSubtotal < 0}
+                  onClick={() => void handleSubmit()}
+                >
+                  Create order
+                </Button>
+              </div>
             </div>
           </section>
         </div>

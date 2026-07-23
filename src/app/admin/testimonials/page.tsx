@@ -34,8 +34,11 @@ export default function AdminTestimonialsPage() {
 
   const site = useMemo(() => getSiteUrl(), []);
   const storyUrl = `${site}/share-your-story`;
+  // Prefer clean slug URL so customers never see a raw Mongo id
   const productReviewUrl = selectedProduct
-    ? `${site}/share-your-story?productId=${encodeURIComponent(selectedProduct._id)}`
+    ? `${site}/share-your-story?product=${encodeURIComponent(
+        selectedProduct.slug || selectedProduct._id,
+      )}`
     : null;
 
   const fetchAll = async () => {
@@ -128,10 +131,15 @@ export default function AdminTestimonialsPage() {
   };
 
   const approve = async (id: string) => {
+    const item = items.find((t) => t._id === id);
     setBusyId(id);
     try {
       await testimonialApi.approve(id);
-      toast.success('Approved — live on homepage');
+      toast.success(
+        item?.product
+          ? 'Approved — live on homepage + product page (rating updated)'
+          : 'Approved — live on homepage',
+      );
       fetchAll();
     } catch {
       toast.error('Approve failed');
@@ -171,7 +179,8 @@ export default function AdminTestimonialsPage() {
         <h1 className="text-2xl font-serif font-bold mt-1">Customer Stories</h1>
         <p className="mt-1 text-sm text-white/80">
           You decide the link. Customers only fill the form — no product picker / mode choice for them.
-          Offline orders: use <b>Review link / QR</b> on the order page.
+          Offline orders: use <b>Review link / QR</b> on the order page. Approving a product-linked story
+          also publishes the review on that product and updates its star rating.
         </p>
       </div>
 
@@ -228,6 +237,7 @@ export default function AdminTestimonialsPage() {
           </p>
           <p className="text-sm text-gray-600">
             Admin picks the product. Customer only reviews that piece (+ homepage story).
+            Approving the story also publishes the product review and updates star ratings.
           </p>
 
           {selectedProduct ? (
@@ -418,6 +428,13 @@ export default function AdminTestimonialsPage() {
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                         {t.rating}
                       </span>
+                      {t.product?.name ? (
+                        <Badge variant="secondary" className="gap-1 font-normal">
+                          <Package className="h-3 w-3" />
+                          {t.product.name}
+                          {' · product review'}
+                        </Badge>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-sm text-gray-600 line-clamp-3">{t.quote}</p>
                   </div>

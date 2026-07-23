@@ -1,10 +1,13 @@
 import { formatPrice } from "@/lib/utils";
 import type { Coupon } from "@/types";
 
-/** Short savings label, e.g. "5% off" or "₹200 off". */
+/** Short savings label, e.g. "5% off", "₹200 off", or "At ₹1150" for Direct Price. */
 export function couponDiscountShort(coupon: Coupon): string {
   if (coupon.discountType === "percentage") {
     return `${coupon.discountValue}% off`;
+  }
+  if (coupon.discountType === "fixed") {
+    return `At ${formatPrice(coupon.discountValue)}`;
   }
   return `${formatPrice(coupon.discountValue)} off`;
 }
