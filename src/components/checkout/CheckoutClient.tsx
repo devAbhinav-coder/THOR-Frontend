@@ -481,7 +481,17 @@ export default function CheckoutClient() {
     const fetchEligibleCoupons = async () => {
       setIsLoadingCoupons(true);
       try {
-        const res = await couponApi.getEligible(amountForEligibility);
+        const items =
+          buyNowItem ?
+            [
+              {
+                productId: String(buyNowItem.productId),
+                price: buyNowItem.price,
+                quantity: buyNowItem.quantity,
+              },
+            ]
+          : undefined;
+        const res = await couponApi.getEligible(amountForEligibility, items);
         setEligibleCoupons(res.data.coupons || []);
       } catch {
         setEligibleCoupons([]);
@@ -490,7 +500,14 @@ export default function CheckoutClient() {
       }
     };
     fetchEligibleCoupons();
-  }, [cart?.subtotal, cart?.items?.length, isAuthenticated, buyNowItem]);
+  }, [
+    cart?.subtotal,
+    cart?.items?.map((i) => `${i.product}:${i.quantity}:${i.price}`).join("|"),
+    isAuthenticated,
+    buyNowItem?.productId,
+    buyNowItem?.quantity,
+    buyNowItem?.price,
+  ]);
 
   const paymentMethodForApi =
     existingOrder ? "razorpay" : checkoutPaymentMethod;

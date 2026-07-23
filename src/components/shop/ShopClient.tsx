@@ -12,7 +12,6 @@ import ShopProductsSkeleton from "@/components/shop/ShopPageSkeleton";
 import ShopCollectionCard from "@/components/shop/ShopCollectionCard";
 import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkeleton";
 import ShopFilterBar, { ShopFilterPanel, ShopSortDropdown } from "@/components/shop/ShopFilterBar";
-import CouponStrip from "@/components/coupons/CouponStrip";
 import ShopCategoryPills from "@/components/shop/ShopCategoryPills";
 import ShopSearchIntentChips from "@/components/shop/ShopSearchIntentChips";
 import { trackSearch } from "@/lib/metaPixel";
@@ -749,10 +748,6 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
             : null}
           </div>
         </section>
-
-        <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-4 sm:mb-6'>
-          <CouponStrip title='Shop with offers' />
-        </div>
 
         <ShopFilterBar
           filters={filters}

@@ -113,7 +113,13 @@ export default function CartClient() {
       }
     };
     run();
-  }, [isAuthenticated, cart?.subtotal, cart?.items?.length]);
+  }, [
+    isAuthenticated,
+    cart?.subtotal,
+    cart?.items
+      ?.map((i) => `${i.product}:${i.quantity}:${i.price}`)
+      .join("|"),
+  ]);
 
   const goToCheckout = useCallback(async () => {
     if (isCheckoutLaunching) return;

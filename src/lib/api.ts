@@ -472,8 +472,20 @@ export const wishlistApi = {
 export const couponApi = {
   validate: (code: string, orderAmount: number, items?: Array<{ productId: string; price: number; quantity: number }>) =>
     unwrapAxios("coupons.validate", api.post("/coupons/validate", { code, orderAmount, items }), schemas.couponValidate),
-  getEligible: (orderAmount: number) =>
-    unwrapAxios("coupons.eligible", api.get("/coupons/eligible", { params: { orderAmount } }), schemas.couponEligible),
+  getEligible: (
+    orderAmount: number,
+    items?: Array<{ productId: string; price: number; quantity: number }>,
+  ) =>
+    unwrapAxios(
+      "coupons.eligible",
+      api.get("/coupons/eligible", {
+        params: {
+          orderAmount,
+          ...(items?.length ? { items: JSON.stringify(items) } : {}),
+        },
+      }),
+      schemas.couponEligible,
+    ),
   getPublic: () =>
     unwrapAxios("coupons.public", api.get("/coupons/public"), schemas.couponsPublicList),
   create: (data: object | FormData) =>
