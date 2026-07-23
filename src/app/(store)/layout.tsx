@@ -5,7 +5,7 @@ import { StoreErrorBoundary } from "@/components/StoreErrorBoundary";
 import { StoreRaniCare } from "@/components/support/StoreRaniCare";
 import StoreAuthModal from "@/components/auth/StoreAuthModal";
 import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
-import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
+import OfferVisitPopup from "@/components/coupons/OfferVisitPopup";
 import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
 
 function NavbarShellFallback() {
@@ -27,29 +27,20 @@ export default async function StoreLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [settings, initialNavCategories] = await Promise.all([
-    fetchStorefrontSettingsHome(),
-    fetchShopNavCategoriesServer(),
-  ]);
-  const initialAnnouncementMessages =
-    settings?.announcementMessages
-      ?.map((m) => String(m || "").trim())
-      .filter(Boolean) ?? [];
+  const initialNavCategories = await fetchShopNavCategoriesServer();
 
   return (
     <>
       <StoreVisitTracker />
       <Suspense fallback={<NavbarShellFallback />}>
-        <Navbar
-          initialAnnouncementMessages={initialAnnouncementMessages}
-          initialNavCategories={initialNavCategories}
-        />
+        <Navbar initialNavCategories={initialNavCategories} />
       </Suspense>
       <main className='pb-0 lg:pb-0 min-h-screen flex flex-col '>
         <StoreErrorBoundary>{children}</StoreErrorBoundary>
       </main>
       <Footer initialNavCategories={initialNavCategories} />
       <StoreRaniCare />
+      <OfferVisitPopup />
       <Suspense fallback={null}>
         <StoreAuthModal />
       </Suspense>

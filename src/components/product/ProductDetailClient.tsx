@@ -68,10 +68,10 @@ import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 
 const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
-const MAX_REVIEW_IMAGES = 3;
+const MAX_REVIEW_IMAGES = 5;
 const MAX_REVIEW_IMAGE_SIZE_MB = UPLOAD_MAX_MB.review;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
-const REVIEW_IMAGE_MAX_DIMENSION = 1600;
+const REVIEW_IMAGE_MAX_DIMENSION = 2000;
 /** Generic catalog words — weak signals for related-product name matching. */
 const RELATED_NAME_STOPWORDS = new Set([
   "saree",

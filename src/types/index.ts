@@ -66,6 +66,9 @@ export interface Product {
   price: number;
   comparePrice?: number;
   discountPercent?: number;
+  saleBadge?: string | null;
+  saleCampaignId?: string | null;
+  effectivePrice?: number;
   category: string;
   subcategory?: string;
   fabric?: string;
@@ -378,6 +381,7 @@ export interface Review {
   comment: string;
   images?: { url: string; publicId: string }[];
   isVerifiedPurchase: boolean;
+  source?: 'purchase' | 'share_link' | 'invite';
   helpfulVotes: string[];
   helpfulCount?: number;
   status?: ReviewStatus;
@@ -388,11 +392,41 @@ export interface Review {
   createdAt: string;
 }
 
+/** Homepage customer stories + photo reviews (optional linked product). */
+export interface Testimonial {
+  _id: string;
+  displayName: string;
+  isAnonymous: boolean;
+  quote: string;
+  rating: number;
+  images: { url: string; publicId?: string }[];
+  product?: {
+    _id: string;
+    name: string;
+    slug?: string;
+    image?: string;
+  };
+  sourceKind?: 'story' | 'review';
+  status?: 'pending' | 'approved' | 'rejected';
+  source?: 'public_link' | 'admin';
+  isActive?: boolean;
+  showOnHome?: boolean;
+  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type PromoScopeType = 'all' | 'categories' | 'subcategories' | 'products';
+
 export interface Coupon {
   _id: string;
   code: string;
   description?: string;
-  discountType: 'percentage' | 'flat';
+  displayTitle?: string;
+  imageUrl?: string;
+  imagePublicId?: string;
+  showOnStorefront?: boolean;
+  discountType: 'percentage' | 'flat' | 'fixed';
   discountValue: number;
   minOrderAmount?: number;
   maxDiscountAmount?: number;
@@ -405,6 +439,61 @@ export interface Coupon {
   eligibilityType?: 'all' | 'first_order' | 'returning';
   minCompletedOrders?: number;
   maxCompletedOrders?: number;
+  scopeType?: PromoScopeType;
+  applicableCategoryIds?: string[];
+  applicableSubcategoryIds?: string[];
+  applicableProductIds?: string[];
+  applicableCategories?: string[];
+}
+
+export interface PublicCoupon {
+  code: string;
+  description?: string;
+  displayTitle: string;
+  imageUrl?: string | null;
+  discountType: 'percentage' | 'flat' | 'fixed';
+  discountValue: number;
+  minOrderAmount?: number;
+  maxDiscountAmount?: number | null;
+  startDate: string;
+  expiryDate: string;
+  scopeType: PromoScopeType;
+}
+
+export interface SaleCampaign {
+  _id: string;
+  name: string;
+  description?: string;
+  badgeText?: string;
+  discountType: 'percentage' | 'flat' | 'fixed';
+  discountValue: number;
+  maxDiscountPerItem?: number;
+  imageUrl?: string;
+  imagePublicId?: string;
+  showOnStorefront?: boolean;
+  scopeType: PromoScopeType;
+  categoryIds?: string[];
+  subcategoryIds?: string[];
+  productIds?: string[];
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PublicSale {
+  _id?: string;
+  name: string;
+  description?: string;
+  badgeText: string;
+  discountType: 'percentage' | 'flat' | 'fixed';
+  discountValue: number;
+  imageUrl?: string | null;
+  startDate: string;
+  endDate: string;
+  scopeType: PromoScopeType;
 }
 
 export interface ApiResponse<T> {

@@ -347,7 +347,7 @@ export function PdpReviewsSection({
                         </div>
                       ))}
 
-                      {reviewImages.length < 3 && (
+                      {reviewImages.length < 5 && (
                         <label className='h-24 w-24 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-brand-300 transition-all flex flex-col items-center justify-center cursor-pointer group active:scale-95'>
                           <Plus className='h-6 w-6 text-gray-400 group-hover:text-brand-600 transition-colors' />
                           <span className='text-[10px] font-bold text-gray-400 group-hover:text-brand-600 mt-1 uppercase'>
@@ -364,7 +364,7 @@ export function PdpReviewsSection({
                       )}
                     </div>
                     <p className='text-[10px] text-gray-400 italic'>
-                      Images help other shoppers see the product in real life (max 3 photos, {UPLOAD_MAX_MB.review}MB each, uploaded as WebP).
+                      Images help other shoppers see the product in real life (max 5 photos, {UPLOAD_MAX_MB.review}MB each).
                     </p>
                   </div>
 
@@ -516,7 +516,7 @@ export function PdpReviewsSection({
                         <HorizontalScrollSurface className='flex min-w-0 max-w-full items-center gap-2 pb-1 scrollbar-hide'>
                           {(expandedReviewPhotos[review._id] ?
                             review.images
-                          : review.images.slice(0, 3)
+                          : review.images.slice(0, 5)
                           ).map((img, i) => (
                             <button
                               key={i}
@@ -539,7 +539,7 @@ export function PdpReviewsSection({
                             </button>
                           ))}
                           {!expandedReviewPhotos[review._id] &&
-                            review.images.length > 3 && (
+                            review.images.length > 5 && (
                               <button
                                 type='button'
                                 onClick={() =>
@@ -550,11 +550,11 @@ export function PdpReviewsSection({
                                 }
                                 className='h-16 w-16 sm:h-20 sm:w-20 rounded-xl border border-dashed border-gray-300 text-xs font-semibold text-gray-600 bg-white flex-shrink-0'
                               >
-                                +{review.images.length - 3} more
+                                +{review.images.length - 5} more
                               </button>
                             )}
                         </HorizontalScrollSurface>
-                        {review.images.length > 3 &&
+                        {review.images.length > 5 &&
                           expandedReviewPhotos[review._id] && (
                             <button
                               type='button'
@@ -703,7 +703,7 @@ export function PdpReviewsSection({
                   </div>
                   {review.images && review.images.length > 0 && (
                     <HorizontalScrollSurface className='mt-3 flex min-w-0 max-w-full gap-2 pb-1 scrollbar-hide'>
-                      {review.images.slice(0, 3).map((img, i) => (
+                      {review.images.map((img, i) => (
                         <button
                           key={`all_img_${review._id}_${i}`}
                           type='button'

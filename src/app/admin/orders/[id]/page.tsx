@@ -41,6 +41,7 @@ import AdminOrderPackingSlip4R from '@/components/admin/AdminOrderPackingSlip4R'
 import { AdminAiExplainButton } from '@/components/admin/ai';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import OrderMarketingAttributionCard from '@/components/admin/orders/OrderMarketingAttributionCard';
+import OrderReviewInvitePanel from '@/components/admin/OrderReviewInvitePanel';
 
 function adminPaymentMethodLabel(pm: Order['paymentMethod']): string {
   switch (pm) {
@@ -1152,6 +1153,7 @@ export default function AdminOrderDetailsPage() {
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <AdminAiExplainButton kind="order" orderId={order._id} label="AI explain order" />
+              <OrderReviewInvitePanel orderId={order._id} />
               <button
                 type="button"
                 disabled={!invoiceEligible || generatingInvoice}

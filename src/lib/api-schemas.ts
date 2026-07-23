@@ -446,10 +446,30 @@ export const couponsAdminList = z.object({
   data: z.object({ coupons: z.array(doc) }),
 });
 
+export const couponsPublicList = z.object({
+  status: z.string(),
+  data: z.object({ coupons: z.array(doc) }),
+});
+
+export const saleCampaignsList = z.object({
+  status: z.string(),
+  data: z.object({ campaigns: z.array(doc) }),
+});
+
+export const salesPublicList = z.object({
+  status: z.string(),
+  data: z.object({ campaigns: z.array(doc) }),
+});
+
 export const reviewsFeatured = z.object({
   status: z.string(),
   results: z.number().optional(),
   data: z.object({ reviews: z.array(doc) }),
+});
+
+export const testimonialsList = z.object({
+  status: z.string(),
+  data: z.object({ testimonials: z.array(doc) }),
 });
 
 export const reviewsProduct = z

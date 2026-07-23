@@ -517,11 +517,11 @@ export default function OrderDetailPage() {
   ) => {
     const incoming = Array.from(e.target.files || []);
     const current = reviewImages[productId] || [];
-    if (incoming.length + current.length > 3) {
-      toast.error("You can upload up to 3 images.");
+    if (incoming.length + current.length > 5) {
+      toast.error("You can upload up to 5 images.");
       return;
     }
-    const next = [...current, ...incoming].slice(0, 3);
+    const next = [...current, ...incoming].slice(0, 5);
     setReviewImages((prev) => ({ ...prev, [productId]: next }));
     const previews = next.map((f) => URL.createObjectURL(f));
     setReviewImagePreviews((prev) => ({ ...prev, [productId]: previews }));

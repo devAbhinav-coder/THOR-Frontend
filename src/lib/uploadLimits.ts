@@ -2,7 +2,10 @@
 export const UPLOAD_MAX_MB = {
   product: 12,
   gifting: 12,
-  review: 12,
+  review: 30,
+  testimonial: 30,
+  coupon: 8,
+  sale: 8,
   storefront: 10,
   avatar: 2,
   cartCustomField: 3,

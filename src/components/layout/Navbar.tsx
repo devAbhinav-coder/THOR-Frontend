@@ -26,8 +26,8 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
-import { navigationApi, storefrontApi } from "@/lib/api";
-import { Category, StorefrontSettings, MegaMenuCategory } from "@/types";
+import { navigationApi } from "@/lib/api";
+import { MegaMenuCategory } from "@/types";
 import { cn } from "@/lib/utils";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
@@ -50,12 +50,9 @@ import {
   isStoreProductDetailPath,
   isStoreShopListingPath,
 } from "@/lib/storeRoutes";
-import type { StorefrontSettingsApiEnvelope } from "@/lib/api-schemas";
 import {
   mobileTabClass,
   mobileTabIconClass,
-  navAnnouncementShell,
-  navAnnouncementText,
   navAvatarButton,
   navAvatarRing,
   navBadgeCount,
@@ -77,14 +74,11 @@ type MobileBottomItem = {
 };
 
 type NavbarProps = {
-  /** SSR snapshot so announcement bar matches on hydration. */
-  initialAnnouncementMessages?: readonly string[];
   /** SSR snapshot for shop dropdown + mobile drawer categories. */
   initialNavCategories?: MegaMenuCategory[];
 };
 
 export default function Navbar({
-  initialAnnouncementMessages = [],
   initialNavCategories = [],
 }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -93,7 +87,6 @@ export default function Navbar({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const shopMenu = useNavDropdown();
   const userMenu = useNavDropdown();
-  const [announcementIndex, setAnnouncementIndex] = useState(0);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -127,21 +120,6 @@ export default function Navbar({
     }, 250);
     return () => window.clearTimeout(id);
   }, [navCategories, router]);
-
-  const { data: storefrontSettings } = useQuery({
-    queryKey: queryKeys.storefrontSettings,
-    queryFn: async () => {
-      const body: StorefrontSettingsApiEnvelope =
-        await storefrontApi.getSettings();
-      return (body.data.settings ?? null) as StorefrontSettings | null;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-  const announcementMessages = useMemo(() => {
-    const live = storefrontSettings?.announcementMessages;
-    const source = live && live.length > 0 ? live : initialAnnouncementMessages;
-    return source.map((m) => String(m || "").trim()).filter(Boolean);
-  }, [storefrontSettings?.announcementMessages, initialAnnouncementMessages]);
 
   useEffect(() => {
     let raf = 0;
@@ -185,18 +163,6 @@ export default function Navbar({
     }
     return "";
   }, [pathname, searchParams]);
-
-  useEffect(() => {
-    setAnnouncementIndex(0);
-  }, [announcementMessages.length]);
-
-  useEffect(() => {
-    if (announcementMessages.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setAnnouncementIndex((prev) => (prev + 1) % announcementMessages.length);
-    }, 3500);
-    return () => window.clearInterval(timer);
-  }, [announcementMessages.length]);
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -335,16 +301,6 @@ export default function Navbar({
         className={navStickyShellClass(navChromeVisible)}
         data-store-sticky-nav
       >
-        {announcementMessages.length > 0 &&
-          !navActive.home &&
-          !isCheckoutFlow && (
-            <div className={navAnnouncementShell}>
-              <p className={navAnnouncementText}>
-                {announcementMessages[announcementIndex]}
-              </p>
-            </div>
-          )}
-
         <header className={navShellClass(isScrolled)}>
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
             <div
@@ -639,8 +595,6 @@ export default function Navbar({
                 </div>
               )}
             </div>
-
-            {/* Announcement Bar Removed from Header */}
 
             {/* Mobile search — always open on shop/PDP; toggle elsewhere */}
             {!isCheckoutFlow && (showCommerceMobileShell || isSearchOpen) && (

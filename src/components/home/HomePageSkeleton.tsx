@@ -3,6 +3,7 @@ import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
 import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkeleton";
 import { SHOP_PRODUCT_GRID_CLASS } from "@/lib/shopLayout";
 import { ProductCardSkeleton, Skeleton } from "@/components/ui/SkeletonLoader";
+import { cn } from "@/lib/utils";
 
 function SectionHeaderSkeleton({
   eyebrowW,
@@ -200,38 +201,23 @@ export default function HomePageSkeleton() {
         </div>
       </section>
 
-      {/* Testimonials Skeleton */}
-      <section className="bg-white py-16 sm:py-24">
+      {/* Testimonials Skeleton — compact 9:16 story cards */}
+      <section className="bg-white py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-10 text-center sm:mb-14">
-            <Skeleton className="mx-auto mb-3 h-3 w-28 rounded-full" />
-            <Skeleton className="mx-auto h-9 w-80 max-w-full rounded-lg sm:h-12 sm:w-96" />
-            <Skeleton className="mx-auto mt-6 h-1 w-20 rounded-full" />
+          <div className="mb-7 text-center sm:mb-9">
+            <Skeleton className="mx-auto mb-3 h-3 w-40 rounded-full" />
+            <Skeleton className="mx-auto h-9 w-64 max-w-full rounded-lg sm:h-11 sm:w-80" />
+            <Skeleton className="mx-auto mt-3 h-4 w-72 max-w-full rounded-md" />
           </div>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="flex justify-center gap-3 overflow-hidden px-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div
+              <Skeleton
                 key={i}
-                className="flex flex-col rounded-[2rem] border border-white/80 bg-white/70 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-              >
-                <div className="mb-6 flex gap-1">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <Skeleton key={j} className="h-4 w-4 rounded-sm" />
-                  ))}
-                </div>
-                <div className="mb-8 flex-grow space-y-2">
-                  <Skeleton className="h-4 w-full rounded-md" />
-                  <Skeleton className="h-4 w-full rounded-md" />
-                  <Skeleton className="h-4 w-3/4 rounded-md" />
-                </div>
-                <div className="flex items-center gap-4 border-t border-gray-100/80 pt-6">
-                  <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Skeleton className="h-4 w-24 rounded-md" />
-                    <Skeleton className="h-3 w-32 rounded-md" />
-                  </div>
-                </div>
-              </div>
+                className={cn(
+                  "aspect-[9/16] w-[min(52vw,200px)] shrink-0 rounded-2xl sm:w-[210px]",
+                  i === 1 ? "opacity-100" : "scale-[0.92] opacity-60",
+                )}
+              />
             ))}
           </div>
         </div>

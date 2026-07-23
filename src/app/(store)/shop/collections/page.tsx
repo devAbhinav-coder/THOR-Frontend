@@ -39,6 +39,7 @@ export async function generateMetadata({
   const search = searchRaw.slice(0, 48);
   const featured = sp.isFeatured === "true";
   const onSale = sp.onSale === "true";
+  const hasOffer = sp.hasOffer === "true";
   const hasAnyFilter = Object.values(sp).some((v) => {
     if (typeof v === "string") return Boolean(v.trim());
     return Array.isArray(v) ? v.length > 0 : false;
@@ -72,6 +73,7 @@ export async function generateMetadata({
 
   let title = baseTitle;
   if (onSale) title = "Sale Sarees & Ethnic Wear Online India";
+  else if (hasOffer) title = "Coupon Offers — Sarees & Ethnic Wear Online India";
   else if (featured) title = "Featured Sarees & Ethnic Wear Online India";
   else if (cat) title = `${cat} Sarees & Ethnic Wear Online India`;
   else if (fabric) title = `${fabric} Sarees — Shop Online India`;
@@ -81,6 +83,9 @@ export async function generateMetadata({
   if (onSale) {
     description =
       "Shop sarees and ethnic wear on sale at The House of Rani — special pricing on select styles with free delivery and easy returns.";
+  } else if (hasOffer) {
+    description =
+      "Shop products with active coupon offers at The House of Rani — copy a code at checkout for extra savings.";
   } else if (cat) {
     description = `Browse ${cat} at The House of Rani — premium ethnic wear with free delivery, easy returns, and filters for fabric, price, and ratings.`;
   } else if (search) {

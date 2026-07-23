@@ -31,6 +31,8 @@ import {
   HandIcon,
   Receipt,
   Warehouse,
+  Percent,
+  Quote,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
@@ -90,11 +92,13 @@ const navSections: NavSection[] = [
       },
       { label: "Returns", href: "/admin/returns", icon: RotateCcw },
       { label: "Coupons", href: "/admin/coupons", icon: Tag },
+      { label: "Sale", href: "/admin/sales", icon: Percent },
     ],
   },
   {
     title: "Marketing & content",
     items: [
+      { label: "Customer stories", href: "/admin/testimonials", icon: Quote },
       { label: "Email campaigns", href: "/admin/emails", icon: Megaphone },
       { label: "Journal subscribers", href: "/admin/newsletter", icon: Mail },
       { label: "Blogs", href: "/admin/blogs", icon: FileText },
@@ -105,7 +109,7 @@ const navSections: NavSection[] = [
     title: "Customers & trust",
     items: [
       { label: "Users", href: "/admin/users", icon: Users },
-      { label: "Reviews", href: "/admin/reviews", icon: Star },
+      { label: "Product reviews", href: "/admin/reviews", icon: Star },
     ],
   },
   {

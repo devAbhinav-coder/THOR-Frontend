@@ -192,7 +192,7 @@ function ShopCollectionCardInner({
 
           {discountPercent >= 5 && !isOutOfStock && (
             <span className='absolute left-0 top-0 z-10 bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white sm:px-2.5 sm:py-1 sm:text-[10px]'>
-              {discountPercent}% off
+              {product.saleBadge ? `${product.saleBadge} · ${discountPercent}% off` : `${discountPercent}% off`}
             </span>
           )}
 

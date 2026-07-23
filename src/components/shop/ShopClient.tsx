@@ -12,6 +12,7 @@ import ShopProductsSkeleton from "@/components/shop/ShopPageSkeleton";
 import ShopCollectionCard from "@/components/shop/ShopCollectionCard";
 import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkeleton";
 import ShopFilterBar, { ShopFilterPanel, ShopSortDropdown } from "@/components/shop/ShopFilterBar";
+import CouponStrip from "@/components/coupons/CouponStrip";
 import ShopCategoryPills from "@/components/shop/ShopCategoryPills";
 import ShopSearchIntentChips from "@/components/shop/ShopSearchIntentChips";
 import { trackSearch } from "@/lib/metaPixel";
@@ -312,6 +313,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
         search: filters.search,
         isFeatured: filters.isFeatured,
         onSale: filters.onSale,
+        hasOffer: filters.hasOffer,
       }),
     [filters, categoryContext],
   );
@@ -640,7 +642,8 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     }
     if (filters.minPrice || filters.maxPrice) return "Price Filter";
     if (filters.isFeatured) return "Featured Products";
-    if (filters.onSale === "true") return "Sale & Offers";
+    if (filters.onSale === "true") return "On Sale";
+    if (filters.hasOffer === "true") return "Coupon Offers";
     return "All Collections";
   }, [
     filters.search,
@@ -651,6 +654,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     filters.maxPrice,
     filters.isFeatured,
     filters.onSale,
+    filters.hasOffer,
     searchTitle,
   ]);
   const productGridClass = SHOP_PRODUCT_GRID_CLASS;
@@ -745,6 +749,10 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
             : null}
           </div>
         </section>
+
+        <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-4 sm:mb-6'>
+          <CouponStrip title='Shop with offers' />
+        </div>
 
         <ShopFilterBar
           filters={filters}

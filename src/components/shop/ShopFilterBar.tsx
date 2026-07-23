@@ -800,7 +800,28 @@ export function ShopFilterPanel({
                 className={shopFilterCheckboxClass}
               />
               <span className={cn(sidebar ? "text-[13px] leading-snug" : "text-sm")}>
-                Sale &amp; Offers
+                On Sale
+              </span>
+            </label>
+          </li>
+          <li>
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
+                filters.hasOffer === "true" ?
+                  "font-medium text-[#c5a059]"
+                : "text-gray-600 hover:text-[#c5a059]",
+                sidebar && filters.hasOffer === "true" && "bg-[#c5a059]/5",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={filters.hasOffer === "true"}
+                onChange={() => onUpdateFilter("hasOffer", "true")}
+                className={shopFilterCheckboxClass}
+              />
+              <span className={cn(sidebar ? "text-[13px] leading-snug" : "text-sm")}>
+                Coupon Offers
               </span>
             </label>
           </li>

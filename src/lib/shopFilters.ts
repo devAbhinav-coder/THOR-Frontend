@@ -61,6 +61,7 @@ export type ShopFilters = {
   search: string;
   isFeatured: string;
   onSale: string;
+  hasOffer: string;
 };
 
 export type ShopCategoryContext = {
@@ -91,6 +92,7 @@ export const EMPTY_SHOP_FILTERS: ShopFilters = {
   search: "",
   isFeatured: "",
   onSale: "",
+  hasOffer: "",
 };
 
 type SearchParamsLike =
@@ -283,6 +285,7 @@ export function parseShopFiltersFromUrl(
       .slice(0, SHOP_SEARCH_MAX_LEN),
     isFeatured: readScalarParam(searchParams, "isFeatured"),
     onSale: readScalarParam(searchParams, "onSale"),
+    hasOffer: readScalarParam(searchParams, "hasOffer"),
   };
 
   return mergeCategoryContextFilters(parsed, categoryContext);
@@ -325,6 +328,7 @@ export function buildShopQueryString(
   if (filters.search) params.set("search", filters.search);
   if (filters.isFeatured) params.set("isFeatured", filters.isFeatured);
   if (filters.onSale) params.set("onSale", filters.onSale);
+  if (filters.hasOffer) params.set("hasOffer", filters.hasOffer);
   if (filters.sort && filters.sort !== SHOP_DEFAULT_SORT) {
     params.set("sort", filters.sort);
   }
@@ -343,6 +347,7 @@ export function hasSecondaryShopFilters(filters: ShopFilters): boolean {
     Boolean(filters.search) ||
     Boolean(filters.isFeatured) ||
     Boolean(filters.onSale) ||
+    Boolean(filters.hasOffer) ||
     filters.sort !== SHOP_DEFAULT_SORT
   );
 }
@@ -360,6 +365,7 @@ export function shouldUseCategoryPath(filters: ShopFilters): boolean {
     !filters.search &&
     !filters.isFeatured &&
     !filters.onSale &&
+    !filters.hasOffer &&
     filters.sort === SHOP_DEFAULT_SORT
   );
 }
@@ -377,6 +383,7 @@ export function shouldUseSubcategoryPath(filters: ShopFilters): boolean {
     !filters.search &&
     !filters.isFeatured &&
     !filters.onSale &&
+    !filters.hasOffer &&
     filters.sort === SHOP_DEFAULT_SORT
   );
 }
@@ -402,6 +409,7 @@ export function countActiveShopFilters(
   if (filters.maxPrice) count += 1;
   if (filters.search) count += 1;
   if (filters.onSale) count += 1;
+  if (filters.hasOffer) count += 1;
   return count;
 }
 
@@ -448,6 +456,12 @@ export function resolveNextShopFilters(
     return {
       ...filters,
       onSale: filters.onSale === "true" ? "" : "true",
+    };
+  }
+  if (key === "hasOffer") {
+    return {
+      ...filters,
+      hasOffer: filters.hasOffer === "true" ? "" : "true",
     };
   }
   return { ...filters, [key]: String(value) };
@@ -565,6 +579,7 @@ export function buildShopProductQueryParams(
     if (effective.maxPrice) params.maxPrice = Number(effective.maxPrice);
     if (effective.isFeatured) params.isFeatured = effective.isFeatured;
     if (effective.onSale) params.onSale = effective.onSale;
+    if (effective.hasOffer) params.hasOffer = effective.hasOffer;
 
     return { mode: "search", params };
   }
@@ -598,6 +613,7 @@ export function buildShopProductQueryParams(
   if (effective.maxPrice) params["price[lte]"] = effective.maxPrice;
   if (effective.isFeatured) params.isFeatured = effective.isFeatured;
   if (effective.onSale) params.onSale = effective.onSale;
+  if (effective.hasOffer) params.hasOffer = effective.hasOffer;
 
   return { mode: "list", params };
 }

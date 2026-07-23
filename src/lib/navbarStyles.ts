@@ -8,7 +8,7 @@ export function navShellClass(scrolled: boolean) {
   );
 }
 
-/** Sticky shell for announcement + header — slides off-screen on mobile scroll-down. */
+/** Sticky shell for header — slides off-screen on mobile scroll-down. */
 export function navStickyShellClass(visible: boolean) {
   return cn(
     "sticky top-0 z-50 will-change-transform",
@@ -31,12 +31,6 @@ export const navIconButton =
 
 export const navSearchInputClass =
   "rounded-none border-navy-700 bg-navy-900/60 py-2 text-[13px] tracking-wide placeholder:text-white/45 placeholder:tracking-wide focus:border-[#c5a059]/60 focus:ring-[#c5a059]/20";
-
-export const navAnnouncementShell =
-  "relative z-40 flex min-h-9 items-center justify-center border-b border-navy-800 bg-navy-950 px-3 py-2 text-center";
-
-export const navAnnouncementText =
-  "max-w-4xl text-[10px] font-medium uppercase tracking-[0.2em] text-[#c5a059]/95 sm:text-[11px]";
 
 /** Heritage dropdown shell — square, gold accent strip */
 export const navDropdownAccent =

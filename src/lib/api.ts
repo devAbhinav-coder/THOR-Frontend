@@ -380,6 +380,16 @@ export const reviewApi = {
     unwrapAxios("reviews.product", api.get(`/reviews/product/${productId}`, { params }), schemas.reviewsProduct),
   canReview: (productId: string) =>
     unwrapAxios("reviews.canReview", api.get(`/reviews/product/${productId}/can-review`), schemas.canReview),
+  /** Share-link / QR — no login. Pending until admin approves. */
+  submitPublic: (data: FormData) =>
+    unwrapAxios(
+      "reviews.submitPublic",
+      api.post("/reviews/submit-public", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+      }),
+      schemas.successData,
+    ),
   create: (productId: string, data: FormData) =>
     unwrapAxios(
       "reviews.create",
@@ -395,6 +405,64 @@ export const reviewApi = {
     unwrapAxios("reviews.report", api.patch(`/reviews/${id}/report`, data), schemas.successMessageData),
 };
 
+export const reviewInviteApi = {
+  get: (token: string) =>
+    unwrapAxios(
+      "reviewInvite.get",
+      api.get(`/review-invites/${encodeURIComponent(token)}`),
+      schemas.successData,
+    ),
+  submit: (token: string, data: FormData) =>
+    unwrapAxios(
+      "reviewInvite.submit",
+      api.post(`/review-invites/${encodeURIComponent(token)}/submit`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+      }),
+      schemas.successData,
+    ),
+};
+
+export const testimonialApi = {
+  getPublic: () =>
+    unwrapAxios("testimonials.public", api.get("/testimonials"), schemas.testimonialsList),
+  /** Share-link form — no auth required */
+  submitPublic: (data: FormData) =>
+    unwrapAxios(
+      "testimonials.submit",
+      api.post("/testimonials/submit", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+      }),
+      schemas.successData,
+    ),
+  getAdminAll: () =>
+    unwrapAxios("testimonials.admin", api.get("/testimonials/admin"), schemas.testimonialsList),
+  create: (data: FormData) =>
+    unwrapAxios(
+      "testimonials.create",
+      api.post("/testimonials", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+      }),
+      schemas.successData,
+    ),
+  update: (id: string, data: FormData) =>
+    unwrapAxios(
+      "testimonials.update",
+      api.patch(`/testimonials/${id}`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+      }),
+      schemas.successData,
+    ),
+  approve: (id: string) =>
+    unwrapAxios("testimonials.approve", api.patch(`/testimonials/${id}/approve`), schemas.successData),
+  reject: (id: string) =>
+    unwrapAxios("testimonials.reject", api.patch(`/testimonials/${id}/reject`), schemas.successData),
+  delete: (id: string) => del204("testimonials.delete", api.delete(`/testimonials/${id}`)),
+};
+
 export const wishlistApi = {
   get: () => unwrapAxios("wishlist.get", api.get("/wishlist"), schemas.wishlistGet),
   toggle: (productId: string) =>
@@ -402,18 +470,60 @@ export const wishlistApi = {
 };
 
 export const couponApi = {
-  validate: (code: string, orderAmount: number) =>
-    unwrapAxios("coupons.validate", api.post("/coupons/validate", { code, orderAmount }), schemas.couponValidate),
+  validate: (code: string, orderAmount: number, items?: Array<{ productId: string; price: number; quantity: number }>) =>
+    unwrapAxios("coupons.validate", api.post("/coupons/validate", { code, orderAmount, items }), schemas.couponValidate),
   getEligible: (orderAmount: number) =>
     unwrapAxios("coupons.eligible", api.get("/coupons/eligible", { params: { orderAmount } }), schemas.couponEligible),
-  create: (data: object) =>
-    unwrapAxios("coupons.create", api.post("/coupons", data), schemas.successData),
+  getPublic: () =>
+    unwrapAxios("coupons.public", api.get("/coupons/public"), schemas.couponsPublicList),
+  create: (data: object | FormData) =>
+    unwrapAxios(
+      "coupons.create",
+      data instanceof FormData
+        ? api.post("/coupons", data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.post("/coupons", data),
+      schemas.successData,
+    ),
   getAll: () => unwrapAxios("coupons.getAll", api.get("/coupons"), schemas.couponsAdminList),
-  update: (id: string, data: object) =>
-    unwrapAxios("coupons.update", api.patch(`/coupons/${id}`, data), schemas.successData),
+  update: (id: string, data: object | FormData) =>
+    unwrapAxios(
+      "coupons.update",
+      data instanceof FormData
+        ? api.patch(`/coupons/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.patch(`/coupons/${id}`, data),
+      schemas.successData,
+    ),
   archive: (id: string) =>
     unwrapAxios("coupons.archive", api.patch(`/coupons/${id}/archive`), schemas.successData),
   delete: (id: string) => del204("coupons.delete", api.delete(`/coupons/${id}`)),
+};
+
+export const saleCampaignApi = {
+  getPublic: () =>
+    unwrapAxios("sales.public", api.get("/sales/public"), schemas.salesPublicList),
+  getAll: () => unwrapAxios("sales.getAll", api.get("/sales"), schemas.saleCampaignsList),
+  getById: (id: string) => unwrapAxios("sales.getById", api.get(`/sales/${id}`), schemas.successData),
+  create: (data: object | FormData) =>
+    unwrapAxios(
+      "sales.create",
+      data instanceof FormData
+        ? api.post("/sales", data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.post("/sales", data),
+      schemas.successData,
+    ),
+  update: (id: string, data: object | FormData) =>
+    unwrapAxios(
+      "sales.update",
+      data instanceof FormData
+        ? api.patch(`/sales/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.patch(`/sales/${id}`, data),
+      schemas.successData,
+    ),
+  archive: (id: string) =>
+    unwrapAxios("sales.archive", api.patch(`/sales/${id}/archive`), schemas.successData),
+  delete: (id: string) => del204("sales.delete", api.delete(`/sales/${id}`)),
+  preview: (data: object) =>
+    unwrapAxios("sales.preview", api.post("/sales/preview", data), schemas.successData),
 };
 
 export const categoryApi = {
@@ -509,6 +619,18 @@ export const adminApi = {
     unwrapAxios("admin.orders", api.get("/admin/orders", { params }), schemas.adminOrdersList),
   getOrderDetails: (id: string) =>
     unwrapAxios("admin.orderDetail", api.get(`/admin/orders/${id}`), schemas.adminOrderDetail),
+  createReviewInvite: (orderId: string) =>
+    unwrapAxios(
+      "admin.reviewInvite.create",
+      api.post(`/admin/orders/${orderId}/review-invite`),
+      schemas.successData,
+    ),
+  emailReviewInvite: (orderId: string) =>
+    unwrapAxios(
+      "admin.reviewInvite.email",
+      api.post(`/admin/orders/${orderId}/review-invite/email`),
+      schemas.successData,
+    ),
   deleteOrder: (id: string) =>
     del204("admin.deleteOrder", api.delete(`/admin/orders/${id}`)),
   createOfflineOrder: (data: AdminCreateOfflineOrderBody) =>
