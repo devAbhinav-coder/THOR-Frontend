@@ -224,8 +224,7 @@ function ReviewInviteForm() {
           <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
           <h1 className="mt-4 font-serif text-2xl font-medium text-navy-900">Thank you</h1>
           <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-            Your product review and photo story are with us. After a quick check, the review appears
-            on the product page and your story may feature on our homepage.
+            Your review and story were received. We'll approve them before they go live.
           </p>
         </div>
       </div>
@@ -236,16 +235,16 @@ function ReviewInviteForm() {
     <div className="min-h-[70vh] bg-[#faf8f5] px-4 py-10 sm:py-14">
       <div className="mx-auto max-w-lg">
         <div className="text-center">
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-navy-900/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-navy-800">
-            <ShieldCheck className="h-3 w-3" /> Secure order link
+          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059]">
+            The House of Rani
           </p>
           <h1 className="mt-3 font-serif text-3xl font-medium text-navy-900 sm:text-4xl">
             Share your experience
           </h1>
           <p className="mt-3 text-sm text-gray-500 leading-relaxed">
-            Hi {invite.customerFirstName} — this private link is for order{" "}
-            <span className="font-medium text-navy-900">{invite.orderNumber}</span> only. No login
-            needed. Your words become a product review and a homepage story (after we approve).
+            Thank you, {invite.customerFirstName}. For order{" "}
+            <span className="font-medium text-navy-900">{invite.orderNumber}</span> — add your words
+            and a photo. We approve before anything goes live.
           </p>
         </div>
 

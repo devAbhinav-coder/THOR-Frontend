@@ -135,11 +135,7 @@ export default function AdminTestimonialsPage() {
     setBusyId(id);
     try {
       await testimonialApi.approve(id);
-      toast.success(
-        item?.product
-          ? 'Approved — live on homepage + product page (rating updated)'
-          : 'Approved — live on homepage',
-      );
+      toast.success(item?.product ? 'Approved — live on product & homepage' : 'Approved — live on homepage');
       fetchAll();
     } catch {
       toast.error('Approve failed');
@@ -178,9 +174,7 @@ export default function AdminTestimonialsPage() {
         <p className="text-xs uppercase tracking-widest text-white/70 font-semibold">Trust Builder</p>
         <h1 className="text-2xl font-serif font-bold mt-1">Customer Stories</h1>
         <p className="mt-1 text-sm text-white/80">
-          You decide the link. Customers only fill the form — no product picker / mode choice for them.
-          Offline orders: use <b>Review link / QR</b> on the order page. Approving a product-linked story
-          also publishes the review on that product and updates its star rating.
+          Share a link or QR with customers. Stories go live only after you approve.
         </p>
       </div>
 
@@ -188,9 +182,7 @@ export default function AdminTestimonialsPage() {
         {/* Story-only */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Homepage story</p>
-          <p className="text-sm text-gray-600">
-            General link — customer shares a brand story only (no product review).
-          </p>
+          <p className="text-sm text-gray-600">Brand story for the homepage.</p>
           <code className="block text-xs bg-gray-50 rounded-lg px-3 py-2 break-all text-navy-900">
             {storyUrl}
           </code>
@@ -236,8 +228,7 @@ export default function AdminTestimonialsPage() {
             Product review + story
           </p>
           <p className="text-sm text-gray-600">
-            Admin picks the product. Customer only reviews that piece (+ homepage story).
-            Approving the story also publishes the product review and updates star ratings.
+            Choose a product, then share the link. Approval publishes the review and updates ratings.
           </p>
 
           {selectedProduct ? (
@@ -349,7 +340,7 @@ export default function AdminTestimonialsPage() {
               </div>
             </>
           ) : (
-            <p className="text-xs text-gray-400">Select a product to generate a locked review link.</p>
+            <p className="text-xs text-gray-400">Select a product to generate the link.</p>
           )}
         </div>
       </div>

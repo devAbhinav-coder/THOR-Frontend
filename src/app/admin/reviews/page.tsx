@@ -250,8 +250,7 @@ export default function AdminReviewsPage() {
       <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-white via-rose-50/30 to-brand-50/40 p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)] sm:p-7">
         <h1 className="text-2xl font-serif font-bold text-gray-900 sm:text-3xl">Reviews</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Moderate customer feedback (including share-link / offline reviews). Approve pending items
-          under &quot;Needs review&quot; so they appear on the product page.
+          Moderate customer feedback. Approve pending items so they appear on product pages.
         </p>
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-gray-200 bg-white/90 px-4 py-3">
