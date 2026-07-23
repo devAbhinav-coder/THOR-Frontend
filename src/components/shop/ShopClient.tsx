@@ -201,6 +201,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     return {
       ...filterOptionsData,
       colors: dedupeCatalogLabels(filterOptionsData.colors ?? []),
+      colorCodes: filterOptionsData.colorCodes ?? {},
       fabrics: mergeFabricOptions(filterOptionsData.fabrics ?? []),
     };
   }, [filterOptionsData]);

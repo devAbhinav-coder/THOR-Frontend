@@ -542,6 +542,8 @@ export interface FilterCategoryTreeItem {
 export interface FilterOptions {
   categories: string[];
   colors: string[];
+  /** Canonical color name → stored hex / multicolor marker for filter swatches. */
+  colorCodes?: Record<string, string>;
   fabrics?: string[];
   subcategories: string[];
   occasions?: string[];

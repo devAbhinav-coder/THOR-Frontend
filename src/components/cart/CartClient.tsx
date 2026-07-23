@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { CartItem, Coupon } from "@/types";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
-import CouponStrip from "@/components/coupons/CouponStrip";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
@@ -226,10 +225,6 @@ export default function CartClient() {
             {cart.items.length} {cart.items.length === 1 ? "item" : "items"}
           </p>
         </header>
-
-        <div className="mb-8">
-          <CouponStrip title="Available coupons" subtitle="Copy a code, then apply below" />
-        </div>
 
         {freeShippingRemaining > 0 && (
           <div className="mb-8 flex items-center gap-3 border border-[#c5a059]/30 bg-[#fff8eb] px-4 py-3 sm:px-5">

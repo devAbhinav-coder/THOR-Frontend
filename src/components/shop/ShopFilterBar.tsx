@@ -24,85 +24,59 @@ import {
   horizontalScrollSurfaceProps,
 } from "@/lib/scrollSurface";
 import { useShopFilterStickyPin } from "@/hooks/useShopFilterStickyPin";
+import { variantSwatchBackground } from "@/lib/variantSwatch";
+import { catalogMatchKey } from "@/lib/catalogAttributes";
 
 const shopFilterCheckboxClass =
   "h-4 w-4 shrink-0 rounded-none border-gray-300 accent-[#c5a059] text-[#c5a059] focus:ring-[#c5a059]";
 
-const COLOR_KEYWORDS: Record<string, string> = {
-  "red": "#ef4444",
-  "blue": "#3b82f6",
-  "green": "#22c55e",
-  "yellow": "#eab308",
-  "black": "#000000",
-  "white": "#ffffff",
-  "orange": "#f97316",
-  "purple": "#a855f7",
-  "pink": "#ec4899",
-  "brown": "#78350f",
-  "gray": "#6b7280",
-  "grey": "#6b7280",
-  "silver": "#d1d5db",
-  "gold": "#fbbf24",
-  "navy": "#1e3a8a",
-  "teal": "#14b8a6",
-  "maroon": "#800000",
-  "beige": "#f5f5dc",
-  "cream": "#fffdd0",
-  "peach": "#ffdab9",
-  "mustard": "#ffdb58",
-  "olive": "#808000",
-  "cyan": "#06b6d4",
-  "magenta": "#d946ef",
-  "lavender": "#e6e6fa",
-  "turquoise": "#40e0d0",
-  "coral": "#ff7f50",
-  "rust": "#b7410e",
-  "wine": "#722f37",
-  "copper": "#b87333",
-  "bronze": "#cd7f32",
-  "champagne": "#f7e7ce",
-  "mint": "#98ff98",
-  "indigo": "#4b0082",
-  "violet": "#ee82ee",
-};
+function resolveFilterColorCode(
+  colorName: string,
+  colorCodes?: Record<string, string> | null,
+): string | undefined {
+  if (!colorCodes) return undefined;
+  const direct = colorCodes[colorName];
+  if (direct) return direct;
+  const key = catalogMatchKey(colorName);
+  if (!key) return undefined;
+  for (const [name, code] of Object.entries(colorCodes)) {
+    if (catalogMatchKey(name) === key) return code;
+  }
+  return undefined;
+}
 
-export function ColorSwatch({ colorName, className }: { colorName: string; className?: string }) {
+export function ColorSwatch({
+  colorName,
+  colorCode,
+  className,
+}: {
+  colorName: string;
+  colorCode?: string | null;
+  className?: string;
+}) {
   const name = colorName.toLowerCase().trim();
-  const isMulti = name === "multicolor" || name === "multicolour" || name === "multi" || name.includes("multi");
-
-  if (isMulti) {
-    return (
-      <span
-        className={cn(
-          "inline-block rounded-full border border-gray-200 shadow-sm",
-          className
-        )}
-        style={{
-          background: "conic-gradient(#ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444)",
-        }}
-        aria-hidden
-      />
-    );
-  }
-
-  let hex = COLOR_KEYWORDS[name];
-  if (!hex) {
-    for (const [key, value] of Object.entries(COLOR_KEYWORDS)) {
-      if (name.includes(key)) {
-        hex = value;
-        break;
-      }
-    }
-  }
+  const bg = variantSwatchBackground(colorName, colorCode);
+  const isLight =
+    name === "white" ||
+    name === "cream" ||
+    name === "ivory" ||
+    name === "off white" ||
+    name === "offwhite" ||
+    (typeof bg === "string" &&
+      /^#(?:f{3}|f{6}|fff(?:fff)?)$/i.test(bg.trim()));
 
   return (
     <span
       className={cn(
         "inline-block rounded-full border shadow-sm",
-        name === "white" ? "border-gray-300" : "border-gray-200/50",
-        className
+        isLight ? "border-gray-300" : "border-gray-200/50",
+        className,
       )}
-      style={{ backgroundColor: hex || name.replace(/[^a-zA-Z]/g, '') }}
+      style={
+        bg
+          ? { background: bg }
+          : { backgroundColor: "#d1d5db" }
+      }
       aria-hidden
     />
   );
@@ -323,6 +297,8 @@ export default function ShopFilterBar(props: Props) {
     filterMenuId,
     productCountLabel,
     hoverCapable,
+    quickColors,
+    colorCodes: filterOptions?.colorCodes,
     onFilterTriggerClick: handleFilterTriggerClick,
     onClearFilters,
     onUpdateFilter,
@@ -424,6 +400,7 @@ type ToolbarProps = {
   productCountLabel: string;
   hoverCapable: boolean;
   quickColors: string[];
+  colorCodes?: Record<string, string>;
   onFilterTriggerClick: () => void;
   onClearFilters: () => void;
   onUpdateFilter: (key: string, value: string | number) => void;
@@ -440,6 +417,7 @@ function ShopFilterToolbar({
   productCountLabel,
   hoverCapable,
   quickColors,
+  colorCodes,
   onFilterTriggerClick,
   onClearFilters,
   onUpdateFilter,
@@ -507,7 +485,11 @@ function ShopFilterToolbar({
                     : "text-gray-500 hover:text-[#c5a059]",
                   )}
                 >
-                  <ColorSwatch colorName={color} className="h-3.5 w-3.5 shrink-0" />
+                  <ColorSwatch
+                    colorName={color}
+                    colorCode={resolveFilterColorCode(color, colorCodes)}
+                    className="h-3.5 w-3.5 shrink-0"
+                  />
                   {color}
                 </button>
               ))}
@@ -732,6 +714,7 @@ export function ShopFilterPanel({
     : (filterOptions?.categoryTree ?? []);
   const flatCategories = filterOptions?.categories ?? [];
   const colors = filterOptions?.colors ?? [];
+  const colorCodes = filterOptions?.colorCodes ?? {};
   const occasions = occasionOptionsProp ?? filterOptions?.occasions ?? [];
 
   const filterCheckboxList = (
@@ -760,7 +743,11 @@ export function ShopFilterPanel({
                 className={shopFilterCheckboxClass}
               />
               {filterKey === "colors" && (
-                <ColorSwatch colorName={item} className="h-3.5 w-3.5 shrink-0" />
+                <ColorSwatch
+                  colorName={item}
+                  colorCode={resolveFilterColorCode(item, colorCodes)}
+                  className="h-3.5 w-3.5 shrink-0"
+                />
               )}
               <span className={cn(sidebar ? "text-[13px] leading-snug" : "text-sm")}>
                 {item}
