@@ -144,7 +144,7 @@ export default async function ShopCategoryPage({
     .slice(0, 10);
 
   const categoryLd =
-    products.length === 0 ?
+    filtered ?
       null
     : {
         "@context": "https://schema.org",
@@ -153,84 +153,118 @@ export default async function ShopCategoryPage({
             "@type": "CollectionPage",
             "@id": `${SITE_URL}${canonicalPath}#collectionpage`,
             name: `${categoryName} Collection`,
-            description: `Shop ${categoryName} collection at The House of Rani.`,
+            description:
+              details?.category?.metaDescription ||
+              resolveCategoryPageSeo(categoryName, canonicalSlug).description,
             url: `${SITE_URL}${canonicalPath}`,
             inLanguage: "en-IN",
             isPartOf: { "@id": `${SITE_URL}/#website` },
+            breadcrumb: { "@id": `${SITE_URL}${canonicalPath}#breadcrumb` },
           },
           {
-            "@type": "ItemList",
-            "@id": `${SITE_URL}${canonicalPath}#itemlist`,
-            name: `${categoryName} Products`,
-            url: `${SITE_URL}${canonicalPath}`,
-            numberOfItems: products.length,
-            itemListElement: products
-              .filter((item) => item?.slug && item?.name)
-              .map((item, index) => ({
+            "@type": "BreadcrumbList",
+            "@id": `${SITE_URL}${canonicalPath}#breadcrumb`,
+            itemListElement: [
+              {
                 "@type": "ListItem",
-                position: index + 1,
-                item: {
-                  "@type": "Product",
-                  "@id": `${SITE_URL}/shop/${encodeURIComponent(item.slug)}#product`,
-                  name: item.name,
-                  url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
-                  image: item.images?.[0]?.url ? [item.images[0].url] : [`${SITE_URL}/ogimage.png`],
-                  offers: {
-                    "@type": "Offer",
-                    priceCurrency: "INR",
-                    price: Number(item.price || 0).toFixed(2),
-                    priceValidUntil,
-                    availability:
-                      item.totalStock > 0 ?
-                        "https://schema.org/InStock"
-                      : "https://schema.org/OutOfStock",
-                    url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
-                    itemCondition: "https://schema.org/NewCondition",
-                    seller: {
-                      "@type": "Organization",
-                      name: "The House of Rani",
-                      url: SITE_URL,
-                    },
-                    hasMerchantReturnPolicy: {
-                      "@type": "MerchantReturnPolicy",
-                      applicableCountry: "IN",
-                      returnPolicyCategory:
-                        "https://schema.org/MerchantReturnFiniteReturnWindow",
-                      merchantReturnDays: 5,
-                      returnMethod: "https://schema.org/ReturnByMail",
-                      returnFees: "https://schema.org/FreeReturn",
-                    },
-                    shippingDetails: {
-                      "@type": "OfferShippingDetails",
-                      shippingRate: {
-                        "@type": "MonetaryAmount",
-                        value: "0",
-                        currency: "INR",
-                      },
-                      shippingDestination: {
-                        "@type": "DefinedRegion",
-                        addressCountry: "IN",
-                      },
-                      deliveryTime: {
-                        "@type": "ShippingDeliveryTime",
-                        handlingTime: {
-                          "@type": "QuantitativeValue",
-                          minValue: 1,
-                          maxValue: 3,
-                          unitCode: "DAY",
-                        },
-                        transitTime: {
-                          "@type": "QuantitativeValue",
-                          minValue: 3,
-                          maxValue: 10,
-                          unitCode: "DAY",
-                        },
-                      },
-                    },
-                  },
-                },
-              })),
+                position: 1,
+                name: "Home",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Shop",
+                item: `${SITE_URL}/shop/collections`,
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: categoryName,
+                item: `${SITE_URL}${canonicalPath}`,
+              },
+            ],
           },
+          ...(products.length > 0 ?
+            [
+              {
+                "@type": "ItemList",
+                "@id": `${SITE_URL}${canonicalPath}#itemlist`,
+                name: `${categoryName} Products`,
+                url: `${SITE_URL}${canonicalPath}`,
+                numberOfItems: products.length,
+                itemListElement: products
+                  .filter((item) => item?.slug && item?.name)
+                  .map((item, index) => ({
+                    "@type": "ListItem",
+                    position: index + 1,
+                    item: {
+                      "@type": "Product",
+                      "@id": `${SITE_URL}/shop/${encodeURIComponent(item.slug)}#product`,
+                      name: item.name,
+                      url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
+                      image:
+                        item.images?.[0]?.url ?
+                          [item.images[0].url]
+                        : [`${SITE_URL}/ogimage.png`],
+                      offers: {
+                        "@type": "Offer",
+                        priceCurrency: "INR",
+                        price: Number(item.price || 0).toFixed(2),
+                        priceValidUntil,
+                        availability:
+                          item.totalStock > 0 ?
+                            "https://schema.org/InStock"
+                          : "https://schema.org/OutOfStock",
+                        url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
+                        itemCondition: "https://schema.org/NewCondition",
+                        seller: {
+                          "@type": "Organization",
+                          name: "The House of Rani",
+                          url: SITE_URL,
+                        },
+                        hasMerchantReturnPolicy: {
+                          "@type": "MerchantReturnPolicy",
+                          applicableCountry: "IN",
+                          returnPolicyCategory:
+                            "https://schema.org/MerchantReturnFiniteReturnWindow",
+                          merchantReturnDays: 5,
+                          returnMethod: "https://schema.org/ReturnByMail",
+                          returnFees: "https://schema.org/FreeReturn",
+                        },
+                        shippingDetails: {
+                          "@type": "OfferShippingDetails",
+                          shippingRate: {
+                            "@type": "MonetaryAmount",
+                            value: "0",
+                            currency: "INR",
+                          },
+                          shippingDestination: {
+                            "@type": "DefinedRegion",
+                            addressCountry: "IN",
+                          },
+                          deliveryTime: {
+                            "@type": "ShippingDeliveryTime",
+                            handlingTime: {
+                              "@type": "QuantitativeValue",
+                              minValue: 1,
+                              maxValue: 3,
+                              unitCode: "DAY",
+                            },
+                            transitTime: {
+                              "@type": "QuantitativeValue",
+                              minValue: 3,
+                              maxValue: 10,
+                              unitCode: "DAY",
+                            },
+                          },
+                        },
+                      },
+                    },
+                  })),
+              },
+            ]
+          : []),
         ],
       };
 

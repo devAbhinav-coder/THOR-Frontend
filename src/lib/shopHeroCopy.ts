@@ -20,6 +20,7 @@ const DEFAULT_PERKS = [
 
 export function resolveShopHeroContent(options: {
   categoryName?: string | null;
+  subcategoryName?: string | null;
   categoryDescription?: string | null;
   search?: string | null;
   color?: string | null;
@@ -41,7 +42,24 @@ export function resolveShopHeroContent(options: {
     };
   }
 
+  const subcategory = String(options.subcategoryName || "").trim();
   const category = String(options.categoryName || "").trim();
+  if (subcategory && category) {
+    const custom = String(options.categoryDescription || "").trim();
+    const label = `${subcategory} ${category}`;
+    return {
+      eyebrow: `${category} · ${subcategory}`,
+      titleLine1: "Shop",
+      titleLine2: label,
+      subtitle:
+        custom && custom.length <= 140 ?
+          custom
+        : `Browse ${label} — artisan details, celebration-ready styles, and trusted delivery across India.`,
+      h1Accessible: `${label} — Shop Online India`,
+      perks: DEFAULT_PERKS,
+    };
+  }
+
   if (category) {
     const custom = String(options.categoryDescription || "").trim();
     return {

@@ -30,10 +30,7 @@ export const SEO_SITEMAP_STATIC: Array<{
 }> = [
   { path: "/", changeFrequency: "daily", priority: 1 },
   { path: "/shop/collections", changeFrequency: "daily", priority: 0.95 },
-  // Primary catalog — always in sitemap even if mega-menu API is down at build.
-  { path: "/shop/collections/sarees", changeFrequency: "daily", priority: 0.92 },
-  { path: "/shop/collections/salwar-suits", changeFrequency: "daily", priority: 0.91 },
-  { path: "/shop/collections/corsets", changeFrequency: "daily", priority: 0.9 },
+  // Category/subcategory URLs come from mega-menu at sitemap generation time.
   { path: "/gifting", changeFrequency: "daily", priority: 0.9 },
   { path: "/gifting/handmade-gifts", changeFrequency: "weekly", priority: 0.89 },
   { path: "/gifting/corporate-gifts", changeFrequency: "weekly", priority: 0.88 },
@@ -54,9 +51,6 @@ export const SEO_CRAWL_ALLOW_PUBLIC = [
   "/",
   "/shop",
   "/shop/collections",
-  "/shop/collections/sarees",
-  "/shop/collections/salwar-suits",
-  "/shop/collections/corsets",
   "/gifting",
   "/gifting/handmade-gifts",
   "/gifting/corporate-gifts",

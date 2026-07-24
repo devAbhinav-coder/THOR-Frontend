@@ -30,3 +30,18 @@ export function buildSubcategoryMetaDescription(
     160,
   );
 }
+
+/** Keywords for subcategory listing metadata (string array for Next Metadata). */
+export function buildSubcategoryKeywords(
+  subcategoryName: string,
+  categoryName: string,
+  categoryKeywords: readonly string[] = [],
+): string[] {
+  return [
+    subcategoryName,
+    categoryName,
+    `${subcategoryName} ${categoryName}`,
+    `buy ${subcategoryName} ${categoryName} online`,
+    ...categoryKeywords,
+  ];
+}

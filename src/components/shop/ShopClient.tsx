@@ -618,6 +618,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   }, [storefrontSettings]);
   const heroContent = resolveShopHeroContent({
     categoryName: categoryLabel || categoryContext?.name,
+    subcategoryName: categoryContext?.subcategory?.name,
     categoryDescription: categoryContext?.description,
     search: filters.search,
     color: colorLabel,
@@ -627,6 +628,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   });
   const headingText = resolveShopListHeading({
     categoryName: categoryLabel || categoryContext?.name,
+    subcategoryName: categoryContext?.subcategory?.name,
     search: filters.search,
     color: colorLabel,
     isFeatured: filters.isFeatured,

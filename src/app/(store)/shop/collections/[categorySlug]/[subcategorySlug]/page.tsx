@@ -5,6 +5,7 @@ import type { Category, Product, SubCategory } from "@/types";
 import { resolveCategoryPageSeo } from "@/lib/categoryPageSeo";
 import { resolveSerpTitleString } from "@/lib/pageSeo";
 import {
+  buildSubcategoryKeywords,
   buildSubcategoryMetaDescription,
   buildSubcategoryPageTitle,
 } from "@/lib/subcategoryPageSeo";
@@ -109,7 +110,11 @@ export async function generateMetadata({
   return {
     title,
     description,
-    keywords: `${subcategoryName}, ${categoryName}, ${fallbackSeo.keywords}`,
+    keywords: buildSubcategoryKeywords(
+      subcategoryName,
+      categoryName,
+      fallbackSeo.keywords,
+    ),
     alternates: { canonical: basePath },
     robots: {
       index: !filtered,
@@ -161,7 +166,7 @@ export default async function ShopSubcategoryPage({
     .slice(0, 10);
 
   const subcategoryLd =
-    products.length === 0 ?
+    filtered ?
       null
     : {
         "@context": "https://schema.org",
@@ -169,14 +174,20 @@ export default async function ShopSubcategoryPage({
           {
             "@type": "CollectionPage",
             "@id": `${SITE_URL}${canonicalPath}#collectionpage`,
-            name: `${subcategoryName} Collection`,
-            description: `Shop ${subcategoryName} ${categoryName} collection at The House of Rani.`,
+            name: `${subcategoryName} ${categoryName}`,
+            description: buildSubcategoryMetaDescription(
+              subcategoryName,
+              categoryName,
+              details?.subcategory?.metaDescription,
+            ),
             url: `${SITE_URL}${canonicalPath}`,
             inLanguage: "en-IN",
             isPartOf: { "@id": `${SITE_URL}/#website` },
+            breadcrumb: { "@id": `${SITE_URL}${canonicalPath}#breadcrumb` },
           },
           {
             "@type": "BreadcrumbList",
+            "@id": `${SITE_URL}${canonicalPath}#breadcrumb`,
             itemListElement: [
               {
                 "@type": "ListItem",
@@ -187,90 +198,103 @@ export default async function ShopSubcategoryPage({
               {
                 "@type": "ListItem",
                 position: 2,
+                name: "Shop",
+                item: `${SITE_URL}/shop/collections`,
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
                 name: categoryName,
                 item: `${SITE_URL}/shop/collections/${encodeURIComponent(p.categorySlug)}`,
               },
               {
                 "@type": "ListItem",
-                position: 3,
+                position: 4,
                 name: subcategoryName,
                 item: `${SITE_URL}${canonicalPath}`,
               },
             ],
           },
-          {
-            "@type": "ItemList",
-            "@id": `${SITE_URL}${canonicalPath}#itemlist`,
-            name: `${subcategoryName} Products`,
-            url: `${SITE_URL}${canonicalPath}`,
-            numberOfItems: products.length,
-            itemListElement: products
-              .filter((item) => item?.slug && item?.name)
-              .map((item, index) => ({
-                "@type": "ListItem",
-                position: index + 1,
-                item: {
-                  "@type": "Product",
-                  "@id": `${SITE_URL}/shop/${encodeURIComponent(item.slug)}#product`,
-                  name: item.name,
-                  url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
-                  image: item.images?.[0]?.url ? [item.images[0].url] : [`${SITE_URL}/ogimage.png`],
-                  offers: {
-                    "@type": "Offer",
-                    priceCurrency: "INR",
-                    price: Number(item.price || 0).toFixed(2),
-                    priceValidUntil,
-                    availability:
-                      item.totalStock > 0 ?
-                        "https://schema.org/InStock"
-                      : "https://schema.org/OutOfStock",
-                    url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
-                    itemCondition: "https://schema.org/NewCondition",
-                    seller: {
-                      "@type": "Organization",
-                      name: "The House of Rani",
-                      url: SITE_URL,
-                    },
-                    hasMerchantReturnPolicy: {
-                      "@type": "MerchantReturnPolicy",
-                      applicableCountry: "IN",
-                      returnPolicyCategory:
-                        "https://schema.org/MerchantReturnFiniteReturnWindow",
-                      merchantReturnDays: 5,
-                      returnMethod: "https://schema.org/ReturnByMail",
-                      returnFees: "https://schema.org/FreeReturn",
-                    },
-                    shippingDetails: {
-                      "@type": "OfferShippingDetails",
-                      shippingRate: {
-                        "@type": "MonetaryAmount",
-                        value: "0",
-                        currency: "INR",
-                      },
-                      shippingDestination: {
-                        "@type": "DefinedRegion",
-                        addressCountry: "IN",
-                      },
-                      deliveryTime: {
-                        "@type": "ShippingDeliveryTime",
-                        handlingTime: {
-                          "@type": "QuantitativeValue",
-                          minValue: 1,
-                          maxValue: 3,
-                          unitCode: "DAY",
+          ...(products.length > 0 ?
+            [
+              {
+                "@type": "ItemList",
+                "@id": `${SITE_URL}${canonicalPath}#itemlist`,
+                name: `${subcategoryName} Products`,
+                url: `${SITE_URL}${canonicalPath}`,
+                numberOfItems: products.length,
+                itemListElement: products
+                  .filter((item) => item?.slug && item?.name)
+                  .map((item, index) => ({
+                    "@type": "ListItem",
+                    position: index + 1,
+                    item: {
+                      "@type": "Product",
+                      "@id": `${SITE_URL}/shop/${encodeURIComponent(item.slug)}#product`,
+                      name: item.name,
+                      url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
+                      image:
+                        item.images?.[0]?.url ?
+                          [item.images[0].url]
+                        : [`${SITE_URL}/ogimage.png`],
+                      offers: {
+                        "@type": "Offer",
+                        priceCurrency: "INR",
+                        price: Number(item.price || 0).toFixed(2),
+                        priceValidUntil,
+                        availability:
+                          item.totalStock > 0 ?
+                            "https://schema.org/InStock"
+                          : "https://schema.org/OutOfStock",
+                        url: `${SITE_URL}/shop/${encodeURIComponent(item.slug)}`,
+                        itemCondition: "https://schema.org/NewCondition",
+                        seller: {
+                          "@type": "Organization",
+                          name: "The House of Rani",
+                          url: SITE_URL,
                         },
-                        transitTime: {
-                          "@type": "QuantitativeValue",
-                          minValue: 3,
-                          maxValue: 10,
-                          unitCode: "DAY",
+                        hasMerchantReturnPolicy: {
+                          "@type": "MerchantReturnPolicy",
+                          applicableCountry: "IN",
+                          returnPolicyCategory:
+                            "https://schema.org/MerchantReturnFiniteReturnWindow",
+                          merchantReturnDays: 5,
+                          returnMethod: "https://schema.org/ReturnByMail",
+                          returnFees: "https://schema.org/FreeReturn",
+                        },
+                        shippingDetails: {
+                          "@type": "OfferShippingDetails",
+                          shippingRate: {
+                            "@type": "MonetaryAmount",
+                            value: "0",
+                            currency: "INR",
+                          },
+                          shippingDestination: {
+                            "@type": "DefinedRegion",
+                            addressCountry: "IN",
+                          },
+                          deliveryTime: {
+                            "@type": "ShippingDeliveryTime",
+                            handlingTime: {
+                              "@type": "QuantitativeValue",
+                              minValue: 1,
+                              maxValue: 3,
+                              unitCode: "DAY",
+                            },
+                            transitTime: {
+                              "@type": "QuantitativeValue",
+                              minValue: 3,
+                              maxValue: 10,
+                              unitCode: "DAY",
+                            },
+                          },
                         },
                       },
                     },
-                  },
-                },
-              })),
-          },
+                  })),
+              },
+            ]
+          : []),
         ],
       };
 
@@ -289,16 +313,16 @@ export default async function ShopSubcategoryPage({
           <div className="w-full max-w-7xl mx-auto mb-12 relative aspect-[21/9] md:aspect-[3/1] bg-rose-50 overflow-hidden md:rounded-2xl">
             <Image
               src={heroBanner}
-              alt={`${subcategoryName} Collection`}
+              alt={`${subcategoryName} ${categoryName} collection`}
               fill
               className="object-cover"
               sizes="(max-width: 1280px) 100vw, 1280px"
               priority
             />
             <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
-               <h1 className="text-3xl md:text-5xl font-serif text-white text-center px-4 drop-shadow-md">
+               <p className="text-3xl md:text-5xl font-serif text-white text-center px-4 drop-shadow-md">
                  {subcategoryName} {categoryName}
-               </h1>
+               </p>
             </div>
           </div>
         </div>

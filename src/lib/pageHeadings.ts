@@ -47,6 +47,7 @@ export function getHeroSlideDisplayTitle(slideTitle?: string | null): string {
 
 export function resolveShopBannerH1(options: {
   categoryName?: string | null;
+  subcategoryName?: string | null;
   search?: string | null;
   color?: string | null;
   isFeatured?: string | null;
@@ -58,7 +59,14 @@ export function resolveShopBannerH1(options: {
     const short = search.length > 40 ? `${search.slice(0, 40)}…` : search;
     return `Search: ${short}`;
   }
+  const subcategory = String(options.subcategoryName || "").trim();
   const category = String(options.categoryName || "").trim();
+  if (subcategory && category) {
+    return `${subcategory} ${category} — Shop Online India`;
+  }
+  if (subcategory) {
+    return `${subcategory} — Shop Online India`;
+  }
   if (category) {
     return resolveCategoryPageSeo(category, category).title;
   }
@@ -73,6 +81,7 @@ export function resolveShopBannerH1(options: {
 
 export function resolveShopListHeading(options: {
   categoryName?: string | null;
+  subcategoryName?: string | null;
   search?: string | null;
   color?: string | null;
   isFeatured?: string | null;
@@ -83,7 +92,10 @@ export function resolveShopListHeading(options: {
     const short = search.length > 32 ? `${search.slice(0, 32)}…` : search;
     return `Results for “${short}”`;
   }
+  const subcategory = String(options.subcategoryName || "").trim();
   const category = String(options.categoryName || "").trim();
+  if (subcategory && category) return `${subcategory} ${category}`;
+  if (subcategory) return `${subcategory} Collection`;
   if (category) return `${category} Collection`;
   const color = String(options.color || "").trim();
   if (color) return `${color} Collection`;
