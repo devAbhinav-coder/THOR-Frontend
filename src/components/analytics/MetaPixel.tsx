@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 import { META_PIXEL_ID, initPixel, trackPageView } from "@/lib/metaPixel";
-import { fbEventsJsIntegrity } from "@/lib/thirdPartySri";
 
 export default function MetaPixel() {
   const pathname = usePathname();
@@ -23,16 +22,12 @@ export default function MetaPixel() {
     return null;
   }
 
-  const fbIntegrity = fbEventsJsIntegrity();
-
   return (
     <>
       <Script
         id="facebook-fbevents"
         src="https://connect.facebook.net/en_US/fbevents.js"
         strategy="afterInteractive"
-        integrity={fbIntegrity}
-        crossOrigin="anonymous"
         onLoad={() => {
           initPixel();
           trackPageView();

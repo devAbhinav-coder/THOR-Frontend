@@ -1,6 +1,5 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { RAZORPAY_CHECKOUT_JS_INTEGRITY } from '@/lib/thirdPartySri';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -117,8 +116,8 @@ export const loadRazorpayScript = (): Promise<boolean> => {
       const script = document.createElement('script');
       script.id = 'razorpay-script';
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.crossOrigin = 'anonymous';
-      script.integrity = RAZORPAY_CHECKOUT_JS_INTEGRITY;
+      // No SRI: Razorpay serves an unversioned URL and rotates the file often.
+      // Pinning sha384 breaks checkout whenever they ship; CSP still allows only this origin.
       const n = getCspNonce();
       if (n) script.setAttribute('nonce', n);
       script.onload = () => {
@@ -134,7 +133,7 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 
     const existing = document.getElementById('razorpay-script');
     if (existing && !razorpayConstructorReady()) {
-      // Stale tag from a prior SRI/CSP failure — reinject instead of waiting 20s.
+      // Stale tag from a prior CSP/load failure — reinject instead of waiting 20s.
       inject();
       return;
     }
