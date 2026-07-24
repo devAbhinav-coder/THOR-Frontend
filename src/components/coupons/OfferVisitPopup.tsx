@@ -7,6 +7,7 @@ import { X, Copy, Check, Tag, Percent } from 'lucide-react';
 import { couponApi, saleCampaignApi } from '@/lib/api';
 import type { PublicCoupon, PublicSale } from '@/types';
 import { cn } from '@/lib/utils';
+import { lockBodyScroll, unlockBodyScroll } from '@/lib/bodyScrollLock';
 import toast from 'react-hot-toast';
 
 /** Session: which offer keys already dismissed this tab */
@@ -172,11 +173,10 @@ export default function OfferVisitPopup() {
       if (e.key === 'Escape') dismiss();
     };
     document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
+      unlockBodyScroll();
     };
   }, [open, dismiss]);
 

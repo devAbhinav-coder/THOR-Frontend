@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AuthModal from "@/components/auth/AuthModal";
 import AuthGoogleShell from "@/app/auth/AuthGoogleShell";
@@ -54,7 +54,14 @@ export default function StoreAuthModal() {
     [redirectRaw],
   );
 
+  /** Optimistic close so X unlocks scroll immediately (don't wait on router). */
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    setDismissed(false);
+  }, [view]);
+
   const dismissModal = useCallback(() => {
+    setDismissed(true);
     router.replace(closeAuthModalUrl(pathname, search), { scroll: false });
   }, [pathname, router, search]);
 
@@ -84,7 +91,7 @@ export default function StoreAuthModal() {
     dismissModal();
   }, [view, sessionReady, isAuthenticated, dismissModal]);
 
-  if (!view) return null;
+  if (!view || dismissed) return null;
 
   if (sessionReady && isAuthenticated) return null;
 

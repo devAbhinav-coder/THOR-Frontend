@@ -82,6 +82,10 @@ function LenisResizeSync() {
   return null;
 }
 
+/**
+ * Keep `children` outside the Lenis on/off branch so orientation / pointer
+ * media flips do not remount the whole app (looked like random logout).
+ */
 export default function SmoothScroll({ children }: { children: ReactNode }) {
   const [lenisOn, setLenisOn] = useState(false);
 
@@ -101,30 +105,25 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  if (!lenisOn) {
-    return (
-      <>
-        <WindowScrollToTopOnRoute />
-        {children}
-      </>
-    );
-  }
-
   return (
-    <ReactLenis
-      root
-      options={{
-        autoRaf: true,
-        lerp: 0.14,
-        duration: 1,
-        smoothWheel: true,
-        wheelMultiplier: 1.05,
-        syncTouch: false,
-      }}
-    >
-      <LenisScrollToTopOnRoute />
-      <LenisResizeSync />
+    <>
+      {lenisOn ?
+        <ReactLenis
+          root
+          options={{
+            autoRaf: true,
+            lerp: 0.14,
+            duration: 1,
+            smoothWheel: true,
+            wheelMultiplier: 1.05,
+            syncTouch: false,
+          }}
+        >
+          <LenisScrollToTopOnRoute />
+          <LenisResizeSync />
+        </ReactLenis>
+      : <WindowScrollToTopOnRoute />}
       {children}
-    </ReactLenis>
+    </>
   );
 }

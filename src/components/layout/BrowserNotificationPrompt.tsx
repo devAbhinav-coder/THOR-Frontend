@@ -13,10 +13,14 @@ const BANNER_DISMISS_KEY = "hor_notif_banner_dismiss_v1";
  * Also triggers one automatic permission request per session (silent) where the browser allows it.
  */
 export default function BrowserNotificationPrompt() {
-  const { user, isAuthenticated, isLoading, hasSessionChecked } = useAuthStore();
+  const { user, isAuthenticated, isLoading, hasSessionChecked, _hasHydrated } =
+    useAuthStore();
   const [dismissed, setDismissed] = useState(false);
   const [deferVisible, setDeferVisible] = useState(false);
-  const isAuthedStable = hasSessionChecked && !isLoading && isAuthenticated;
+  const isAuthedStable =
+    _hasHydrated &&
+    isAuthenticated &&
+    (!hasSessionChecked || !isLoading);
 
   const { notificationPermission, pushConfigured, requestBrowserPermission } =
     useNotificationBrowserPush(isAuthedStable ? user : null, {

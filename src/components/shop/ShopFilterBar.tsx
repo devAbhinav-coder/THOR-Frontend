@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { FilterOptions, FilterCategoryTreeItem } from "@/types";
 import { cn } from "@/lib/utils";
+import { lockBodyScroll, unlockBodyScroll } from "@/lib/bodyScrollLock";
 import type { ShopFilters } from "@/lib/shopFilters";
 import {
   isShopListFilterSelected,
@@ -249,10 +250,9 @@ export default function ShopFilterBar(props: Props) {
     if (!mounted || !isFilterOpen) return;
     const mq = window.matchMedia("(max-width: 639px)");
     if (!mq.matches) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
     return () => {
-      document.body.style.overflow = prev;
+      unlockBodyScroll();
     };
   }, [isFilterOpen, mounted]);
 

@@ -126,7 +126,7 @@ export default function SignupPageClient({
   });
 
   const onSubmitForm = async (data: SignupForm) => {
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     setPendingCopy({
       title: "Sending verification code",
@@ -151,7 +151,7 @@ export default function SignupPageClient({
   };
 
   const onSubmitOtp = async (data: OtpForm) => {
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying your email",
@@ -179,7 +179,7 @@ export default function SignupPageClient({
       toast.error("Google sign-up did not return a credential.");
       return;
     }
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying Google account",

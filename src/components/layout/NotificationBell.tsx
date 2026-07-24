@@ -113,8 +113,12 @@ export default function NotificationBell({
   const panelRef = useRef<HTMLDivElement>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
-  const { user, isAuthenticated, isLoading, hasSessionChecked } = useAuthStore();
-  const isAuthedStable = hasSessionChecked && !isLoading && isAuthenticated;
+  const { user, isAuthenticated, isLoading, hasSessionChecked, _hasHydrated } =
+    useAuthStore();
+  const isAuthedStable =
+    _hasHydrated &&
+    isAuthenticated &&
+    (!hasSessionChecked || !isLoading);
   const queryClient = useQueryClient();
   const {
     notificationPermission,

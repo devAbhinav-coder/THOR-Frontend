@@ -8,6 +8,9 @@ import { isTurnstileConfigured } from "@/lib/turnstile";
 /**
  * Holds the current Turnstile token and resets the widget after each use
  * (Cloudflare tokens are single-use).
+ *
+ * Challenge runs on demand via `ensureToken` / `consumeOrToast` so opening
+ * login/signup does not freeze the main thread on mobile WebKit.
  */
 export function useTurnstileToken() {
   const ref = useRef<TurnstileFieldHandle>(null);
@@ -18,14 +21,32 @@ export function useTurnstileToken() {
     ref.current?.reset();
   }, []);
 
-  /** Returns token and clears widget. Toasts + returns null if missing. */
-  const consumeOrToast = useCallback((): string | null => {
+  /**
+   * Ensure a fresh token (runs deferred Turnstile execute if needed),
+   * then consume it. Toasts + returns null on failure.
+   */
+  const consumeOrToast = useCallback(async (): Promise<string | null> => {
     if (!isTurnstileConfigured()) return null;
-    if (!token?.trim()) {
+
+    let value = token?.trim();
+    if (!value) {
+      try {
+        value = (await ref.current?.ensureToken())?.trim();
+      } catch (err) {
+        const msg =
+          err instanceof Error && err.message ?
+            err.message
+          : "Please complete the security check.";
+        toast.error(msg);
+        return null;
+      }
+    }
+
+    if (!value) {
       toast.error("Please complete the security check.");
       return null;
     }
-    const value = token.trim();
+
     setToken(undefined);
     // Defer reset so the request can leave with the consumed token first.
     queueMicrotask(() => ref.current?.reset());

@@ -116,7 +116,7 @@ export default function ForgotPasswordClient({
   }, [verifyCooldownSec]);
 
   const onSendCode = async (data: EmailForm) => {
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     await run(async () => {
       const res = await authApi.forgotPassword({ email: data.email, turnstileToken });
@@ -135,7 +135,7 @@ export default function ForgotPasswordClient({
 
   const onVerifyOtp = async (data: OtpForm) => {
     if (verifyCooldownSec > 0) return;
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     await run(async () => {
       const res = await authApi.verifyOtpForgot({ email, otp: data.otp, turnstileToken });
@@ -157,7 +157,7 @@ export default function ForgotPasswordClient({
   };
 
   const onReset = async (data: ResetForm) => {
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     await run(async () => {
       const parsed = resetToken ?

@@ -24,7 +24,7 @@ type Props = {
    * Consume a fresh Turnstile token for resend (tokens are single-use).
    * Return null to abort (e.g. widget not completed).
    */
-  consumeTurnstile?: () => string | null;
+  consumeTurnstile?: () => string | null | Promise<string | null>;
 };
 
 /**
@@ -59,7 +59,7 @@ export function OtpResendCooldown({
     if (!email || secondsLeft > 0 || loading) return;
     let turnstileToken: string | undefined;
     if (consumeTurnstile) {
-      const t = consumeTurnstile();
+      const t = await consumeTurnstile();
       if (!t) return;
       turnstileToken = t;
     }

@@ -91,8 +91,14 @@ export default function Navbar({
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const { user, isAuthenticated, isLoading, hasSessionChecked, logout } =
-    useAuthStore();
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    hasSessionChecked,
+    _hasHydrated,
+    logout,
+  } = useAuthStore();
   const { itemCount } = useCartStore();
   const { products: wishlistProducts } = useWishlistStore();
 
@@ -219,7 +225,12 @@ export default function Navbar({
     return () => window.removeEventListener("keydown", onKey);
   }, [isSearchOpen, focusStoreSearch]);
 
-  const isAuthedStable = hasSessionChecked && !isLoading && isAuthenticated;
+  // Keep showing logged-in UI while cookie session revalidates (rotate/reload
+  // used to flash guest chrome because hasSessionChecked resets to false).
+  const isAuthedStable =
+    _hasHydrated &&
+    isAuthenticated &&
+    (!hasSessionChecked || !isLoading);
   const authModal = useAuthModal();
   const { href: authHref, open: openAuth } = authModal;
 

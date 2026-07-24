@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import { useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { X } from "lucide-react";
+import { useLenis } from "lenis/react";
 import { cn } from "@/lib/utils";
 import { BRAND_NAME } from "@/lib/brandSeo";
 import type { AuthModalView } from "@/lib/authModal";
+import { lockBodyScroll, unlockBodyScroll } from "@/lib/bodyScrollLock";
 import {
   AUTH_HERO_IMAGE,
   authBackdrop,
@@ -45,29 +48,37 @@ export default function AuthModal({
   className,
 }: Props) {
   const titleId = useId();
+  const lenis = useLenis();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
+    lenis?.stop();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      unlockBodyScroll();
+      lenis?.start();
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open, onClose, lenis]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const mobileHeading = MOBILE_HEADINGS[view];
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-4 lg:p-6"
       role="presentation"
+      data-auth-modal=""
     >
       <button
         type="button"
@@ -83,7 +94,6 @@ export default function AuthModal({
         className={cn(authModalShell, className)}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Desktop heritage hero */}
         <div className={authHeroPanel} aria-hidden>
           <Image
             src={AUTH_HERO_IMAGE}
@@ -103,10 +113,10 @@ export default function AuthModal({
         </div>
 
         <div className={authFormPanel}>
-          <div className="shrink-0 border-b border-gray-100 px-5 pb-3 pt-2 sm:px-7 sm:pt-2">
+          <div className="relative z-20 shrink-0 border-b border-gray-100 px-5 pb-3 pt-2 sm:px-7 sm:pt-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-col  text-center lg:mb-3 items-start">
+                <div className="mb-2 flex flex-col text-center lg:mb-3 items-start">
                   <Image
                     src="/logoNew.png"
                     alt={BRAND_NAME}
@@ -127,9 +137,7 @@ export default function AuthModal({
                 </h2>
                 <div className={cn(authGoldRule, "mt-2 lg:hidden")} aria-hidden />
 
-                <h2
-                  className={cn(authModalTitleDesktop, "hidden lg:block")}
-                >
+                <h2 className={cn(authModalTitleDesktop, "hidden lg:block")}>
                   {title}
                 </h2>
                 {subtitle ?
@@ -141,8 +149,12 @@ export default function AuthModal({
 
               <button
                 type="button"
-                onClick={onClose}
-                className="shrink-0 p-1.5 text-gray-400 transition-colors hover:text-navy-900"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="relative z-30 -mr-1 -mt-1 shrink-0 touch-manipulation p-2.5 text-gray-400 transition-colors hover:text-navy-900"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" aria-hidden />
@@ -170,6 +182,7 @@ export default function AuthModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

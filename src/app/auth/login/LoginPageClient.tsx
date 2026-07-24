@@ -136,7 +136,7 @@ export default function LoginPageClient({
   }, [otpVerifyCooldownSec]);
 
   const onSendLoginOtp = async (data: OtpEmailForm) => {
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     setOtpSending(true);
     setPendingCopy({
@@ -166,7 +166,7 @@ export default function LoginPageClient({
 
   const onVerifyLoginOtp = async (data: OtpCodeForm) => {
     if (otpVerifyCooldownSec > 0) return;
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying code",
@@ -191,7 +191,7 @@ export default function LoginPageClient({
   };
 
   const onSubmit = async (data: LoginForm) => {
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     setPendingCopy({
       title: "Signing you in",
@@ -213,7 +213,7 @@ export default function LoginPageClient({
       toast.error("Google sign-in did not return a credential.");
       return;
     }
-    const turnstileToken = turnstile.consumeOrToast();
+    const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying Google account",
