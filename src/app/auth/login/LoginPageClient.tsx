@@ -30,6 +30,8 @@ import toast from "react-hot-toast";
 import { authApi } from "@/lib/api";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
 import AuthPendingOverlay from "@/components/auth/AuthPendingOverlay";
+import { TurnstileField } from "@/components/auth/TurnstileField";
+import { useTurnstileToken } from "@/hooks/useTurnstileToken";
 import { ApiValidationError } from "@/lib/parseApi";
 import {
   DEFAULT_OTP_COOLDOWN_SEC,
@@ -37,6 +39,7 @@ import {
   otpRetryAfterFromSuccess,
   parseApiClientError,
 } from "@/lib/authOtpClient";
+import { safeRedirectPath } from "@/lib/safeRedirect";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -78,7 +81,8 @@ export default function LoginPageClient({
   const { login, loginWithGoogle, loginWithOtp, isLoading } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = redirectProp ?? (searchParams.get("redirect") || "/");
+  const redirect =
+    safeRedirectPath(redirectProp ?? searchParams.get("redirect")) || "/";
 
   const navigateAfterAuth = useCallback(() => {
     if (onSuccess) {
@@ -99,6 +103,12 @@ export default function LoginPageClient({
     title: "Please wait",
     description: "We are preparing your secure sign-in session.",
   });
+  const turnstile = useTurnstileToken();
+
+  // Drop tokens when the auth step remounts a fresh widget (single-use).
+  useEffect(() => {
+    turnstile.setToken(undefined);
+  }, [loginMode, otpStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     register,
@@ -126,13 +136,19 @@ export default function LoginPageClient({
   }, [otpVerifyCooldownSec]);
 
   const onSendLoginOtp = async (data: OtpEmailForm) => {
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     setOtpSending(true);
     setPendingCopy({
       title: "Sending sign-in code",
       description: "Checking your account and delivering OTP to your inbox.",
     });
     try {
-      const res = await authApi.sendOtp({ type: "login", email: data.email });
+      const res = await authApi.sendOtp({
+        type: "login",
+        email: data.email,
+        turnstileToken,
+      });
       setOtpEmail(data.email);
       setOtpResendCooldownSec(otpRetryAfterFromSuccess(res));
       setOtpResendResetKey((k) => k + 1);
@@ -150,12 +166,14 @@ export default function LoginPageClient({
 
   const onVerifyLoginOtp = async (data: OtpCodeForm) => {
     if (otpVerifyCooldownSec > 0) return;
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying code",
       description: "Finalizing sign-in and restoring your secure session.",
     });
     try {
-      await loginWithOtp(otpEmail, data.otp);
+      await loginWithOtp(otpEmail, data.otp, turnstileToken);
       setOtpVerifyCooldownSec(0);
       toast.success("Welcome back!");
       navigateAfterAuth();
@@ -173,12 +191,14 @@ export default function LoginPageClient({
   };
 
   const onSubmit = async (data: LoginForm) => {
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     setPendingCopy({
       title: "Signing you in",
       description: "Validating credentials and loading your account.",
     });
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, turnstileToken);
       toast.success("Welcome back!");
       navigateAfterAuth();
     } catch (err: unknown) {
@@ -193,12 +213,14 @@ export default function LoginPageClient({
       toast.error("Google sign-in did not return a credential.");
       return;
     }
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying Google account",
       description: "Securing your Google sign-in and preparing your session.",
     });
     try {
-      await loginWithGoogle(credential);
+      await loginWithGoogle(credential, turnstileToken);
       toast.success("Welcome back!");
       navigateAfterAuth();
     } catch (err: unknown) {
@@ -259,7 +281,9 @@ export default function LoginPageClient({
                 type="login"
                 resetKey={otpResendResetKey}
                 initialSeconds={otpResendCooldownSec}
+                consumeTurnstile={turnstile.consumeOrToast}
               />
+              <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
               {otpVerifyCooldownSec > 0 && (
                 <p className="text-center text-sm text-amber-700">
                   Too many attempts. Try again in {otpVerifyCooldownSec}s.
@@ -319,6 +343,7 @@ export default function LoginPageClient({
               error={otpEmailForm.formState.errors.email?.message}
               autoComplete="email"
             />
+            <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
             <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={otpSending}>
               Send code
             </Button>
@@ -343,6 +368,8 @@ export default function LoginPageClient({
             subtitle="Sign in to continue shopping"
           />
         )}
+
+        <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
 
         {googleBlock}
         {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}

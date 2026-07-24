@@ -28,6 +28,8 @@ import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 import { OtpResendCooldown } from '@/components/auth/OtpResendCooldown';
 import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
+import { TurnstileField } from '@/components/auth/TurnstileField';
+import { useTurnstileToken } from '@/hooks/useTurnstileToken';
 import { useDedupeSubmit } from '@/hooks/useDedupeSubmit';
 import {
   clearForgotPasswordVerifyIdempotencyKey,
@@ -83,7 +85,12 @@ export default function ForgotPasswordClient({
   const [resendCooldownSec, setResendCooldownSec] = useState(DEFAULT_OTP_COOLDOWN_SEC);
   const [verifyCooldownSec, setVerifyCooldownSec] = useState(0);
   const { loading, run } = useDedupeSubmit();
+  const turnstile = useTurnstileToken();
   const router = useRouter();
+
+  useEffect(() => {
+    turnstile.setToken(undefined);
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stepIndex = step === 'email' ? 0 : step === 'otp' ? 1 : 2;
 
@@ -109,8 +116,10 @@ export default function ForgotPasswordClient({
   }, [verifyCooldownSec]);
 
   const onSendCode = async (data: EmailForm) => {
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     await run(async () => {
-      const res = await authApi.forgotPassword({ email: data.email });
+      const res = await authApi.forgotPassword({ email: data.email, turnstileToken });
       setEmail(data.email);
       setResendCooldownSec(otpRetryAfterFromSuccess(res));
       setResendResetKey((k) => k + 1);
@@ -126,8 +135,10 @@ export default function ForgotPasswordClient({
 
   const onVerifyOtp = async (data: OtpForm) => {
     if (verifyCooldownSec > 0) return;
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     await run(async () => {
-      const res = await authApi.verifyOtpForgot({ email, otp: data.otp });
+      const res = await authApi.verifyOtpForgot({ email, otp: data.otp, turnstileToken });
       const token = res.data?.resetToken;
       if (!token) {
         toast.error('Verification succeeded but reset session is missing. Try again.');
@@ -146,16 +157,20 @@ export default function ForgotPasswordClient({
   };
 
   const onReset = async (data: ResetForm) => {
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     await run(async () => {
       const parsed = resetToken ?
         await authApi.resetPasswordWithToken({
           resetToken,
           newPassword: data.newPassword,
+          turnstileToken,
         })
       : await authApi.resetPassword({
           email,
           otp: otpForm.getValues('otp'),
           newPassword: data.newPassword,
+          turnstileToken,
         });
       useAuthStore.setState({
         token: null,
@@ -208,6 +223,7 @@ export default function ForgotPasswordClient({
             error={resetForm.formState.errors.confirmPassword?.message}
             autoComplete="new-password"
           />
+          <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
           <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
             Update password & sign in
           </Button>
@@ -259,7 +275,9 @@ export default function ForgotPasswordClient({
             type="forgot_password"
             resetKey={resendResetKey}
             initialSeconds={resendCooldownSec}
+            consumeTurnstile={turnstile.consumeOrToast}
           />
+          <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
           {verifyCooldownSec > 0 && (
             <p className="text-center text-sm text-amber-700">
               Too many attempts. Try again in {verifyCooldownSec}s.
@@ -303,6 +321,7 @@ export default function ForgotPasswordClient({
           error={emailForm.formState.errors.email?.message}
           autoComplete="email"
         />
+        <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
         <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
           Send code
         </Button>

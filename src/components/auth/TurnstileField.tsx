@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
+import { TURNSTILE_ACTION, TURNSTILE_SITE_KEY } from "@/lib/turnstile";
 
 declare global {
   interface Window {
@@ -13,61 +20,88 @@ declare global {
           "expired-callback"?: () => void;
           "error-callback"?: () => void;
           theme?: "light" | "dark" | "auto";
+          action?: string;
         },
       ) => string;
+      reset: (widgetId: string) => void;
       remove: (widgetId: string) => void;
     };
   }
 }
+
+export type TurnstileFieldHandle = {
+  /** Clear token + re-challenge (tokens are single-use). */
+  reset: () => void;
+};
 
 type Props = {
   onToken: (token: string | undefined) => void;
   className?: string;
 };
 
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
-
 /**
- * Cloudflare Turnstile hook — renders only when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set.
+ * Cloudflare Turnstile — always embeds the House of Rani widget.
  * Pass returned token as `turnstileToken` on auth API calls.
  */
-export function TurnstileField({ onToken, className }: Props) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
+export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
+  function TurnstileField({ onToken, className }, ref) {
+    const hostRef = useRef<HTMLDivElement>(null);
+    const widgetIdRef = useRef<string | null>(null);
+    const onTokenRef = useRef(onToken);
+    onTokenRef.current = onToken;
 
-  const loadScript = useCallback(() => {
-    if (!SITE_KEY || document.getElementById("cf-turnstile-script")) return;
-    const s = document.createElement("script");
-    s.id = "cf-turnstile-script";
-    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    s.async = true;
-    document.head.appendChild(s);
-  }, []);
+    const loadScript = useCallback(() => {
+      if (document.getElementById("cf-turnstile-script")) return;
+      const s = document.createElement("script");
+      s.id = "cf-turnstile-script";
+      s.src =
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      s.async = true;
+      document.head.appendChild(s);
+    }, []);
 
-  useEffect(() => {
-    if (!SITE_KEY) return;
-    loadScript();
-    const id = window.setInterval(() => {
-      if (!hostRef.current || !window.turnstile || widgetIdRef.current) return;
-      widgetIdRef.current = window.turnstile.render(hostRef.current, {
-        sitekey: SITE_KEY,
-        theme: "auto",
-        callback: (t) => onToken(t),
-        "expired-callback": () => onToken(undefined),
-        "error-callback": () => onToken(undefined),
-      });
-      window.clearInterval(id);
-    }, 200);
-    return () => {
-      window.clearInterval(id);
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
-    };
-  }, [loadScript, onToken]);
+    useImperativeHandle(ref, () => ({
+      reset: () => {
+        onTokenRef.current(undefined);
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.reset(widgetIdRef.current);
+        }
+      },
+    }));
 
-  if (!SITE_KEY) return null;
+    useEffect(() => {
+      loadScript();
+      const id = window.setInterval(() => {
+        if (!hostRef.current || !window.turnstile || widgetIdRef.current) return;
+        widgetIdRef.current = window.turnstile.render(hostRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          theme: "auto",
+          action: TURNSTILE_ACTION,
+          callback: (t) => onTokenRef.current(t),
+          "expired-callback": () => onTokenRef.current(undefined),
+          "error-callback": () => onTokenRef.current(undefined),
+        });
+        // Explicit class/attr for Spin contract + crawlers that look for cf-turnstile
+        hostRef.current.classList.add("cf-turnstile");
+        hostRef.current.setAttribute("data-sitekey", TURNSTILE_SITE_KEY);
+        hostRef.current.setAttribute("data-action", TURNSTILE_ACTION);
+        window.clearInterval(id);
+      }, 200);
+      return () => {
+        window.clearInterval(id);
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.remove(widgetIdRef.current);
+          widgetIdRef.current = null;
+        }
+      };
+    }, [loadScript]);
 
-  return <div ref={hostRef} className={className ?? "flex justify-center min-h-[65px]"} />;
-}
+    return (
+      <div
+        ref={hostRef}
+        className={className ?? "flex justify-center min-h-[65px] py-1"}
+        aria-label="Security verification"
+      />
+    );
+  },
+);

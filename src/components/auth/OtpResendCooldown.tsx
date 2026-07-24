@@ -20,6 +20,11 @@ type Props = {
   /** Server hint (seconds) when parent just sent a code — overrides default 60s. */
   initialSeconds?: number;
   className?: string;
+  /**
+   * Consume a fresh Turnstile token for resend (tokens are single-use).
+   * Return null to abort (e.g. widget not completed).
+   */
+  consumeTurnstile?: () => string | null;
 };
 
 /**
@@ -31,6 +36,7 @@ export function OtpResendCooldown({
   resetKey = 0,
   initialSeconds = DEFAULT_OTP_COOLDOWN_SEC,
   className,
+  consumeTurnstile,
 }: Props) {
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const [loading, setLoading] = useState(false);
@@ -51,9 +57,15 @@ export function OtpResendCooldown({
 
   const onResend = useCallback(async () => {
     if (!email || secondsLeft > 0 || loading) return;
+    let turnstileToken: string | undefined;
+    if (consumeTurnstile) {
+      const t = consumeTurnstile();
+      if (!t) return;
+      turnstileToken = t;
+    }
     setLoading(true);
     try {
-      const res = await authApi.resendOtp({ email, type });
+      const res = await authApi.resendOtp({ email, type, turnstileToken });
       const sec = otpRetryAfterFromSuccess(res);
       setSecondsLeft(sec);
       toast.success("A new code was sent to your email.");
@@ -64,7 +76,7 @@ export function OtpResendCooldown({
     } finally {
       setLoading(false);
     }
-  }, [email, type, secondsLeft, loading]);
+  }, [email, type, secondsLeft, loading, consumeTurnstile]);
 
   const disabled = secondsLeft > 0 || loading || !email;
 

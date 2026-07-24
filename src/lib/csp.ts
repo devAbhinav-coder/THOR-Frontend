@@ -44,6 +44,8 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "https://api.razorpay.com",
     "https://checkout.razorpay.com",
     "https://lumberjack.razorpay.com",
+    // Cloudflare Turnstile (widget + siteverify from browser SDK)
+    "https://challenges.cloudflare.com",
   ].filter(Boolean);
 
   const connectSrc = connectParts.join(" ");
@@ -66,7 +68,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src ${connectSrc}`,
-    "frame-src 'self' https://accounts.google.com https://*.google.com https://api.razorpay.com https://checkout.razorpay.com https://www.googletagmanager.com",
+    "frame-src 'self' https://accounts.google.com https://*.google.com https://api.razorpay.com https://checkout.razorpay.com https://www.googletagmanager.com https://challenges.cloudflare.com",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "media-src 'self' https: data: blob:",

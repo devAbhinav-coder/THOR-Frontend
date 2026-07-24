@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthNavLink from "@/components/auth/AuthNavLink";
 import AuthGoogleButton from "@/components/auth/AuthGoogleButton";
@@ -31,7 +31,10 @@ import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
 import AuthPendingOverlay from "@/components/auth/AuthPendingOverlay";
+import { TurnstileField } from "@/components/auth/TurnstileField";
+import { useTurnstileToken } from "@/hooks/useTurnstileToken";
 import { ApiValidationError } from "@/lib/parseApi";
+import { safeRedirectPath } from "@/lib/safeRedirect";
 
 const strongPassword = z
   .string()
@@ -96,9 +99,14 @@ export default function SignupPageClient({
   });
   const { signupStart, signupVerify, loginWithGoogle, isLoading } =
     useAuthStore();
+  const turnstile = useTurnstileToken();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const redirect = safeRedirectPath(searchParams.get("redirect")) || "/";
+
+  useEffect(() => {
+    turnstile.setToken(undefined);
+  }, [wizardStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navigateAfterAuth = useCallback(() => {
     if (onSuccess) {
@@ -118,6 +126,8 @@ export default function SignupPageClient({
   });
 
   const onSubmitForm = async (data: SignupForm) => {
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     setPendingCopy({
       title: "Sending verification code",
       description: "Creating your secure signup session and delivering OTP.",
@@ -129,6 +139,7 @@ export default function SignupPageClient({
         email: data.email,
         password: data.password,
         phone: phoneDigits,
+        turnstileToken,
       });
       setPendingEmail(data.email);
       setWizardStep("otp");
@@ -140,12 +151,14 @@ export default function SignupPageClient({
   };
 
   const onSubmitOtp = async (data: OtpForm) => {
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying your email",
       description: "Final checks in progress before creating your account.",
     });
     try {
-      await signupVerify(pendingEmail, data.otp);
+      await signupVerify(pendingEmail, data.otp, turnstileToken);
       toast.success("Account verified. Welcome to The House of Rani!");
       navigateAfterAuth();
     } catch (err: unknown) {
@@ -166,12 +179,14 @@ export default function SignupPageClient({
       toast.error("Google sign-up did not return a credential.");
       return;
     }
+    const turnstileToken = turnstile.consumeOrToast();
+    if (!turnstileToken) return;
     setPendingCopy({
       title: "Verifying Google account",
       description: "Securing Google sign-up and preparing your account.",
     });
     try {
-      await loginWithGoogle(credential);
+      await loginWithGoogle(credential, turnstileToken);
       toast.success("Welcome! Your account is ready.");
       navigateAfterAuth();
     } catch (err: unknown) {
@@ -235,10 +250,15 @@ export default function SignupPageClient({
                 <p className="text-xs text-red-600">{otpForm.formState.errors.otp.message}</p>
               )}
             </div>
+            <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
             <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
               Verify & create account
             </Button>
-            <OtpResendCooldown email={pendingEmail} type="signup" />
+            <OtpResendCooldown
+              email={pendingEmail}
+              type="signup"
+              consumeTurnstile={turnstile.consumeOrToast}
+            />
             <AuthBackButton
               embedded={embedded}
               onClick={() => {
@@ -299,6 +319,7 @@ export default function SignupPageClient({
               error={form.formState.errors.confirmPassword?.message}
               autoComplete="new-password"
             />
+            <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
             <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
               Send verification code
             </Button>
@@ -329,6 +350,8 @@ export default function SignupPageClient({
             subtitle="Join us — verify your email to finish"
           />
         )}
+
+        <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
 
         {googleBlock}
         {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}

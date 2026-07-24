@@ -120,48 +120,60 @@ export type AuthSession = {
   current: boolean;
 };
 
+type WithTurnstile<T> = T & { turnstileToken?: string };
+
 export const authApi = {
-  signupStart: (data: { name: string; email: string; password: string; phone: string }) =>
+  signupStart: (
+    data: WithTurnstile<{ name: string; email: string; password: string; phone: string }>,
+  ) =>
     unwrapAxios("auth.signupStart", api.post("/auth/signup/start", data), schemas.authMessage),
-  signupVerify: (data: { email: string; otp: string }) =>
+  signupVerify: (data: WithTurnstile<{ email: string; otp: string }>) =>
     unwrapAxios("auth.signupVerify", api.post("/auth/signup/verify", data), schemas.authWithUser),
-  login: (data: { email: string; password: string }) =>
+  login: (data: WithTurnstile<{ email: string; password: string }>) =>
     unwrapAxios("auth.login", api.post("/auth/login", data), schemas.authWithUser),
-  google: (data: { credential: string }) =>
+  google: (data: WithTurnstile<{ credential: string }>) =>
     unwrapAxios(
       "auth.google",
       api.post("/auth/google", data, { timeout: 30000 }),
       schemas.authWithUser,
     ),
-  forgotPassword: (data: { email: string }) =>
+  forgotPassword: (data: WithTurnstile<{ email: string }>) =>
     unwrapAxios(
       "auth.forgotPassword",
-      api.post("/auth/send-otp", { type: "forgot_password", email: data.email }),
+      api.post("/auth/send-otp", {
+        type: "forgot_password",
+        email: data.email,
+        ...(data.turnstileToken ? { turnstileToken: data.turnstileToken } : {}),
+      }),
       schemas.authMessage,
     ),
-  resetPassword: (data: { email: string; otp: string; newPassword: string }) =>
+  resetPassword: (
+    data: WithTurnstile<{ email: string; otp: string; newPassword: string }>,
+  ) =>
     unwrapAxios("auth.resetPassword", api.post("/auth/reset-password", data), schemas.authResetPassword),
   sendOtp: (
-    data:
+    data: WithTurnstile<
       | { type: "signup"; email: string; name: string; password: string; phone: string }
       | { type: "login"; email: string }
-      | { type: "forgot_password"; email: string },
+      | { type: "forgot_password"; email: string }
+    >,
   ) => unwrapAxios("auth.sendOtp", api.post("/auth/send-otp", data), schemas.authMessage),
-  resendOtp: (data: { email: string; type: "signup" | "login" | "forgot_password" }) =>
-    unwrapAxios("auth.resendOtp", api.post("/auth/resend-otp", data), schemas.authMessage),
-  verifyOtpSignup: (data: { email: string; otp: string }) =>
+  resendOtp: (
+    data: WithTurnstile<{ email: string; type: "signup" | "login" | "forgot_password" }>,
+  ) => unwrapAxios("auth.resendOtp", api.post("/auth/resend-otp", data), schemas.authMessage),
+  verifyOtpSignup: (data: WithTurnstile<{ email: string; otp: string }>) =>
     unwrapAxios(
       "auth.verifyOtpSignup",
       api.post("/auth/verify-otp", { ...data, type: "signup" }),
       schemas.authWithUser,
     ),
-  verifyOtpLogin: (data: { email: string; otp: string }) =>
+  verifyOtpLogin: (data: WithTurnstile<{ email: string; otp: string }>) =>
     unwrapAxios(
       "auth.verifyOtpLogin",
       api.post("/auth/verify-otp", { ...data, type: "login" }),
       schemas.authWithUser,
     ),
-  verifyOtpForgot: (data: { email: string; otp: string }) =>
+  verifyOtpForgot: (data: WithTurnstile<{ email: string; otp: string }>) =>
     unwrapAxios(
       "auth.verifyOtpForgot",
       api.post(
@@ -175,7 +187,9 @@ export const authApi = {
       ),
       schemas.authForgotVerified,
     ),
-  resetPasswordWithToken: (data: { resetToken: string; newPassword: string }) =>
+  resetPasswordWithToken: (
+    data: WithTurnstile<{ resetToken: string; newPassword: string }>,
+  ) =>
     unwrapAxios(
       "auth.resetPasswordWithToken",
       api.post("/auth/reset-password", data),

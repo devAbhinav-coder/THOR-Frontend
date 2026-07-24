@@ -16,12 +16,18 @@ interface AuthState {
   hasSessionChecked: boolean;
   /** After zustand persist finishes reading localStorage — avoids admin redirect race on full page load */
   _hasHydrated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signupStart: (data: { name: string; email: string; password: string; phone: string }) => Promise<void>;
-  signupVerify: (email: string, otp: string) => Promise<void>;
-  loginWithGoogle: (credential: string) => Promise<void>;
+  login: (email: string, password: string, turnstileToken?: string) => Promise<void>;
+  signupStart: (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    turnstileToken?: string;
+  }) => Promise<void>;
+  signupVerify: (email: string, otp: string, turnstileToken?: string) => Promise<void>;
+  loginWithGoogle: (credential: string, turnstileToken?: string) => Promise<void>;
   /** Passwordless login after `/auth/verify-otp` with type `login`. */
-  loginWithOtp: (email: string, otp: string) => Promise<void>;
+  loginWithOtp: (email: string, otp: string, turnstileToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setUser: (user: User) => void;
@@ -39,10 +45,10 @@ export const useAuthStore = create<AuthState>()(
         hasSessionChecked: false,
         _hasHydrated: false,
 
-        login: async (email, password) => {
+        login: async (email, password, turnstileToken) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.login({ email, password });
+            const body = await authApi.login({ email, password, turnstileToken });
             set({
               user: body.data.user,
               token: null,
@@ -63,10 +69,10 @@ export const useAuthStore = create<AuthState>()(
           }
         },
 
-        signupVerify: async (email, otp) => {
+        signupVerify: async (email, otp, turnstileToken) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.verifyOtpSignup({ email, otp });
+            const body = await authApi.verifyOtpSignup({ email, otp, turnstileToken });
             set({
               user: body.data.user,
               token: null,
@@ -78,10 +84,10 @@ export const useAuthStore = create<AuthState>()(
           }
         },
 
-        loginWithGoogle: async (credential) => {
+        loginWithGoogle: async (credential, turnstileToken) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.google({ credential });
+            const body = await authApi.google({ credential, turnstileToken });
             set({
               user: body.data.user,
               token: null,
@@ -93,10 +99,10 @@ export const useAuthStore = create<AuthState>()(
           }
         },
 
-        loginWithOtp: async (email, otp) => {
+        loginWithOtp: async (email, otp, turnstileToken) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.verifyOtpLogin({ email, otp });
+            const body = await authApi.verifyOtpLogin({ email, otp, turnstileToken });
             set({
               user: body.data.user,
               token: null,

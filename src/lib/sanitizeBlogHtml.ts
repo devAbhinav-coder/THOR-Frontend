@@ -18,8 +18,12 @@ function stripDangerous(html: string): string {
   return html
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+    .replace(/<(iframe|object|embed|svg|math|link|meta|base|form)[\s\S]*?>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<(iframe|object|embed|svg|math|link|meta|base|form)[^>]*\/?>/gi, "")
     .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/javascript:/gi, "");
+    .replace(/javascript:/gi, "")
+    .replace(/data:/gi, "")
+    .replace(/vbscript:/gi, "");
 }
 
 function sanitizeAnchor(attrs: string): string {

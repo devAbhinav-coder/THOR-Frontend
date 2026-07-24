@@ -3,12 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
-
-function safeRedirectPath(raw: string | null): string | null {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
-  if (raw.startsWith("/auth")) return null;
-  return raw;
-}
+import { safeRedirectPath } from "@/lib/safeRedirect";
 
 export default function AuthGuestOnly({
   children,
