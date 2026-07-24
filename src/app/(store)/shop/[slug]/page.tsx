@@ -6,6 +6,7 @@ import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import {
   buildProductMetaDescription,
   buildProductPageTitle,
+  resolveSerpTitleString,
 } from "@/lib/pageSeo";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 
@@ -62,6 +63,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       product.seoTitle,
       seoContext,
     );
+    const serpTitle = resolveSerpTitleString(
+      pageTitle,
+      `Buy ${product.name} Online in India`,
+    );
 
     return {
       title: pageTitle,
@@ -81,7 +86,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         .filter(Boolean)
         .join(", "),
       openGraph: {
-        title: product.seoTitle?.trim() || `Buy ${product.name} Online in India`,
+        title: serpTitle,
         description: descRaw,
         images: ogImage ?
           [{ url: ogImage, alt: product.name, width: 1200, height: 630 }]
@@ -93,7 +98,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
       twitter: {
         card: "summary_large_image",
-        title: product.name,
+        title: serpTitle,
         description: descRaw,
         images: ogImage ? [ogImage] : undefined,
       },
@@ -269,7 +274,7 @@ export default async function ProductDetailPage({
                 applicableCountry: "IN",
                 returnPolicyCategory:
                   "https://schema.org/MerchantReturnFiniteReturnWindow",
-                merchantReturnDays: 7,
+                merchantReturnDays: 5,
                 returnMethod: "https://schema.org/ReturnByMail",
                 returnFees: "https://schema.org/FreeReturn",
               },
@@ -293,13 +298,13 @@ export default async function ProductDetailPage({
                   handlingTime: {
                     "@type": "QuantitativeValue",
                     minValue: 1,
-                    maxValue: 2,
+                    maxValue: 3,
                     unitCode: "DAY",
                   },
                   transitTime: {
                     "@type": "QuantitativeValue",
                     minValue: 3,
-                    maxValue: 7,
+                    maxValue: 10,
                     unitCode: "DAY",
                   },
                 },

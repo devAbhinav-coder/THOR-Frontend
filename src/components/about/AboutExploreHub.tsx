@@ -44,8 +44,14 @@ export default function AboutExploreHub({
     return helpLinks;
   }, [active, shopLinks, discoverLinks, helpLinks]);
 
-  const staticShop = shopLinks.filter((l) => !l.href.includes("/shop/category/"));
-  const categoryShop = shopLinks.filter((l) => l.href.includes("/shop/category/"));
+  const isLegacyOrCollectionCategory = (href: string) =>
+    href.includes("/shop/category/") ||
+    (href.includes("/shop/collections/") &&
+      href !== "/shop/collections" &&
+      !href.endsWith("/shop/collections"));
+
+  const staticShop = shopLinks.filter((l) => !isLegacyOrCollectionCategory(l.href));
+  const categoryShop = shopLinks.filter((l) => isLegacyOrCollectionCategory(l.href));
 
   return (
     <section
@@ -76,7 +82,7 @@ export default function AboutExploreHub({
                   styling — so you never lose the thread.
                 </p>
               </div>
-              <Link href="/shop" className={aboutPageStyles.ctaOutlineNavy}>
+              <Link href="/shop/collections" className={aboutPageStyles.ctaOutlineNavy}>
                 <Grid3X3 className="h-4 w-4" aria-hidden />
                 View all sarees
               </Link>

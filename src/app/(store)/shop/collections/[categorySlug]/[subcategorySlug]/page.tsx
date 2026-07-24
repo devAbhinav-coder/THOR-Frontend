@@ -236,7 +236,7 @@ export default async function ShopSubcategoryPage({
                       applicableCountry: "IN",
                       returnPolicyCategory:
                         "https://schema.org/MerchantReturnFiniteReturnWindow",
-                      merchantReturnDays: 7,
+                      merchantReturnDays: 5,
                       returnMethod: "https://schema.org/ReturnByMail",
                       returnFees: "https://schema.org/FreeReturn",
                     },
@@ -256,13 +256,13 @@ export default async function ShopSubcategoryPage({
                         handlingTime: {
                           "@type": "QuantitativeValue",
                           minValue: 1,
-                          maxValue: 2,
+                          maxValue: 3,
                           unitCode: "DAY",
                         },
                         transitTime: {
                           "@type": "QuantitativeValue",
                           minValue: 3,
-                          maxValue: 7,
+                          maxValue: 10,
                           unitCode: "DAY",
                         },
                       },

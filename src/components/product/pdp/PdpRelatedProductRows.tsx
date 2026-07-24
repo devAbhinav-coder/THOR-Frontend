@@ -62,7 +62,7 @@ export function PdpRelatedProductRows({
   relatedProducts,
   moreProducts,
 }: PdpRelatedProductRowsProps) {
-  const categoryPath = `/shop/category/${encodeURIComponent(toShopCategorySlug(product.category))}`;
+  const categoryPath = `/shop/collections/${encodeURIComponent(toShopCategorySlug(product.category))}`;
   return (
     <>
       {relatedProducts.length > 0 && (

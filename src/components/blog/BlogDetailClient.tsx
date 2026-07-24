@@ -22,9 +22,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Blog, BlogComment, BlogRelatedProduct } from "@/types";
 import { Skeleton } from "@/components/ui/SkeletonLoader";
 import type { BlogDetailServerResult } from "@/lib/blogServer";
-import { plainBlogExcerpt } from "@/lib/blogServer";
 import {
-  blogExcerpt,
   categoryLabel,
   formatReadingTime,
 } from "@/lib/blogHelpers";
@@ -120,40 +118,6 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
   const relatedProducts = blog ? relatedProductsFromBlog(blog) : [];
 
   const heroImage = blog ? getCoverImage(blog.images || []) : undefined;
-
-  const blogPostingLd = useMemo(() => {
-    const appUrl = getSiteUrl();
-    const postUrl = `${appUrl}/blog/${encodeURIComponent(slug)}`;
-    return {
-      "@context": "https://schema.org",
-      "@type": "BlogPosting",
-      "@id": `${postUrl}#article`,
-      headline: blog?.seoTitle || blog?.title || "The House of Rani Journal",
-      description: blogExcerpt(blog?.excerpt, blog?.content || "", 180),
-      image: (blog?.images || []).map((img) => img.url).filter(Boolean),
-      datePublished: blog?.createdAt,
-      dateModified: blog?.updatedAt || blog?.createdAt,
-      author: {
-        "@type": "Person",
-        name: blog?.author?.name || "The House of Rani",
-      },
-      publisher: {
-        "@type": "Organization",
-        name: "The House of Rani",
-        logo: {
-          "@type": "ImageObject",
-          url: `${appUrl}/logoNew.png`,
-        },
-      },
-      mainEntityOfPage: postUrl,
-      keywords: (blog?.keywords || blog?.tags || []).join(", "),
-      articleSection: categoryLabel(blog?.category),
-      wordCount: plainBlogExcerpt(blog?.content || "", 50000)
-        .split(/\s+/)
-        .filter(Boolean).length,
-      inLanguage: "en-IN",
-    };
-  }, [blog, slug]);
 
   const breadcrumbLd = useMemo(() => {
     const appUrl = getSiteUrl();
@@ -251,10 +215,6 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
 
   return (
     <div className='bg-[#fcfbf7] min-h-screen overflow-x-hidden antialiased'>
-      <script
-        type='application/ld+json'
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingLd) }}
-      />
       <script
         type='application/ld+json'
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}

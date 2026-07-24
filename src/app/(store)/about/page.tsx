@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import AboutPageClient from "@/components/about/AboutPageClient";
-import { BRAND_NAME } from "@/lib/brandSeo";
+import { BRAND_NAME, BRAND_SAME_AS } from "@/lib/brandSeo";
 import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 import {
   aboutLinksForSchema,
@@ -10,7 +10,7 @@ import { getSiteUrl } from "@/lib/siteUrl";
 
 const ABOUT_TITLE = "About Us — Where Stories Are Woven";
 const ABOUT_DESCRIPTION =
-  "Discover The House of Rani — modern ethnic sarees with hand-crafted Kalamkari motifs, story-led designs, and heritage craftsmanship made for everyday elegance across India.";
+  "The House of Rani — premium sarees, salwar suits & corsets with heritage craftsmanship, plus handmade and corporate gifting across India.";
 
 export const metadata: Metadata = {
   ...buildInfoPageMetadata({
@@ -23,12 +23,16 @@ export const metadata: Metadata = {
     "about The House of Rani",
     "House of Rani story",
     "ethnic saree brand India",
+    "salwar suits brand India",
+    "ethnic corsets India",
     "modern ethnic sarees",
     "Kalamkari sarees",
     "story-led saree designs",
     "handcrafted Indian sarees",
     "premium sarees online",
     "Indian ethnic wear brand",
+    "handmade gifting India",
+    "corporate gifting brand",
   ],
 };
 
@@ -84,27 +88,8 @@ export default async function AboutRoutePage() {
       "@id": `${appUrl}/#organization`,
       name: BRAND_NAME,
       description: ABOUT_DESCRIPTION,
-      sameAs: ["https://www.instagram.com/houseofrani"],
+      sameAs: [...BRAND_SAME_AS],
     },
-  };
-
-  const breadcrumbLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: `${appUrl}/`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "About Us",
-        item: `${appUrl}/about`,
-      },
-    ],
   };
 
   /** Helps crawlers discover key internal destinations from the About page. */
@@ -125,10 +110,6 @@ export default async function AboutRoutePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutPageLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <script
         type="application/ld+json"

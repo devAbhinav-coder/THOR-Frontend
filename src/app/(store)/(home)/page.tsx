@@ -19,6 +19,7 @@ import {
   HOME_OG_TITLE,
   HOME_TITLE,
   ORG_SCHEMA_DESCRIPTION,
+  BRAND_SAME_AS,
 } from "@/lib/brandSeo";
 import { absolutePageTitle } from "@/lib/pageSeo";
 
@@ -66,7 +67,7 @@ export const metadata: Metadata = {
         url: OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: "The House of Rani — Premium Sarees & Indian Ethnic Wear",
+        alt: "The House of Rani — Premium Sarees, Salwar Suits & Corsets",
       },
     ],
   },
@@ -121,7 +122,7 @@ export default async function HomePage() {
           "@type": "ListItem",
           position: 1,
           name: "Home",
-          item: SITE_URL,
+          item: `${SITE_URL}/`,
         },
       ],
     },
@@ -134,7 +135,7 @@ export default async function HomePage() {
    */
   const localBusinessLd = {
     "@context": "https://schema.org",
-    "@type": "ClothingStore",
+    "@type": "OnlineStore",
     "@id": `${SITE_URL}/#store`,
     name: "The House of Rani",
     url: SITE_URL,
@@ -148,9 +149,7 @@ export default async function HomePage() {
       "@type": "Country",
       name: "India",
     },
-    sameAs: [
-      "https://www.instagram.com/houseofrani",
-    ],
+    sameAs: [...BRAND_SAME_AS],
   };
 
   /**
@@ -169,10 +168,10 @@ export default async function HomePage() {
       ? {
           "@context": "https://schema.org",
           "@type": "ItemList",
-          name: "Featured Products — The House of Rani",
+          name: "Featured Sarees, Salwar Suits & Corsets — The House of Rani",
           description:
-            "Handpicked premium sarees and ethnic wear from The House of Rani.",
-          url: `${SITE_URL}/shop?isFeatured=true`,
+            "Handpicked premium sarees, salwar suits, and corsets from The House of Rani.",
+          url: `${SITE_URL}/shop/collections`,
           numberOfItems: featuredProducts.length,
           itemListElement: featuredProducts
             .filter((p) => p?.slug && p?.name)
@@ -218,7 +217,7 @@ export default async function HomePage() {
                     applicableCountry: "IN",
                     returnPolicyCategory:
                       "https://schema.org/MerchantReturnFiniteReturnWindow",
-                    merchantReturnDays: 7,
+                    merchantReturnDays: 5,
                     returnMethod: "https://schema.org/ReturnByMail",
                     returnFees: "https://schema.org/FreeReturn",
                   },
@@ -238,13 +237,13 @@ export default async function HomePage() {
                       handlingTime: {
                         "@type": "QuantitativeValue",
                         minValue: 1,
-                        maxValue: 2,
+                        maxValue: 3,
                         unitCode: "DAY",
                       },
                       transitTime: {
                         "@type": "QuantitativeValue",
                         minValue: 3,
-                        maxValue: 7,
+                        maxValue: 10,
                         unitCode: "DAY",
                       },
                     },

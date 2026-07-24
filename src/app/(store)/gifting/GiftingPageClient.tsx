@@ -81,6 +81,7 @@ export default function GiftingPageClient({
   initialStorefront,
   initialGiftingCategories,
   pinnedOccasion,
+  pinnedSearch,
   heroH1Override,
 }: {
   initialStorefront: StorefrontSettingsApiEnvelope | null;
@@ -90,6 +91,8 @@ export default function GiftingPageClient({
   > | null;
   /** Locks occasion filter on dedicated landing pages (e.g. /gifting/corporate-gifts). */
   pinnedOccasion?: string;
+  /** Locks search on dedicated landings (e.g. /gifting/handmade-gifts). */
+  pinnedSearch?: string;
   heroH1Override?: string;
 }) {
   const router = useRouter();
@@ -105,7 +108,11 @@ export default function GiftingPageClient({
     () => defaultOccasion,
   );
   const [search, setSearch] = useState(() =>
-    (searchParams.get("search")?.trim() || "").slice(0, SEARCH_MAX_LEN),
+    (
+      pinnedSearch?.trim() ||
+      searchParams.get("search")?.trim() ||
+      ""
+    ).slice(0, SEARCH_MAX_LEN),
   );
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const skipNextUrlPush = useRef(false);
@@ -190,16 +197,17 @@ export default function GiftingPageClient({
       pinnedOccasion?.trim() ||
       searchParams.get("occasion")?.trim() ||
       "all";
-    const s = (searchParams.get("search")?.trim() || "").slice(
-      0,
-      SEARCH_MAX_LEN,
-    );
+    const s = (
+      pinnedSearch?.trim() ||
+      searchParams.get("search")?.trim() ||
+      ""
+    ).slice(0, SEARCH_MAX_LEN);
     skipNextUrlPush.current = true;
     setActiveOccasion(occ);
     setSearch(s);
     // giftingUrlKey is searchParams.toString(); only re-sync when the URL query changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [giftingUrlKey]);
+  }, [giftingUrlKey, pinnedOccasion, pinnedSearch]);
 
   useEffect(() => {
     if (skipNextUrlPush.current) {

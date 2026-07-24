@@ -8,32 +8,7 @@ import {
   fetchAllSitemapProducts,
 } from "@/lib/sitemapData";
 import { SEO_SITEMAP_STATIC } from "@/lib/seoCrawl";
-import type { MegaMenuCategory, MegaMenuSubcategory } from "@/types";
-
-type ProductLite = {
-  slug?: string;
-  updatedAt?: string;
-  name?: string;
-  images?: { url?: string; alt?: string }[];
-};
-
-type BlogLite = {
-  slug?: string;
-  updatedAt?: string;
-  viewCount?: number;
-};
-
-/**
- * Gifting products live on the same /shop/[slug] URL as regular products
- * (same Product model, same PDP).  We fetch them separately so products
- * that are ONLY in the gifting catalogue still get included in the sitemap.
- * A slug-based Set is used to deduplicate before emitting URLs.
- */
-type GiftingProductLite = {
-  slug?: string;
-  updatedAt?: string;
-  images?: { url?: string }[];
-};
+import type { MegaMenuCategory } from "@/types";
 
 type CategoryLite = {
   name?: string;
@@ -50,6 +25,19 @@ function isShopCatalogCategoryLite(c: CategoryLite): boolean {
     name.includes("gifting") ||
     slug.includes("gift")
   );
+}
+
+/** Prefer the first (usually higher-priority) entry when URLs collide. */
+function dedupeSitemap(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
+  const seen = new Set<string>();
+  const out: MetadataRoute.Sitemap = [];
+  for (const entry of entries) {
+    const key = String(entry.url || "").replace(/\/$/, "") || entry.url;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+  }
+  return out;
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -79,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const megaMenuJson = megaMenuRes.ok ? await megaMenuRes.json() : null;
     const categories: MegaMenuCategory[] = megaMenuJson?.data?.categories || [];
 
-    // Track slugs already emitted to avoid duplicates
+    // Track product slugs already emitted to avoid apparel/gifting PDP duplicates.
     const emittedSlugs = new Set<string>();
 
     const productUrls: MetadataRoute.Sitemap = products.flatMap((p) => {
@@ -101,8 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ];
     });
 
-    // Only include gifting products whose slug hasn't been emitted yet.
-    // This handles gifting-only products that don't appear in /products.
+    // Gifting-only PDPs that are not already in the main catalog.
     const giftingProductUrls: MetadataRoute.Sitemap = giftingProducts.flatMap(
       (p) => {
         if (!p?.slug || emittedSlugs.has(p.slug)) return [];
@@ -144,39 +131,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const emittedCategorySlugs = new Set<string>();
     const categoryUrls: MetadataRoute.Sitemap = categories
-      .filter((c) => Boolean(c?.name))
+      .filter((c) => Boolean(c?.name) && isShopCatalogCategoryLite(c))
       .flatMap((c) => {
         const slugSource = c.slug ?? c.name ?? "";
         const slug = toShopCategorySlug(slugSource);
         if (!slug || emittedCategorySlugs.has(slug)) return [];
         emittedCategorySlugs.add(slug);
-        
+
         const catRoute = {
           url: `${appUrl}/shop/collections/${encodeURIComponent(slug)}`,
           lastModified: now,
           changeFrequency: "daily" as const,
           priority: 0.82,
         };
-        
-        const subRoutes = (c.subcategories || []).map((sub) => {
-          return {
-            url: `${appUrl}/shop/collections/${encodeURIComponent(slug)}/${encodeURIComponent(sub.slug)}`,
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.80,
-          };
+
+        const emittedSubSlugs = new Set<string>();
+        const subRoutes = (c.subcategories || []).flatMap((sub) => {
+          const subSlug = String(sub?.slug || "").trim();
+          if (!subSlug || emittedSubSlugs.has(subSlug)) return [];
+          emittedSubSlugs.add(subSlug);
+          return [
+            {
+              url: `${appUrl}/shop/collections/${encodeURIComponent(slug)}/${encodeURIComponent(subSlug)}`,
+              lastModified: now,
+              changeFrequency: "daily" as const,
+              priority: 0.8,
+            },
+          ];
         });
 
         return [catRoute, ...subRoutes];
       });
 
-    return [
+    return dedupeSitemap([
       ...baseRoutes,
       ...categoryUrls,
       ...productUrls,
       ...giftingProductUrls,
       ...blogUrls,
-    ];
+    ]);
   } catch {
     return baseRoutes;
   }

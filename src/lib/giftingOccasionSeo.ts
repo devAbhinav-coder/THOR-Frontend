@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/siteUrl";
 
-export type GiftingOccasionKey = "corporate" | "wedding" | "festival" | "birthday";
+export type GiftingOccasionKey =
+  | "handmade"
+  | "corporate"
+  | "wedding"
+  | "festival"
+  | "birthday";
 
 type OccasionSeoPreset = {
   path: string;
-  /** Value passed to GiftingPageClient pinnedOccasion */
+  /** Value passed to GiftingPageClient pinnedOccasion (empty = all occasions). */
   occasionFilter: string;
+  /** Optional pinned search for landings like handmade gifts. */
+  searchFilter?: string;
   title: string;
   description: string;
   h1: string;
@@ -14,21 +21,36 @@ type OccasionSeoPreset = {
 };
 
 const OCCASION_PRESETS: Record<GiftingOccasionKey, OccasionSeoPreset> = {
+  handmade: {
+    path: "/gifting/handmade-gifts",
+    occasionFilter: "",
+    searchFilter: "handmade",
+    title: "Handmade Gifts & Artisan Pen Gifts Online India",
+    description:
+      "Shop handmade gifts, artisan pen presents & curated sets at The House of Rani. Free delivery over ₹1,099 and 5-day returns.",
+    h1: "Handmade Gifts & Artisan Presents Online India",
+    keywords: [
+      "handmade gifts India",
+      "handmade pen gifts",
+      "artisan handmade gifts",
+      "personalized handmade gifts",
+      "The House of Rani handmade",
+    ],
+  },
   corporate: {
     path: "/gifting/corporate-gifts",
     occasionFilter: "Corporate",
-    title: "Corporate Gift Sets & Ethnic Hampers for Business India",
+    title: "Corporate Gift Sets & Business Gifting Online India",
     description:
-      "Shop corporate gift sets, saree hampers, and premium ethnic gifting for employees, clients, and partners. Bulk orders, pan-India delivery, and 5-day returns at The House of Rani.",
-    h1: "Corporate Gift Sets & Ethnic Hampers Online India",
+      "Corporate gift sets & handmade business presents for clients and teams. Bulk orders, pan-India delivery, 5-day returns.",
+    h1: "Corporate Gift Sets & Business Gifting Online India",
     keywords: [
       "corporate gifts India",
       "corporate gifting online",
       "business gift hampers",
       "employee gift sets",
       "client gifting India",
-      "corporate saree gifts",
-      "ethnic corporate hampers",
+      "handmade corporate gifts",
       "bulk corporate gifts",
       "The House of Rani corporate gifting",
     ],
@@ -36,13 +58,13 @@ const OCCASION_PRESETS: Record<GiftingOccasionKey, OccasionSeoPreset> = {
   wedding: {
     path: "/gifting/wedding-gifts",
     occasionFilter: "Wedding",
-    title: "Wedding Gift Sets & Bridal Saree Hampers Online India",
+    title: "Wedding Gift Sets & Celebration Hampers Online India",
     description:
-      "Curated wedding gift sets, bridal saree hampers, and celebration presents for couples and families. Premium packaging with free delivery over ₹1,099.",
-    h1: "Wedding Gift Sets & Bridal Hampers Online India",
+      "Wedding gift sets, handmade presents & celebration hampers for couples and families. Free delivery over ₹1,099.",
+    h1: "Wedding Gift Sets & Celebration Hampers Online India",
     keywords: [
       "wedding gift sets India",
-      "bridal saree gifts",
+      "handmade wedding gifts",
       "wedding hampers online",
       "marriage gift ideas India",
       "wedding gifting collection",
@@ -52,14 +74,14 @@ const OCCASION_PRESETS: Record<GiftingOccasionKey, OccasionSeoPreset> = {
   festival: {
     path: "/gifting/festival-gifts",
     occasionFilter: "Festival",
-    title: "Festival Gift Sets & Ethnic Hampers Online India",
+    title: "Festival Gift Sets & Hampers Online India",
     description:
-      "Festive gift sets and ethnic hampers for Diwali, Rakhi, and celebrations. Thoughtful saree gifts with pan-India shipping from The House of Rani.",
-    h1: "Festival Gift Sets & Ethnic Hampers Online India",
+      "Festival gift sets & handmade hampers for Diwali, Rakhi, and celebrations. Pan-India shipping from The House of Rani.",
+    h1: "Festival Gift Sets & Hampers Online India",
     keywords: [
       "festival gifts India",
       "Diwali gift hampers",
-      "festive saree gifts",
+      "handmade festive gifts",
       "ethnic festival hampers",
       "Rakhi gift sets",
     ],
@@ -67,15 +89,16 @@ const OCCASION_PRESETS: Record<GiftingOccasionKey, OccasionSeoPreset> = {
   birthday: {
     path: "/gifting/birthday-gifts",
     occasionFilter: "Birthday",
-    title: "Birthday Gift Sets & Personalized Ethnic Gifts India",
+    title: "Birthday Gift Sets & Personalized Gifts Online India",
     description:
-      "Birthday gift sets, saree presents, and customizable ethnic gifts for her. Fast dispatch and easy returns across India.",
-    h1: "Birthday Gift Sets & Ethnic Presents Online India",
+      "Birthday gift sets, handmade pen gifts & customizable presents for her. Fast dispatch and easy returns across India.",
+    h1: "Birthday Gift Sets & Personalized Presents Online India",
     keywords: [
       "birthday gifts for her India",
-      "saree birthday gifts",
-      "ethnic birthday hampers",
+      "handmade birthday gifts",
+      "handmade pen gifts",
       "personalized birthday gifts",
+      "birthday gift hampers",
     ],
   },
 };
@@ -128,10 +151,15 @@ export function buildGiftingOccasionMetadata(key: GiftingOccasionKey): Metadata 
   };
 }
 
+/** Collection + breadcrumb only — no FAQPage (no visible FAQ UI on these landings). */
 export function buildGiftingOccasionJsonLd(key: GiftingOccasionKey) {
   const preset = OCCASION_PRESETS[key];
   const appUrl = getSiteUrl();
   const pageUrl = `${appUrl}${preset.path}`;
+  const aboutName =
+    preset.occasionFilter ||
+    preset.searchFilter ||
+    "Gifting";
 
   return {
     "@context": "https://schema.org",
@@ -154,29 +182,8 @@ export function buildGiftingOccasionJsonLd(key: GiftingOccasionKey) {
         isPartOf: { "@id": `${appUrl}/#website` },
         about: {
           "@type": "Thing",
-          name: preset.occasionFilter,
+          name: aboutName,
         },
-      },
-      {
-        "@type": "FAQPage",
-        mainEntity: [
-          {
-            "@type": "Question",
-            name: `Does The House of Rani offer ${preset.occasionFilter.toLowerCase()} gifting across India?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: `Yes. The House of Rani ships ${preset.occasionFilter.toLowerCase()} gift sets and ethnic hampers pan-India with free delivery on orders over ₹1,099 and a 5-day return policy.`,
-            },
-          },
-          {
-            "@type": "Question",
-            name: "What types of ethnic gifts are available?",
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: "Choose from saree gift sets, salwar suit hampers, curated ethnic wear collections, and customizable presents for weddings, festivals, birthdays, and corporate occasions.",
-            },
-          },
-        ],
       },
     ],
   };

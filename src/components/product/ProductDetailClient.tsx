@@ -1092,7 +1092,7 @@ export default function ProductDetailClient({
   /* Reserve space for fixed mobile purchase bar (tab bar hidden on PDP). */
   const mobileBottomReserve =
     "pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-6";
-  const categoryPath = `/shop/category/${encodeURIComponent(toShopCategorySlug(product.category))}`;
+  const categoryPath = `/shop/collections/${encodeURIComponent(toShopCategorySlug(product.category))}`;
 
   return (
     <div

@@ -36,7 +36,19 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: "Googlebot-Image",
-        allow: ["/", "/shop", "/shop/collections", "/about", "/blog", "/gifting"],
+        allow: [
+          "/",
+          "/shop",
+          "/shop/collections",
+          "/shop/collections/sarees",
+          "/shop/collections/salwar-suits",
+          "/shop/collections/corsets",
+          "/about",
+          "/blog",
+          "/gifting",
+          "/gifting/handmade-gifts",
+          "/gifting/corporate-gifts",
+        ],
         disallow: ["/admin/", "/auth/", "/dashboard/", "/cart/", "/checkout/"],
       },
       {

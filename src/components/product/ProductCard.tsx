@@ -244,7 +244,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             itemProp='returnPolicyCategory'
             href='https://schema.org/MerchantReturnFiniteReturnWindow'
           />
-          <meta itemProp='merchantReturnDays' content='7' />
+          <meta itemProp='merchantReturnDays' content='5' />
           <link itemProp='returnMethod' href='https://schema.org/ReturnByMail' />
           <link itemProp='returnFees' href='https://schema.org/FreeReturn' />
         </div>
@@ -279,7 +279,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
               itemType='https://schema.org/QuantitativeValue'
             >
               <meta itemProp='minValue' content='1' />
-              <meta itemProp='maxValue' content='2' />
+              <meta itemProp='maxValue' content='3' />
               <meta itemProp='unitCode' content='DAY' />
             </div>
             <div
@@ -288,7 +288,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
               itemType='https://schema.org/QuantitativeValue'
             >
               <meta itemProp='minValue' content='3' />
-              <meta itemProp='maxValue' content='7' />
+              <meta itemProp='maxValue' content='10' />
               <meta itemProp='unitCode' content='DAY' />
             </div>
           </div>

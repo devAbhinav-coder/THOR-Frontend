@@ -7,14 +7,14 @@ type CategorySeoPreset = {
 };
 
 /**
- * India-first category SERP copy — slug keys from /shop/category/[slug].
- * Unknown categories fall back to dynamic templates with saree-intent keywords.
+ * India-first category SERP copy — slug keys from /shop/collections/[slug].
+ * Unknown categories fall back to dynamic templates with ethnic-wear keywords.
  */
 const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
   sarees: {
     title: "Premium Sarees Collection — Shop Online India",
     description:
-      "Shop premium sarees online at The House of Rani — designer weaves, festive & bridal styles, free delivery over ₹1,099, and 5-day returns across India.",
+      "Shop premium sarees at The House of Rani — designer weaves, festive & bridal styles, free delivery over ₹1,099, 5-day returns.",
     keywords: [
       "sarees online India",
       "buy sarees online",
@@ -56,7 +56,7 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
   "salwar-suits": {
     title: "Salwar Suits & Ethnic Sets Online India",
     description:
-      "Shop salwar suits, ethnic co-ord sets, and women’s Indian wear online at The House of Rani. Premium fabrics, festive styles, free delivery over ₹1,099, and 5-day returns.",
+      "Shop salwar suits & ethnic co-ord sets at The House of Rani. Premium fabrics, festive styles, free delivery over ₹1,099, and 5-day returns.",
     keywords: [
       "salwar suits online India",
       "buy salwar suits online",
@@ -67,29 +67,29 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
       "festive salwar suits",
     ],
   },
-  lehengas: {
-    title: "Lehengas & Ethnic Occasion Wear Online India",
-    description:
-      "Occasion-ready lehengas and ethnic silhouettes for weddings and festivities. Shop curated styles at The House of Rani with pan-India delivery.",
-    keywords: ["lehenga online India", "wedding lehenga online", "bridal lehenga", "festive lehenga sets"],
-  },
   corsets: {
     title: "Corsets & Ethnic Tops Online India",
     description:
-      "Structured corsets and ethnic tops to pair with sarees and lehengas. Premium fits with easy returns from The House of Rani.",
-    keywords: ["corset tops online India", "ethnic corsets", "saree blouse corset", "women ethnic tops"],
-  },
-  lehenga: {
-    title: "Chaniya Choli & Lehenga Choli Sets Online India",
-    description:
-      "Shop chaniya choli and lehenga choli sets for Navratri, weddings, and festive celebrations. Curated occasion wear from The House of Rani with pan-India delivery.",
-    keywords: ["chaniya choli online", "lehenga choli sets India", "festive lehenga online", "Navratri lehenga"],
+      "Structured corsets and ethnic tops to pair with sarees and salwar suits. Premium fits with easy returns from The House of Rani.",
+    keywords: [
+      "corset tops online India",
+      "ethnic corsets",
+      "saree blouse corset",
+      "women ethnic tops",
+      "buy corsets online India",
+    ],
   },
   gifts: {
-    title: "Saree Gift Sets & Ethnic Gift Hampers India",
+    title: "Handmade Gifts, Corporate Gifting & Hampers India",
     description:
-      "Thoughtful saree gift sets and ethnic hampers for weddings, festivals, and corporate gifting. Customizable options with India-wide shipping.",
-    keywords: ["saree gift sets India", "ethnic gift hampers", "wedding sarees"],
+      "Handmade gifts, corporate gifting & curated hampers for weddings and festivals. India-wide shipping from The House of Rani.",
+    keywords: [
+      "handmade gifts India",
+      "corporate gifting India",
+      "gift hampers India",
+      "handmade pen gifts",
+      "ethnic gift sets",
+    ],
   },
 };
 
@@ -107,7 +107,6 @@ function matchPresetSlug(categoryName: string, slug: string): string {
   if (name.includes("festive") || name.includes("party")) return "festive";
   if (name.includes("salwar")) return "salwar-suits";
   if (name.includes("corset")) return "corsets";
-  if (name.includes("lehenga") || name.includes("chaniya")) return "lehengas";
   if (name.includes("gift")) return "gifts";
   return normalized;
 }

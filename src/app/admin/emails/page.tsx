@@ -28,7 +28,7 @@ const presetMessages = [
   {
     title: "Festive launch",
     subject: "Festive Collection is Live",
-    body: "Our festive collection is now live with fresh arrivals across sarees, lehengas and suits.",
+    body: "Our festive collection is now live with fresh arrivals across sarees, salwar suits and corsets.",
   },
   {
     title: "Coupon reminder",

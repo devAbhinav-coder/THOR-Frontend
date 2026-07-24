@@ -5,9 +5,9 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/shipping",
-  title: "Shipping Policy — Sarees & Ethnic Wear Across India",
+  title: "Shipping Policy — Pan-India Delivery",
   description:
-    "Shipping across India for sarees and ethnic wear — processing times, delivery estimates, free delivery over ₹1,099, tracking, and delays.",
+    "Shipping across India — processing times, 3–10 day delivery estimates, free delivery over ₹1,099, tracking, and delays.",
   priority: "support",
 });
 

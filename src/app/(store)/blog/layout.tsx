@@ -5,21 +5,23 @@ const appUrl = getSiteUrl();
 const OG_IMAGE = `${appUrl}/ogimage.png`;
 
 export const metadata: Metadata = {
-  title: "Saree Styling & Ethnic Wear Journal",
+    title: "Saree Styling & Ethnic Wear Journal",
   description:
-    "The House of Rani Journal — saree styling guides, bridal outfit inspiration, fabric care, festive wear tips, and stories from our Indian ethnic wear atelier. New articles weekly.",
+    "Saree & salwar styling, corset pairings, bridal ideas, fabric care, festive tips & gifting inspiration from The House of Rani Journal.",
   keywords: [
     "saree styling tips",
     "bridal saree inspiration",
+    "salwar suit styling",
+    "corset styling tips",
     "Indian ethnic wear blog",
     "gifting ideas India",
+    "handmade gift ideas",
+    "corporate gifting blog",
     "The House of Rani journal",
     "saree fashion India",
-    "lehenga styling tips",
     "Indian bridal blog",
     "ethnic wear trends",
     "saree draping guide",
-    "corporate gifting blog",
     "festive wear ideas",
   ],
   alternates: {

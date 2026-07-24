@@ -220,27 +220,45 @@ function toProductTeasers(products: Product[] | null): AboutProductTeaser[] {
 function buildStaticInternalLinks(): AboutInternalLink[] {
   return [
     {
-      href: "/shop",
-      label: "Shop all sarees",
-      description: "Browse premium ethnic wear and story-led sarees online.",
+      href: "/shop/collections",
+      label: "Shop all collections",
+      description: "Browse premium sarees, salwar suits, and corsets online.",
       group: "shop",
     },
     {
-      href: "/shop?sort=newest",
+      href: "/shop/collections?sort=newest",
       label: "New arrivals",
       description: "Latest drops — modern drapes with heritage motifs.",
       group: "shop",
     },
     {
+      href: "/shop/collections/sarees",
+      label: "Sarees",
+      description: "Designer weaves for weddings, festivals, and everyday elegance.",
+      group: "shop",
+    },
+    {
+      href: "/shop/collections/salwar-suits",
+      label: "Salwar suits",
+      description: "Ethnic co-ord sets and festive salwar kameez styles.",
+      group: "shop",
+    },
+    {
+      href: "/shop/collections/corsets",
+      label: "Corsets",
+      description: "Structured corsets and ethnic tops to pair with sarees.",
+      group: "shop",
+    },
+    {
       href: "/gifting",
-      label: "Gifting & hampers",
-      description: "Curated celebration gifts and customizable hampers.",
+      label: "Handmade & corporate gifting",
+      description: "Handmade gifts, corporate sets, and curated hampers.",
       group: "shop",
     },
     {
       href: "/blog",
       label: "Journal & styling",
-      description: "Drape guides, festive looks, and saree styling tips.",
+      description: "Drape guides, festive looks, and ethnic wear styling tips.",
       group: "discover",
     },
     {

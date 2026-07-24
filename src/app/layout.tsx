@@ -18,6 +18,7 @@ import {
   ROOT_DEFAULT_DESCRIPTION,
   ROOT_DEFAULT_TITLE,
   ROOT_KEYWORDS,
+  BRAND_SAME_AS,
 } from "@/lib/brandSeo";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -101,24 +102,24 @@ openGraph: {
   locale: "en_IN",
   url: SITE_URL,
   siteName: "The House of Rani",
-  title: "Premium Sarees, Salwar Suits & Ethnic Wear | The House of Rani",
+  title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
   description:
-    "Shop premium sarees, salwar suits, corsets and handmade gift sets online in India. Designer weaves, festive & bridal styles, free delivery over ₹1,099.",
+    "Shop premium sarees, salwar suits, corsets, and handmade gift sets online in India. Designer weaves, festive & bridal styles, free delivery over ₹1,099.",
   images: [
     {
       url: `${SITE_URL}/ogimage.png`,
       width: 1200,
       height: 630,
-      alt: "Premium Sarees & Indian Ethnic Wear – The House of Rani",
+      alt: "Premium Sarees, Salwar Suits & Corsets – The House of Rani",
 
     },
   ],
 },
  twitter: {
   card: "summary_large_image",
-  title: "Premium Sarees & Indian Ethnic Wear | The House of Rani",
+  title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
   description:
-    "Shop premium sarees, corsets and handmade gift sets and women's ethnic wear designed for weddings, festivals, and everyday elegance.",
+    "Shop premium sarees, salwar suits, corsets, and handmade gift sets — designed for weddings, festivals, and everyday elegance.",
   images: [`${SITE_URL}/ogimage.png`],
 },
   verification: {
@@ -178,10 +179,7 @@ export default async function RootLayout({
          * sameAs links the brand to its official social and directory profiles.
          * Google uses these to build and verify the Knowledge Panel entry.
          */
-        sameAs: [
-          "https://www.instagram.com/houseofrani",
-        "https://www.facebook.com/people/HouseofRani/61580570102572/",
-        ],
+        sameAs: [...BRAND_SAME_AS],
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "customer service",

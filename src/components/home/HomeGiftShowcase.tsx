@@ -140,6 +140,7 @@ export default function HomeGiftShowcase({ initialSettings }: Props = {}) {
     <section
       className={cn(homeSectionStyles.pageBg, "bg-gray-50/60 py-14 sm:py-20 lg:py-24")}
       aria-label="Gifting collections"
+      data-nosnippet
     >
       <div className={homeSectionStyles.container}>
         <div className="flex flex-col gap-10 lg:grid lg:grid-cols-2 lg:items-center lg:gap-14 xl:gap-20">

@@ -5,16 +5,16 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/returns",
-  title: "Returns & Refunds — Sarees & Ethnic Wear (5 Days)",
+  title: "Returns & Refunds — 5-Day Easy Returns",
   description:
-    "5-day returns, refunds, and order cancellations for sarees and ethnic wear at The House of Rani — including COD and shipping charge rules.",
+    "5-day returns, refunds, and cancellations for sarees, salwar suits & corsets at The House of Rani — including COD rules.",
   priority: "support",
 });
 
 export default function ReturnsPage() {
   return (
     <LegalPageLayout
-      title='Returns & Refunds — Sarees & Ethnic Wear (5 Days)'
+      title='Returns & Refunds — 5-Day Easy Returns'
       description='We want you to love every piece you order. This page sets out how returns, refunds, and cancellations work for purchases made on our website, so expectations are clear from the start.'
       lastUpdated='17 July 2026'
     >

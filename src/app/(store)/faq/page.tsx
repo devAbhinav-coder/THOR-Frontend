@@ -9,22 +9,22 @@ export const metadata: Metadata = buildInfoPageMetadata({
   path: "/faq",
   title: FAQ_H1,
   description:
-    "Frequently asked questions about buying sarees online, orders, shipping across India, returns, sizing, and gifting at The House of Rani.",
+    "FAQs on sarees, salwar suits & corsets — orders, India shipping, 5-day returns, sizing, and handmade or corporate gifting.",
   priority: "support",
 });
 
 const faqItems = [
   {
-    q: "How do I choose the right saree online?",
-    a: "Use filters on the shop page for fabric, price, and rating. Check product details, images, and reviews before placing your order.",
+    q: "How do I choose the right outfit online?",
+    a: "Use filters on the shop page for category, fabric, price, and rating. Check product details, images, and reviews before placing your order.",
   },
   {
     q: "Do you offer bridal and occasion collections?",
-    a: "Yes. We curate premium sarees and occasion styles, including bridal-ready options for weddings and festive events.",
+    a: "Yes. We curate premium sarees, salwar suits, and corsets — including bridal-ready and festive options for weddings and celebrations.",
   },
   {
     q: "Can I place a custom gifting request?",
-    a: "Yes. Visit the gifting section to submit customization details. For customizable products, quote/request flow is used before finalization.",
+    a: "Yes. Visit the gifting section for handmade gifts, corporate gifting, and hampers. For customizable products, a quote/request flow is used before finalization.",
   },
   {
     q: "What are your shipping timelines?",
@@ -97,7 +97,7 @@ export default function FaqPage() {
       />
       <LegalPageLayout
         title={FAQ_H1}
-        description='Quick answers about buying sarees online, orders, shipping across India, returns, sizing, and gifting at The House of Rani.'
+        description='Quick answers about buying sarees, salwar suits, and corsets online — orders, shipping across India, returns, sizing, and handmade or corporate gifting at The House of Rani.'
         lastUpdated='31 March 2026'
       >
         <h2>Common questions</h2>

@@ -32,7 +32,8 @@ export function buildGiftingOccasionPage(key: GiftingOccasionKey) {
               ReturnType<typeof giftingApi.getCategories>
             > | null
           }
-          pinnedOccasion={preset.occasionFilter}
+          pinnedOccasion={preset.occasionFilter || undefined}
+          pinnedSearch={preset.searchFilter || undefined}
           heroH1Override={preset.h1}
         />
       </>

@@ -4,7 +4,12 @@ import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import type { Category, Product } from "@/types";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
-import { SHOP_META_DESCRIPTION, SHOP_META_TITLE } from "@/lib/brandSeo";
+import {
+  SHOP_KEYWORDS,
+  SHOP_META_DESCRIPTION,
+  SHOP_META_TITLE,
+} from "@/lib/brandSeo";
+import { resolveSerpTitleString } from "@/lib/pageSeo";
 import CategoryCards from "@/components/shop/CategoryCards";
 import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
 
@@ -18,6 +23,12 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 function buildCanonicalPath(sp: Record<string, string | string[] | undefined>) {
   void sp;
   return "/shop/collections";
+}
+
+function clipMeta(text: string, max = 155): string {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1).trimEnd()}…`;
 }
 
 export async function generateMetadata({
@@ -72,52 +83,46 @@ export async function generateMetadata({
   }
 
   let title = baseTitle;
-  if (onSale) title = "Sale Sarees & Ethnic Wear Online India";
-  else if (hasOffer) title = "Coupon Offers — Sarees & Ethnic Wear Online India";
-  else if (featured) title = "Featured Sarees & Ethnic Wear Online India";
-  else if (cat) title = `${cat} Sarees & Ethnic Wear Online India`;
-  else if (fabric) title = `${fabric} Sarees — Shop Online India`;
+  if (onSale) title = "Sale Sarees, Salwar Suits & Corsets Online India";
+  else if (hasOffer) title = "Coupon Offers — Ethnic Wear Online India";
+  else if (featured) title = "Featured Sarees, Salwar Suits & Corsets Online India";
+  else if (cat) title = `${cat} — Shop Online India`;
+  else if (fabric) title = `${fabric} Collection — Shop Online India`;
   else if (search) title = `Search: ${search}`;
 
   let description = baseDesc;
   if (onSale) {
     description =
-      "Shop sarees and ethnic wear on sale at The House of Rani — special pricing on select styles with free delivery and easy returns.";
+      "Sale on sarees, salwar suits & corsets at The House of Rani. Special pricing, free delivery over ₹1,099, easy 5-day returns.";
   } else if (hasOffer) {
     description =
-      "Shop products with active coupon offers at The House of Rani — copy a code at checkout for extra savings.";
+      "Shop with active coupon offers at The House of Rani — apply a code at checkout for extra savings on ethnic wear.";
   } else if (cat) {
-    description = `Browse ${cat} at The House of Rani — premium ethnic wear with free delivery, easy returns, and filters for fabric, price, and ratings.`;
+    description = clipMeta(
+      `Browse ${cat} at The House of Rani — premium ethnic wear with free delivery over ₹1,099 and easy 5-day returns.`,
+    );
   } else if (search) {
-    description = `Search results for "${search}" — premium sarees, lehengas, and ethnic wear at The House of Rani. Free delivery across India.`;
+    description = clipMeta(
+      `Search results for "${search}" — sarees, salwar suits & corsets at The House of Rani. Free delivery across India.`,
+    );
   } else if (featured) {
     description =
-      "Handpicked featured sarees and ethnic wear at The House of Rani. Free delivery · 5-day returns · In stock items only.";
+      "Featured sarees, salwar suits & corsets at The House of Rani. Free delivery over ₹1,099 · 5-day returns · In stock.";
+  } else if (fabric) {
+    description = clipMeta(
+      `Shop ${fabric} styles — sarees, salwar suits & corsets at The House of Rani. Free delivery over ₹1,099.`,
+    );
   }
 
   const appUrl = SITE_URL;
   const canonicalPath = buildCanonicalPath(sp);
   const ogImage = `${appUrl}/ogimage.png`;
+  const serpTitle = resolveSerpTitleString(title, title);
 
   return {
     title,
     description,
-    keywords: [
-      "sarees online India",
-      "salwar suits online India",
-      "buy sarees online India",
-      "women ethnic wear online",
-      cat || "premium sarees",
-      fabric || "Indian ethnic wear",
-      "lehengas online",
-      "designer salwar suits",
-      "premium sarees India",
-      "saree shop India",
-      "The House of Rani",
-      "ethnic wear online",
-    ]
-      .filter(Boolean)
-      .join(", "),
+    keywords: [...SHOP_KEYWORDS, cat || fabric || search].filter(Boolean),
     alternates: {
       canonical: canonicalPath,
     },
@@ -131,7 +136,7 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title,
+      title: serpTitle,
       description,
       url: `${appUrl}${canonicalPath}`,
       type: "website",
@@ -142,13 +147,13 @@ export async function generateMetadata({
           url: ogImage,
           width: 1200,
           height: 630,
-          alt: "The House of Rani — Shop Premium Sarees & Indian Ethnic Wear",
+          alt: "The House of Rani — Shop Sarees, Salwar Suits & Corsets",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: serpTitle,
       description,
       images: [ogImage],
     },
@@ -180,9 +185,13 @@ async function fetchCategories(): Promise<Category[]> {
     });
     if (!res.ok) return [];
     const json = await res.json();
-    const allCats = Array.isArray(json?.data?.categories) ? json.data.categories : [];
-    // Exclude Gifting
-    return allCats.filter((c: Category) => c.name.toLowerCase() !== "gifting" && !c.isGiftCategory);
+    const allCats = Array.isArray(json?.data?.categories)
+      ? json.data.categories
+      : [];
+    return allCats.filter(
+      (c: Category) =>
+        c.name.toLowerCase() !== "gifting" && !c.isGiftCategory,
+    );
   } catch {
     return [];
   }
@@ -196,9 +205,7 @@ export default async function ShopPage({
   const sp = await searchParams;
   const isFiltered = Object.values(sp).some((v) => v !== undefined);
 
-  // Only inject rich JSON-LD on the unfiltered base /shop page —
-  // filtered views (category, fabric, search) have dynamic titles/descriptions
-  // handled by generateMetadata, but the ItemList would be stale/misleading.
+  // Only inject rich JSON-LD on the unfiltered base /shop/collections page.
   let collectionPageLd: object | null = null;
   if (!isFiltered) {
     const products = await fetchTopProductsForSchema();
@@ -206,27 +213,14 @@ export default async function ShopPage({
       .toISOString()
       .slice(0, 10);
 
-    /**
-     * CollectionPage + ItemList JSON-LD on the shop listing page.
-     *
-     * This is the primary signal Google needs to show:
-     *   ✅ Product carousel in search results
-     *   ✅ Price (INR) next to the listing
-     *   ✅ "In stock" / "Out of stock" badge
-     *   ✅ "Free returns" badge (from hasMerchantReturnPolicy)
-     *   ✅ "Free delivery" badge (from shippingDetails with rate: 0)
-     *
-     * Google follows each product URL to the PDP JSON-LD for full details.
-     */
     collectionPageLd = {
       "@context": "https://schema.org",
       "@graph": [
         {
           "@type": "CollectionPage",
           "@id": `${SITE_URL}/shop/collections#collectionpage`,
-          name: "Shop — Premium Sarees, Salwar Suits & Indian Ethnic Wear",
-          description:
-            "Browse the full collection of premium sarees, salwar suits, lehengas, and ethnic wear at The House of Rani. Free delivery · 5-day free returns.",
+          name: SHOP_META_TITLE,
+          description: SHOP_META_DESCRIPTION,
           url: `${SITE_URL}/shop/collections`,
           inLanguage: "en-IN",
           isPartOf: { "@id": `${SITE_URL}/#website` },
@@ -299,7 +293,7 @@ export default async function ShopPage({
                         applicableCountry: "IN",
                         returnPolicyCategory:
                           "https://schema.org/MerchantReturnFiniteReturnWindow",
-                        merchantReturnDays: 7,
+                        merchantReturnDays: 5,
                         returnMethod: "https://schema.org/ReturnByMail",
                         returnFees: "https://schema.org/FreeReturn",
                       },
@@ -319,13 +313,13 @@ export default async function ShopPage({
                           handlingTime: {
                             "@type": "QuantitativeValue",
                             minValue: 1,
-                            maxValue: 2,
+                            maxValue: 3,
                             unitCode: "DAY",
                           },
                           transitTime: {
                             "@type": "QuantitativeValue",
                             minValue: 3,
-                            maxValue: 7,
+                            maxValue: 10,
                             unitCode: "DAY",
                           },
                         },

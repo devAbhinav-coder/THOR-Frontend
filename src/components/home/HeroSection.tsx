@@ -229,7 +229,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                   className='motion-safe:animate-hero-copy-in flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8'
                 >
                   <Link
-                    href={slide.ctaLink || "/shop"}
+                    href={slide.ctaLink || "/shop/collections"}
                     className="border-b border-white/65 pb-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white transition-colors hover:border-gold-200 hover:text-gold-100 sm:text-xs"
                   >
                     {slide.ctaText || "Explore collection"}

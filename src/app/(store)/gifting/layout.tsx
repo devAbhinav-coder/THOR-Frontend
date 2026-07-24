@@ -6,18 +6,20 @@ const appUrl = getSiteUrl();
 const OG_IMAGE = `${appUrl}/ogimage.png`;
 
 export const metadata: Metadata = {
-  title: "Saree Gift Sets & Ethnic Gift Hampers Online India",
+  title: "Handmade Gifts, Corporate Gifting & Hampers Online India",
   description:
-    "Buy saree gift sets, ethnic hampers, and customizable gifts online in India — weddings, corporate gifting, festivals & celebrations. Free shipping over ₹1,099 at The House of Rani.",
+    "Buy handmade gifts, corporate gift sets & curated hampers online in India. Free shipping over ₹1,099 at The House of Rani.",
   keywords: [
     "gifting collection India",
-    "premium gift sets",
+    "handmade gifts India",
+    "handmade pen gifts",
+    "artisan handmade gifts",
     "corporate gifting India",
+    "corporate gift sets",
+    "gift hampers India",
     "wedding gifting",
     "festive gifts",
     "customizable gifts",
-    "gift hampers India",
-    "saree gift sets",
     "The House of Rani gifts",
     "personalized gifting",
     "occasion gifts",
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Gifting Collection | The House of Rani",
     description:
-      "Premium gifting made effortless — curated and customizable options for weddings, celebrations, and corporate occasions.",
+      "Handmade gifts, corporate gifting, and curated hampers — customizable options for every occasion.",
     url: `${appUrl}/gifting`,
     type: "website",
     siteName: "The House of Rani",
@@ -56,7 +58,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Gifting Collection | The House of Rani",
     description:
-      "Curated and customizable gifting for weddings, celebrations, and corporate occasions.",
+      "Handmade gifts, corporate gifting, and curated hampers for every celebration.",
     images: [OG_IMAGE],
   },
 };
@@ -96,7 +98,7 @@ export default function GiftingLayout({
     name: "Gifting Collection — The House of Rani",
     url: `${appUrl}/gifting`,
     description:
-      "Premium curated and customizable gifting for weddings, festivals, corporate occasions, and personal celebrations. Free shipping across India.",
+      "Premium curated and customizable gifting — handmade artisan gifts, corporate sets, and hampers for weddings, festivals, and personal celebrations. Free shipping across India.",
     provider: {
       "@type": "Organization",
       "@id": `${appUrl}/#organization`,
@@ -106,7 +108,7 @@ export default function GiftingLayout({
       "@type": "Country",
       name: "India",
     },
-    serviceType: "Gifting & Personalized Presents",
+    serviceType: "Handmade & Corporate Gifting",
     /**
      * hasOfferCatalog — tells Google this service page has shoppable products.
      * Combined with the BreadcrumbList + Service schema, this makes the page
@@ -119,13 +121,18 @@ export default function GiftingLayout({
       itemListElement: [
         {
           "@type": "OfferCatalog",
-          name: "Wedding Gifts",
-          url: `${appUrl}/gifting/wedding-gifts`,
+          name: "Handmade Gifts",
+          url: `${appUrl}/gifting/handmade-gifts`,
         },
         {
           "@type": "OfferCatalog",
           name: "Corporate Gifts",
           url: `${appUrl}/gifting/corporate-gifts`,
+        },
+        {
+          "@type": "OfferCatalog",
+          name: "Wedding Gifts",
+          url: `${appUrl}/gifting/wedding-gifts`,
         },
         {
           "@type": "OfferCatalog",
@@ -148,7 +155,7 @@ export default function GiftingLayout({
         applicableCountry: "IN",
         returnPolicyCategory:
           "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 7,
+        merchantReturnDays: 5,
         returnMethod: "https://schema.org/ReturnByMail",
         returnFees: "https://schema.org/FreeReturn",
       },
@@ -168,13 +175,13 @@ export default function GiftingLayout({
           handlingTime: {
             "@type": "QuantitativeValue",
             minValue: 1,
-            maxValue: 2,
+            maxValue: 3,
             unitCode: "DAY",
           },
           transitTime: {
             "@type": "QuantitativeValue",
             minValue: 3,
-            maxValue: 7,
+            maxValue: 10,
             unitCode: "DAY",
           },
         },

@@ -1,11 +1,14 @@
 import { resolveCategoryPageSeo } from "@/lib/categoryPageSeo";
 
 /** Visible H1 defaults — align with meta titles in brandSeo / page metadata. */
-export const HOME_H1 = "Buy Premium Sarees Online in India";
-export const SHOP_H1_DEFAULT = "Shop Premium Sarees & Ethnic Wear Online India";
-export const GIFTING_H1_DEFAULT = "Saree Gift Sets & Ethnic Gift Hampers Online India";
-export const BLOG_H1 = "Saree Styling & Ethnic Wear Journal";
-export const FAQ_H1 = "Saree Shopping FAQ — Orders, Shipping & Returns";
+export const HOME_H1 =
+  "Premium Sarees, Salwar Suits & Corsets Online in India";
+export const SHOP_H1_DEFAULT =
+  "Shop Sarees, Salwar Suits & Corsets Online India";
+export const GIFTING_H1_DEFAULT =
+  "Handmade Gifts, Corporate Gifting & Hampers Online India";
+export const BLOG_H1 = "Saree Styling, Salwar Suits & Ethnic Wear Journal";
+export const FAQ_H1 = "Shopping FAQ — Orders, Shipping & Returns";
 
 const GENERIC_HOME_SLIDE_TITLES = new Set(
   [
@@ -29,8 +32,8 @@ const GENERIC_GIFTING_TITLES = new Set(
 export function resolveHomeHeroH1(slideTitle?: string | null): string {
   const t = String(slideTitle || "").trim();
   if (!t || GENERIC_HOME_SLIDE_TITLES.has(t.toLowerCase())) return HOME_H1;
-  if (!/\bsaree|ethnic|bridal|silk|cotton|wear\b/i.test(t)) {
-    return `${t} — Premium Sarees Online India`;
+  if (!/\bsaree|salwar|corset|ethnic|bridal|silk|cotton|wear\b/i.test(t)) {
+    return `${t} — Premium Ethnic Wear Online India`;
   }
   return t;
 }
@@ -60,9 +63,9 @@ export function resolveShopBannerH1(options: {
     return resolveCategoryPageSeo(category, category).title;
   }
   const color = String(options.color || "").trim();
-  if (color) return `${color} Sarees Online India`;
-  if (options.isFeatured === "true") return "Featured Sarees & Ethnic Wear Online India";
-  if (options.onSale === "true") return "Sale Sarees & Ethnic Wear Online India";
+  if (color) return `${color} Styles Online India`;
+  if (options.isFeatured === "true") return "Featured Sarees, Salwar Suits & Corsets Online India";
+  if (options.onSale === "true") return "Sale Sarees, Salwar Suits & Corsets Online India";
   const banner = String(options.bannerTitle || "").trim();
   if (banner && !GENERIC_SHOP_BANNER_TITLES.has(banner.toLowerCase())) return banner;
   return SHOP_H1_DEFAULT;
@@ -83,17 +86,17 @@ export function resolveShopListHeading(options: {
   const category = String(options.categoryName || "").trim();
   if (category) return `${category} Collection`;
   const color = String(options.color || "").trim();
-  if (color) return `${color} Sarees`;
-  if (options.isFeatured === "true") return "Featured Sarees";
+  if (color) return `${color} Collection`;
+  if (options.isFeatured === "true") return "Featured Picks";
   if (options.onSale === "true") return "Sale & Offers";
-  return "All Sarees";
+  return "All Collections";
 }
 
 export function resolveGiftingHeroH1(heroTitle?: string | null): string {
   const t = String(heroTitle || "").trim();
   if (!t || GENERIC_GIFTING_TITLES.has(t.toLowerCase())) return GIFTING_H1_DEFAULT;
-  if (!/\bgift|saree|hamper|ethnic\b/i.test(t)) {
-    return `${t} — Saree & Ethnic Gifts India`;
+  if (!/\bgift|handmade|hamper|corporate|pen|ethnic\b/i.test(t)) {
+    return `${t} — Handmade & Corporate Gifts India`;
   }
   return t;
 }

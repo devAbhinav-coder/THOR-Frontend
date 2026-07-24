@@ -85,7 +85,7 @@ const FALLBACK_COLLECTION_LINKS = [
   { name: "All collections", href: "/shop/collections" },
   { name: "Sarees", href: "/shop/collections/sarees" },
   { name: "Salwar suits", href: "/shop/collections/salwar-suits" },
-  { name: "Lehengas", href: "/shop/collections/lehengas" },
+  { name: "Corsets", href: "/shop/collections/corsets" },
 ] as const;
 
 function normalizeHref(href: string): string {
@@ -295,7 +295,7 @@ export default function Footer({ initialNavCategories = [] }: Props) {
               <p className={footerBrandTitle}>The House of Rani</p>
               <p className={cn(footerBrandDescription, "mt-3 max-w-sm")}>
                 {footer?.description ||
-                  "Your destination for exquisite Indian ethnic wear. Curated sarees, lehengas, and gifts — crafted with love and tradition."}
+                  "Your destination for exquisite Indian ethnic wear. Curated sarees, salwar suits, and corsets — crafted with love and tradition."}
               </p>
               {socialLinks.length > 0 && (
                 <div className='mt-5 flex flex-wrap gap-2.5'>
