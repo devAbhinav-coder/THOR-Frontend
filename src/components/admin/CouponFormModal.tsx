@@ -196,19 +196,71 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
-          {/* Banner upload — crop matches visit popup (3:4) */}
-          <div>
-            <ImageUploader
-              maxFiles={1}
-              aspectRatio="3:4"
-              maxSizeMB={UPLOAD_MAX_MB.coupon}
-              label="Offer image (visit popup)"
-              hint="Crop frame = what shoppers see on the visit popup. Keep important content inside the box."
-              existingImages={imageFile ? [] : existingImageUrl ? [existingImageUrl] : []}
-              onRemoveExisting={removeImage}
-              onChange={onPickImage}
-            />
+          {/* Visibility — public marketing vs secret / influencer codes */}
+          <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-2.5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Visibility
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Who can discover this code in the store.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, showOnStorefront: true })}
+                className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
+                  formData.showOnStorefront
+                    ? 'border-navy-900 bg-navy-900/[0.04] ring-1 ring-navy-900/20'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <p className="text-sm font-semibold text-navy-900">Public offer</p>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Shown on visit popup, cart &amp; checkout offer lists, and shop filters.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, showOnStorefront: false })}
+                className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
+                  !formData.showOnStorefront
+                    ? 'border-navy-900 bg-navy-900/[0.04] ring-1 ring-navy-900/20'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <p className="text-sm font-semibold text-navy-900">Code only</p>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Hidden everywhere. For influencers &amp; private promos — shoppers must type the code.
+                </p>
+              </button>
+            </div>
+            {!formData.showOnStorefront ? (
+              <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
+                This code will <span className="font-semibold">not</span> appear in the visit
+                popup, cart offers, checkout offers, or shop “has offer” filters. Anyone who
+                knows the code can still apply it at cart/checkout. Share it only with the
+                people you intend (e.g. an influencer’s audience).
+              </div>
+            ) : null}
           </div>
+
+          {/* Banner upload — crop matches visit popup (3:4); useful mainly for public */}
+          {formData.showOnStorefront ? (
+            <div>
+              <ImageUploader
+                maxFiles={1}
+                aspectRatio="3:4"
+                maxSizeMB={UPLOAD_MAX_MB.coupon}
+                label="Offer image (visit popup)"
+                hint="Crop frame = what shoppers see on the visit popup. Keep important content inside the box."
+                existingImages={imageFile ? [] : existingImageUrl ? [existingImageUrl] : []}
+                onRemoveExisting={removeImage}
+                onChange={onPickImage}
+              />
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
@@ -420,26 +472,15 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
             placeholder="Shown under the offer"
           />
 
-          <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="rounded border-gray-300 text-navy-900"
-              />
-              Active
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.showOnStorefront}
-                onChange={(e) => setFormData({ ...formData, showOnStorefront: e.target.checked })}
-                className="rounded border-gray-300 text-navy-900"
-              />
-              Show on visit popup
-            </label>
-          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={formData.isActive}
+              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+              className="rounded border-gray-300 text-navy-900"
+            />
+            Active (can be applied when rules pass)
+          </label>
         </form>
 
         <div className="flex gap-2 p-4 border-t border-gray-100 bg-white shrink-0">

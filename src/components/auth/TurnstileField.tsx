@@ -7,7 +7,10 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import { TURNSTILE_ACTION, TURNSTILE_SITE_KEY } from "@/lib/turnstile";
+import {
+  TURNSTILE_ACTION,
+  resolveTurnstileSiteKey,
+} from "@/lib/turnstile";
 
 declare global {
   interface Window {
@@ -18,11 +21,10 @@ declare global {
           sitekey: string;
           callback: (token: string) => void;
           "expired-callback"?: () => void;
-          "error-callback"?: () => void;
+          "error-callback"?: (errorCode?: string) => void;
           theme?: "light" | "dark" | "auto";
           action?: string;
           size?: "normal" | "compact" | "flexible";
-          /** Defer PoW until execute() — avoids mobile main-thread freeze on modal open. */
           execution?: "render" | "execute";
           appearance?: "always" | "execute" | "interaction-only";
         },
@@ -35,12 +37,7 @@ declare global {
 }
 
 export type TurnstileFieldHandle = {
-  /** Clear token + re-challenge (tokens are single-use). */
   reset: () => void;
-  /**
-   * Run the deferred challenge and resolve with a fresh token.
-   * Safe to call when a token is already ready (returns it).
-   */
   ensureToken: () => Promise<string>;
 };
 
@@ -50,12 +47,76 @@ type Props = {
 };
 
 type Pending = {
+  promise: Promise<string>;
   resolve: (token: string) => void;
   reject: (err: Error) => void;
   timer: number;
 };
 
-/** Drop orphaned Cloudflare challenge iframes that can block scroll after modal close. */
+export class TurnstileAbortError extends Error {
+  readonly code = "TURNSTILE_ABORT" as const;
+  constructor(message = "Security check interrupted") {
+    super(message);
+    this.name = "TurnstileAbortError";
+  }
+}
+
+export function isTurnstileAbortError(err: unknown): boolean {
+  return (
+    err instanceof TurnstileAbortError ||
+    (err instanceof Error &&
+      (err.name === "TurnstileAbortError" ||
+        /unmounted|interrupted|reset|still loading/i.test(err.message)))
+  );
+}
+
+const SCRIPT_ID = "cf-turnstile-script";
+const SCRIPT_SRC =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+let scriptPromise: Promise<void> | null = null;
+
+function loadTurnstileScript(): Promise<void> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Turnstile requires a browser"));
+  }
+  if (window.turnstile) return Promise.resolve();
+  if (scriptPromise) return scriptPromise;
+
+  scriptPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) {
+      if (window.turnstile) {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => {
+          scriptPromise = null;
+          reject(new Error("Security check failed to load"));
+        },
+        { once: true },
+      );
+      return;
+    }
+
+    const s = document.createElement("script");
+    s.id = SCRIPT_ID;
+    s.src = SCRIPT_SRC;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => {
+      scriptPromise = null;
+      reject(new Error("Security check failed to load"));
+    };
+    document.head.appendChild(s);
+  });
+
+  return scriptPromise;
+}
+
 function scrubOrphanTurnstileOverlays(keepHost: HTMLElement | null) {
   if (typeof document === "undefined") return;
   document
@@ -64,37 +125,45 @@ function scrubOrphanTurnstileOverlays(keepHost: HTMLElement | null) {
     )
     .forEach((iframe) => {
       if (keepHost && keepHost.contains(iframe)) return;
-      // Full-viewport challenge shells left after widget.remove()
       const parent = iframe.parentElement;
       if (!parent) return;
       const style = window.getComputedStyle(parent);
-      const isOverlay =
-        style.position === "fixed" ||
-        parent.getAttribute("data-callback") != null ||
-        /challenge|turnstile/i.test(parent.className);
-      if (isOverlay || !keepHost) {
-        try {
-          parent.remove();
-        } catch {
-          /* ignore */
-        }
+      const isFixedOverlay =
+        style.position === "fixed" &&
+        (parent.getAttribute("data-callback") != null ||
+          /challenge|turnstile/i.test(parent.className) ||
+          (style.inset === "0px" &&
+            Number.parseFloat(style.zIndex || "0") >= 1000));
+      if (!isFixedOverlay) return;
+      try {
+        parent.remove();
+      } catch {
+        /* ignore */
       }
     });
 }
 
 /**
- * Cloudflare Turnstile — House of Rani widget.
- * Uses deferred execution so opening login/signup does not freeze mobile scroll.
- * Pass returned token as `turnstileToken` on auth API calls.
+ * Cloudflare Turnstile — deferred execute so auth modal open stays smooth on mobile.
  */
 export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
   function TurnstileField({ onToken, className }, ref) {
     const hostRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
+    const renderLockRef = useRef<Promise<string> | null>(null);
     const tokenRef = useRef<string | undefined>(undefined);
     const pendingRef = useRef<Pending | null>(null);
+    const mountedRef = useRef(true);
+    const everExecutedRef = useRef(false);
+    const retryCountRef = useRef(0);
     const onTokenRef = useRef(onToken);
     onTokenRef.current = onToken;
+
+    const clearPendingTimer = useCallback(() => {
+      const pending = pendingRef.current;
+      if (!pending) return;
+      window.clearTimeout(pending.timer);
+    }, []);
 
     const settleToken = useCallback((token: string | undefined) => {
       tokenRef.current = token;
@@ -103,19 +172,80 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
       if (!pending) return;
       pendingRef.current = null;
       window.clearTimeout(pending.timer);
-      if (token?.trim()) pending.resolve(token.trim());
-      else pending.reject(new Error("Turnstile challenge failed"));
+      if (token?.trim()) {
+        retryCountRef.current = 0;
+        pending.resolve(token.trim());
+      } else {
+        pending.reject(
+          new Error("Security check failed. Please try again."),
+        );
+      }
     }, []);
 
-    const loadScript = useCallback(() => {
-      if (document.getElementById("cf-turnstile-script")) return;
-      const s = document.createElement("script");
-      s.id = "cf-turnstile-script";
-      s.src =
-        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-      s.async = true;
-      document.head.appendChild(s);
-    }, []);
+    const renderWidget = useCallback(async () => {
+      if (widgetIdRef.current) return widgetIdRef.current;
+      if (renderLockRef.current) return renderLockRef.current;
+
+      const sitekey = resolveTurnstileSiteKey();
+
+      const lock = (async () => {
+        await loadTurnstileScript();
+        if (!mountedRef.current || !hostRef.current || !window.turnstile) {
+          throw new TurnstileAbortError();
+        }
+        if (widgetIdRef.current) return widgetIdRef.current;
+
+        // Clear host before render (Strict Mode can leave leftover nodes).
+        hostRef.current.replaceChildren();
+
+        widgetIdRef.current = window.turnstile.render(hostRef.current, {
+          sitekey,
+          theme: "auto",
+          action: TURNSTILE_ACTION,
+          // Explicit size required with execution:"execute" (CF 2026 check).
+          size: "normal",
+          execution: "execute",
+          appearance: "interaction-only",
+          callback: (t) => settleToken(t),
+          "expired-callback": () => {
+            tokenRef.current = undefined;
+            onTokenRef.current(undefined);
+          },
+          "error-callback": () => {
+            if (
+              mountedRef.current &&
+              widgetIdRef.current &&
+              window.turnstile &&
+              pendingRef.current &&
+              retryCountRef.current < 1
+            ) {
+              retryCountRef.current += 1;
+              try {
+                // Only reset after a prior execute — reset-before-first-run
+                // surfaces Cloudflare's "Turnstile challenge failed" UI.
+                if (everExecutedRef.current) {
+                  window.turnstile.reset(widgetIdRef.current);
+                }
+                everExecutedRef.current = true;
+                window.turnstile.execute(widgetIdRef.current);
+                return;
+              } catch {
+                /* fall through */
+              }
+            }
+            settleToken(undefined);
+          },
+        });
+        return widgetIdRef.current;
+      })();
+
+      renderLockRef.current = lock;
+      try {
+        return await lock;
+      } finally {
+        if (renderLockRef.current === lock) renderLockRef.current = null;
+      }
+    }, [settleToken]);
 
     useImperativeHandle(
       ref,
@@ -123,79 +253,112 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
         reset: () => {
           tokenRef.current = undefined;
           onTokenRef.current(undefined);
+          retryCountRef.current = 0;
           if (pendingRef.current) {
-            window.clearTimeout(pendingRef.current.timer);
-            pendingRef.current.reject(new Error("Turnstile reset"));
+            clearPendingTimer();
+            pendingRef.current.reject(
+              new TurnstileAbortError("Security check reset"),
+            );
             pendingRef.current = null;
           }
-          if (widgetIdRef.current && window.turnstile) {
-            window.turnstile.reset(widgetIdRef.current);
+          // Soft-reset only after the widget has run once.
+          if (
+            everExecutedRef.current &&
+            widgetIdRef.current &&
+            window.turnstile
+          ) {
+            try {
+              window.turnstile.reset(widgetIdRef.current);
+            } catch {
+              /* ignore */
+            }
           }
         },
         ensureToken: () => {
           const existing = tokenRef.current?.trim();
           if (existing) return Promise.resolve(existing);
 
-          if (!widgetIdRef.current || !window.turnstile) {
-            return Promise.reject(new Error("Security check is still loading"));
+          if (pendingRef.current) return pendingRef.current.promise;
+
+          if (!mountedRef.current) {
+            return Promise.reject(new TurnstileAbortError());
           }
 
-          return new Promise<string>((resolve, reject) => {
-            if (pendingRef.current) {
-              window.clearTimeout(pendingRef.current.timer);
-              pendingRef.current.reject(new Error("Turnstile superseded"));
+          let resolve!: (token: string) => void;
+          let reject!: (err: Error) => void;
+          const promise = new Promise<string>((res, rej) => {
+            resolve = res;
+            reject = rej;
+          });
+
+          const timer = window.setTimeout(() => {
+            if (pendingRef.current?.promise === promise) {
+              pendingRef.current = null;
             }
-            const timer = window.setTimeout(() => {
-              pendingRef.current = null;
-              reject(new Error("Security check timed out. Please try again."));
-            }, 45_000);
-            pendingRef.current = { resolve, reject, timer };
+            reject(
+              new Error("Security check timed out. Please try again."),
+            );
+          }, 45_000);
+
+          pendingRef.current = { promise, resolve, reject, timer };
+
+          void (async () => {
             try {
-              window.turnstile!.execute(widgetIdRef.current!);
+              const widgetId = await renderWidget();
+              if (!mountedRef.current || !window.turnstile) {
+                throw new TurnstileAbortError();
+              }
+              // Fresh token: reset only when re-running after a prior execute.
+              // Calling reset() before the first execute causes CF "challenge failed".
+              if (everExecutedRef.current) {
+                try {
+                  window.turnstile.reset(widgetId);
+                } catch {
+                  /* ignore */
+                }
+              }
+              everExecutedRef.current = true;
+              window.turnstile.execute(widgetId);
             } catch (err) {
-              pendingRef.current = null;
-              window.clearTimeout(timer);
+              if (pendingRef.current?.promise === promise) {
+                clearPendingTimer();
+                pendingRef.current = null;
+              }
               reject(
-                err instanceof Error ? err : new Error("Security check failed"),
+                err instanceof Error ?
+                  err
+                : new Error("Security check failed. Please try again."),
               );
             }
-          });
+          })();
+
+          return promise;
         },
       }),
-      [],
+      [clearPendingTimer, renderWidget],
     );
 
     useEffect(() => {
-      loadScript();
+      mountedRef.current = true;
       let cancelled = false;
-      const id = window.setInterval(() => {
-        if (cancelled || !hostRef.current || !window.turnstile || widgetIdRef.current) {
-          return;
+
+      void (async () => {
+        try {
+          await renderWidget();
+        } catch {
+          if (!cancelled) {
+            /* ensureToken will retry */
+          }
         }
-        widgetIdRef.current = window.turnstile.render(hostRef.current, {
-          sitekey: TURNSTILE_SITE_KEY,
-          theme: "auto",
-          action: TURNSTILE_ACTION,
-          size: "flexible",
-          // Defer PoW until submit — prevents mobile freeze when auth modal opens.
-          execution: "execute",
-          appearance: "interaction-only",
-          callback: (t) => settleToken(t),
-          "expired-callback": () => settleToken(undefined),
-          "error-callback": () => settleToken(undefined),
-        });
-        hostRef.current.classList.add("cf-turnstile");
-        hostRef.current.setAttribute("data-sitekey", TURNSTILE_SITE_KEY);
-        hostRef.current.setAttribute("data-action", TURNSTILE_ACTION);
-        window.clearInterval(id);
-      }, 200);
+      })();
 
       return () => {
         cancelled = true;
-        window.clearInterval(id);
+        mountedRef.current = false;
+        everExecutedRef.current = false;
         if (pendingRef.current) {
-          window.clearTimeout(pendingRef.current.timer);
-          pendingRef.current.reject(new Error("Turnstile unmounted"));
+          clearPendingTimer();
+          pendingRef.current.reject(new TurnstileAbortError());
           pendingRef.current = null;
         }
         const host = hostRef.current;
@@ -207,9 +370,9 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
           }
           widgetIdRef.current = null;
         }
-        scrubOrphanTurnstileOverlays(host);
+        window.setTimeout(() => scrubOrphanTurnstileOverlays(host), 0);
       };
-    }, [loadScript, settleToken]);
+    }, [clearPendingTimer, renderWidget]);
 
     return (
       <div

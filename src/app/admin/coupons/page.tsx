@@ -62,7 +62,8 @@ export default function AdminCouponsPage() {
           <p className="text-[11px] uppercase tracking-[0.2em] text-gray-400 font-semibold">Offers</p>
           <h1 className="text-2xl font-serif font-semibold text-navy-900 mt-0.5">Coupons</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Create offers with a banner image — they show on the homepage for visitors to copy.
+            Public offers show on the storefront. Code-only coupons stay hidden for influencers
+            &amp; private promos — shoppers must type the code.
           </p>
         </div>
         <Button
@@ -139,12 +140,23 @@ export default function AdminCouponsPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{formatDate(coupon.expiryDate)}</td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant={isExpired ? 'error' : coupon.isActive ? 'success' : 'warning'}
-                          className="text-xs"
-                        >
-                          {isExpired ? 'Expired' : coupon.isActive ? 'Active' : 'Off'}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge
+                            variant={isExpired ? 'error' : coupon.isActive ? 'success' : 'warning'}
+                            className="text-xs"
+                          >
+                            {isExpired ? 'Expired' : coupon.isActive ? 'Active' : 'Off'}
+                          </Badge>
+                          {coupon.showOnStorefront === false ? (
+                            <Badge variant="secondary" className="text-xs">
+                              Code only
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-gray-500">
+                              Public
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">

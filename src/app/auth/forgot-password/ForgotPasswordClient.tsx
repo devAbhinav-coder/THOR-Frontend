@@ -88,10 +88,6 @@ export default function ForgotPasswordClient({
   const turnstile = useTurnstileToken();
   const router = useRouter();
 
-  useEffect(() => {
-    turnstile.setToken(undefined);
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const stepIndex = step === 'email' ? 0 : step === 'otp' ? 1 : 2;
 
   const navigateAfterAuth = () => {
@@ -185,157 +181,149 @@ export default function ForgotPasswordClient({
     });
   };
 
-  if (step === 'reset') {
-    return (
-      <AuthFormRoot embedded={embedded}>
-        {embedded ? <AuthStepBar total={3} current={2} /> : null}
-        <AuthFormHeader
-          embedded={embedded}
-          title="Set a new password"
-          subtitle={`For ${email}`}
-          icon={embedded ? undefined : <KeyRound className="h-5 w-5" />}
-        />
-        <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
-          <AuthField
-            embedded={embedded}
-            {...resetForm.register('newPassword')}
-            type={showPwd ? 'text' : 'password'}
-            label="New password"
-            error={resetForm.formState.errors.newPassword?.message}
-            autoComplete="new-password"
-            suffix={
-              <button
-                type="button"
-                onClick={() => setShowPwd(!showPwd)}
-                className="p-1 text-gray-400 transition-colors hover:text-navy-900"
-                aria-label={showPwd ? 'Hide password' : 'Show password'}
-              >
-                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            }
-          />
-          <PasswordStrengthMeter password={newPasswordWatch || ''} />
-          <AuthField
-            embedded={embedded}
-            {...resetForm.register('confirmPassword')}
-            type="password"
-            label="Confirm new password"
-            error={resetForm.formState.errors.confirmPassword?.message}
-            autoComplete="new-password"
-          />
-          <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
-          <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
-            Update password & sign in
-          </Button>
-          <AuthBackButton embedded={embedded} onClick={() => setStep('otp')}>
-            <ArrowLeft className="h-4 w-4" /> Back to code entry
-          </AuthBackButton>
-        </form>
-      </AuthFormRoot>
-    );
-  }
-
-  if (step === 'otp') {
-    return (
-      <AuthFormRoot embedded={embedded}>
-        {embedded ? <AuthStepBar total={3} current={1} /> : null}
-        <AuthFormHeader
-          embedded={embedded}
-          title="Enter verification code"
-          subtitle={`Sent to ${email}`}
-        />
-        <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
-          <div className="space-y-2 pb-2">
-            <label className={authFieldLabel(embedded)}>6-digit code</label>
-            <Controller
-              control={otpForm.control}
-              name="otp"
-              render={({ field }) => (
-                <InputOTP 
-                  maxLength={6} 
-                  {...field}
-                >
-                  <InputOTPGroup className="w-full justify-between gap-1 sm:gap-2">
-                    <InputOTPSlot index={0} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                    <InputOTPSlot index={1} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                    <InputOTPSlot index={2} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                    <InputOTPSlot index={3} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                    <InputOTPSlot index={4} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                    <InputOTPSlot index={5} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                  </InputOTPGroup>
-                </InputOTP>
-              )}
-            />
-            {otpForm.formState.errors.otp?.message && (
-              <p className="text-xs text-red-600">{otpForm.formState.errors.otp.message}</p>
-            )}
-          </div>
-          <OtpResendCooldown
-            email={email}
-            type="forgot_password"
-            resetKey={resendResetKey}
-            initialSeconds={resendCooldownSec}
-            consumeTurnstile={turnstile.consumeOrToast}
-          />
-          <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
-          {verifyCooldownSec > 0 && (
-            <p className="text-center text-sm text-amber-700">
-              Too many attempts. Try again in {verifyCooldownSec}s.
-            </p>
-          )}
-          <Button
-            type="submit"
-            variant="brand"
-            size="lg"
-            className={authPrimaryBtn()}
-            loading={loading}
-            disabled={verifyCooldownSec > 0}
-          >
-            {verifyCooldownSec > 0 ? `Verify in ${verifyCooldownSec}s` : 'Verify code'}
-          </Button>
-          <AuthBackButton embedded={embedded} onClick={() => setStep('email')}>
-            <ArrowLeft className="h-4 w-4" /> Use a different email
-          </AuthBackButton>
-        </form>
-      </AuthFormRoot>
-    );
-  }
-
   return (
     <AuthFormRoot embedded={embedded}>
-      {embedded ? <AuthStepBar total={3} current={stepIndex} /> : null}
-      {!embedded && (
-        <AuthFormHeader
-          embedded={embedded}
-          title="Reset your password"
-          subtitle="We will email you a secure 6-digit code"
-        />
-      )}
-      <form onSubmit={emailForm.handleSubmit(onSendCode)} className="space-y-4">
-        <AuthField
-          embedded={embedded}
-          {...emailForm.register('email')}
-          type="email"
-          label="Email address"
-          placeholder="your@email.com"
-          error={emailForm.formState.errors.email?.message}
-          autoComplete="email"
-        />
-        <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
-        <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
-          Send code
-        </Button>
-      </form>
-      <AuthFormFooter embedded={embedded}>
-        <AuthNavLink
-          embedded={embedded}
-          onNavigate={onBackToLogin}
-          href="/auth/login"
-          className={`inline-flex items-center gap-1 ${authLinkText(embedded)}`}
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to sign in
-        </AuthNavLink>
-      </AuthFormFooter>
+      {step === 'reset' ?
+        <>
+          {embedded ? <AuthStepBar total={3} current={2} /> : null}
+          <AuthFormHeader
+            embedded={embedded}
+            title="Set a new password"
+            subtitle={`For ${email}`}
+            icon={embedded ? undefined : <KeyRound className="h-5 w-5" />}
+          />
+          <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
+            <AuthField
+              embedded={embedded}
+              {...resetForm.register('newPassword')}
+              type={showPwd ? 'text' : 'password'}
+              label="New password"
+              error={resetForm.formState.errors.newPassword?.message}
+              autoComplete="new-password"
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="p-1 text-gray-400 transition-colors hover:text-navy-900"
+                  aria-label={showPwd ? 'Hide password' : 'Show password'}
+                >
+                  {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
+            />
+            <PasswordStrengthMeter password={newPasswordWatch || ''} />
+            <AuthField
+              embedded={embedded}
+              {...resetForm.register('confirmPassword')}
+              type="password"
+              label="Confirm new password"
+              error={resetForm.formState.errors.confirmPassword?.message}
+              autoComplete="new-password"
+            />
+            <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
+              Update password & sign in
+            </Button>
+            <AuthBackButton embedded={embedded} onClick={() => setStep('otp')}>
+              <ArrowLeft className="h-4 w-4" /> Back to code entry
+            </AuthBackButton>
+          </form>
+        </>
+      : step === 'otp' ?
+        <>
+          {embedded ? <AuthStepBar total={3} current={1} /> : null}
+          <AuthFormHeader
+            embedded={embedded}
+            title="Enter verification code"
+            subtitle={`Sent to ${email}`}
+          />
+          <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
+            <div className="space-y-2 pb-2">
+              <label className={authFieldLabel(embedded)}>6-digit code</label>
+              <Controller
+                control={otpForm.control}
+                name="otp"
+                render={({ field }) => (
+                  <InputOTP maxLength={6} {...field}>
+                    <InputOTPGroup className="w-full justify-between gap-1 sm:gap-2">
+                      <InputOTPSlot index={0} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={1} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={2} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={3} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={4} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPSlot index={5} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                )}
+              />
+              {otpForm.formState.errors.otp?.message && (
+                <p className="text-xs text-red-600">{otpForm.formState.errors.otp.message}</p>
+              )}
+            </div>
+            <OtpResendCooldown
+              email={email}
+              type="forgot_password"
+              resetKey={resendResetKey}
+              initialSeconds={resendCooldownSec}
+              consumeTurnstile={turnstile.consumeOrToast}
+            />
+            {verifyCooldownSec > 0 && (
+              <p className="text-center text-sm text-amber-700">
+                Too many attempts. Try again in {verifyCooldownSec}s.
+              </p>
+            )}
+            <Button
+              type="submit"
+              variant="brand"
+              size="lg"
+              className={authPrimaryBtn()}
+              loading={loading}
+              disabled={verifyCooldownSec > 0}
+            >
+              {verifyCooldownSec > 0 ? `Verify in ${verifyCooldownSec}s` : 'Verify code'}
+            </Button>
+            <AuthBackButton embedded={embedded} onClick={() => setStep('email')}>
+              <ArrowLeft className="h-4 w-4" /> Use a different email
+            </AuthBackButton>
+          </form>
+        </>
+      : <>
+          {embedded ? <AuthStepBar total={3} current={stepIndex} /> : null}
+          {!embedded && (
+            <AuthFormHeader
+              embedded={embedded}
+              title="Reset your password"
+              subtitle="We will email you a secure 6-digit code"
+            />
+          )}
+          <form onSubmit={emailForm.handleSubmit(onSendCode)} className="space-y-4">
+            <AuthField
+              embedded={embedded}
+              {...emailForm.register('email')}
+              type="email"
+              label="Email address"
+              placeholder="your@email.com"
+              error={emailForm.formState.errors.email?.message}
+              autoComplete="email"
+            />
+            <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={loading}>
+              Send code
+            </Button>
+          </form>
+          <AuthFormFooter embedded={embedded}>
+            <AuthNavLink
+              embedded={embedded}
+              onNavigate={onBackToLogin}
+              href="/auth/login"
+              className={`inline-flex items-center gap-1 ${authLinkText(embedded)}`}
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to sign in
+            </AuthNavLink>
+          </AuthFormFooter>
+        </>
+      }
+
+      {/* One stable widget for the whole reset flow — never remount on step change. */}
+      <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
     </AuthFormRoot>
   );
 }
