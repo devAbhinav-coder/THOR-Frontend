@@ -70,49 +70,73 @@ export default function ConnectClient() {
         delay: 1,
       });
 
-      // Background mesh pulsing
-      gsap.fromTo('.stagger-bg', 
-        { scale: 0.8, opacity: 0 },
+      // Dynamic Ambient Glow
+      gsap.fromTo('.ambient-glow', 
+        { opacity: 0.3, scale: 0.9 },
         {
-          scale: 1,
-          opacity: 1,
-          duration: 2,
-          ease: 'power2.out',
+          opacity: 0.7,
+          scale: 1.1,
+          duration: 8,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          stagger: 4,
         }
       );
-      gsap.to('.orb-1', {
-        x: 'random(-50, 50)',
-        y: 'random(-50, 50)',
-        repeat: -1,
-        yoyo: true,
-        duration: 8,
-        ease: 'sine.inOut',
-      });
-      gsap.to('.orb-2', {
-        x: 'random(-60, 60)',
-        y: 'random(-60, 60)',
-        repeat: -1,
-        yoyo: true,
-        duration: 10,
-        ease: 'sine.inOut',
-      });
+
+      // Gold Dust Particle Initialization and Animation
+      if (typeof window !== 'undefined') {
+        gsap.utils.toArray('.particle').forEach((p) => {
+          gsap.set(p as Element, {
+            x: 'random(0, ' + window.innerWidth + ')',
+            y: 'random(0, ' + window.innerHeight + ')',
+            width: 'random(1.5, 4)',
+            height: 'random(1.5, 4)',
+            opacity: 'random(0.15, 0.7)',
+            boxShadow: '0 0 12px 1px rgba(197, 160, 89, 0.4)',
+          });
+
+          gsap.to(p as Element, {
+            y: '-=random(100, 200)',
+            x: '+=random(-40, 40)',
+            opacity: 'random(0, 0.3)',
+            duration: 'random(8, 16)',
+            repeat: -1,
+            yoyo: true,
+            ease: 'sine.inOut',
+            delay: 'random(0, 5)',
+          });
+        });
+      }
       
     }, containerRef);
     return () => ctx.revert();
   }, []);
 
   return (
-    <div ref={containerRef} className="relative min-h-screen bg-[#060c18] flex flex-col items-center justify-center overflow-hidden py-12 px-5 sm:px-6">
-      {/* Dynamic Background Mesh Effect */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="stagger-bg orb-1 absolute top-[-10%] left-[-10%] w-[80vw] sm:w-[60vw] h-[80vw] sm:h-[60vw] rounded-full bg-brand-800/20 blur-[120px] mix-blend-screen" />
-        <div className="stagger-bg orb-2 absolute bottom-[-10%] right-[-10%] w-[90vw] sm:w-[70vw] h-[90vw] sm:h-[70vw] rounded-full bg-amber-600/15 blur-[130px] mix-blend-screen" />
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay" />
+    <div ref={containerRef} className="relative min-h-screen bg-[#030712] flex flex-col items-center justify-center overflow-hidden py-8 px-5 sm:px-6">
+      {/* Dynamic Gold Dust & Aurora Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-gradient-to-b from-[#030712] via-[#060c18] to-[#030712]">
+        {/* Subtle slow moving ambient glow */}
+        <div className="ambient-glow absolute top-[-10%] left-[-20%] w-[140%] h-[60%] bg-[#c5a059]/10 blur-[130px] mix-blend-screen rounded-[100%]" />
+        <div className="ambient-glow absolute bottom-[-10%] right-[-20%] w-[140%] h-[60%] bg-brand-800/10 blur-[130px] mix-blend-screen rounded-[100%]" />
+
+        {/* Floating Gold Particles (seeded natively by GSAP) */}
+        <div className="absolute inset-0 z-10 w-full h-full">
+          {Array.from({ length: 45 }).map((_, i) => (
+            <div 
+              key={i} 
+              className="particle absolute rounded-full bg-[#c5a059] opacity-0" 
+            />
+          ))}
+        </div>
+
+        <div className="absolute inset-0 opacity-[0.04] mix-blend-overlay z-20" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
       </div>
 
       <div className="relative z-10 w-full max-w-[420px] mx-auto flex flex-col items-center">
         {/* Logo */}
-        <div className="stagger-item floating-logo mb-6 md:mb-8 relative rounded-[2rem] border border-white/5 bg-white/[0.03] backdrop-blur-xl flex items-center justify-center py-5 px-8 shadow-[0_8px_40px_rgba(197,160,89,0.12)]">
+        <div className="stagger-item opacity-0 floating-logo mb-5 md:mb-6 relative rounded-[2rem] border border-white/5 bg-white/[0.03] backdrop-blur-xl flex items-center justify-center py-5 px-8 shadow-[0_8px_40px_rgba(197,160,89,0.12)]">
           <Image
             src="/logo.png"
             alt="The House of Rani"
@@ -124,18 +148,18 @@ export default function ConnectClient() {
         </div>
 
         {/* Header */}
-        <h1 className="stagger-item text-3xl md:text-[2rem] font-serif font-bold text-white text-center mb-1.5 tracking-wide drop-shadow-sm">
+        <h1 className="stagger-item opacity-0 text-3xl md:text-[2rem] font-serif font-bold text-white text-center mb-1.5 tracking-wide drop-shadow-sm">
           THE HOUSE OF RANI
         </h1>
-        <p className="stagger-item text-brand-300/90 text-sm md:text-[15px] mb-10 text-center font-medium tracking-[0.2em] uppercase">
+        <p className="stagger-item opacity-0 text-brand-300/90 text-sm md:text-[15px] mb-6 text-center font-medium tracking-[0.2em] uppercase">
           Handcrafted Luxury
         </p>
 
         {/* Primary CTA */}
-        <div className="w-full space-y-5">
+        <div className="w-full space-y-4">
           <Link
             href="/"
-            className="stagger-item group relative flex items-center justify-between w-full p-4 md:p-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand-500/40 backdrop-blur-xl transition-all duration-300 overflow-hidden shadow-xl shadow-black/20"
+            className="stagger-item opacity-0 group relative flex items-center justify-between w-full p-4 md:p-5 rounded-2xl bg-white/5 hover:bg-white/10 hover:-translate-y-1 border border-white/10 hover:border-brand-500/40 backdrop-blur-xl transition-all duration-300 overflow-hidden shadow-xl shadow-black/20"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-brand-600/0 via-brand-600/10 to-brand-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             <div className="flex items-center gap-3.5 relative z-10">
@@ -151,7 +175,7 @@ export default function ConnectClient() {
           </Link>
 
           {/* Social Connect Divider */}
-          <div className="stagger-item w-full flex items-center justify-center py-3">
+          <div className="stagger-item opacity-0 w-full flex items-center justify-center py-3">
             <span className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/15 to-transparent" />
             <span className="px-4 text-[11px] font-semibold text-white/40 uppercase tracking-[0.15em] whitespace-nowrap">Connect With Us</span>
             <span className="h-[1px] w-full bg-gradient-to-r from-white/15 via-white/15 to-transparent" />
@@ -167,7 +191,7 @@ export default function ConnectClient() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="stagger-item group flex items-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 backdrop-blur-md transition-all duration-300 shadow-sm"
+                  className="stagger-item opacity-0 group flex items-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 hover:-translate-y-1 border border-white/5 hover:border-white/15 backdrop-blur-md transition-all duration-300 shadow-sm"
                 >
                   <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${link.color} flex items-center justify-center text-white shadow-lg group-hover:scale-105 group-hover:shadow-xl transition-all duration-300`}>
                     <Icon className="w-5 h-5" />
@@ -184,14 +208,14 @@ export default function ConnectClient() {
           </div>
 
           {/* Support Divider */}
-          <div className="stagger-item w-full flex items-center justify-center py-3 pt-5">
+          <div className="stagger-item opacity-0 w-full flex items-center justify-center py-2 pt-4">
             <span className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/15 to-transparent" />
             <span className="px-4 text-[11px] font-semibold text-white/40 uppercase tracking-[0.15em] whitespace-nowrap">Need Help?</span>
             <span className="h-[1px] w-full bg-gradient-to-r from-white/15 via-white/15 to-transparent" />
           </div>
 
           {/* Support Links Grid */}
-          <div className="grid grid-cols-2 gap-3 pb-8">
+          <div className="grid grid-cols-2 gap-3 pb-4">
             {supportLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -200,7 +224,7 @@ export default function ConnectClient() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="stagger-item group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 backdrop-blur-md transition-all duration-300 shadow-sm"
+                  className="stagger-item opacity-0 group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 backdrop-blur-md transition-all duration-300 shadow-sm"
                 >
                   <div className={`w-10 h-10 mb-3 rounded-full bg-gradient-to-br ${link.color} flex items-center justify-center text-white shadow-md group-hover:-translate-y-1 transition-transform duration-300`}>
                     <Icon className="w-[18px] h-[18px]" />
