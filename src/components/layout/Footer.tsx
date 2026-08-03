@@ -19,8 +19,10 @@ import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { MegaMenuCategory, StorefrontSettings } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
 import { resolveFooterCuratorialLinks } from "@/lib/footerQuickLinks";
-import FooterContactDialog from "@/components/layout/FooterContactDialog";
+import dynamic from "next/dynamic";
 import { requestOpenRaniCare } from "@/components/support/rani-care/chatStorage";
+
+const FooterContactDialog = dynamic(() => import("@/components/layout/FooterContactDialog"), { ssr: false });
 import { cn } from "@/lib/utils";
 import {
   footerAccentLine,

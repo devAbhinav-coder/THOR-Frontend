@@ -33,12 +33,14 @@ import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
-import NavProfileDropdown from "@/components/layout/NavProfileDropdown";
-import MegaMenu from "@/components/layout/MegaMenu";
-import MobileMegaMenu from "@/components/layout/MobileMegaMenu";
+import dynamic from "next/dynamic";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
-import StoreSearchAutocomplete from "@/components/search/StoreSearchAutocomplete";
-import VoiceSearchOverlay from "@/components/search/VoiceSearchOverlay";
+
+const NavProfileDropdown = dynamic(() => import("@/components/layout/NavProfileDropdown"), { ssr: false });
+const MegaMenu = dynamic(() => import("@/components/layout/MegaMenu"));
+const MobileMegaMenu = dynamic(() => import("@/components/layout/MobileMegaMenu"));
+const StoreSearchAutocomplete = dynamic(() => import("@/components/search/StoreSearchAutocomplete"));
+const VoiceSearchOverlay = dynamic(() => import("@/components/search/VoiceSearchOverlay"), { ssr: false });
 import {
   useStoreNavActive,
   type StoreNavActive,
