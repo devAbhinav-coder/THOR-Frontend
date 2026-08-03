@@ -8,8 +8,8 @@ import { BRAND_NAME } from "@/lib/brandSeo";
 import { aboutPageStyles } from "@/lib/aboutPageStyles";
 import type { AboutVisualImage } from "@/components/about/aboutPageTypes";
 
-const INSTAGRAM_URL = "https://www.instagram.com/housofrani";
-const INSTAGRAM_HANDLE = "@housofrani";
+const INSTAGRAM_URL = "https://www.instagram.com/thehouseofrani_";
+const INSTAGRAM_HANDLE = "@thehouseofrani_";
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
 const SUPPORT_PHONE = "+91 83403 11033";
 

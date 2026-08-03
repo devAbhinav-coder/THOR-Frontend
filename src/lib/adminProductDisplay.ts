@@ -9,5 +9,5 @@ export function adminProductListThumbnail(product: Product): string {
     const url = resolveShopCardImage(product, color);
     if (url) return url;
   }
-  return product.images?.[0]?.url?.trim() || "/placeholder.jpg";
+  return product.images?.[0]?.url?.trim() || "/favicon/web-app-manifest-512x512.png";
 }

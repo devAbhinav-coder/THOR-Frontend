@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { cn } from '@/lib/utils';
 import { buildBrandedQrDataUrl, downloadDataUrl, shareInvite } from '@/lib/brandedQr';
+import { QRCode } from 'react-qrcode-logo';
 
 type ProductHit = {
   _id: string;
@@ -31,6 +32,26 @@ export default function AdminTestimonialsPage() {
   const [searching, setSearching] = useState(false);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [qrBusy, setQrBusy] = useState(false);
+
+  // Connect QR States
+  const [connectQrBg, setConnectQrBg] = useState('#ffffff');
+  const [connectQrFg, setConnectQrFg] = useState('#1a2744');
+  const [connectQrStyle, setConnectQrStyle] = useState<'squares' | 'dots'>('dots');
+  const [connectQrEyeRadius, setConnectQrEyeRadius] = useState(12);
+  const [connectQrShowLogo, setConnectQrShowLogo] = useState(true);
+
+  const downloadConnectQr = () => {
+    const canvas = document.getElementById('connect-qr-hq') as HTMLCanvasElement;
+    if (!canvas) return toast.error('QR canvas not found');
+    const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    const downloadLink = document.createElement("a");
+    downloadLink.href = pngUrl;
+    downloadLink.download = "TheHouseOfRani-Connect.png";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    toast.success('QR downloaded');
+  };
 
   const site = useMemo(() => getSiteUrl(), []);
   const storyUrl = `${site}/share-your-story`;
@@ -178,7 +199,7 @@ export default function AdminTestimonialsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Story-only */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Homepage story</p>
@@ -342,6 +363,84 @@ export default function AdminTestimonialsPage() {
           ) : (
             <p className="text-xs text-gray-400">Select a product to generate the link.</p>
           )}
+        </div>
+
+        {/* Connect Page QR Creator */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4 shadow-sm flex flex-col">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              Connect Links QR
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              Custom QR for your Connect page. Scan UI is fully premium.
+            </p>
+          </div>
+          
+          <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 rounded-xl p-3 border border-gray-100 min-h-[220px]">
+             <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+               <QRCode
+                 id="connect-qr-preview"
+                 value={`${site}/connect`}
+                 bgColor={connectQrBg}
+                 fgColor={connectQrFg}
+                 qrStyle={connectQrStyle}
+                 eyeRadius={connectQrEyeRadius}
+                 logoImage={connectQrShowLogo ? "/favicon/web-app-manifest-512x512.png" : undefined}
+                 logoWidth={40}
+                 logoPadding={2}
+                 removeQrCodeBehindLogo={true}
+                 size={180}
+                 ecLevel="H"
+               />
+               
+               <div className="hidden">
+                 <QRCode
+                   id="connect-qr-hq"
+                   value={`${site}/connect`}
+                   bgColor={connectQrBg}
+                   fgColor={connectQrFg}
+                   qrStyle={connectQrStyle}
+                   eyeRadius={connectQrEyeRadius}
+                   logoImage={connectQrShowLogo ? "/favicon/web-app-manifest-512x512.png" : undefined}
+                   logoWidth={220}
+                   logoPadding={8}
+                   removeQrCodeBehindLogo={true}
+                   size={1024}
+                   ecLevel="H"
+                   quietZone={40}
+                 />
+               </div>
+             </div>
+          </div>
+          
+          <div className="space-y-3 mt-auto">
+             <div className="grid grid-cols-2 gap-3">
+               <div>
+                  <label className="text-xs text-gray-500 font-medium mb-1 block">Dots Color</label>
+                  <input type="color" value={connectQrFg} onChange={(e) => setConnectQrFg(e.target.value)} className="w-full h-8 cursor-pointer rounded overflow-hidden" />
+               </div>
+               <div>
+                  <label className="text-xs text-gray-500 font-medium mb-1 block">Background</label>
+                  <input type="color" value={connectQrBg} onChange={(e) => setConnectQrBg(e.target.value)} className="w-full h-8 cursor-pointer rounded overflow-hidden" />
+               </div>
+             </div>
+             
+             <div className="grid grid-cols-3 gap-2">
+                <Button size="sm" variant={connectQrStyle === 'dots' ? 'brand' : 'outline'} className="text-[10px] h-7 px-1" onClick={() => setConnectQrStyle('dots')}>Dots</Button>
+                <Button size="sm" variant={connectQrStyle === 'squares' ? 'brand' : 'outline'} className="text-[10px] h-7 px-1" onClick={() => setConnectQrStyle('squares')}>Squares</Button>
+                <Button size="sm" variant={connectQrEyeRadius === 12 ? 'brand' : 'outline'} className="text-[10px] h-7 px-1" onClick={() => setConnectQrEyeRadius(connectQrEyeRadius === 12 ? 0 : 12)}>Round Eyes</Button>
+             </div>
+             
+             <label className="flex items-center gap-2 cursor-pointer mt-1">
+                <input type="checkbox" checked={connectQrShowLogo} onChange={(e) => setConnectQrShowLogo(e.target.checked)} className="rounded text-brand-600 focus:ring-brand-500" />
+                <span className="text-xs text-gray-600 font-medium">Center Icon (Favicon)</span>
+             </label>
+             
+             <Button variant="brand" className="w-full mt-2" onClick={downloadConnectQr}>
+                <Download className="w-4 h-4 mr-2" />
+                Download Custom QR
+             </Button>
+          </div>
         </div>
       </div>
 
