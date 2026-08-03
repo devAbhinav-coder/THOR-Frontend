@@ -143,8 +143,8 @@ export default function ConnectClient() {
                 <Globe className="w-5 h-5 stroke-[1.5]" />
               </div>
               <div className="flex flex-col">
-                <span className="font-semibold text-white tracking-wider text-[15px]">VISIT STORE</span>
-                <span className="text-xs text-white/50 font-medium">Continue to our website</span>
+                <span className="font-semibold text-white tracking-wider text-[15px]">VISIT OUR STORE</span>
+                <span className="text-xs text-white/50 font-medium">Explore our collection</span>
               </div>
             </div>
             <ArrowRight className="w-5 h-5 text-white/40 group-hover:text-brand-300 transition-transform duration-300 group-hover:translate-x-1.5 relative z-10" />
