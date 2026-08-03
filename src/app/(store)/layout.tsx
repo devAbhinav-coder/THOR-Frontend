@@ -8,7 +8,7 @@ import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
 import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
 import Navbar from "@/components/layout/Navbar";
 
-const OfferVisitPopup = dynamic(() => import("@/components/coupons/OfferVisitPopup"), { ssr: false });
+const OfferVisitPopup = dynamic(() => import("@/components/coupons/OfferVisitPopup"));
 
 export default async function StoreLayout({
   children,
