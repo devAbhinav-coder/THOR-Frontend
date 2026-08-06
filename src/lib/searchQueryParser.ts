@@ -655,7 +655,10 @@ export function mergeSearchIntentWithFilters(
   query: string;
   residualQuery: string;
   fabrics: string[];
+  /** Only explicitly provided categories (from URL params). Become hard MongoDB filters. */
   categories: string[];
+  /** Categories parsed from the search query text. Soft relevance boost only — NOT hard filters. */
+  intentCategories: string[];
   minPrice?: number;
   maxPrice?: number;
   colors: string[];
@@ -670,12 +673,19 @@ export function mergeSearchIntentWithFilters(
     fabricSet.add(titleCase(fabric));
   }
 
-  const categorySet = new Set<string>();
-  for (const category of intent.categories ?? []) {
-    categorySet.add(normalizeIntentCategory(category));
-  }
+  // Explicit URL categories (become hard MongoDB filters)
+  const explicitCategorySet = new Set<string>();
   for (const category of filters.categories ?? []) {
-    categorySet.add(normalizeIntentCategory(category));
+    explicitCategorySet.add(normalizeIntentCategory(category));
+  }
+
+  // Intent categories from text parsing (soft boost only, not hard filters)
+  const intentCategorySet = new Set<string>();
+  for (const category of intent.categories ?? []) {
+    const normalized = normalizeIntentCategory(category);
+    if (!explicitCategorySet.has(normalized)) {
+      intentCategorySet.add(normalized);
+    }
   }
 
   const subcategorySet = new Set(
@@ -686,7 +696,8 @@ export function mergeSearchIntentWithFilters(
     query: intent.textQuery || intent.rawQuery,
     residualQuery: buildResidualTextQuery(intent),
     fabrics: Array.from(fabricSet),
-    categories: Array.from(categorySet),
+    categories: Array.from(explicitCategorySet),
+    intentCategories: Array.from(intentCategorySet),
     minPrice: filters.minPrice ?? intent.minPrice,
     maxPrice: filters.maxPrice ?? intent.maxPrice,
     colors: intent.colors,

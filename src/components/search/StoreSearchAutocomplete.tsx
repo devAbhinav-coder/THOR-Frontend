@@ -213,7 +213,13 @@ function StoreSearchAutocomplete({
   placeholder,
 }: Props) {
   const router = useRouter();
-  const listId = useId();
+  const autoId = useId();
+  // Derive a stable ID so SSR and client always agree.
+  // useId() differs if the component tree between server/client doesn't match exactly
+  // (e.g. two navbar instances — desktop & mobile — where one is hidden via CSS).
+  const listId = searchInstance
+    ? `store-search-${scope}-${searchInstance}`
+    : `store-search-${scope}-${autoId}`;
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -508,6 +514,7 @@ function StoreSearchAutocomplete({
             aria-hidden
           />
           <input
+            suppressHydrationWarning
             ref={inputRef}
             id={listId}
             type='search'
