@@ -48,6 +48,11 @@ export interface ProductVariant {
   sku: string;
   price?: number;
   costPrice?: number;
+  soldCount?: number;
+  /** Storefront: price after sale (API-enriched, not persisted). */
+  sellPrice?: number;
+  listPrice?: number;
+  mrp?: number;
 }
 
 export interface ProductImage {
@@ -68,7 +73,14 @@ export interface Product {
   discountPercent?: number;
   saleBadge?: string | null;
   saleCampaignId?: string | null;
+  activePromotions?: ProductPromotion[];
   effectivePrice?: number;
+  /** Catalog list base before sale enrichment (default SKU list price). */
+  catalogBasePrice?: number;
+  /** Storefront aggregate sell range (API-enriched). */
+  sellPriceMin?: number;
+  sellPriceMax?: number;
+  hasVariantPriceSpread?: boolean;
   category: string;
   subcategory?: string;
   fabric?: string;
@@ -127,16 +139,42 @@ export interface CartItem {
 export interface Cart {
   _id: string;
   items: CartItem[];
-  coupon?: string | { _id: string; code: string };
+  coupon?: string | { _id: string; code: string; discountType?: string; discountValue?: number; appliedDiscount?: number };
   subtotal: number;
+  promotionDiscount?: number;
+  couponDiscount?: number;
   discount: number;
   total: number;
+  promotion?: CartPromotion | null;
+  promotionHint?: { label: string; message: string } | null;
+}
+
+export interface CartPromotion {
+  _id: string;
+  name: string;
+  displayTitle: string;
+  promotionType: string;
+  label: string;
+  appliedDiscount: number;
+  badgeText?: string | null;
+}
+
+export interface ProductPromotion {
+  displayTitle: string;
+  label: string;
+  badgeText?: string | null;
+  promotionType: string;
+  description?: string;
+  termsAndConditions?: string;
 }
 
 export interface OrderItem {
   product: string | Product;
   name: string;
+  slug?: string;
   image: string;
+  isOfflineManual?: boolean;
+  lineCategory?: string;
   variant: {
     size?: string;
     color?: string;
@@ -147,6 +185,7 @@ export interface OrderItem {
   };
   quantity: number;
   price: number;
+  costAtSale?: number;
   customFieldAnswers?: { label: string; value: string }[]; // Gifting
 }
 
@@ -169,29 +208,58 @@ export interface AdminCreateOfflineOrderBody {
   orderSource: 'stall' | 'personal_contact';
   fulfillment: 'delhivery' | 'offline_handover';
   paymentMethod: 'offline_upi' | 'offline_cash';
-  shippingAddress?: {
-    name?: string;
-    phone?: string;
-    house?: string;
-    street: string;
-    landmark?: string;
-    city: string;
-    state: string;
-    pincode: string;
-    country?: string;
-  };
-  lineItems: Array<
-    | { type: 'catalog'; productId: string; variantSku: string; quantity: number; unitPrice?: number }
-    | {
-        type: 'manual';
-        categoryId?: string;
-        title?: string;
-        quantity: number;
-        unitPrice: number;
-      }
-  >;
+  shippingAddress?: AdminChannelOrderShippingAddress;
+  lineItems: AdminChannelOrderLineItem[];
   notes?: string;
 }
+
+/** Admin B2B wholesale sale — POST /admin/orders/b2b */
+export interface AdminCreateB2bOrderBody {
+  customerName: string;
+  email?: string;
+  phone?: string;
+  orderSource?: 'b2b';
+  fulfillment: 'delhivery' | 'offline_handover';
+  paymentMethod: 'offline_upi' | 'offline_cash';
+  shippingAddress?: AdminChannelOrderShippingAddress;
+  lineItems: AdminChannelOrderLineItem[];
+  notes?: string;
+  b2bMeta?: {
+    companyName?: string;
+    gstin?: string;
+    poNumber?: string;
+  };
+}
+
+type AdminChannelOrderShippingAddress = {
+  name?: string;
+  phone?: string;
+  house?: string;
+  street: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country?: string;
+};
+
+type AdminChannelOrderLineItem =
+  | {
+      type: 'catalog';
+      productId: string;
+      variantSku: string;
+      quantity: number;
+      unitPrice?: number;
+      unitCost?: number;
+    }
+  | {
+      type: 'manual';
+      categoryId?: string;
+      title?: string;
+      quantity: number;
+      unitPrice: number;
+      unitCost?: number;
+    };
 
 /* ── Admin sales invoices (B2B / bulk-order tax invoices) ─────────── */
 
@@ -277,6 +345,8 @@ export interface AdminSalesInvoice extends AdminSalesInvoiceWriteBody {
   subTotal: number;
   totalDiscount: number;
   totalGst: number;
+  orderId?: string;
+  orderNumber?: string;
 }
 
 export interface MarketingAttribution {
@@ -300,9 +370,14 @@ export interface Order {
   paymentStatus: PaymentStatus;
   paymentMethod: 'razorpay' | 'cod' | 'offline_upi' | 'offline_cash';
   offlineMeta?: {
-    source: 'stall' | 'personal_contact';
+    source: 'stall' | 'personal_contact' | 'b2b';
     fulfillment: 'delhivery' | 'offline_handover';
     createdByAdmin?: string;
+  };
+  b2bMeta?: {
+    companyName?: string;
+    gstin?: string;
+    poNumber?: string;
   };
   marketingAttribution?: MarketingAttribution;
   razorpayOrderId?: string;
@@ -321,6 +396,7 @@ export interface Order {
     isGenerated: boolean;
     generatedAt?: string;
   };
+  taxSalesInvoiceId?: string | { _id: string; invoiceNumber?: string };
   statusHistory: { status: string; timestamp: string; note?: string }[];
   /** Delhivery automation metadata from backend */
   delhivery?: {
@@ -485,6 +561,58 @@ export interface SaleCampaign {
   updatedAt?: string;
 }
 
+export type PromotionType = 'bogo' | 'flat' | 'percentage';
+
+export interface Promotion {
+  _id: string;
+  name: string;
+  description?: string;
+  termsAndConditions?: string;
+  displayTitle?: string;
+  badgeText?: string;
+  imageUrl?: string;
+  imagePublicId?: string;
+  promotionType: PromotionType;
+  buyQuantity?: number;
+  getQuantity?: number;
+  getDiscountPercent?: number;
+  discountValue?: number;
+  maxDiscountAmount?: number;
+  minOrderAmount?: number;
+  scopeType: PromoScopeType;
+  categoryIds?: string[];
+  subcategoryIds?: string[];
+  productIds?: string[];
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  showOnStorefront?: boolean;
+  priority?: number;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PublicPromotion {
+  _id: string;
+  name: string;
+  displayTitle: string;
+  description?: string;
+  termsAndConditions?: string;
+  badgeText?: string | null;
+  imageUrl?: string | null;
+  promotionType: PromotionType;
+  buyQuantity: number;
+  getQuantity: number;
+  getDiscountPercent: number;
+  discountValue?: number | null;
+  minOrderAmount?: number;
+  scopeType: PromoScopeType;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+
 export interface PublicSale {
   _id?: string;
   name: string;
@@ -640,13 +768,20 @@ export interface DashboardAnalytics {
     couponDiscountTotal?: number;
     couponDiscountMTD?: number;
     couponOrdersTotal?: number;
+    promotionDiscountTotal?: number;
+    promotionDiscountMTD?: number;
+    promotionOrdersTotal?: number;
+    saleDiscountTotal?: number;
+    saleOrdersTotal?: number;
     shippingCollected?: number;
     codFeeCollected?: number;
     taxCollected?: number;
     onlineRevenue?: number;
     offlineRevenue?: number;
+    b2bRevenue?: number;
     onlineCount?: number;
     offlineCount?: number;
+    b2bCount?: number;
     repeatCustomers?: number;
     totalCustomersWithOrders?: number;
     repeatRate?: number;
@@ -692,6 +827,12 @@ export interface DashboardAnalytics {
   revenueByCategory: { _id: string; revenue: number; units: number }[];
   revenueByDay?: { date: string; revenue: number; orders: number }[];
   visitsByDay?: { date: string; visits: number }[];
+  dailyMetrics?: DailyMetricRow[];
+  snapshotOverview?: {
+    periodDays: number;
+    completedDaysFromSnapshots: number;
+    totals: SnapshotTotals;
+  };
   visitInsights?: {
     byCountry: { code: string; label: string; visits: number }[];
     bySource: { source: string; visits: number }[];
@@ -722,6 +863,7 @@ export interface DashboardAnalytics {
   paymentMethodMix?: { _id: string; revenue: number; count: number }[];
   ordersByHour?: { hour: number; orders: number; revenue: number }[];
   topVariantSizes?: { _id: string; units: number; revenue: number }[];
+  topVariantColors?: { _id: string; units: number; revenue: number }[];
   topProductsByProfit?: ProductProfitRow[];
   categoryProfit?: CategoryProfitRow[];
   profitByMonth?: {
@@ -735,6 +877,42 @@ export interface DashboardAnalytics {
     refunds: number;
     count: number;
   }[];
+  offerAttributionMtd?: {
+    sales: { discountTotal: number; ordersCount: number };
+    promotions: { discountTotal: number; ordersCount: number };
+    coupons: { discountTotal: number; ordersCount: number };
+    popup: {
+      impressions: number;
+      ctaClicks: number;
+      ordersAfterPopup: number;
+      revenueAfterPopup: number;
+    };
+  };
+}
+
+export interface DailyMetricRow {
+  date: string;
+  revenue: number;
+  orders: number;
+  paidOrders: number;
+  cancelledOrders: number;
+  newUsers: number;
+  avgOrderValue: number;
+  siteVisits: number;
+  couponDiscount: number;
+  refundedAmount: number;
+  fromSnapshot: boolean;
+}
+
+export interface SnapshotTotals {
+  revenue: number;
+  orders: number;
+  paidOrders: number;
+  cancelledOrders: number;
+  newUsers: number;
+  siteVisits: number;
+  couponDiscount: number;
+  refundedAmount: number;
 }
 
 export interface ProductProfitRow {

@@ -53,13 +53,23 @@ function FlowArrow({ icon: Icon }: { icon: typeof ArrowRight }) {
 }
 
 export default function FinancialOverviewPanel({ fin }: { fin: FinancialSnapshot }) {
+  const checkoutDiscounts = fin.promotionDiscounts + fin.couponDiscounts;
   const metricCards = [
     { label: 'Gross revenue', value: formatPrice(fin.grossRevenue), hint: 'Order checkout totals (paid + refunded)', color: 'text-brand-900' },
     { label: 'Net revenue', value: formatPrice(fin.netRevenue), hint: 'Gross − refunds (cash retained)', color: 'text-navy-900' },
     { label: 'Net product revenue', value: formatPrice(fin.productRevenue), hint: 'Paid line items only', color: 'text-gray-900' },
-    { label: 'COGS', value: formatPrice(fin.cogs), hint: 'Cost of goods sold', color: 'text-slate-700' },
+    { label: 'COGS', value: formatPrice(fin.cogs), hint: 'Cost of goods sold (purchase cost)', color: 'text-slate-700' },
     { label: 'Gross profit', value: formatPrice(fin.grossProfit), hint: `${fin.grossMarginPct}% product margin`, color: 'text-emerald-700' },
-    { label: 'Net income', value: formatPrice(fin.netIncome), hint: `Profit + fees − coupons · ${fin.netIncomeMarginPct}%`, color: 'text-brand-700' },
+    { label: 'Net income', value: formatPrice(fin.netIncome), hint: `Profit + fees − offers · ${fin.netIncomeMarginPct}%`, color: 'text-brand-700' },
+    ...(fin.saleDiscounts > 0
+      ? [{ label: 'Sale savings', value: formatPrice(fin.saleDiscounts), hint: 'Catalog cuts (already in lines)', color: 'text-amber-700' }]
+      : []),
+    ...(fin.promotionDiscounts > 0
+      ? [{ label: 'Auto offers', value: formatPrice(fin.promotionDiscounts), hint: 'Checkout promotion discount', color: 'text-red-600' }]
+      : []),
+    ...(fin.couponDiscounts > 0
+      ? [{ label: 'Coupons', value: formatPrice(fin.couponDiscounts), hint: 'Code discounts at checkout', color: 'text-red-600' }]
+      : []),
     ...(fin.operatingExpenses > 0
       ? [
           { label: 'Operating costs', value: formatPrice(fin.operatingExpenses), hint: 'Logged in Operating costs', color: 'text-red-600' },
@@ -73,7 +83,7 @@ export default function FinancialOverviewPanel({ fin }: { fin: FinancialSnapshot
       <div>
         <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Complete financial picture</h2>
         <p className="text-xs text-gray-500 mt-1">
-          Gross revenue → net revenue (cash) · product revenue → gross profit → net income (after fees &amp; coupons)
+          Gross revenue → net revenue (cash) · product revenue → gross profit → net income (after fees, auto offers &amp; coupons)
         </p>
       </div>
 
@@ -100,13 +110,29 @@ export default function FinancialOverviewPanel({ fin }: { fin: FinancialSnapshot
           <FlowStep label="Gross profit" value={formatPrice(fin.grossProfit)} sub={`${fin.grossMarginPct}% margin`} tone="result" />
           <FlowArrow icon={Plus} />
           <FlowStep label="Fees +" value={formatPrice(fin.shippingFees + fin.codFees + fin.feesRetained)} sub="Ship · COD · kept" tone="plus" />
-          <FlowArrow icon={Minus} />
-          <FlowStep label="Coupons −" value={formatPrice(fin.couponDiscounts)} tone="minus" />
+          {fin.promotionDiscounts > 0 && (
+            <>
+              <FlowArrow icon={Minus} />
+              <FlowStep label="Auto offers −" value={formatPrice(fin.promotionDiscounts)} tone="minus" />
+            </>
+          )}
+          {fin.couponDiscounts > 0 && (
+            <>
+              <FlowArrow icon={Minus} />
+              <FlowStep label="Coupons −" value={formatPrice(fin.couponDiscounts)} tone="minus" />
+            </>
+          )}
+          {checkoutDiscounts <= 0 && (
+            <>
+              <FlowArrow icon={Minus} />
+              <FlowStep label="Offers −" value={formatPrice(0)} sub="No checkout discounts" tone="minus" />
+            </>
+          )}
           <FlowArrow icon={Equal} />
           <FlowStep
             label="Net income"
             value={formatPrice(fin.netIncome)}
-            sub={fin.operatingExpenses > 0 ? 'Before shop costs' : 'After fees − coupons'}
+            sub={fin.operatingExpenses > 0 ? 'Before shop costs' : 'After fees − auto offers − coupons'}
             tone={fin.operatingExpenses > 0 ? 'result' : 'highlight'}
           />
           {fin.operatingExpenses > 0 && (

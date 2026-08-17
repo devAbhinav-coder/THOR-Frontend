@@ -1,5 +1,6 @@
 import type { Blog, Category, Product } from "@/types";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
+import { serverFetch } from "@/lib/serverFetch";
 
 /** Categories with counts for home “Browse by Category” — avoids a client-only skeleton flash. */
 export async function fetchHomeCategoryStats(): Promise<
@@ -8,7 +9,7 @@ export async function fetchHomeCategoryStats(): Promise<
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
-    const res = await fetch(`${base}/categories/stats`, {
+    const res = await serverFetch(`${base}/categories/stats`, {
       next: { revalidate: 60 },
       headers: { Accept: "application/json" },
     });
@@ -28,7 +29,7 @@ export async function fetchHomeSareeSubcategories(): Promise<Category[] | null> 
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
-    const res = await fetch(`${base}/categories/slug/sarees/subcategories`, {
+    const res = await serverFetch(`${base}/categories/slug/sarees/subcategories`, {
       next: { revalidate: 3600 },
       headers: { Accept: "application/json" },
     });
@@ -48,7 +49,7 @@ export async function fetchHomeLatestBlogs(limit = 3): Promise<Blog[] | null> {
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
-    const res = await fetch(
+    const res = await serverFetch(
       `${base}/blogs?limit=${limit}&page=1&sort=-createdAt`,
       {
         next: { revalidate: 300 },
@@ -71,7 +72,7 @@ export async function fetchHomeFeaturedProducts(): Promise<Product[] | null> {
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
-    const res = await fetch(`${base}/products/featured`, {
+    const res = await serverFetch(`${base}/products/featured`, {
       next: { revalidate: 60 },
       headers: { Accept: "application/json" },
     });
@@ -92,8 +93,8 @@ export async function fetchProductBySlugServer(
   if (!base) return null;
   const safe = encodeURIComponent(slug);
   try {
-    const res = await fetch(`${base}/products/${safe}`, {
-      next: { revalidate: 3600 },
+    const res = await serverFetch(`${base}/products/${safe}`, {
+      next: { revalidate: 60 },
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return null;
@@ -124,7 +125,7 @@ export async function fetchGiftingCategoriesServer(): Promise<GiftingCategoriesE
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
-    const res = await fetch(`${base}/gifting/categories`, {
+    const res = await serverFetch(`${base}/gifting/categories`, {
       next: { revalidate: 120 },
       headers: { Accept: "application/json" },
     });
@@ -141,7 +142,7 @@ export async function fetchGiftingProductsFirstPageServer(): Promise<GiftingProd
   if (!base) return null;
   try {
     const qs = new URLSearchParams({ page: "1", limit: "20" });
-    const res = await fetch(`${base}/gifting/products?${qs}`, {
+    const res = await serverFetch(`${base}/gifting/products?${qs}`, {
       next: { revalidate: 45 },
       headers: { Accept: "application/json" },
     });

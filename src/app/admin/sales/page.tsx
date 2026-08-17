@@ -65,13 +65,13 @@ export default function AdminSalesPage() {
         title: 'The House of Rani',
         subtitle: c.name || 'Sale',
       });
-      downloadDataUrl(qr, `HOR-sale-QR-${c._id}.png`);
+      downloadDataUrl(qr, `THOR-sale-QR-${c._id}.png`);
       await shareInvite({
         url: storeUrl,
         title: 'The House of Rani',
         text: `${c.name || 'Sale'} at The House of Rani — shop now:\n${storeUrl}`,
         qrDataUrl: qr,
-        filename: `HOR-sale-QR-${c._id}.png`,
+        filename: `THOR-sale-QR-${c._id}.png`,
       });
       toast.success('QR ready · share opened');
     } catch (err: unknown) {

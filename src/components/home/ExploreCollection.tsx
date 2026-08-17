@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
@@ -52,6 +52,8 @@ export default function ExploreCollection() {
     [products],
   );
 
+  const [loadMoreSignal, setLoadMoreSignal] = useState(0);
+
   const { sentinelRef } = useInfiniteScrollTrigger({
     hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
@@ -59,6 +61,7 @@ export default function ExploreCollection() {
       (isPending && products.length === 0) ||
       (isFetching && !isFetchingNextPage),
     fetchNextPage,
+    onLoadMoreRequested: () => setLoadMoreSignal((n) => n + 1),
     rootMargin: "500px 0px",
     enabled: !isLoading || products.length > 0,
   });
@@ -103,7 +106,8 @@ export default function ExploreCollection() {
           isFetchingNextPage={isFetchingNextPage}
           hasNextPage={Boolean(hasNextPage)}
           pageSize={EXPLORE_PAGE_LIMIT}
-          loadMoreSkeletonCount={4}
+          loadMoreSkeletonCount={EXPLORE_PAGE_LIMIT}
+          loadMoreSignal={loadMoreSignal}
           sentinelRef={sentinelRef}
           renderSkeleton={() => <ShopCollectionCardSkeleton />}
         />

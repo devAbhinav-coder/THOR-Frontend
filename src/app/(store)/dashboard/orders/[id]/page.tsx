@@ -27,6 +27,7 @@ import {
   RETURN_REASON_OPTIONS,
 } from "@/lib/orderReturnHelpers";
 import { getMaxRefundableInr } from "@/lib/orderRefundPolicy";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const EMOTIONAL_MESSAGES = [
   {
@@ -340,6 +341,7 @@ export default function OrderDetailPage() {
     try {
       const body = await orderApi.cancel(order._id);
       setOrder(body.data.order as Order);
+      await useAuthStore.getState().fetchUser();
       const msg = body.message || "";
       if (msg.toLowerCase().includes("already cancelled")) {
         toast.success("This order was already cancelled");

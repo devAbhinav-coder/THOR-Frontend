@@ -4,7 +4,7 @@ interface LeakCardProps {
   label: string;
   value: string;
   sub?: string;
-  tone?: 'red' | 'emerald' | 'default';
+  tone?: 'red' | 'emerald' | 'amber' | 'default';
   className?: string;
 }
 
@@ -13,12 +13,14 @@ export function LeakCard({ label, value, sub, tone = 'default', className }: Lea
     default: 'text-gray-900 border-gray-100 bg-gray-50/50',
     red: 'text-red-600 border-red-100 bg-red-50/50',
     emerald: 'text-emerald-700 border-emerald-100 bg-emerald-50/50',
+    amber: 'text-amber-800 border-amber-100 bg-amber-50/50',
   };
 
   const labelClasses = {
     default: 'text-gray-500',
     red: 'text-red-500',
     emerald: 'text-emerald-600',
+    amber: 'text-amber-600',
   };
 
   return (

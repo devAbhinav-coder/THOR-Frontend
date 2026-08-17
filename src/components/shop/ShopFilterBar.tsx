@@ -24,7 +24,6 @@ import {
   horizontalScrollSurfaceClassName,
   horizontalScrollSurfaceProps,
 } from "@/lib/scrollSurface";
-import { useShopFilterStickyPin } from "@/hooks/useShopFilterStickyPin";
 import { variantSwatchBackground } from "@/lib/variantSwatch";
 import { catalogMatchKey } from "@/lib/catalogAttributes";
 
@@ -170,8 +169,6 @@ export default function ShopFilterBar(props: Props) {
   const [draftMinPrice, setDraftMinPrice] = useState(filters.minPrice);
   const [draftMaxPrice, setDraftMaxPrice] = useState(filters.maxPrice);
   const [mounted, setMounted] = useState(false);
-  const { sentinelRef, toolbarRef, pinned, navHeight, toolbarHeight } =
-    useShopFilterStickyPin(mounted);
 
   useEffect(() => {
     setMounted(true);

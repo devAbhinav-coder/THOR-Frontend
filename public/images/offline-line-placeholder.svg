@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="Fashion line item">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fdf8f3"/>
+      <stop offset="100%" stop-color="#f5ebe0"/>
+    </linearGradient>
+    <linearGradient id="fabric" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c9a87c"/>
+      <stop offset="50%" stop-color="#e8d5b7"/>
+      <stop offset="100%" stop-color="#b8956a"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <rect x="48" y="88" width="304" height="224" rx="16" fill="#fff" opacity="0.72"/>
+  <path d="M72 128c40-24 88-24 128 0s88 24 128 0v184c-40 24-88 24-128 0s-88-24-128 0V128z" fill="url(#fabric)" opacity="0.85"/>
+  <path d="M200 128v184M128 160c24 16 48 16 72 0M200 160c24 16 48 16 72 0M128 240c24 16 48 16 72 0M200 240c24 16 48 16 72 0" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.45"/>
+  <circle cx="200" cy="108" r="18" fill="#9a7b4f" opacity="0.35"/>
+  <path d="M176 336h48" stroke="#9a7b4f" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+</svg>

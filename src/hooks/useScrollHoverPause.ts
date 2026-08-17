@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { subscribeWheelScroll } from "@/lib/windowScrollBus";
 
 const PAUSE_MS = 140;
 
@@ -20,14 +21,7 @@ export function useScrollHoverPause(): boolean {
       timer = window.setTimeout(() => setPaused(false), PAUSE_MS);
     };
 
-    window.addEventListener("wheel", arm, { passive: true });
-    window.addEventListener("touchmove", arm, { passive: true });
-
-    return () => {
-      window.removeEventListener("wheel", arm);
-      window.removeEventListener("touchmove", arm);
-      window.clearTimeout(timer);
-    };
+    return subscribeWheelScroll(arm);
   }, []);
 
   return paused;

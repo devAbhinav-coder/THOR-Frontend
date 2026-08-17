@@ -32,6 +32,7 @@ export type ColorSizeRow = {
   size: string;
   sku: string;
   stock: number;
+  price?: number;
   costPrice?: number;
 };
 
@@ -140,6 +141,7 @@ export function colorGroupsFromProduct(product: Product | null): ColorVariantGro
       size: v.size || "Free Size",
       sku: v.sku,
       stock: v.stock ?? 0,
+      price: typeof v.price === "number" ? v.price : undefined,
       costPrice: v.costPrice,
     });
   }
@@ -175,6 +177,7 @@ export function flattenColorGroups(groups: ColorVariantGroup[]): ProductVariant[
             VARIANT_MULTICOLOR_MARKER
           : g.colorCode || "#000000",
         stock: Math.max(0, Number(row.stock) || 0),
+        ...(row.price != null && row.price >= 0 ? { price: row.price } : {}),
         ...(row.costPrice != null && row.costPrice > 0 ?
           { costPrice: row.costPrice }
         : {}),
@@ -240,6 +243,8 @@ type Props = {
   onChange: (groups: ColorVariantGroup[]) => void;
   suggestedColors?: string[];
   productId?: string;
+  /** Base product sell price — blank variant sell inherits this on save. */
+  baseSellPrice?: string;
   untaggedImageCount?: number;
   onDeleteExistingImage?: (publicId: string, groupId: string) => void | Promise<void>;
 };
@@ -373,9 +378,14 @@ export default function ProductColorVariantEditor({
   onChange,
   suggestedColors = [],
   productId,
+  baseSellPrice = "",
   untaggedImageCount = 0,
   onDeleteExistingImage,
 }: Props) {
+  const baseSellHint =
+    baseSellPrice.trim() && Number.isFinite(Number(baseSellPrice)) ?
+      Number(baseSellPrice)
+    : null;
   const updateGroup = useCallback(
     (id: string, patch: Partial<ColorVariantGroup>) => {
       onChange(groups.map((g) => (g.id === id ? { ...g, ...patch } : g)));
@@ -619,7 +629,7 @@ export default function ProductColorVariantEditor({
           <div className='space-y-2'>
             <div className='flex items-center justify-between'>
               <label className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
-                Sizes &amp; stock
+                Sizes, prices &amp; stock
               </label>
               <button
                 type='button'
@@ -645,7 +655,7 @@ export default function ProductColorVariantEditor({
               return (
               <div
                 key={`${group.id}-size-${rowIndex}`}
-                className='grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3 sm:grid-cols-4'
+                className='grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3 sm:grid-cols-5'
               >
                 <div className='space-y-1'>
                   <select
@@ -721,6 +731,26 @@ export default function ProductColorVariantEditor({
                     sizes[rowIndex] = {
                       ...row,
                       stock: Math.max(0, Number(e.target.value) || 0),
+                    };
+                    updateGroup(group.id, { sizes });
+                  }}
+                />
+                <input
+                  type='number'
+                  min={0}
+                  className={inputCls}
+                  placeholder={
+                    baseSellHint != null ?
+                      `Sell (default ₹${baseSellHint})`
+                    : 'Sell ₹'
+                  }
+                  value={row.price ?? ""}
+                  onChange={(e) => {
+                    const sizes = [...group.sizes];
+                    const val = e.target.value;
+                    sizes[rowIndex] = {
+                      ...row,
+                      price: val ? Number(val) : undefined,
                     };
                     updateGroup(group.id, { sizes });
                   }}

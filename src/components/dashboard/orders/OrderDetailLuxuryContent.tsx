@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import OrderLineThumbnail from "@/components/orders/OrderLineThumbnail";
+import { isUsableOrderLineImage } from "@/lib/offlineOrder";
 import Link from "next/link";
 import { ChevronRight, Shield, Star, Award, AlertCircle } from "lucide-react";
 import { Order, OrderItem } from "@/types";
@@ -216,13 +217,23 @@ export default function OrderDetailLuxuryContent({
                   <div key={i} className={cn(i > 0 && "pt-8 border-t border-account-outline-variant/20")}>
                     <div className="flex flex-col sm:flex-row gap-6">
                       <div className="relative w-full sm:w-36 h-48 sm:h-52 shrink-0 bg-account-surface-container overflow-hidden">
-                        {productSlug ? (
+                        {productSlug && isUsableOrderLineImage(item.image, { isOfflineManual: item.isOfflineManual }) ?
                           <Link href={`/shop/${encodeURIComponent(productSlug)}`}>
-                            <Image src={item.image} alt={item.name} fill sizes="144px" className="object-cover" />
+                            <OrderLineThumbnail
+                              image={item.image}
+                              name={item.name}
+                              isOfflineManual={item.isOfflineManual}
+                              className="h-full w-full border-0 rounded-none"
+                              sizes="144px"
+                            />
                           </Link>
-                        ) : (
-                          <Image src={item.image} alt={item.name} fill sizes="144px" className="object-cover" />
-                        )}
+                        : <OrderLineThumbnail
+                            image={item.image}
+                            name={item.name}
+                            isOfflineManual={item.isOfflineManual || item.slug === 'offline-manual-item'}
+                            className="h-full w-full border-0 rounded-none"
+                            sizes="144px"
+                          />}
                       </div>
                       <div className="flex-1 min-w-0">
                         {productSlug ? (

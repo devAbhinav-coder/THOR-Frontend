@@ -1,5 +1,6 @@
 import { Order } from "@/types";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { orderInvoiceNumber } from "@/lib/documentNumbers";
 
 type Props = {
   order: Order;
@@ -10,7 +11,7 @@ export default function OrderInvoiceDocument({ order }: Props) {
     order.offlineMeta?.fulfillment === "offline_handover";
 
   // E-commerce Invoice format
-  const invoiceNumber = `INV-${order.orderNumber}`;
+  const invoiceNumber = orderInvoiceNumber(order.orderNumber);
   const invoiceDate = formatDate(order.invoice?.generatedAt || order.createdAt);
   const sellerDetails = {
     name: "The House of Rani",
@@ -26,20 +27,64 @@ export default function OrderInvoiceDocument({ order }: Props) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
+        @page { size: A4; margin: 0; }
         @media print {
-          body * {
-            visibility: hidden;
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
           }
+          body * { visibility: hidden; }
           #invoice-print-container, #invoice-print-container * {
             visibility: visible;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           #invoice-print-container {
-            position: absolute;
-            left: 0;
-            top: 0;
+            position: relative;
+            left: auto;
+            top: auto;
             width: 100%;
+            max-width: 100%;
             margin: 0;
-            padding: 0;
+            padding: 10mm 12mm 14mm;
+            box-sizing: border-box;
+            background: #fff !important;
+            color: #111827 !important;
+          }
+          #invoice-print-inner {
+            border: 0.75pt solid #9ca3af !important;
+            padding: 6mm 7mm !important;
+            box-sizing: border-box;
+          }
+          #invoice-print-container .overflow-x-auto {
+            overflow: visible !important;
+          }
+          #invoice-print-container table {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+          #invoice-print-container thead tr {
+            background-color: #f3f4f6 !important;
+          }
+          .invoice-grand-total-row {
+            background-color: #f9fafb !important;
+            color: #111827 !important;
+          }
+          .invoice-signature-block {
+            background-color: #fff !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .invoice-signature-block .invoice-signature-title {
+            color: #1f2937 !important;
+          }
+          .invoice-signature-block .invoice-signature-label {
+            color: #4b5563 !important;
+          }
+          .invoice-signature-logo {
+            opacity: 1 !important;
+            filter: none !important;
           }
         }
       `,
@@ -47,9 +92,12 @@ export default function OrderInvoiceDocument({ order }: Props) {
       />
       <div
         id='invoice-print-container'
-        className='mx-auto w-full max-w-[850px] bg-white text-black print:max-w-none print:w-full font-sans antialiased'
+        className='mx-auto w-full max-w-[850px] bg-white text-black font-sans antialiased'
       >
-        <div className='border border-gray-400 p-6 sm:p-8 print:p-0 print:border-none'>
+        <div
+          id='invoice-print-inner'
+          className='border border-gray-400 p-6 sm:p-8'
+        >
           {/* Header Section */}
           <div className='flex flex-col sm:flex-row justify-between items-start border-b border-gray-400 pb-2'>
             <div className='flex flex-col mb-2 sm:mb-0'>
@@ -155,17 +203,8 @@ export default function OrderInvoiceDocument({ order }: Props) {
               <div className='text-xs text-gray-700 mt-0.5 leading-snug'>
                 {inPersonOffline ?
                   <>
-                    <p className='font-medium text-gray-800'>
-                      In-person sale — no courier dispatch.
-                    </p>
-                    <p className='mt-1'>
-                      This invoice reflects goods handed over directly to the customer at
-                      the time of purchase.
-                    </p>
                     {order.shippingAddress?.phone && (
-                      <p className='mt-2'>
-                        Phone: +91 {order.shippingAddress.phone}
-                      </p>
+                      <p>Phone: +91 {order.shippingAddress.phone}</p>
                     )}
                   </>
                 : <>
@@ -198,23 +237,11 @@ export default function OrderInvoiceDocument({ order }: Props) {
                 {inPersonOffline ? "Fulfilment" : "Shipped To"}
               </h2>
               <p className='font-bold text-xs tracking-tight'>
-                {order.shippingAddress?.name || "Customer"}
+                {inPersonOffline ? "" : (order.shippingAddress?.name || "Customer")}
               </p>
               <div className='text-xs text-gray-700 mt-0.5 leading-snug'>
                 {inPersonOffline ?
-                  <>
-                    <p className='font-medium text-gray-800'>
-                      Delivered in person (POS / walk-in).
-                    </p>
-                    <p className='mt-1'>
-                      Not applicable for courier AWB or dispatch address.
-                    </p>
-                    {order.shippingAddress?.phone && (
-                      <p className='mt-2'>
-                        Phone: +91 {order.shippingAddress.phone}
-                      </p>
-                    )}
-                  </>
+                  null
                 : <>
                     {order.shippingAddress?.house && (
                       <p>{order.shippingAddress.house}</p>
@@ -360,25 +387,25 @@ export default function OrderInvoiceDocument({ order }: Props) {
                   {formatPrice(order.tax || 0)}
                 </span>
               </div>
-              <div className='flex justify-between py-2 px-2 bg-gray-50 text-sm font-bold text-gray-900 border-b border-gray-400'>
+              <div className='flex justify-between py-2 px-2 bg-gray-50 text-sm font-bold text-gray-900 border-b border-gray-400 invoice-grand-total-row'>
                 <span>Grand Total</span>
                 <span className='tabular-nums'>{formatPrice(order.total)}</span>
               </div>
 
               {/* Signature Block */}
-              <div className='p-2 flex flex-col items-center justify-end min-h-[70px] bg-white rounded-b-sm'>
-                <div className='w-full border-b border-gray-300 mb-1 pb-1 flex flex-col items-center justify-center text-center'>
-                  <span className='font-serif text-[10px] text-gray-800 font-bold uppercase tracking-wider mb-1'>
+              <div className='p-2 flex flex-col items-center justify-end min-h-[70px] bg-white rounded-b-sm invoice-signature-block'>
+                <div className='w-full border-b border-gray-400 mb-1 pb-1 flex flex-col items-center justify-center text-center'>
+                  <span className='font-serif text-[10px] text-gray-800 font-bold uppercase tracking-wider mb-1 invoice-signature-title'>
                     For The House of Rani
                   </span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src='/logo.png'
-                    alt='Stamp'
-                    className='h-6 w-auto opacity-70 grayscale mb-0.5'
+                    src='/logoNew.png'
+                    alt='The House of Rani'
+                    className='h-7 w-auto mb-0.5 invoice-signature-logo'
                   />
                 </div>
-                <p className='text-[8px] uppercase font-bold text-gray-500 tracking-wider'>
+                <p className='text-[8px] uppercase font-bold text-gray-600 tracking-wider invoice-signature-label'>
                   Authorized Signatory
                 </p>
               </div>

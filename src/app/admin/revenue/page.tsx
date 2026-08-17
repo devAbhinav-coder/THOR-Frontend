@@ -29,13 +29,19 @@ import {
 } from '@/components/admin/dashboard';
 import { buildFinancialSnapshot } from '@/lib/revenueMetrics';
 import { availableYearsFromAnalytics, type RevenuePeriod } from '@/lib/revenuePeriod';
+import type { OrderChannelFilter } from '@/lib/orderChannel';
 import {
   FinancialOverviewPanel,
   RevenueVsProfitChart,
   RevenuePeriodToolbar,
+  RevenueChannelFilter,
   ProductProfitTable,
   CategoryProfitPanel,
+  RevenueInsightsPanel,
+  OfferAttributionPanel,
+  OfferImpactSummary,
 } from '@/components/admin/revenue';
+import ChannelSplitBar from '@/components/admin/analytics/ChannelSplitBar';
 import { MiniStat } from '@/components/admin/revenue/MiniStat';
 import { LeakCard } from '@/components/admin/revenue/LeakCard';
 
@@ -45,7 +51,13 @@ export default function AdminRevenuePage() {
   const { analytics, isLoading, loadError, isRefreshing, load, refresh } = useAdminAnalytics();
   const [period, setPeriod] = useState<RevenuePeriod>('year');
   const [year, setYear] = useState(() => new Date().getFullYear());
-  const { summary, isLoading: periodLoading, reload: reloadPeriod } = useRevenuePeriod(period, year);
+  const [channel, setChannel] = useState<OrderChannelFilter>('all');
+  const { summary, isLoading: periodLoading, reload: reloadPeriod } = useRevenuePeriod(
+    period,
+    year,
+    undefined,
+    channel,
+  );
   const [invValuation, setInvValuation] = useState<InventoryValuationOverall | null>(null);
   const [yearOpex, setYearOpex] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -147,6 +159,10 @@ export default function AdminRevenuePage() {
 
   const couponTotal = periodOverview?.couponDiscountTotal ?? overview.couponDiscountTotal ?? 0;
   const couponOrders = periodOverview?.couponOrdersCount ?? overview.couponOrdersTotal ?? 0;
+  const promoTotal = periodOverview?.promotionDiscountTotal ?? 0;
+  const promoOrders = periodOverview?.promotionOrdersCount ?? 0;
+  const saleTotal = periodOverview?.saleDiscountTotal ?? 0;
+  const saleOrders = periodOverview?.saleOrdersCount ?? 0;
   const shippingTotal = periodOverview?.shippingCollected ?? overview.shippingCollected ?? 0;
   const codTotal = periodOverview?.codFeeCollected ?? overview.codFeeCollected ?? 0;
   const taxTotal = periodOverview?.taxCollected ?? overview.taxCollected ?? 0;
@@ -212,21 +228,28 @@ export default function AdminRevenuePage() {
           }
         />
 
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <RevenuePeriodToolbar
-            period={period}
-            year={year}
-            years={years}
-            onPeriodChange={setPeriod}
-            onYearChange={setYear}
-            periodLabel={periodData?.label}
-          />
-          <div className="rounded-xl border border-gray-200/80 bg-white/80 px-4 py-2.5 shadow-sm flex items-center gap-2 text-sm text-gray-600 backdrop-blur-sm">
-            <CalendarRange className="h-4 w-4 text-brand-600 shrink-0" />
-            <span>
-              As of <time dateTime={new Date().toISOString()}>{asOfLabel}</time>
-            </span>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+            <RevenuePeriodToolbar
+              period={period}
+              year={year}
+              years={years}
+              onPeriodChange={setPeriod}
+              onYearChange={setYear}
+              periodLabel={periodData?.label}
+            />
+            <div className="rounded-xl border border-gray-200/80 bg-white/80 px-4 py-2.5 shadow-sm flex items-center gap-2 text-sm text-gray-600 backdrop-blur-sm shrink-0">
+              <CalendarRange className="h-4 w-4 text-brand-600 shrink-0" />
+              <span>
+                As of <time dateTime={new Date().toISOString()}>{asOfLabel}</time>
+              </span>
+            </div>
           </div>
+          <RevenueChannelFilter
+            channel={channel}
+            onChange={setChannel}
+            disabled={periodLoading}
+          />
         </div>
 
         {opexForPeriod > 0 && (
@@ -280,6 +303,44 @@ export default function AdminRevenuePage() {
               ) : (
                 <FinancialOverviewPanel fin={fin} />
               )}
+
+              <OfferImpactSummary
+                fin={fin}
+                popup={periodData?.offerAttribution?.popup}
+                periodLabel={periodData?.label}
+              />
+
+              <OfferAttributionPanel
+                attribution={periodData?.offerAttribution}
+                overview={periodOverview ?? undefined}
+                periodLabel={periodData?.label}
+              />
+
+              {periodData?.channelMix && channel === 'all' && (
+                <div className="rounded-[1.5rem] border border-gray-200/80 bg-white p-5 sm:p-6 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-900 mb-1">Sales by channel</h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Website · stall/offline POS · B2B wholesale · {periodData.label}
+                  </p>
+                  <ChannelSplitBar
+                    onlineRevenue={periodData.channelMix.onlineRevenue}
+                    offlineRevenue={periodData.channelMix.offlineRevenue}
+                    b2bRevenue={periodData.channelMix.b2bRevenue ?? 0}
+                    onlineCount={periodData.channelMix.onlineCount}
+                    offlineCount={periodData.channelMix.offlineCount}
+                    b2bCount={periodData.channelMix.b2bCount ?? 0}
+                  />
+                </div>
+              )}
+
+              {channel !== 'all' && periodData && (
+                <div className="rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-3 text-sm text-brand-900">
+                  Showing <strong>{periodData.label}</strong> only. Switch to{' '}
+                  <strong>All channels</strong> to compare online, offline, and B2B together.
+                </div>
+              )}
+
+              <RevenueInsightsPanel fin={fin} period={periodData} analytics={analytics} />
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div className="rounded-[1.5rem] border border-gray-200/80 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -416,6 +477,18 @@ export default function AdminRevenuePage() {
                   Revenue leakage & fees · {periodData?.label ?? 'period'}
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
+                  <LeakCard
+                    label="Sale savings"
+                    value={formatPrice(saleTotal)}
+                    sub={`${saleOrders} orders · catalog price cut`}
+                    tone="amber"
+                  />
+                  <LeakCard
+                    label="Auto offers"
+                    value={formatPrice(promoTotal)}
+                    sub={`${promoOrders} orders`}
+                    tone="red"
+                  />
                   <LeakCard
                     label="Coupon discounts"
                     value={formatPrice(couponTotal)}

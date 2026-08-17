@@ -8,12 +8,15 @@ export function navShellClass(scrolled: boolean) {
   );
 }
 
-/** Sticky shell for header — slides off-screen on mobile scroll-down. */
+/** Sticky shell for header — collapses on mobile scroll-down (no transform — WebKit-safe). */
 export function navStickyShellClass(visible: boolean) {
   return cn(
-    "sticky top-0 z-50 will-change-transform",
-    "transition-transform duration-300 ease-out motion-reduce:transition-none",
-    !visible && "max-lg:-translate-y-full max-lg:pointer-events-none",
+    "sticky top-0 z-50 max-lg:overflow-hidden lg:overflow-visible",
+    "transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none",
+    "lg:max-h-none lg:opacity-100 lg:pointer-events-auto",
+    visible ?
+      "max-lg:max-h-[12rem] max-lg:opacity-100"
+    : "max-lg:max-h-0 max-lg:opacity-0 max-lg:pointer-events-none",
   );
 }
 
@@ -41,7 +44,7 @@ export function navDropdownShellClass(
   align: "left" | "right" = "left",
 ) {
   return cn(
-    "absolute top-full z-50 pt-2",
+    "absolute top-full z-[60] pt-2",
     align === "right" ? "right-0" : "left-0",
     open ? "pointer-events-auto" : "pointer-events-none",
   );

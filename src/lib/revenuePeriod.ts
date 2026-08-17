@@ -2,11 +2,14 @@ import type { DashboardAnalytics } from '@/types';
 
 export type RevenuePeriod = 'month' | 'year' | 'lifetime';
 
+export type RevenueChannelFilter = 'all' | 'online' | 'offline' | 'b2b';
+
 export type RevenuePeriodSummary = {
   period: RevenuePeriod;
   year: number;
   month: number;
   label: string;
+  channel?: RevenueChannelFilter;
   overview: {
     grossRevenue: number;
     netRevenue: number;
@@ -19,6 +22,10 @@ export type RevenuePeriodSummary = {
     orders: number;
     couponDiscountTotal: number;
     couponOrdersCount: number;
+    promotionDiscountTotal?: number;
+    promotionOrdersCount?: number;
+    saleDiscountTotal?: number;
+    saleOrdersCount?: number;
     shippingCollected: number;
     codFeeCollected: number;
     taxCollected: number;
@@ -30,6 +37,36 @@ export type RevenuePeriodSummary = {
   topProductsByProfit: NonNullable<DashboardAnalytics['topProductsByProfit']>;
   categoryProfit: NonNullable<DashboardAnalytics['categoryProfit']>;
   paymentMethodMix?: { _id: string; revenue: number; count: number }[];
+  channelMix?: {
+    onlineRevenue: number;
+    offlineRevenue: number;
+    b2bRevenue?: number;
+    onlineCount: number;
+    offlineCount: number;
+    b2bCount?: number;
+  };
+  offerAttribution?: {
+    sales: { discountTotal: number; ordersCount: number };
+    promotions: {
+      discountTotal: number;
+      ordersCount: number;
+      top: { id: string; name: string; discountTotal: number; ordersCount: number }[];
+    };
+    coupons: {
+      discountTotal: number;
+      ordersCount: number;
+      top: { id: string; code: string; discountTotal: number; ordersCount: number }[];
+    };
+    popup: {
+      impressions: number;
+      dismisses: number;
+      ctaClicks: number;
+      couponCopies: number;
+      byKind: { kind: string; impressions: number; ctaClicks: number }[];
+      ordersAfterPopup: number;
+      revenueAfterPopup: number;
+    };
+  };
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

@@ -325,6 +325,24 @@ export const cartClear = z.object({
   message: z.string(),
 });
 
+export const adminJobHealth = z.object({
+  status: z.string(),
+  data: z.object({
+    jobCount: z.number(),
+    jobs: z.record(z.string(), z.unknown()),
+    timestamp: z.string(),
+  }),
+});
+
+export const adminOutboxDlq = z.object({
+  status: z.string(),
+  data: z.object({
+    type: z.string(),
+    rows: z.array(doc),
+    count: z.number(),
+  }),
+});
+
 /** Online prepay: order row is created only after verify-payment (legacy clients may still receive { order, razorpayOrder }). */
 const mongoObjectIdString = z.string().regex(/^[a-fA-F0-9]{24}$/);
 
@@ -455,6 +473,16 @@ export const couponsPublicList = z.object({
 export const saleCampaignsList = z.object({
   status: z.string(),
   data: z.object({ campaigns: z.array(doc) }),
+});
+
+export const promotionsAdminList = z.object({
+  status: z.string(),
+  data: z.object({ promotions: z.array(doc) }),
+});
+
+export const promotionsPublicList = z.object({
+  status: z.string(),
+  data: z.object({ promotions: z.array(doc) }),
 });
 
 export const salesPublicList = z.object({
@@ -698,7 +726,7 @@ export const adminOrderDetail = z.object({
   data: z.object({ order: doc }),
 });
 
-export { adminSalesInvoiceList, adminSalesInvoiceSingle } from "./invoiceApiSchemas";
+export { adminSalesInvoiceList, adminSalesInvoiceSingle, adminOrderTaxInvoice, adminB2bPendingInvoiceList } from "./invoiceApiSchemas";
 
 /** POST .../delhivery/sync-tracking — includes human summary + parsed tracking */
 export const adminDelhiveryTrackSync = z.object({
@@ -1072,6 +1100,13 @@ export const adminAiMarketingDraft = z.object({
   data: adminAiTextPayload.extend({
     subject: z.string().optional(),
     messageHtml: z.string().optional(),
+  }),
+});
+
+export const adminAiPromotionTermsDraft = z.object({
+  status: z.string(),
+  data: adminAiTextPayload.extend({
+    termsAndConditions: z.string().optional(),
   }),
 });
 

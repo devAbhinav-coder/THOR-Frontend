@@ -1323,6 +1323,7 @@ export default function AdminUsersPage() {
                       </div>
                     ))}
                   </div>
+
                   <div className="flex justify-end">
                     <AdminAiExplainButton
                       kind="user"

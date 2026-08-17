@@ -34,6 +34,24 @@ function valueLabel(type: DiscountType) {
   return 'Flat off (₹) *';
 }
 
+function scopeValidationError(data: {
+  scopeType: PromoScopeType;
+  categoryIds: string[];
+  subcategoryIds: string[];
+  productIds: string[];
+}): string | null {
+  if (data.scopeType === 'categories' && data.categoryIds.length === 0) {
+    return 'Select at least one category';
+  }
+  if (data.scopeType === 'subcategories' && data.subcategoryIds.length === 0) {
+    return 'Select at least one subcategory';
+  }
+  if (data.scopeType === 'products' && data.productIds.length === 0) {
+    return 'Select at least one product';
+  }
+  return null;
+}
+
 export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
@@ -41,6 +59,7 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
   const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
   const [productQuery, setProductQuery] = useState('');
   const [productHits, setProductHits] = useState<Product[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [clearImage, setClearImage] = useState(false);
   const existingImageUrl = clearImage ? null : campaign?.imageUrl || null;
@@ -52,7 +71,7 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
     discountValue: campaign?.discountValue?.toString() || '',
     maxDiscountPerItem: campaign?.maxDiscountPerItem?.toString() || '',
     showOnStorefront: campaign?.showOnStorefront !== false,
-    scopeType: (campaign?.scopeType || 'categories') as PromoScopeType,
+    scopeType: (campaign?.scopeType || 'all') as PromoScopeType,
     categoryIds: (campaign?.categoryIds || []).map(String),
     subcategoryIds: (campaign?.subcategoryIds || []).map(String),
     productIds: (campaign?.productIds || []).map(String),
@@ -71,6 +90,20 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
       })
       .catch(() => {});
   }, []);
+
+  // Pre-load selected products when editing a product-scoped sale
+  useEffect(() => {
+    const ids = (campaign?.productIds || []).map(String);
+    if (!ids.length) {
+      setSelectedProducts([]);
+      return;
+    }
+    Promise.all(
+      ids.map((id) =>
+        adminApi.getProductById(id).then((res) => (res.data?.product as Product) ?? null).catch(() => null),
+      ),
+    ).then((products) => setSelectedProducts(products.filter(Boolean) as Product[]));
+  }, [campaign?._id, campaign?.productIds]);
 
   useEffect(() => {
     if (formData.scopeType !== 'products' || productQuery.trim().length < 2) {
@@ -126,8 +159,21 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      toast.error('Please enter a sale name');
+      return;
+    }
+    if (!formData.discountValue || Number(formData.discountValue) <= 0) {
+      toast.error('Please enter a valid discount value');
+      return;
+    }
     if (!formData.endDate) {
       toast.error('Please set an end date');
+      return;
+    }
+    const scopeErr = scopeValidationError(formData);
+    if (scopeErr) {
+      toast.error(scopeErr);
       return;
     }
     setIsSaving(true);
@@ -341,23 +387,61 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
 
             {formData.scopeType === 'products' ? (
               <div className="space-y-2">
+                {formData.productIds.length > 0 ? (
+                  <div className="rounded-lg bg-brand-50/60 border border-brand-100 px-3 py-2 space-y-1">
+                    <p className="text-xs font-semibold text-brand-800">
+                      Selected ({formData.productIds.length})
+                    </p>
+                    <div className="max-h-28 overflow-y-auto space-y-1">
+                      {selectedProducts.map((p) => (
+                        <label key={p._id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.productIds.includes(p._id)}
+                            onChange={() => {
+                              toggleId('productIds', p._id);
+                              if (formData.productIds.includes(p._id)) {
+                                setSelectedProducts((prev) => prev.filter((x) => x._id !== p._id));
+                              }
+                            }}
+                            className="rounded text-brand-600"
+                          />
+                          <span className="truncate">{p.name}</span>
+                        </label>
+                      ))}
+                      {selectedProducts.length < formData.productIds.length ? (
+                        <p className="text-xs text-gray-400 pl-6">
+                          {formData.productIds.length - selectedProducts.length} product(s) loading…
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
                 <Input
                   label="Search products"
                   value={productQuery}
                   onChange={(e) => setProductQuery(e.target.value)}
+                  placeholder="Type name to add more…"
                 />
                 <div className="max-h-36 overflow-y-auto space-y-1">
-                  {productHits.map((p) => (
-                    <label key={p._id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.productIds.includes(p._id)}
-                        onChange={() => toggleId('productIds', p._id)}
-                        className="rounded text-brand-600"
-                      />
-                      <span className="truncate">{p.name}</span>
-                    </label>
-                  ))}
+                  {productHits
+                    .filter((p) => !formData.productIds.includes(p._id))
+                    .map((p) => (
+                      <label key={p._id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={() => {
+                            toggleId('productIds', p._id);
+                            setSelectedProducts((prev) =>
+                              prev.some((x) => x._id === p._id) ? prev : [...prev, p],
+                            );
+                          }}
+                          className="rounded text-brand-600"
+                        />
+                        <span className="truncate">{p.name}</span>
+                      </label>
+                    ))}
                 </div>
               </div>
             ) : null}

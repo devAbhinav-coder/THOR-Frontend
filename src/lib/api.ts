@@ -16,10 +16,12 @@ import {
 } from "@/lib/authRequestPaths";
 import type {
   AdminCreateOfflineOrderBody,
+  AdminCreateB2bOrderBody,
   AdminSalesInvoiceWriteBody,
 } from "@/types";
 import { toastForNonAuthHttpError } from "@/lib/httpClientToast";
 import { getForgotPasswordVerifyIdempotencyKey } from "@/lib/authOtpClient";
+import type { RevenueChannelFilter } from "@/lib/revenuePeriod";
 
 /** Shared axios instance (interceptors, base URL). Exported so thin modules
  *  like `invoiceStore` can call endpoints without depending on the full
@@ -354,6 +356,22 @@ export const cartApi = {
       schemas.cartPayload,
     ),
   removeCoupon: () => unwrapAxios("cart.removeCoupon", api.delete("/cart/coupon"), schemas.cartPayload),
+  previewPromotion: (items: Array<{ productId: string; price: number; quantity: number }>) =>
+    unwrapAxios(
+      "cart.previewPromotion",
+      api.post("/cart/promotion-preview", { items }),
+      schemas.successData,
+    ),
+  previewBuyNow: (data: {
+    productId: string;
+    variant: { sku: string; size?: string; color?: string; colorCode?: string };
+    quantity: number;
+  }) =>
+    unwrapAxios(
+      "cart.previewBuyNow",
+      api.post("/cart/buy-now-preview", data),
+      schemas.successData,
+    ),
   uploadCustomFieldImage: (data: FormData) =>
     unwrapAxios(
       "cart.customFieldImage",
@@ -552,6 +570,36 @@ export const saleCampaignApi = {
     unwrapAxios("sales.preview", api.post("/sales/preview", data), schemas.successData),
 };
 
+export const promotionApi = {
+  getPublic: () =>
+    unwrapAxios("promotions.public", api.get("/promotions/public"), schemas.promotionsPublicList),
+  getAll: () =>
+    unwrapAxios("promotions.getAll", api.get("/promotions"), schemas.promotionsAdminList),
+  getById: (id: string) =>
+    unwrapAxios("promotions.getById", api.get(`/promotions/${id}`), schemas.successData),
+  create: (data: object | FormData) =>
+    unwrapAxios(
+      "promotions.create",
+      data instanceof FormData
+        ? api.post("/promotions", data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.post("/promotions", data),
+      schemas.successData,
+    ),
+  update: (id: string, data: object | FormData) =>
+    unwrapAxios(
+      "promotions.update",
+      data instanceof FormData
+        ? api.patch(`/promotions/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.patch(`/promotions/${id}`, data),
+      schemas.successData,
+    ),
+  archive: (id: string) =>
+    unwrapAxios("promotions.archive", api.patch(`/promotions/${id}/archive`), schemas.successData),
+  delete: (id: string) => del204("promotions.delete", api.delete(`/promotions/${id}`)),
+  preview: (data: object) =>
+    unwrapAxios("promotions.preview", api.post("/promotions/preview", data), schemas.successData),
+};
+
 export const categoryApi = {
   getAll: (params?: { active?: boolean }) =>
     unwrapAxios("categories.getAll", api.get("/categories", { params }), schemas.categoriesList),
@@ -623,6 +671,19 @@ export const storefrontApi = {
       api.post('/storefront/visit', data),
       schemas.storeVisitRecorded,
     ),
+  recordOfferEvent: (data: {
+    eventType: 'popup_impression' | 'popup_dismiss' | 'popup_cta_click' | 'coupon_copy';
+    offerKind: 'coupon' | 'sale' | 'promotion';
+    offerId?: string;
+    offerLabel?: string;
+    sessionKey: string;
+    path?: string;
+  }) =>
+    unwrapAxios(
+      'storefront.offerEvent',
+      api.post('/storefront/offer-event', data),
+      schemas.looseDataResponse,
+    ),
 };
 
 export const adminApi = {
@@ -637,7 +698,12 @@ export const adminApi = {
   searchProducts: (params?: Record<string, string | number | boolean | undefined>) =>
     unwrapAxios("admin.products.search", api.get("/admin/products/search", { params }), schemas.productsPaginated),
   getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
-  getRevenueSummary: (params: { period: string; year?: number; month?: number }) =>
+  getRevenueSummary: (params: {
+    period: string;
+    year?: number;
+    month?: number;
+    channel?: RevenueChannelFilter;
+  }) =>
     unwrapAxios("admin.revenueSummary", api.get("/admin/revenue/summary", { params }), schemas.adminAnalytics),
   getAuditLogs: (params?: Record<string, string | number>) =>
     unwrapAxios("admin.auditLogs", api.get("/admin/security/audit", { params }), schemas.adminAuditLogsList),
@@ -661,6 +727,8 @@ export const adminApi = {
     del204("admin.deleteOrder", api.delete(`/admin/orders/${id}`)),
   createOfflineOrder: (data: AdminCreateOfflineOrderBody) =>
     unwrapAxios("admin.createOfflineOrder", api.post("/admin/orders/offline", data), schemas.adminOrderDetail),
+  createB2bOrder: (data: AdminCreateB2bOrderBody) =>
+    unwrapAxios("admin.createB2bOrder", api.post("/admin/orders/b2b", data), schemas.adminOrderDetail),
   updateOrderStatus: (
     id: string,
     payload: {
@@ -671,8 +739,32 @@ export const adminApi = {
       trackingUrl?: string;
     },
   ) => unwrapAxios("admin.orderStatus", api.patch(`/admin/orders/${id}/status`, payload), schemas.adminOrderDetail),
+  updateOrderLineCostAtSale: (orderId: string, lineIndex: number, costAtSale: number) =>
+    unwrapAxios(
+      "admin.orderLineCostAtSale",
+      api.patch(`/admin/orders/${orderId}/items/${lineIndex}/cost-at-sale`, { costAtSale }),
+      schemas.successData,
+    ),
   generateOrderInvoice: (id: string) =>
     unwrapAxios("admin.generateInvoice", api.post(`/admin/orders/${id}/generate-invoice`), schemas.successMessageData),
+  createTaxInvoiceFromOrder: (orderId: string) =>
+    unwrapAxios(
+      "admin.createTaxInvoiceFromOrder",
+      api.post(`/admin/orders/${orderId}/create-tax-invoice`),
+      schemas.adminSalesInvoiceSingle,
+    ),
+  getOrderTaxInvoice: (orderId: string) =>
+    unwrapAxios(
+      "admin.getOrderTaxInvoice",
+      api.get(`/admin/orders/${orderId}/tax-invoice`),
+      schemas.adminOrderTaxInvoice,
+    ),
+  listB2bOrdersPendingTaxInvoice: (params?: { search?: string; limit?: number }) =>
+    unwrapAxios(
+      "admin.listB2bOrdersPendingTaxInvoice",
+      api.get("/admin/orders/b2b/pending-tax-invoice", { params }),
+      schemas.adminB2bPendingInvoiceList,
+    ),
   processRefund: (
     id: string,
     payload: { refundMethod?: string; amount: number; notes?: string }
@@ -709,6 +801,20 @@ export const adminApi = {
       "admin.updateUserRole",
       api.patch(`/admin/users/${id}/role`, { role }),
       schemas.adminUpdateUserRole
+    ),
+  getJobHealth: () =>
+    unwrapAxios("admin.jobHealth", api.get("/admin/jobs/health"), schemas.adminJobHealth),
+  listOutboxDeadLetter: (type: string, params?: { limit?: number }) =>
+    unwrapAxios(
+      "admin.outboxDlq",
+      api.get(`/admin/outbox/${type}/dead-letter`, { params }),
+      schemas.adminOutboxDlq,
+    ),
+  replayOutboxEntry: (type: string, id: string) =>
+    unwrapAxios(
+      "admin.outboxReplay",
+      api.post(`/admin/outbox/${type}/${id}/replay`),
+      schemas.successMessageData,
     ),
   getReviews: (params?: object) =>
     unwrapAxios("admin.reviews", api.get("/admin/reviews", { params }), schemas.adminReviewsList),
@@ -918,6 +1024,8 @@ export { adminAiApi } from "@/lib/adminAiApi";
 export const inventoryApi = {
   getOverview: (params?: Record<string, string | number>) =>
     unwrapAxios('inventory.overview', api.get('/admin/inventory', { params }), schemas.adminInventoryOverview),
+  exportRows: () =>
+    unwrapAxios('inventory.export', api.get('/admin/inventory/export'), schemas.successMessageData),
   adjustStock: (productId: string, sku: string, payload: { delta: number; reason: string; note?: string; costPrice?: number; price?: number }) =>
     unwrapAxios('inventory.adjustStock', api.patch(`/admin/inventory/products/${productId}/variants/${encodeURIComponent(sku)}/stock`, payload), schemas.successMessageData),
   getLedger: (params?: Record<string, string | number>) =>

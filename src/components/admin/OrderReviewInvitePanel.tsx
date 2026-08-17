@@ -110,7 +110,7 @@ export default function OrderReviewInvitePanel({ orderId, className }: Props) {
   const downloadQr = () => {
     const src = brandedQr || data?.invite.qrDataUrl;
     if (!src) return;
-    downloadDataUrl(src, `HOR-review-QR-${data?.order.orderNumber || orderId}.png`);
+    downloadDataUrl(src, `THOR-review-QR-${data?.order.orderNumber || orderId}.png`);
     toast.success('QR downloaded');
   };
 
@@ -123,7 +123,7 @@ export default function OrderReviewInvitePanel({ orderId, className }: Props) {
         title: 'The House of Rani',
         text: `Hi${data.order.customerName ? ` ${data.order.customerName.split(' ')[0]}` : ''}! Please share your House of Rani experience for order ${data.order.orderNumber}:\n${data.invite.url}`,
         qrDataUrl: brandedQr || data.invite.qrDataUrl,
-        filename: `HOR-review-QR-${data.order.orderNumber}.png`,
+        filename: `THOR-review-QR-${data.order.orderNumber}.png`,
       });
       if (mode === 'native') toast.success('Shared');
       else if (mode === 'whatsapp') toast.success('Opened WhatsApp share');

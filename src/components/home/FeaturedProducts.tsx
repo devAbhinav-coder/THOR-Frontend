@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
@@ -9,6 +9,7 @@ import FeaturedProductCard from "@/components/home/FeaturedProductCard";
 import FeaturedProductCardSkeleton from "@/components/home/FeaturedProductCardSkeleton";
 import HorizontalScrollRow from "@/components/ui/HorizontalScrollRow";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
+import { expandProductsForShopListing } from "@/lib/shopProductListing";
 
 const FEATURED_CARD_CLASS =
   "w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.9375rem)]";
@@ -46,6 +47,11 @@ export default function FeaturedProducts({
     };
     fetchFeatured();
   }, [initialProducts]);
+
+  const listingEntries = useMemo(
+    () => expandProductsForShopListing(products),
+    [products],
+  );
 
   return (
     <section
@@ -87,9 +93,12 @@ export default function FeaturedProducts({
                 <FeaturedProductCardSkeleton />
               </div>
             ))
-          : products.map((product) => (
-              <div key={product._id} className={FEATURED_CARD_CLASS}>
-                <FeaturedProductCard product={product} />
+          : listingEntries.map((entry) => (
+              <div key={entry.listKey} className={FEATURED_CARD_CLASS}>
+                <FeaturedProductCard
+                  product={entry.product}
+                  displayColor={entry.displayColor}
+                />
               </div>
             ))
           }

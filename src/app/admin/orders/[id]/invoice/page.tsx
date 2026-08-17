@@ -29,12 +29,17 @@ export default function AdminInvoicePage() {
   if (!order) return <div className="p-6">Order not found.</div>;
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-[820px] mx-auto mb-4 flex items-center gap-2 print:hidden">
-        <Button variant="outline" asChild><Link href={`/admin/orders/${encodeURIComponent(order._id)}`}>Back</Link></Button>
-        <Button variant="brand" onClick={() => window.print()}>Print / Save PDF</Button>
+    <div className="print:bg-white">
+      <div className="max-w-[820px] mx-auto mb-4 flex flex-wrap items-center gap-2 print:hidden px-4">
+        <Button variant="outline" asChild><Link href={`/admin/orders/${encodeURIComponent(order._id)}`}>Back to order</Link></Button>
+        <span className="text-sm font-semibold text-gray-700">
+          Order invoice · <span className="font-mono text-brand-700">{order.orderNumber}</span>
+        </span>
+        <Button variant="brand" className="ml-auto" onClick={() => window.print()}>Print / Save PDF</Button>
       </div>
-      <OrderInvoiceDocument order={order} />
+      <div className="bg-gray-100 p-4 sm:p-6 rounded-lg print:bg-white print:p-0">
+        <OrderInvoiceDocument order={order} />
+      </div>
     </div>
   );
 }

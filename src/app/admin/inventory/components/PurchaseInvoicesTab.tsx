@@ -9,7 +9,7 @@ import { inventoryApi } from '@/lib/api';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
+import OrderLineThumbnail from '@/components/orders/OrderLineThumbnail';
 import PurchaseInvoiceDocument from './PurchaseInvoiceDocument';
 import {
   EMPTY_LINE,
@@ -98,8 +98,13 @@ function LineItemForm({
                 {results.map(p => (
                   <div key={p._id} className="border-b border-gray-50 last:border-0">
                     <div className="px-3 py-2 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase flex items-center gap-2">
-                      <div className="h-4 w-4 rounded overflow-hidden bg-gray-200 relative">
-                        {p.images[0]?.url && <Image src={p.images[0].url} alt="" fill className="object-cover" />}
+                      <div className="h-4 w-4 rounded overflow-hidden relative">
+                        <OrderLineThumbnail
+                          image={p.images[0]?.url}
+                          name={p.name}
+                          className="h-4 w-4 rounded border-0"
+                          sizes="16px"
+                        />
                       </div>
                       {p.name}
                     </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye } from 'lucide-react';
 import { adminApi, productApi } from '@/lib/api';
@@ -10,6 +9,8 @@ import { Category, Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { sumVariantStock, variantStockSummary } from '@/lib/productStock';
 import { adminProductListThumbnail } from '@/lib/adminProductDisplay';
+import OrderLineThumbnail from '@/components/orders/OrderLineThumbnail';
+import { getProductPriceDisplay } from '@/lib/productPricing';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SearchField } from '@/components/ui/SearchField';
@@ -231,6 +232,23 @@ export default function AdminProductsPage() {
     return 'text-green-600';
   };
 
+  const renderPrice = (product: Product) => {
+    const d = getProductPriceDisplay(product);
+    return (
+      <>
+        <p className="text-sm font-bold text-gray-900 leading-tight">{d.sellLabel}</p>
+        {d.mrpLabel && (
+          <p className="text-[11px] font-semibold text-gray-400 line-through mt-0.5">
+            MRP {d.mrpLabel}
+          </p>
+        )}
+        {d.spreadNote && (
+          <p className="text-[10px] font-medium text-brand-600 mt-0.5">{d.spreadNote}</p>
+        )}
+      </>
+    );
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     void fetchProducts(pagination.currentPage, debouncedSearch, sortBy);
@@ -395,13 +413,12 @@ export default function AdminProductsPage() {
                 <tr key={product._id} className="group hover:bg-brand-50/40 transition-all hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="relative w-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm group-hover:shadow transition-shadow" style={{ aspectRatio: '3/4' }}>
-                        <Image
-                          src={adminProductListThumbnail(product)}
-                          alt={product.name}
-                          fill
+                      <div className="w-10 flex-shrink-0" style={{ aspectRatio: '3/4' }}>
+                        <OrderLineThumbnail
+                          image={adminProductListThumbnail(product)}
+                          name={product.name}
+                          className="h-full w-full rounded-lg shadow-sm group-hover:shadow transition-shadow"
                           sizes="40px"
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <div className="min-w-0">
@@ -417,10 +434,7 @@ export default function AdminProductsPage() {
                     <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">{product.category}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-bold text-gray-900 leading-tight">{formatPrice(product.price)}</p>
-                    {product.comparePrice && (
-                      <p className="text-[11px] font-semibold text-gray-400 line-through mt-0.5">{formatPrice(product.comparePrice)}</p>
-                    )}
+                    {renderPrice(product)}
                   </td>
                   <td className="px-4 py-3">
                     <div>
@@ -487,13 +501,18 @@ export default function AdminProductsPage() {
               return (
               <div key={product._id} className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all">
                 <div className="relative w-full bg-gray-100" style={{ aspectRatio: '3/4' }}>
-                  <Image src={adminProductListThumbnail(product)} alt={product.name} fill sizes="320px" className="object-cover" />
+                  <OrderLineThumbnail
+                    image={adminProductListThumbnail(product)}
+                    name={product.name}
+                    className="h-full w-full rounded-none border-0"
+                    sizes="320px"
+                  />
                 </div>
                 <div className="p-3">
                   <p className="text-sm font-semibold text-gray-900 line-clamp-2">{product.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{product.category}</p>
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-sm font-bold text-gray-900">{formatPrice(product.price)}</p>
+                    {renderPrice(product)}
                     <Badge variant={product.isActive ? 'success' : 'error'} className="text-[11px]">
                       {product.isActive ? 'Active' : 'Inactive'}
                     </Badge>
@@ -541,13 +560,12 @@ export default function AdminProductsPage() {
                 return (
                 <div key={product._id} className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="relative w-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '3/4' }}>
-                      <Image
-                        src={adminProductListThumbnail(product)}
-                        alt={product.name}
-                        fill
+                    <div className="w-16 flex-shrink-0" style={{ aspectRatio: '3/4' }}>
+                      <OrderLineThumbnail
+                        image={adminProductListThumbnail(product)}
+                        name={product.name}
+                        className="h-full w-full rounded-xl"
                         sizes="64px"
-                        className="object-cover"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -555,18 +573,20 @@ export default function AdminProductsPage() {
                       <p className="text-xs text-gray-500 mt-0.5">
                         {product.category}{product.fabric ? ` · ${product.fabric}` : ''}
                       </p>
-                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <div className="mt-2 space-y-0.5">
+                        {renderPrice(product)}
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
                         {product.isFeatured && <Badge variant="brand" className="text-[11px]">Featured</Badge>}
                         <Badge variant={product.isActive ? 'success' : 'error'} className="text-[11px]">
                           {product.isActive ? 'Active' : 'Inactive'}
                         </Badge>
-                        <span className="text-xs font-semibold text-gray-900">{formatPrice(product.price)}</span>
                         <span className={`text-xs font-semibold ${stockClass(sm.total)}`}>
                           {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}
                           {sm.breakdown && (
                             <span className="block font-normal text-gray-400 text-[10px]">Variants: {sm.breakdown}</span>
                           )}
                         </span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -605,16 +625,23 @@ export default function AdminProductsPage() {
                 return (
                   <div key={product._id} className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
                     <div className="relative w-full bg-gray-100" style={{ aspectRatio: '3/4' }}>
-                      <Image src={adminProductListThumbnail(product)} alt={product.name} fill sizes="180px" className="object-cover" />
+                      <OrderLineThumbnail
+                        image={adminProductListThumbnail(product)}
+                        name={product.name}
+                        className="h-full w-full rounded-none border-0"
+                        sizes="180px"
+                      />
                     </div>
                     <div className="p-2.5">
                       <p className="text-xs font-semibold text-gray-900 line-clamp-2">{product.name}</p>
                       <p className="text-[11px] text-gray-500 mt-0.5">{product.category}</p>
-                      <div className="mt-1.5 flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-gray-900">{formatPrice(product.price)}</span>
+                      <div className="mt-1.5">
+                        {renderPrice(product)}
+                        <div className="mt-1 flex items-center justify-between gap-2">
                         <Badge variant={product.isActive ? 'success' : 'error'} className="text-[10px]">
                           {product.isActive ? 'Active' : 'Inactive'}
                         </Badge>
+                        </div>
                       </div>
                       <p className={`mt-1 text-[10px] font-semibold ${stockClass(sm.total)}`}>
                         {sm.total === 0 ? 'Out of stock' : `${sm.total} in stock`}

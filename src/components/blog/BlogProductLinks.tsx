@@ -41,7 +41,7 @@ export default function BlogProductLinks({ products, blogSlug }: Props) {
                 </p>
                 {product.price != null && (
                   <p className="text-xs text-account-on-surface-variant mt-0.5">
-                    From ₹{product.price.toLocaleString("en-IN")}
+                    ₹{product.price.toLocaleString("en-IN")}
                   </p>
                 )}
               </div>

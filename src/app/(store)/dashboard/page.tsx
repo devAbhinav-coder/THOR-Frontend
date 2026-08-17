@@ -14,6 +14,7 @@ import {
   getOrderStatusBadgeClass,
   getPrimaryProductName,
 } from '@/lib/accountOrderStyles';
+
 function memberSinceLabel(createdAt?: string): string {
   if (!createdAt) return 'Valued Patron';
   const date = new Date(createdAt);
@@ -30,11 +31,15 @@ function defaultAddress(user: ReturnType<typeof useAuthStore.getState>['user']):
 }
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  const { user, fetchUser } = useAuthStore();
   const { products: wishlistProducts } = useWishlistStore();
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState({ total: 0, delivered: 0, inProgress: 0 });
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    void fetchUser();
+  }, [fetchUser]);
 
   useEffect(() => {
     const fetchData = async () => {

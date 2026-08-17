@@ -628,6 +628,7 @@ export function useRaniCareChat() {
     setLoadingOrders(true);
     try {
       await orderApi.cancel(orderId, "Cancelled via customer support chat");
+      await useAuthStore.getState().fetchUser();
       await fetchRecentOrders();
       setPending(null);
       pushBot(

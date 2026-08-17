@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import Image from 'next/image';
+import OrderLineThumbnail from '@/components/orders/OrderLineThumbnail';
 import {
-  Package, RefreshCw, Search,
+  Package, RefreshCw, Search, Download,
   ChevronDown, ChevronRight, Pencil, X as XIcon,
 } from 'lucide-react';
 import { inventoryApi, operatingExpensesApi } from '@/lib/api';
@@ -16,6 +16,27 @@ import InventoryBusinessSummary, {
   type InventoryBusinessSummaryData,
   type OperatingCostsSnapshot,
 } from './InventoryBusinessSummary';
+import MetricTooltip from '@/components/admin/inventory/MetricTooltip';
+import PeriodToolbar from '@/components/admin/shared/PeriodToolbar';
+import MissingCostBanner from '@/components/admin/inventory/MissingCostBanner';
+import ReorderSuggestionsPanel, {
+  type ReorderItem,
+} from '@/components/admin/inventory/ReorderSuggestionsPanel';
+import {
+  formatTurnover,
+  INVENTORY_METRIC_NOTES,
+  productRowTooltipLines,
+} from '@/lib/inventoryMetrics';
+import { downloadCsv } from '@/lib/csvExport';
+import type { RevenuePeriod } from '@/lib/revenuePeriod';
+import { Info } from 'lucide-react';
+import {
+  formatSellPriceRange,
+  variantCatalogMrp,
+  variantCatalogSellPrice,
+  variantPriceOverridesBase,
+} from '@/lib/productPricing';
+
 interface Variant {
   sku: string;
   size?: string;
@@ -23,6 +44,10 @@ interface Variant {
   stock: number;
   price?: number;
   costPrice?: number;
+  soldCount?: number;
+  periodRevenue?: number;
+  periodProfit?: number;
+  missingCost?: boolean;
 }
 
 interface InventoryProduct {
@@ -35,7 +60,8 @@ interface InventoryProduct {
   totalStock: number;
   soldCount: number;
   price: number;
-  turnover: number;
+  comparePrice?: number;
+  turnover: number | null;
   avgCost?: number;
   stockValue?: number;
   grossRevenue?: number;
@@ -45,6 +71,11 @@ interface InventoryProduct {
   estimatedCost?: number;
   estimatedProfit?: number;
   marginPercent?: number | null;
+  effectiveSellPrice?: number;
+  hasVariantPriceSpread?: boolean;
+  isPeriodView?: boolean;
+  lifetimeSoldCount?: number;
+  variantsMissingCost?: number;
 }
 
 const REASONS = [
@@ -200,17 +231,19 @@ function VariantBreakdownPanel({
   product: InventoryProduct;
   onAdjust: (v: Variant) => void;
 }) {
+  const periodView = Boolean(product.isPeriodView);
+
   return (
     <div className="rounded-xl border border-brand-200/80 bg-white shadow-sm overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-brand-50/60 border-b border-brand-100">
         <p className="text-[11px] font-bold text-brand-800 uppercase tracking-wide">
           Variant / SKU details
         </p>
-        {(product.soldCount ?? 0) > 0 && (
-          <p className="text-[10px] text-gray-500">
-            Sold ({product.soldCount} units) & revenue are at <span className="font-semibold">product</span> level — not split per SKU yet
-          </p>
-        )}
+        <p className="text-[10px] text-gray-500">
+          {periodView ?
+            'Per-SKU sold · sell · cost · period revenue/profit from orders'
+          : 'Per-SKU soldCount · size / color / stock / cost / margin'}
+        </p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs min-w-[520px]">
@@ -219,9 +252,19 @@ function VariantBreakdownPanel({
               <th className="text-left px-4 py-2">Variant</th>
               <th className="text-left px-4 py-2">SKU</th>
               <th className="text-right px-4 py-2">Stock</th>
+              <th className="text-right px-4 py-2">Sold</th>
+              <th className="text-right px-4 py-2">Sell</th>
               <th className="text-right px-4 py-2">MRP</th>
               <th className="text-right px-4 py-2">Cost</th>
-              <th className="text-right px-4 py-2">Margin</th>
+              {periodView ?
+                <>
+                  <th className="text-right px-4 py-2">Revenue</th>
+                  <th className="text-right px-4 py-2">Profit</th>
+                </>
+              : null}
+              {!periodView ?
+                <th className="text-right px-4 py-2">Margin</th>
+              : null}
               <th className="text-right px-4 py-2">Stock value</th>
               <th className="text-right px-4 py-2">Action</th>
             </tr>
@@ -229,13 +272,18 @@ function VariantBreakdownPanel({
           <tbody className="divide-y divide-gray-100">
             {product.variants.map(v => {
               const varLabel = [v.size, v.color].filter(Boolean).join(' / ') || 'Default';
-              const mrp = v.price ?? product.price;
+              const sell = variantCatalogSellPrice(v, product.price);
+              const mrp = variantCatalogMrp(v, product);
               const cost = v.costPrice;
               const varMargin =
-                cost != null && mrp > 0
-                  ? Math.round(((mrp - cost) / mrp) * 100)
+                !periodView && cost != null && sell > 0
+                  ? Math.round(((sell - cost) / sell) * 100)
                   : null;
               const stockValue = (cost ?? 0) * v.stock;
+              const sellOverride = variantPriceOverridesBase(v, product.price);
+              const skuSold = v.soldCount ?? 0;
+              const skuRevenue = periodView ? v.periodRevenue : undefined;
+              const skuProfit = periodView ? v.periodProfit : undefined;
 
               return (
                 <tr key={v.sku} className="hover:bg-gray-50/80">
@@ -244,23 +292,50 @@ function VariantBreakdownPanel({
                   <td className="px-4 py-2.5 text-right">
                     <StockBadge stock={v.stock} />
                   </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-navy-800">
+                    {skuSold}
+                  </td>
                   <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                    {formatPrice(mrp)}
+                    {formatPrice(sell)}
+                    {sellOverride && (
+                      <p className="text-[9px] font-normal text-brand-600">variant price</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-gray-500">
+                    {mrp != null ?
+                      <span className="line-through">{formatPrice(mrp)}</span>
+                    : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     {cost != null ? (
                       <span className="font-semibold text-brand-800">{formatPrice(cost)}</span>
                     ) : (
-                      <span className="text-gray-400">Not set</span>
+                      <span className="text-amber-600 font-bold text-[10px]">Not set</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right">
-                    {varMargin != null ? (
-                      <span className={cn('font-bold', marginColor(varMargin))}>{varMargin}%</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
+                  {periodView ?
+                    <>
+                      <td className="px-4 py-2.5 text-right font-semibold text-brand-800">
+                        {skuSold > 0 && skuRevenue != null ?
+                          formatPrice(skuRevenue)
+                        : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-emerald-700">
+                        {skuSold > 0 && skuProfit != null ?
+                          formatPrice(skuProfit)
+                        : <span className="text-gray-300">—</span>}
+                      </td>
+                    </>
+                  : null}
+                  {!periodView ?
+                    <td className="px-4 py-2.5 text-right">
+                      {varMargin != null ? (
+                        <span className={cn('font-bold', marginColor(varMargin))}>{varMargin}%</span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                  : null}
                   <td className="px-4 py-2.5 text-right text-gray-700">
                     {cost != null ? formatPrice(stockValue) : '—'}
                   </td>
@@ -306,6 +381,11 @@ function ProductRow({
       )
     : null;
   const marginPct = product.marginPercent ?? fallbackMargin;
+  const turnoverLabel = formatTurnover(product.turnover);
+  const rowTips = productRowTooltipLines(product);
+  const infoIcon = (
+    <Info className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+  );
 
   const toggle = () => setExpanded(v => !v);
 
@@ -313,7 +393,7 @@ function ProductRow({
     <>
       <tr
         className={cn(
-          'hover:bg-gray-50 transition-colors cursor-pointer',
+          'group hover:bg-gray-50 transition-colors cursor-pointer',
           expanded && 'bg-brand-50/20',
         )}
         onClick={toggle}
@@ -321,11 +401,13 @@ function ProductRow({
       >
         <td className="px-4 py-3">
           <div className="flex items-center gap-3">
-            <div
-              className="relative w-9 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100"
-              style={{ aspectRatio: '3/4' }}
-            >
-              {img && <Image src={img} alt={product.name} fill sizes="36px" className="object-cover" />}
+            <div className="w-9 flex-shrink-0" style={{ aspectRatio: '3/4' }}>
+              <OrderLineThumbnail
+                image={img}
+                name={product.name}
+                className="h-full w-full rounded-lg"
+                sizes="36px"
+              />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900 truncate max-w-[220px]">{product.name}</p>
@@ -354,75 +436,148 @@ function ProductRow({
           <p className="text-[9px] text-gray-400">pieces</p>
         </td>
         <td className="px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">
-          {formatPrice(product.price)}
+          <div className="text-right">
+            {formatSellPriceRange(product)}
+            {product.hasVariantPriceSpread && (
+              <p className="text-[9px] text-brand-600 font-normal">
+                per SKU prices differ
+              </p>
+            )}
+            {product.comparePrice != null && product.comparePrice > product.price && (
+              <p className="text-[9px] text-gray-400 line-through font-normal">
+                MRP {formatPrice(product.comparePrice)}
+              </p>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3 text-right text-xs whitespace-nowrap">
           {hasSales ? (
-            <div>
-              <p className="font-bold text-brand-800">
-                {formatPrice(product.grossRevenue ?? product.estimatedRevenue ?? 0)}
-              </p>
-              <p className="text-[9px] text-gray-400">gross revenue</p>
-            </div>
+            <MetricTooltip
+              title={`${product.name} — revenue`}
+              lines={rowTips.slice(0, 4)}
+              note={INVENTORY_METRIC_NOTES.productLevelSales}
+              align="right"
+            >
+              <div className="inline-flex flex-col items-end cursor-help">
+                <p className="font-bold text-brand-800 inline-flex items-center gap-1">
+                  {formatPrice(product.grossRevenue ?? product.estimatedRevenue ?? 0)}
+                  {infoIcon}
+                </p>
+                <p className="text-[9px] text-gray-400">gross revenue</p>
+              </div>
+            </MetricTooltip>
           ) : (
             <span className="text-gray-400">—</span>
           )}
         </td>
         <td className="px-4 py-3 text-right text-xs whitespace-nowrap">
           {hasSales ? (
-            <div>
-              <p className="font-semibold text-gray-600">
-                {formatPrice(product.grossCostOfSales ?? product.estimatedCost ?? 0)}
-              </p>
-              <p className="text-[9px] text-gray-400">COGS</p>
-            </div>
+            <MetricTooltip
+              title={`${product.name} — COGS`}
+              lines={rowTips.slice(2, 5)}
+              note={INVENTORY_METRIC_NOTES.avgCost}
+              align="right"
+            >
+              <div className="inline-flex flex-col items-end cursor-help">
+                <p className="font-semibold text-gray-600 inline-flex items-center gap-1">
+                  {formatPrice(product.grossCostOfSales ?? product.estimatedCost ?? 0)}
+                  {infoIcon}
+                </p>
+                <p className="text-[9px] text-gray-400">COGS</p>
+              </div>
+            </MetricTooltip>
           ) : (
             <span className="text-gray-400">—</span>
           )}
         </td>
         <td className="px-4 py-3 text-right text-xs whitespace-nowrap">
           {hasSales ? (
-            <div>
-              <p
-                className={cn(
-                  'font-bold text-sm',
-                  (product.grossProfit ?? product.estimatedProfit ?? 0) >= 0
-                    ? 'text-emerald-600'
-                    : 'text-red-600',
-                )}
-              >
-                {formatPrice(product.grossProfit ?? product.estimatedProfit ?? 0)}
-              </p>
-              <p className="text-[9px] text-gray-400">gross profit</p>
-            </div>
+            <MetricTooltip
+              title={`${product.name} — profit`}
+              lines={rowTips}
+              note={INVENTORY_METRIC_NOTES.catalogVsOrders}
+              align="right"
+            >
+              <div className="inline-flex flex-col items-end cursor-help">
+                <p
+                  className={cn(
+                    'font-bold text-sm inline-flex items-center gap-1',
+                    (product.grossProfit ?? product.estimatedProfit ?? 0) >= 0
+                      ? 'text-emerald-600'
+                      : 'text-red-600',
+                  )}
+                >
+                  {formatPrice(product.grossProfit ?? product.estimatedProfit ?? 0)}
+                  {infoIcon}
+                </p>
+                <p className="text-[9px] text-gray-400">gross profit</p>
+              </div>
+            </MetricTooltip>
           ) : (
             <span className="text-gray-400">—</span>
           )}
         </td>
         <td className="px-4 py-3 text-center">
-          <span
-            className={cn(
-              'text-[10px] font-bold px-1.5 py-0.5 rounded-md inline-block uppercase tracking-tighter',
-              (product.turnover ?? 0) >= 2
-                ? 'bg-emerald-100 text-emerald-700'
-                : (product.turnover ?? 0) >= 1
-                  ? 'bg-blue-100 text-blue-700'
-                  : (product.turnover ?? 0) >= 0.5
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-gray-100 text-gray-500',
-            )}
-          >
-            {(product.turnover ?? 0).toFixed(1)}x
-          </span>
+          {turnoverLabel === 'Sold out' ? (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md inline-block bg-navy-100 text-navy-700 uppercase tracking-tighter">
+              Sold out
+            </span>
+          ) : (
+            <MetricTooltip
+              title="Inventory velocity"
+              lines={[
+                { label: 'Sold', value: String(sold) },
+                { label: 'In stock', value: String(product.totalStock) },
+                { label: 'Turnover', value: turnoverLabel, highlight: true },
+              ]}
+              note="soldCount ÷ current stock. Higher = faster moving."
+              align="center"
+            >
+              <span
+                className={cn(
+                  'text-[10px] font-bold px-1.5 py-0.5 rounded-md inline-block uppercase tracking-tighter cursor-help',
+                  (product.turnover ?? 0) >= 2
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : (product.turnover ?? 0) >= 1
+                      ? 'bg-blue-100 text-blue-700'
+                      : (product.turnover ?? 0) >= 0.5
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-gray-100 text-gray-500',
+                )}
+              >
+                {turnoverLabel}
+              </span>
+            </MetricTooltip>
+          )}
         </td>
         <td className="px-4 py-3 text-right text-xs">
           {marginPct != null ? (
-            <div>
-              <span className={cn('font-bold text-sm', marginColor(marginPct))}>{marginPct}%</span>
-              {product.avgCost != null && product.avgCost > 0 && (
-                <p className="text-[9px] text-gray-400 mt-0.5">avg cost {formatPrice(product.avgCost)}</p>
-              )}
-            </div>
+            <MetricTooltip
+              title={`${product.name} — margin`}
+              lines={[
+                {
+                  label: 'Sell price used',
+                  value: formatSellPriceRange(product),
+                },
+                {
+                  label: 'Avg cost',
+                  value: product.avgCost ? formatPrice(product.avgCost) : 'Not set',
+                },
+                { label: 'Margin', value: `${marginPct}%`, highlight: true },
+              ]}
+              note="(Sell − avg cost) ÷ sell. Per-variant margins in SKU detail below."
+              align="right"
+            >
+              <div className="inline-flex flex-col items-end cursor-help">
+                <span className={cn('font-bold text-sm inline-flex items-center gap-1', marginColor(marginPct))}>
+                  {marginPct}%
+                  {infoIcon}
+                </span>
+                {product.avgCost != null && product.avgCost > 0 && (
+                  <p className="text-[9px] text-gray-400 mt-0.5">avg cost {formatPrice(product.avgCost)}</p>
+                )}
+              </div>
+            </MetricTooltip>
           ) : (
             <span className="text-gray-400">—</span>
           )}
@@ -451,24 +606,46 @@ export default function InventoryStockTab() {
   const [summary, setSummary] = useState<InventoryBusinessSummaryData | null>(null);
   const [operatingCosts, setOperatingCosts] = useState<OperatingCostsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('-sold');
+  const [period, setPeriod] = useState<RevenuePeriod>('lifetime');
+  const [year, setYear] = useState(new Date().getFullYear());
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // Lifted state for adjustment
   const [adjustTarget, setAdjustTarget] = useState<{ p: InventoryProduct; v: Variant } | null>(null);
 
-  const load = useCallback(async (p = 1, s = search, f = filter, sortBy = sort) => {
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+
+  const load = useCallback(async (
+    p = 1,
+    s = search,
+    f = filter,
+    sortBy = sort,
+    periodVal = period,
+    yearVal = year,
+  ) => {
     setLoading(true);
     try {
-      const params: Record<string, string | number> = { page: p, limit: 20, filter: f, sort: sortBy };
+      const params: Record<string, string | number> = {
+        page: p,
+        limit: 20,
+        filter: f,
+        sort: sortBy,
+        period: periodVal,
+      };
       if (s) params.search = s;
+      if (periodVal === 'year') params.year = yearVal;
+      if (periodVal === 'month') params.month = new Date().getMonth() + 1;
+
       const [res, opexRes] = await Promise.all([
         inventoryApi.getOverview(params),
-        operatingExpensesApi.getSummary({ year: new Date().getFullYear() }),
+        operatingExpensesApi.getSummary({
+          year: periodVal === 'year' ? yearVal : new Date().getFullYear(),
+        }),
       ]);
       setProducts((res.data as { products?: InventoryProduct[] }).products ?? []);
       setSummary((res.data as { summary?: InventoryBusinessSummaryData }).summary ?? null);
@@ -481,26 +658,96 @@ export default function InventoryStockTab() {
       setTotalPages(res.pagination?.totalPages ?? 1);
       setTotal(res.pagination?.total ?? 0);
       setPage(p);
-    } catch { toast.error('Failed to load inventory'); }
-    finally { setLoading(false); }
-  }, [search, filter, sort]);
+    } catch {
+      toast.error('Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  }, [search, filter, sort, period, year]);
 
   useEffect(() => {
-    load(1, search, filter, sort);
-  }, []);
+    load(1, search, filter, sort, period, year);
+  }, [period, year, load]);
 
   const handleSearch = (v: string) => {
     setSearch(v);
-    load(1, v, filter);
+    load(1, v, filter, sort, period, year);
   };
   const handleFilter = (f: string) => {
     setFilter(f);
-    load(1, search, f);
+    load(1, search, f, sort, period, year);
   };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await inventoryApi.exportRows();
+      const rows = (res.data as { rows?: Record<string, unknown>[] }).rows ?? [];
+      downloadCsv(
+        `inventory-export-${new Date().toISOString().slice(0, 10)}.csv`,
+        [
+          'Product',
+          'Category',
+          'SKU',
+          'Size',
+          'Color',
+          'Stock',
+          'List price',
+          'Cost',
+          'Sold (SKU)',
+          'Sold (Product)',
+          'HSN',
+          'Stock Value',
+        ],
+        rows.map((r) => [
+          r.productName,
+          r.category,
+          r.sku,
+          r.size,
+          r.color,
+          r.stock,
+          r.mrp,
+          r.costPrice,
+          r.soldCountSku,
+          r.soldCountProduct,
+          r.hsnCode,
+          r.stockValue,
+        ]),
+      );
+      toast.success(`Exported ${rows.length} SKU rows`);
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const reorderItems = (summary?.reorderSuggestions ?? []) as ReorderItem[];
 
   return (
     <div className="space-y-5">
+      <PeriodToolbar
+        period={period}
+        year={year}
+        years={years}
+        periodLabel={summary?.periodLabel}
+        onPeriodChange={setPeriod}
+        onYearChange={setYear}
+      />
+
+      {summary && (
+        <MissingCostBanner
+          missingSkus={summary.missingCostSkus ?? 0}
+          totalSkus={summary.missingCostTotalSkus ?? 0}
+          periodLinesMissingCost={summary.periodLinesMissingCost}
+          periodOrderLines={summary.periodOrderLines}
+          onFilterMissingCost={() => handleFilter('missing_cost')}
+        />
+      )}
+
       {summary && <InventoryBusinessSummary summary={summary} operatingCosts={operatingCosts} />}
+
+      {reorderItems.length > 0 && <ReorderSuggestionsPanel items={reorderItems} />}
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -520,6 +767,7 @@ export default function InventoryStockTab() {
               { id: 'sold', label: 'With sales' },
               { id: 'low', label: 'Low stock' },
               { id: 'out', label: 'Out of stock' },
+              { id: 'missing_cost', label: 'Missing cost' },
             ] as const).map(f => (
               <button
                 key={f.id}
@@ -535,7 +783,7 @@ export default function InventoryStockTab() {
             ))}
             <select
               value={sort}
-              onChange={e => { setSort(e.target.value); load(1, search, filter, e.target.value); }}
+              onChange={e => { setSort(e.target.value); load(1, search, filter, e.target.value, period, year); }}
               className="h-10 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700"
             >
               <option value="-sold">Best sellers first</option>
@@ -546,8 +794,20 @@ export default function InventoryStockTab() {
               <option value="-name">Name Z–A</option>
               <option value="category">Category</option>
             </select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-10 gap-1.5"
+              disabled={exporting}
+              onClick={handleExport}
+            >
+              <Download className="h-3.5 w-3.5" />
+              {exporting ? 'Export…' : 'CSV'}
+            </Button>
             <button
-              onClick={() => load(page, search, filter)}
+              type="button"
+              onClick={() => load(page, search, filter, sort, period, year)}
               className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50"
             >
               <RefreshCw className={`h-4 w-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
@@ -576,7 +836,7 @@ export default function InventoryStockTab() {
                 <th className="text-left px-4 py-3">SKU</th>
                 <th className="text-center px-4 py-3">Stock</th>
                 <th className="text-center px-4 py-3">Sold</th>
-                <th className="text-right px-4 py-3">MRP</th>
+                <th className="text-right px-4 py-3">Sell price</th>
                 <th className="text-right px-4 py-3">Gross revenue</th>
                 <th className="text-right px-4 py-3">COGS</th>
                 <th className="text-right px-4 py-3">Gross profit</th>

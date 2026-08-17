@@ -6,7 +6,10 @@ import Link from "next/link";
 import { Heart, ShoppingBag, Star, Gift, Tag } from "lucide-react";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
+import { getStorefrontPriceDisplay, storefrontPriceMeta } from "@/lib/productPricing";
+import ProductPriceBlock from "@/components/product/ProductPriceBlock";
 import { useWishlistStore } from "@/store/useWishlistStore";
+import { useWishlistUiState } from "@/hooks/useWishlistUiState";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 import { hasInStockVariant } from "@/lib/productStock";
@@ -50,12 +53,12 @@ function ProductCardInner({ product, className }: ProductCardProps) {
 
   const hoverScrollPaused = useScrollHoverPause();
 
-  const { toggleWishlist, isInWishlist } = useWishlistStore();
+  const { toggleWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
   const router = useRouter();
 
-  const inWishlist = isInWishlist(product._id);
+  const inWishlist = useWishlistUiState(product._id);
   const isOutOfStock = !hasInStockVariant(product);
   const needsCustomization = useMemo(
     () => productNeedsCustomization(product),
@@ -87,20 +90,12 @@ function ProductCardInner({ product, className }: ProductCardProps) {
     return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }, []);
 
-  /**
-   * Discount percentage — computed from comparePrice when available.
-   * Google Merchant Center uses this to show "X% off" in Shopping ads.
-   */
-  const discountPercent = useMemo(() => {
-    if (product.discountPercent && product.discountPercent > 0)
-      return Math.round(product.discountPercent);
-    if (product.comparePrice && product.comparePrice > product.price) {
-      return Math.round(
-        ((product.comparePrice - product.price) / product.comparePrice) * 100,
-      );
-    }
-    return 0;
-  }, [product.price, product.comparePrice, product.discountPercent]);
+  const priceDisplay = useMemo(
+    () => getStorefrontPriceDisplay(product),
+    [product],
+  );
+  const discountPercent = priceDisplay.discountPercent;
+  const priceMeta = useMemo(() => storefrontPriceMeta(product), [product]);
 
   /**
    * Rich alt text satisfies Google image guidelines:
@@ -387,7 +382,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
 
           {/* ── Discount corner badge (reference style) ──
               Visible to users and crawlers — keeps promo pricing clearly shown. */}
-          {discountPercent >= 5 && !isOutOfStock && (
+          {product.saleCampaignId && discountPercent >= 1 && !isOutOfStock && (
             <div className='absolute top-0 left-0 z-30 pointer-events-none'>
               {/* Small tight ribbon */}
               <div className='relative w-[50px] h-[50px]'>
@@ -539,23 +534,9 @@ function ProductCardInner({ product, className }: ProductCardProps) {
                visible.  Google Merchant Center auto-detects both.
           ─────────────────────────────────────────────────────────────── */}
           <div className='flex min-h-[26px] shrink-0 flex-wrap items-center gap-x-2 gap-y-0.5'>
-            <span
-              className='text-base font-bold text-gray-900'
-              aria-label={`Price: ${formatPrice(product.price)}`}
-            >
-              {formatPrice(product.price)}
-              {/* Machine-readable price for crawlers */}
-              <meta itemProp='price' content={toMerchantPrice(product.price)} />
-              <meta itemProp='priceCurrency' content='INR' />
-            </span>
-            {product.comparePrice && product.comparePrice > product.price && (
-              <span
-                className='text-sm text-gray-600 line-through'
-                aria-label={`Original price: ${formatPrice(product.comparePrice)}`}
-              >
-                {formatPrice(product.comparePrice)}
-              </span>
-            )}
+            <ProductPriceBlock product={product} showBadge={false} />
+            <meta itemProp='price' content={priceMeta.priceContent} />
+            <meta itemProp='priceCurrency' content={priceMeta.priceCurrency} />
             {/* Availability label — visible to users */}
             {isOutOfStock ?
               <span className='text-[10px] font-semibold text-red-500 ml-auto'>

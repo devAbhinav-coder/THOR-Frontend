@@ -71,7 +71,15 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     overflow-x: clip;
-    overscroll-behavior-y: none;
+    /* Native overscroll on touch — avoids iOS blank gap above content (Phase 2). */
+    overscroll-behavior-y: auto;
+  }
+
+  /* Desktop Lenis: suppress document rubber-band during smooth wheel. */
+  @media (hover: hover) and (pointer: fine) {
+    body {
+      overscroll-behavior-y: none;
+    }
   }
 
   /* Horizontal rows: contain sideways overscroll but let vertical scroll reach the page. */
@@ -81,6 +89,8 @@
   }
   html {
     scroll-padding-top: 4rem;
+    /* Match body so overscroll / pull-down gaps are not harsh white (Phase 2). */
+    background-color: hsl(var(--background));
   }
   h1,
   h2,
@@ -401,10 +411,16 @@ html.lenis body {
   pointer-events: none;
 }
 
-/* Freeze card image zoom while Lenis is wheel-scrolling (cursor stays over cards). */
+/* Freeze card hover transforms while Lenis is wheel-scrolling (cursor stays over cards). */
 @media (hover: hover) and (pointer: fine) {
   html.lenis.lenis-scrolling .card-hover-zoom {
     transform: none !important;
+    transition-duration: 0ms !important;
+  }
+
+  html.lenis.lenis-scrolling .shop-card-hover-lift {
+    transform: none !important;
+    box-shadow: none !important;
     transition-duration: 0ms !important;
   }
 }
@@ -713,5 +729,18 @@ html.lenis body {
   }
   .journal-animate-reveal {
     animation: none;
+  }
+}
+
+/* Numeric inputs without browser spin buttons */
+@layer utilities {
+  .input-no-spinner {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .input-no-spinner::-webkit-outer-spin-button,
+  .input-no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 }

@@ -23,12 +23,16 @@ import {
 import { cartApi, productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
+import {
+  getSelectedVariantPriceDisplay,
+} from "@/lib/productPricing";
 import { variantSwatchBackground } from "@/lib/variantSwatch";
 import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/product/ProductDetailSkeleton";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useWishlistUiState } from "@/hooks/useWishlistUiState";
 import toast from "react-hot-toast";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
@@ -67,7 +71,9 @@ import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 
-const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
+import {
+  writeBuyNowToSession,
+} from "@/lib/buyNowCheckoutSession";
 const MAX_REVIEW_IMAGES = 5;
 const MAX_REVIEW_IMAGE_SIZE_MB = UPLOAD_MAX_MB.review;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
@@ -294,7 +300,7 @@ export default function ProductDetailClient({
   const [reportDetails, setReportDetails] = useState("");
 
   const { addToCart } = useCartStore();
-  const { toggleWishlist, isInWishlist } = useWishlistStore();
+  const { toggleWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
   const reviewEligibilityRequestKeyRef = useRef<string | null>(null);
@@ -644,12 +650,14 @@ export default function ProductDetailClient({
   }, [product?._id, selectedVariant?.sku]);
 
   /* Derived */
-  const inWishlist = product ? isInWishlist(product._id) : false;
-  const selectedPrice = selectedVariant?.price || product?.price || 0;
-  const saveAmount =
-    product?.comparePrice && product.comparePrice > selectedPrice ?
-      product.comparePrice - selectedPrice
-    : 0;
+  const inWishlist = useWishlistUiState(product?._id ?? "");
+  const selectedPriceDisplay =
+    product && selectedVariant ?
+      getSelectedVariantPriceDisplay(product, selectedVariant)
+    : null;
+  const selectedPrice = selectedPriceDisplay?.sell ?? product?.price ?? 0;
+  const selectedMrp = selectedPriceDisplay?.mrp ?? product?.comparePrice ?? null;
+  const saveAmount = selectedPriceDisplay?.saveAmount ?? 0;
   const productMetaLine = useMemo(() => {
     if (!product) return "";
     return buildProductMetaLine(product);
@@ -802,8 +810,8 @@ export default function ProductDetailClient({
         answersArray.length > 0 ? answersArray : undefined,
         product,
       );
-      trackAddToCart(product, quantity, selectedVariant.price, selectedVariant);
-      trackGaAddToCart(product, quantity, selectedVariant.price);
+      trackAddToCart(product, quantity, selectedPrice, selectedVariant);
+      trackGaAddToCart(product, quantity, selectedPrice);
     } catch {
       /* handled */
     } finally {
@@ -831,27 +839,22 @@ export default function ProductDetailClient({
       const answersArray = Object.entries(customFieldAnswers).map(
         ([label, value]) => ({ label, value }),
       );
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(
-          BUY_NOW_SESSION_KEY,
-          JSON.stringify({
-            productId: product._id,
-            name: product.name,
-            image: product.images?.[0]?.url || "",
-            quantity,
-            price: selectedPrice,
-            maxStock: selectedVariant.stock,
-            variant: {
-              sku: selectedVariant.sku,
-              size: selectedVariant.size,
-              color: selectedVariant.color,
-              colorCode: selectedVariant.colorCode,
-            },
-            customFieldAnswers:
-              answersArray.length > 0 ? answersArray : undefined,
-          }),
-        );
-      }
+      writeBuyNowToSession({
+        productId: String(product._id),
+        name: product.name,
+        image: product.images?.[0]?.url || "",
+        quantity,
+        price: selectedPrice,
+        maxStock: selectedVariant.stock,
+        variant: {
+          sku: selectedVariant.sku,
+          size: selectedVariant.size,
+          color: selectedVariant.color,
+          colorCode: selectedVariant.colorCode,
+        },
+        customFieldAnswers:
+          answersArray.length > 0 ? answersArray : undefined,
+      });
       await playCheckoutLaunchAnimation(
         buyNowMobileRef.current ?? buyNowBtnRef.current,
         {
@@ -1216,12 +1219,50 @@ export default function ProductDetailClient({
                     Save {formatPrice(saveAmount)}
                   </span>
                 : null}
-                {product.comparePrice && product.comparePrice > selectedPrice ?
+                {selectedMrp != null && selectedMrp > selectedPrice ?
                   <span className='text-base text-gray-400 line-through'>
-                    {formatPrice(product.comparePrice)}
+                    {formatPrice(selectedMrp)}
+                  </span>
+                : null}
+                {product.saleCampaignId && selectedPriceDisplay?.showDiscount && selectedPriceDisplay.discountPercent >= 1 ?
+                  <span className='inline-flex items-center bg-[#c5a059]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6d3b]'>
+                    {selectedPriceDisplay.saleBadge ?
+                      `${selectedPriceDisplay.saleBadge} · ${selectedPriceDisplay.discountPercent}% off`
+                    : `${selectedPriceDisplay.discountPercent}% OFF`}
                   </span>
                 : null}
               </div>
+              {(product.activePromotions || []).length > 0 ? (
+                <div className='mt-4 space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3'>
+                  <p className='text-xs font-semibold text-emerald-900'>
+                    Something special for you
+                  </p>
+                  <p className='text-[10px] text-emerald-700/75'>
+                    {(product.activePromotions || []).length === 1
+                      ? 'An exclusive deal on this piece'
+                      : `${(product.activePromotions || []).length} deals on this piece`}
+                  </p>
+                  {(product.activePromotions || []).map((promo) => (
+                    <div
+                      key={`${promo.label}-${promo.displayTitle}`}
+                      className='border-t border-emerald-100/80 pt-2 first:border-t-0 first:pt-0'
+                    >
+                      <p className='text-sm font-semibold text-emerald-900'>
+                        {promo.badgeText ? `${promo.badgeText} · ` : ''}{promo.label}
+                      </p>
+                      {promo.description ? (
+                        <p className='mt-0.5 text-xs text-emerald-800/80'>{promo.description}</p>
+                      ) : null}
+                      {promo.termsAndConditions ? (
+                        <p className='mt-1.5 text-[11px] leading-relaxed text-emerald-900/70'>
+                          <span className='font-semibold'>T&amp;C: </span>
+                          {promo.termsAndConditions}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <p className='mt-2 text-xs text-gray-400'>
                 Inclusive of all taxes · Free delivery above Rs. 1099
               </p>

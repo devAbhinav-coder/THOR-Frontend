@@ -40,12 +40,14 @@ import {
 import {
   PeakHoursChart,
   VariantSizePanel,
+  VariantColorPanel,
   TopSellersList,
   ChannelSplitBar,
   StorefrontDemandSection,
   VisitInsightsPanel,
   MarketingInsightsPanel,
 } from '@/components/admin/analytics';
+import { LeakCard } from '@/components/admin/revenue/LeakCard';
 
 type Tab = 'sales' | 'catalogue' | 'customers';
 
@@ -106,6 +108,7 @@ export default function AnalyticsPage() {
   const revenueByCat = analytics.revenueByCategory ?? [];
   const paymentMix = analytics.paymentMethodMix ?? [];
   const gross = overview.totalRevenue;
+  const offerMtd = analytics.offerAttributionMtd;
 
   const tabs: { id: Tab; label: string; icon: typeof LineChart }[] = [
     { id: 'sales', label: 'Sales & Traffic', icon: LineChart },
@@ -221,6 +224,45 @@ export default function AnalyticsPage() {
                 />
               </div>
 
+              <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Megaphone className="h-4 w-4 text-brand-600" />
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">Offer impact MTD</h3>
+                    <p className="text-[10px] text-gray-500">Sales · auto offers · coupons · popup — all systems</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <LeakCard
+                    label="Admin sales"
+                    value={formatPrice(overview.saleDiscountTotal ?? offerMtd?.sales.discountTotal ?? 0)}
+                    sub={`${overview.saleOrdersTotal ?? offerMtd?.sales.ordersCount ?? 0} orders`}
+                    tone="amber"
+                  />
+                  <LeakCard
+                    label="Auto offers"
+                    value={formatPrice(overview.promotionDiscountMTD ?? offerMtd?.promotions.discountTotal ?? 0)}
+                    sub={`${overview.promotionOrdersTotal ?? offerMtd?.promotions.ordersCount ?? 0} orders`}
+                    tone="red"
+                  />
+                  <LeakCard
+                    label="Coupons"
+                    value={formatPrice(overview.couponDiscountMTD ?? offerMtd?.coupons.discountTotal ?? 0)}
+                    sub={`${overview.couponOrdersTotal ?? offerMtd?.coupons.ordersCount ?? 0} orders`}
+                    tone="red"
+                  />
+                  <LeakCard
+                    label="Popup opens"
+                    value={String(offerMtd?.popup.impressions ?? 0)}
+                    sub={
+                      (offerMtd?.popup.ordersAfterPopup ?? 0) > 0
+                        ? `${offerMtd!.popup.ordersAfterPopup} orders after popup`
+                        : 'Visit modal MTD'
+                    }
+                  />
+                </div>
+              </div>
+
               {(analytics.visitsByDay?.length ?? 0) > 0 && (
                 <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
                   <DailySiteVisitsChart
@@ -248,6 +290,28 @@ export default function AnalyticsPage() {
                     title="Daily orders & revenue"
                     subtitle="Last 30 days · IST · gross"
                   />
+                </div>
+              )}
+
+              {analytics.snapshotOverview && (
+                <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/40 p-3 shadow-sm">
+                  <h2 className="text-xs font-semibold text-gray-900 mb-2">
+                    30-day snapshot totals ({analytics.snapshotOverview.completedDaysFromSnapshots} days from pre-aggregation)
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-[10px] uppercase text-gray-500">Revenue</p>
+                      <p className="font-semibold tabular-nums">{formatPrice(analytics.snapshotOverview.totals.revenue)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase text-gray-500">Orders</p>
+                      <p className="font-semibold tabular-nums">{analytics.snapshotOverview.totals.orders}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase text-gray-500">Site visits</p>
+                      <p className="font-semibold tabular-nums">{analytics.snapshotOverview.totals.siteVisits}</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -298,6 +362,7 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
                 <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
                   <VariantSizePanel rows={analytics.topVariantSizes ?? []} />
+                  <VariantColorPanel rows={analytics.topVariantColors ?? []} />
                 </div>
                 <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
                   <StockAlertsPanel
@@ -344,6 +409,45 @@ export default function AnalyticsPage() {
                 />
               </div>
 
+              <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Megaphone className="h-4 w-4 text-brand-600" />
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">Offer impact MTD</h3>
+                    <p className="text-[10px] text-gray-500">Sales · auto offers · coupons · popup — all systems</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <LeakCard
+                    label="Admin sales"
+                    value={formatPrice(overview.saleDiscountTotal ?? offerMtd?.sales.discountTotal ?? 0)}
+                    sub={`${overview.saleOrdersTotal ?? offerMtd?.sales.ordersCount ?? 0} orders`}
+                    tone="amber"
+                  />
+                  <LeakCard
+                    label="Auto offers"
+                    value={formatPrice(overview.promotionDiscountMTD ?? offerMtd?.promotions.discountTotal ?? 0)}
+                    sub={`${overview.promotionOrdersTotal ?? offerMtd?.promotions.ordersCount ?? 0} orders`}
+                    tone="red"
+                  />
+                  <LeakCard
+                    label="Coupons"
+                    value={formatPrice(overview.couponDiscountMTD ?? offerMtd?.coupons.discountTotal ?? 0)}
+                    sub={`${overview.couponOrdersTotal ?? offerMtd?.coupons.ordersCount ?? 0} orders`}
+                    tone="red"
+                  />
+                  <LeakCard
+                    label="Popup opens"
+                    value={String(offerMtd?.popup.impressions ?? 0)}
+                    sub={
+                      (offerMtd?.popup.ordersAfterPopup ?? 0) > 0
+                        ? `${offerMtd!.popup.ordersAfterPopup} orders after popup`
+                        : 'Visit modal MTD'
+                    }
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
                 <div className="lg:col-span-8 rounded-xl border border-navy-800 bg-gradient-to-br from-navy-900 to-navy-950 p-3 shadow-lg text-white">
                   <div className="flex items-center gap-2 mb-2">
@@ -352,11 +456,13 @@ export default function AnalyticsPage() {
                       Retention signals
                     </h3>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {[
                       { label: 'Cancellation', value: `${overview.cancellationRate || 0}%`, tone: 'text-red-400' },
-                      { label: 'Coupon orders', value: String(overview.couponOrdersTotal || 0), tone: 'text-brand-300' },
-                      { label: 'Coupon discount', value: formatPrice(overview.couponDiscountTotal || 0), tone: 'text-brand-400' },
+                      { label: 'Sale savings', value: formatPrice(overview.saleDiscountTotal || 0), tone: 'text-amber-300' },
+                      { label: 'Auto offers MTD', value: formatPrice(overview.promotionDiscountMTD || 0), tone: 'text-brand-300' },
+                      { label: 'Coupons MTD', value: formatPrice(overview.couponDiscountMTD || 0), tone: 'text-brand-400' },
+                      { label: 'Popup opens MTD', value: String(offerMtd?.popup.impressions ?? 0), tone: 'text-white' },
                       { label: 'Reviews MTD', value: String(overview.reviewsThisMonth ?? 0), tone: 'text-white' },
                     ].map((item) => (
                       <div key={item.label}>
@@ -378,8 +484,10 @@ export default function AnalyticsPage() {
                     <ChannelSplitBar
                       onlineRevenue={overview.onlineRevenue || 0}
                       offlineRevenue={overview.offlineRevenue || 0}
+                      b2bRevenue={overview.b2bRevenue || 0}
                       onlineCount={overview.onlineCount || 0}
                       offlineCount={overview.offlineCount || 0}
+                      b2bCount={overview.b2bCount || 0}
                     />
                   </div>
 
@@ -408,7 +516,7 @@ export default function AnalyticsPage() {
                   compact
                   label="Online vs offline"
                   value={formatPrice(overview.onlineRevenue || 0)}
-                  sub={`${overview.onlineCount || 0} online · ${overview.offlineCount || 0} offline`}
+                  sub={`${overview.onlineCount || 0} online · ${overview.offlineCount || 0} offline · ${overview.b2bCount || 0} B2B`}
                   icon={ShoppingBag}
                 />
               </div>

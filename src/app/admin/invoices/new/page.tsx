@@ -17,6 +17,8 @@ import {
   Package,
   StickyNote,
   Calculator,
+  Search,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -28,6 +30,8 @@ import SalesInvoiceDocument, {
 } from "@/components/admin/SalesInvoiceDocument";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { adminApi } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   computeLine,
   computeTotals,
@@ -131,6 +135,128 @@ function makeInitialMeta(): InvoiceMeta {
     showDiscount: true,
     showGstColumn: true,
   };
+}
+
+type PendingB2bOrder = {
+  _id: string;
+  orderNumber: string;
+  total: number;
+  createdAt: string;
+  companyName?: string;
+  gstin?: string;
+  buyerName?: string;
+};
+
+function B2bOrderImportPanel({ hidden }: { hidden?: boolean }) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const debounced = useDebouncedValue(query.trim(), 320);
+  const [orders, setOrders] = useState<PendingB2bOrder[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [creatingFor, setCreatingFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (hidden) return;
+    let cancelled = false;
+    setLoading(true);
+    adminApi
+      .listB2bOrdersPendingTaxInvoice({ search: debounced || undefined, limit: 20 })
+      .then((res) => {
+        if (!cancelled) setOrders(res.data.orders as PendingB2bOrder[]);
+      })
+      .catch(() => {
+        if (!cancelled) setOrders([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debounced, hidden]);
+
+  if (hidden) return null;
+
+  return (
+    <section className='rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50/80 via-white to-white p-4 sm:p-5 shadow-sm print-hidden'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+        <div>
+          <h2 className='text-sm font-bold text-violet-950 flex items-center gap-2'>
+            <Building2 className='h-4 w-4' />
+            Create from B2B order
+          </h2>
+          <p className='mt-1 text-xs text-violet-800/90'>
+            Pick a wholesale order (THOR-…) — a new GST bill gets its own INV- number. Stock is not changed again.
+          </p>
+        </div>
+        <div className='relative w-full sm:max-w-xs'>
+          <Search className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400' />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder='Search order #, company, GSTIN…'
+            className='h-10 w-full rounded-xl border border-violet-200 bg-white pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300'
+          />
+        </div>
+      </div>
+
+      <div className='mt-4 max-h-56 overflow-auto rounded-xl border border-violet-100 bg-white'>
+        {loading ?
+          <div className='flex items-center justify-center gap-2 p-6 text-sm text-gray-500'>
+            <Loader2 className='h-4 w-4 animate-spin' /> Loading B2B orders…
+          </div>
+        : orders.length === 0 ?
+          <p className='p-4 text-sm text-gray-500'>
+            No B2B orders waiting for a tax invoice
+            {debounced ? ` matching “${debounced}”` : ""}.
+          </p>
+        : <ul className='divide-y divide-gray-100'>
+            {orders.map((order) => (
+              <li key={order._id} className='flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='min-w-0'>
+                  <p className='text-sm font-bold text-gray-900'>{order.orderNumber}</p>
+                  <p className='text-xs text-gray-600 truncate'>
+                    {order.companyName?.trim() || order.buyerName?.trim() || "Buyer"}
+                    {order.gstin ? ` • ${order.gstin}` : ""}
+                  </p>
+                  <p className='text-[11px] text-gray-400 mt-0.5'>
+                    {formatINRMoney(order.total)} •{" "}
+                    {new Date(order.createdAt).toLocaleDateString("en-IN")}
+                  </p>
+                </div>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='outline'
+                  className='rounded-lg border-violet-200 text-violet-800 hover:bg-violet-50 shrink-0'
+                  loading={creatingFor === order._id}
+                  onClick={async () => {
+                    setCreatingFor(order._id);
+                    try {
+                      const res = await adminApi.createTaxInvoiceFromOrder(order._id);
+                      toast.success(`Invoice created from ${order.orderNumber}`);
+                      router.push(
+                        `/admin/invoices/new?id=${encodeURIComponent(res.data.invoice.id)}`,
+                      );
+                    } catch (e: unknown) {
+                      toast.error(
+                        (e as { message?: string })?.message ||
+                          "Could not create invoice from this order",
+                      );
+                    } finally {
+                      setCreatingFor(null);
+                    }
+                  }}
+                >
+                  Use this order
+                </Button>
+              </li>
+            ))}
+          </ul>
+        }
+      </div>
+    </section>
+  );
 }
 
 const card = "rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6";
@@ -395,10 +521,12 @@ export default function NewSalesInvoicePage() {
         </Link>
       </div>
 
+      <B2bOrderImportPanel hidden={Boolean(editId || persistedId)} />
+
       <div className='print-hidden'>
         <AdminPageHeader
-          title={persistedId ? "Edit B2B invoice" : "New B2B invoice"}
-          description='Offline wholesale billing: line items with unit, qty, and rate. CGST+SGST, IGST, or non-GST.'
+          title={persistedId ? "Edit GST tax invoice (INV)" : "New GST tax invoice (INV)"}
+          description='B2B wholesale billing — numbers start with INV-. Store orders use THOR- (The House of Rani).'
           badge='Admin billing'
           actions={
             <div className='flex flex-wrap gap-2'>
@@ -458,7 +586,7 @@ export default function NewSalesInvoicePage() {
                     setMeta((m) => ({ ...m, invoiceNumber: e.target.value }))
                   }
                   className={inputBase}
-                  placeholder='INV-251005-001'
+                  placeholder='INV-260816-142'
                 />
               </label>
               <label className='block space-y-1.5'>

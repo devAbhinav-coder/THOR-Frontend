@@ -80,12 +80,7 @@ export default function AuthModal({
       role="presentation"
       data-auth-modal=""
     >
-      <button
-        type="button"
-        className={authBackdrop}
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
+      <div className={authBackdrop} aria-hidden />
 
       <div
         role="dialog"

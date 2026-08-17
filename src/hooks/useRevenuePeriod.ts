@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { adminApi } from '@/lib/api';
-import type { RevenuePeriod, RevenuePeriodSummary } from '@/lib/revenuePeriod';
+import type { RevenuePeriod, RevenuePeriodSummary, RevenueChannelFilter } from '@/lib/revenuePeriod';
 
-export function useRevenuePeriod(period: RevenuePeriod, year?: number, month?: number) {
+export function useRevenuePeriod(
+  period: RevenuePeriod,
+  year?: number,
+  month?: number,
+  channel: RevenueChannelFilter = 'all',
+) {
   const [summary, setSummary] = useState<RevenuePeriodSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -14,9 +19,15 @@ export function useRevenuePeriod(period: RevenuePeriod, year?: number, month?: n
     setIsLoading(true);
     setError(false);
     try {
-      const params: { period: string; year?: number; month?: number } = { period };
+      const params: {
+        period: string;
+        year?: number;
+        month?: number;
+        channel?: RevenueChannelFilter;
+      } = { period };
       if (period === 'year' && year) params.year = year;
       if (period === 'month' && month) params.month = month;
+      if (channel && channel !== 'all') params.channel = channel;
       const res = await adminApi.getRevenueSummary(params);
       setSummary(res.data as RevenuePeriodSummary);
     } catch {
@@ -26,7 +37,7 @@ export function useRevenuePeriod(period: RevenuePeriod, year?: number, month?: n
     } finally {
       setIsLoading(false);
     }
-  }, [period, year, month]);
+  }, [period, year, month, channel]);
 
   useEffect(() => {
     load();

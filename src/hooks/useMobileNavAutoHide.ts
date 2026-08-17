@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { subscribeWindowScroll } from "@/lib/windowScrollBus";
 
 type Options = {
   enabled?: boolean;
@@ -15,11 +17,17 @@ type Options = {
  */
 export function useMobileNavAutoHide({
   enabled = true,
-  topReveal = 48,
-  delta = 6,
+  topReveal = 80,
+  delta = 8,
 }: Options = {}) {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(true);
   const lastY = useRef(0);
+
+  useEffect(() => {
+    lastY.current = window.scrollY;
+    setVisible(true);
+  }, [pathname]);
 
   useEffect(() => {
     if (!enabled) {
@@ -28,41 +36,26 @@ export function useMobileNavAutoHide({
     }
 
     const mq = window.matchMedia("(max-width: 1023px)");
-    let raf = 0;
+    lastY.current = window.scrollY;
 
-    const sync = () => {
+    return subscribeWindowScroll(({ y }) => {
       if (!mq.matches) {
         setVisible(true);
         return;
       }
-      const y = window.scrollY;
       if (y <= topReveal) {
         setVisible(true);
-      } else if (y - lastY.current > delta) {
+        lastY.current = y;
+        return;
+      }
+      if (y - lastY.current > delta) {
         setVisible(false);
       } else if (lastY.current - y > delta) {
         setVisible(true);
       }
       lastY.current = y;
-    };
-
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(sync);
-    };
-
-    lastY.current = window.scrollY;
-    sync();
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    mq.addEventListener("change", onScroll);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", onScroll);
-      mq.removeEventListener("change", onScroll);
-    };
-  }, [enabled, topReveal, delta]);
+    });
+  }, [enabled, topReveal, delta, pathname]);
 
   return visible;
 }

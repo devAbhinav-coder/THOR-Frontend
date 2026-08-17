@@ -1,6 +1,7 @@
 export { default as PeakHoursChart } from './PeakHoursChart';
 export { default as TopViewedTable } from './TopViewedTable';
 export { default as VariantSizePanel } from './VariantSizePanel';
+export { default as VariantColorPanel } from './VariantColorPanel';
 export { default as TopSellersList } from './TopSellersList';
 export { default as ChannelSplitBar } from './ChannelSplitBar';
 export { default as StorefrontDemandSection } from './StorefrontDemandSection';

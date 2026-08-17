@@ -8,8 +8,7 @@ import {
   fetchHomeSareeSubcategories,
 } from "@/lib/storePrefetch";
 import {
-  fetchStorefrontHeroSlides,
-  fetchStorefrontSettingsHome,
+  fetchStorefrontHomeBundle,
 } from "@/lib/storefrontServer";
 import { getSiteUrl } from "@/lib/siteUrl";
 import {
@@ -80,15 +79,20 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [heroSlides, categoryStats, featuredProducts, storefrontSettings, latestBlogs, sareeSubcategories] =
-    await Promise.all([
-      fetchStorefrontHeroSlides(),
-      fetchHomeCategoryStats(),
-      fetchHomeFeaturedProducts(),
-      fetchStorefrontSettingsHome(),
-      fetchHomeLatestBlogs(3),
-      fetchHomeSareeSubcategories(),
-    ]);
+  const [
+    storefrontBundle,
+    categoryStats,
+    featuredProducts,
+    latestBlogs,
+    sareeSubcategories,
+  ] = await Promise.all([
+    fetchStorefrontHomeBundle(),
+    fetchHomeCategoryStats(),
+    fetchHomeFeaturedProducts(),
+    fetchHomeLatestBlogs(3),
+    fetchHomeSareeSubcategories(),
+  ]);
+  const { heroSlides, settings: storefrontSettings } = storefrontBundle;
 
   /**
    * WebPage JSON-LD — references the Organization and WebSite nodes

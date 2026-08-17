@@ -26,6 +26,10 @@ export type FinancialSnapshot = {
 
   couponDiscounts: number;
 
+  promotionDiscounts: number;
+
+  saleDiscounts: number;
+
   operatingExpenses: number;
 
   netIncome: number;
@@ -44,6 +48,8 @@ export type RevenueOverviewInput = Partial<DashboardAnalytics['overview']> & {
   refunds?: number;
   cogs?: number;
   couponOrdersCount?: number;
+  promotionDiscountTotal?: number;
+  saleDiscountTotal?: number;
 };
 
 
@@ -112,11 +118,17 @@ export function buildFinancialSnapshot(
 
   const couponDiscounts = overview.couponDiscountTotal ?? 0;
 
+  const promotionDiscounts = overview.promotionDiscountTotal ?? 0;
+
+  const saleDiscounts = overview.saleDiscountTotal ?? 0;
+
   const fees = feesRetained ?? overview.nonRefundableFeesRetained ?? 0;
 
   const ancillary = shippingFees + codFees + fees;
 
-  const netIncome = Math.max(0, grossProfit + ancillary - couponDiscounts);
+  const checkoutDiscounts = couponDiscounts + promotionDiscounts;
+
+  const netIncome = Math.max(0, grossProfit + ancillary - checkoutDiscounts);
 
   const opex = operatingExpenses ?? 0;
 
@@ -149,6 +161,10 @@ export function buildFinancialSnapshot(
     feesRetained: fees,
 
     couponDiscounts,
+
+    promotionDiscounts,
+
+    saleDiscounts,
 
     operatingExpenses: opex,
 

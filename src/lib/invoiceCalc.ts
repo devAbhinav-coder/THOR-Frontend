@@ -265,12 +265,5 @@ export function formatINRMoney(amount: number): string {
   }).format(safe);
 }
 
-/** Suggest a sensible default invoice number — admin can overwrite. */
-export function suggestInvoiceNumber(now: Date = new Date()): string {
-  const yy = String(now.getFullYear()).slice(-2);
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  /** Random 3-digit suffix — keeps two invoices in the same minute distinguishable. */
-  const seq = Math.floor(Math.random() * 900 + 100);
-  return `INV-${yy}${mm}${dd}-${seq}`;
-}
+/** Suggest a sensible default B2B GST tax invoice number — admin can overwrite. */
+export { suggestB2bTaxInvoiceNumber, suggestInvoiceNumber } from "./documentNumbers";

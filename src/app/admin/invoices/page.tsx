@@ -149,7 +149,10 @@ export default function AdminInvoicesListPage() {
           <div>
             <p className='text-[10px] font-bold uppercase tracking-widest text-blue-300/80 mb-1'>Admin — Billing</p>
             <div className='flex items-center gap-3'>
-              <h1 className='text-2xl font-serif font-bold text-white tracking-tight'>B2B Tax Invoices</h1>
+              <h1 className='text-2xl font-serif font-bold text-white tracking-tight'>GST tax invoices (INV)</h1>
+              <p className='text-sm text-blue-100/90 mt-1 max-w-xl'>
+                B2B billing numbers start with <strong>INV-</strong>. Order receipts use <strong>THOR-</strong> on the order page.
+              </p>
               <span className='rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/60 ring-1 ring-white/15'>GST</span>
             </div>
             <p className='text-sm text-slate-400 mt-1 hidden sm:block'>Admin-only GST bills for offline wholesale — fabric by meter, kg, pcs, etc.</p>
@@ -271,6 +274,19 @@ export default function AdminInvoicesListPage() {
                       Saved {fmtRelative(inv.updatedAt)} • {inv.itemCount}{" "}
                       item
                       {inv.itemCount === 1 ? "" : "s"}
+                      {inv.orderId && inv.orderNumber ?
+                        <>
+                          {" "}
+                          •{" "}
+                          <Link
+                            href={`/admin/orders/${encodeURIComponent(inv.orderId)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className='font-semibold text-blue-600 hover:text-blue-800 hover:underline'
+                          >
+                            Order {inv.orderNumber}
+                          </Link>
+                        </>
+                      : null}
                     </p>
                   </div>
                   <div className='shrink-0 text-right'>
@@ -350,7 +366,7 @@ function EmptyState({
           className='rounded-xl bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-400'
         >
           <Link href='/admin/invoices/new'>
-            <Plus className='mr-1.5 h-4 w-4' /> New B2B invoice
+            <Plus className='mr-1.5 h-4 w-4' /> New GST invoice (INV)
           </Link>
         </Button>
       </div>

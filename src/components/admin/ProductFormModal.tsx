@@ -404,6 +404,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             color: row.color,
             colorCode: row.colorCode,
             stock: row.stock,
+            ...(row.price != null && row.price >= 0 ? { price: row.price } : {}),
             ...(row.costPrice != null && row.costPrice > 0 ?
               { costPrice: row.costPrice }
             : {}),
@@ -793,6 +794,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                   onChange={setColorGroups}
                   suggestedColors={suggestedColors}
                   productId={editingProduct?._id}
+                  baseSellPrice={form.price}
                   untaggedImageCount={untaggedImageCount}
                   onDeleteExistingImage={handleDeleteExistingImage}
                 />

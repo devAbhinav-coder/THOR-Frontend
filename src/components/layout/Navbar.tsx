@@ -29,6 +29,7 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { navigationApi } from "@/lib/api";
 import { MegaMenuCategory } from "@/types";
 import { cn } from "@/lib/utils";
+import { clearBuyNowSession } from "@/lib/buyNowCheckoutSession";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { queryKeys } from "@/lib/queryKeys";
@@ -48,6 +49,7 @@ import {
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useNavDropdown } from "@/hooks/useNavDropdown";
 import { useMobileNavAutoHide } from "@/hooks/useMobileNavAutoHide";
+import { subscribeWindowScroll } from "@/lib/windowScrollBus";
 import {
   isStoreProductDetailPath,
   isStoreShopListingPath,
@@ -100,6 +102,7 @@ export default function Navbar({
     hasSessionChecked,
     _hasHydrated,
     logout,
+    fetchUser,
   } = useAuthStore();
   const { itemCount } = useCartStore();
   const { products: wishlistProducts } = useWishlistStore();
@@ -130,33 +133,16 @@ export default function Navbar({
   }, [navCategories, router]);
 
   useEffect(() => {
-    let raf = 0;
     const on = 28;
     const off = 10;
-    const scrollY = () =>
-      window.scrollY ||
-      window.pageYOffset ||
-      document.documentElement.scrollTop ||
-      0;
 
-    const handleScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const y = scrollY();
-        setIsScrolled((prev) => {
-          if (y <= off) return false;
-          if (y >= on) return true;
-          return prev;
-        });
+    return subscribeWindowScroll(({ y }) => {
+      setIsScrolled((prev) => {
+        if (y <= off) return false;
+        if (y >= on) return true;
+        return prev;
       });
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", handleScroll);
-    };
+    });
   }, []);
 
   useEffect(() => {
@@ -164,6 +150,17 @@ export default function Navbar({
     shopMenu.close();
     userMenu.close();
   }, [pathname, shopMenu.close, userMenu.close]);
+
+  /** Refresh profile when account menu opens */
+  useEffect(() => {
+    if (!userMenu.isOpen || !isAuthenticated) return;
+    void fetchUser();
+  }, [userMenu.isOpen, isAuthenticated, fetchUser]);
+
+  useEffect(() => {
+    if (!isMenuOpen || !isAuthenticated) return;
+    void fetchUser();
+  }, [isMenuOpen, isAuthenticated, fetchUser]);
 
   const urlSearchForNav = useMemo(() => {
     if (pathname.startsWith("/shop") || pathname.startsWith("/gifting")) {
@@ -249,7 +246,11 @@ export default function Navbar({
   const isShopListingPage = isStoreShopListingPath(pathname);
   /** Shop + PDP mobile: persistent search bar, cart/wishlist top-right (no search icon). */
   const showCommerceMobileShell = isProductDetailPage || isShopListingPage;
-  const navAutoHideEnabled = !isCheckoutFlow && !isMenuOpen && !isSearchOpen;
+  const navAutoHideEnabled =
+    !isCheckoutFlow &&
+    !isMenuOpen &&
+    !isSearchOpen &&
+    !showCommerceMobileShell;
   const navChromeVisible = useMobileNavAutoHide({
     enabled: navAutoHideEnabled,
   });
@@ -932,7 +933,12 @@ export default function Navbar({
                 type='button'
                 onClick={() => {
                   setShowExitConfirm(false);
-                  router.back();
+                  clearBuyNowSession();
+                  if (typeof window !== "undefined" && window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push("/shop");
+                  }
                 }}
                 className='w-full border border-gray-200 bg-white py-3 text-[11px] font-bold uppercase tracking-widest text-gray-600 transition-colors hover:border-gray-300 hover:text-navy-900'
               >

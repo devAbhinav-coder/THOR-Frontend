@@ -109,6 +109,25 @@ export const adminAiApi = {
       schemas.adminAiMarketingDraft,
     ),
 
+  draftPromotionTerms: (body: {
+    name?: string;
+    displayTitle?: string;
+    description?: string;
+    promotionType: "bogo" | "flat" | "percentage";
+    buyQuantity?: number;
+    getQuantity?: number;
+    getDiscountPercent?: number;
+    discountValue?: number;
+    minOrderAmount?: number;
+    scopeType?: string;
+    adminNotes?: string;
+  }) =>
+    unwrapAxios(
+      "admin.ai.draftPromotionTerms",
+      api.post("/admin/ai/draft/promotion-terms", body, { timeout: AI_TIMEOUT }),
+      schemas.adminAiPromotionTermsDraft,
+    ),
+
   planBlogCalendar: (body: {
     weeks?: number;
     postsPerWeek?: number;

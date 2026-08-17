@@ -7,9 +7,13 @@ import toast from 'react-hot-toast';
 /** In-flight toggles (not persisted) — avoids double requests and bad optimistic stacks */
 const toggleInFlight = new Set<string>();
 
+/** Set after persist rehydrates — avoids SSR/client snapshot mismatch */
+let markWishlistHydrated: () => void;
+
 interface WishlistState {
   products: Product[];
   isLoading: boolean;
+  _hasHydrated: boolean;
   fetchWishlist: () => Promise<void>;
   /** Pass `product` when adding from PDP/card so the heart + count update instantly */
   toggleWishlist: (
@@ -22,66 +26,79 @@ interface WishlistState {
 
 export const useWishlistStore = create<WishlistState>()(
   persist(
-    (set, get) => ({
-      products: [],
-      isLoading: false,
+    (set, get) => {
+      markWishlistHydrated = () => set({ _hasHydrated: true });
+      return {
+        products: [],
+        isLoading: false,
+        _hasHydrated: false,
 
-      fetchWishlist: async () => {
-        set({ isLoading: true });
-        try {
-          const body = await wishlistApi.get();
-          set({ products: body.data.products });
-        } catch {
-          // silent fail
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      toggleWishlist: async (productId, product, options) => {
-        if (toggleInFlight.has(productId)) return;
-        const isIn = get().isInWishlist(productId);
-        const previous = get().products.slice();
-        const silent = options?.silent === true;
-
-        if (isIn) {
-          set((state) => ({
-            products: state.products.filter((p) => p._id !== productId),
-          }));
-        } else if (product) {
-          set((state) =>
-            state.products.some((p) => p._id === productId)
-              ? state
-              : { products: [...state.products, product] },
-          );
-        }
-
-        toggleInFlight.add(productId);
-        try {
-          await wishlistApi.toggle(productId);
-          if (!silent) {
-            if (isIn) {
-              toast.success('Removed from wishlist');
-            } else {
-              toast.success('Added to wishlist');
-            }
+        fetchWishlist: async () => {
+          set({ isLoading: true });
+          try {
+            const body = await wishlistApi.get();
+            set({ products: body.data.products });
+          } catch {
+            // silent fail
+          } finally {
+            set({ isLoading: false });
           }
-          if (!isIn && !product) await get().fetchWishlist();
-        } catch {
-          set({ products: previous });
-          if (!silent) toast.error('Failed to update wishlist');
-        } finally {
-          toggleInFlight.delete(productId);
-        }
-      },
+        },
 
-      isInWishlist: (productId) => {
-        return get().products.some((p) => p._id === productId);
-      },
-    }),
+        toggleWishlist: async (productId, product, options) => {
+          if (toggleInFlight.has(productId)) return;
+          const isIn = get().isInWishlist(productId);
+          const previous = get().products.slice();
+          const silent = options?.silent === true;
+
+          if (isIn) {
+            set((state) => ({
+              products: state.products.filter((p) => p._id !== productId),
+            }));
+          } else if (product) {
+            set((state) =>
+              state.products.some((p) => p._id === productId)
+                ? state
+                : { products: [...state.products, product] },
+            );
+          }
+
+          toggleInFlight.add(productId);
+          try {
+            await wishlistApi.toggle(productId);
+            if (!silent) {
+              if (isIn) {
+                toast.success('Removed from wishlist');
+              } else {
+                toast.success('Added to wishlist');
+              }
+            }
+            if (!isIn && !product) await get().fetchWishlist();
+          } catch {
+            set({ products: previous });
+            if (!silent) toast.error('Failed to update wishlist');
+          } finally {
+            toggleInFlight.delete(productId);
+          }
+        },
+
+        isInWishlist: (productId) => {
+          return get().products.some((p) => p._id === productId);
+        },
+      };
+    },
     {
       name: 'wishlist-storage',
+      skipHydration: true,
       partialize: (state) => ({ products: state.products }),
+      onRehydrateStorage: () => () => {
+        markWishlistHydrated?.();
+      },
     }
   )
 );
+
+/** Call once on the client so persisted wishlist loads after SSR hydration. */
+export function rehydrateWishlistStore(): void {
+  void useWishlistStore.persist.rehydrate();
+}

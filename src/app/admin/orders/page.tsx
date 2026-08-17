@@ -18,14 +18,21 @@ import {
   List,
   HandIcon,
   Trash2,
+  Building2,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { Order, OrderStatus, DashboardAnalytics } from "@/types";
 import { formatPrice, formatDate, getOrderStatusColor, cn } from "@/lib/utils";
+import { orderChannelBadge, type OrderChannelFilter } from "@/lib/orderChannel";
+import {
+  countMissingManualLineCosts,
+  orderHasMissingManualLineCost,
+} from "@/lib/offlineOrder";
+import RevenueChannelFilter from "@/components/admin/revenue/RevenueChannelFilter";
 import { Button } from "@/components/ui/button";
 import { SearchField } from "@/components/ui/SearchField";
 import toast from "react-hot-toast";
-import Image from "next/image";
+import OrderLineThumbnail from "@/components/orders/OrderLineThumbnail";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import { formatMarketingAttributionSummary } from "@/lib/marketingAttribution";
@@ -110,6 +117,8 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const [statusFilter, setStatusFilter] = useState("");
+  const [channelFilter, setChannelFilter] = useState<OrderChannelFilter>("all");
+  const [missingManualCostFilter, setMissingManualCostFilter] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -166,9 +175,11 @@ export default function AdminOrdersPage() {
         setOrdersLoadError(false);
       }
       try {
-        const params: Record<string, string | number> = { page, limit: 20, sort: sortBy };
+        const params: Record<string, string | number | boolean> = { page, limit: 20, sort: sortBy };
         if (statusFilter) params.status = statusFilter;
         if (debouncedSearch) params.search = debouncedSearch;
+        if (missingManualCostFilter) params.missingManualCost = true;
+        if (channelFilter !== "all") params.channel = channelFilter;
         const res = await adminApi.getOrders(params);
         const incoming = res.data.orders as Order[];
         const nextPagination = res.pagination;
@@ -194,7 +205,7 @@ export default function AdminOrdersPage() {
         setIsLoadingMore(false);
       }
     },
-    [statusFilter, debouncedSearch, sortBy],
+    [statusFilter, debouncedSearch, sortBy, missingManualCostFilter, channelFilter],
   );
 
   const handleRefreshList = useCallback(() => {
@@ -328,6 +339,13 @@ export default function AdminOrdersPage() {
               >
                 <HandIcon className='h-4 w-4 text-brand-600' />
                 Offline order
+              </Link>
+              <Link
+                href='/admin/orders/b2b'
+                className='inline-flex items-center rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-900 hover:border-violet-300 hover:bg-violet-100 transition-colors shadow-sm gap-2'
+              >
+                <Building2 className='h-4 w-4' />
+                B2B order
               </Link>
               <Link
                 href='/admin/returns'
@@ -473,6 +491,19 @@ export default function AdminOrdersPage() {
               <option value='value_high'>High → Low value</option>
               <option value='value_low'>Low → High value</option>
             </select>
+            <button
+              type='button'
+              onClick={() => setMissingManualCostFilter((v) => !v)}
+              className={cn(
+                'h-10 px-3 rounded-xl text-sm font-semibold border transition-colors',
+                missingManualCostFilter ?
+                  'bg-amber-100 border-amber-300 text-amber-900'
+                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50',
+              )}
+              title='Offline/B2B orders with manual category lines missing cost of goods'
+            >
+              Missing COGS
+            </button>
             <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
               {orders.length} / {pagination.total || orders.length} shown
             </span>
@@ -484,6 +515,27 @@ export default function AdminOrdersPage() {
                 className={`h-9 w-9 grid place-items-center transition-colors ${viewMode === 'grid' ? 'bg-navy-900 text-white' : 'text-gray-400 hover:bg-gray-50'}`}
                 title='Grid view'><LayoutGrid className='h-4 w-4' /></button>
             </div>
+          </div>
+
+          <div className='px-4 sm:px-6 py-3 border-b border-gray-100 bg-gray-50/50'>
+            <RevenueChannelFilter
+              channel={channelFilter}
+              onChange={setChannelFilter}
+              disabled={isLoading}
+            />
+            {(channelFilter !== 'all' || missingManualCostFilter) && (
+              <p className='mt-2 text-[11px] text-gray-500'>
+                {channelFilter === 'online' && 'Website checkout orders only.'}
+                {channelFilter === 'offline' && 'Stall & personal POS sales only (excludes B2B).'}
+                {channelFilter === 'b2b' && 'Wholesale B2B orders only.'}
+                {missingManualCostFilter && (
+                  <>
+                    {channelFilter !== 'all' ? ' · ' : ''}
+                    Showing paid offline/B2B orders with manual lines missing cost of goods.
+                  </>
+                )}
+              </p>
+            )}
           </div>
 
           {/* Tablet / desktop table */}
@@ -527,6 +579,19 @@ export default function AdminOrdersPage() {
                               <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
                             )}
                             <p className='text-sm font-bold text-brand-600 group-hover:text-brand-700 transition-colors'>{order.orderNumber}</p>
+                            {(() => {
+                              const badge = orderChannelBadge(order);
+                              return badge ?
+                                  <span className={cn("text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border", badge.className)}>
+                                    {badge.label}
+                                  </span>
+                                : null;
+                            })()}
+                            {orderHasMissingManualLineCost(order) ?
+                              <span className='text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
+                                COGS missing ({countMissingManualLineCosts(order)})
+                              </span>
+                            : null}
                             {formatMarketingAttributionSummary(order.marketingAttribution) ?
                               <p className='text-[10px] font-medium text-emerald-700 truncate max-w-[140px]'>
                                 {formatMarketingAttributionSummary(order.marketingAttribution)}
@@ -649,6 +714,19 @@ export default function AdminOrdersPage() {
                           <p className='text-sm font-bold text-gray-900 group-hover:text-brand-600 transition-colors'>
                             {order.orderNumber}
                           </p>
+                          {(() => {
+                            const badge = orderChannelBadge(order);
+                            return badge ?
+                                <span className={cn("text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border", badge.className)}>
+                                  {badge.label}
+                                </span>
+                              : null;
+                          })()}
+                          {orderHasMissingManualLineCost(order) ?
+                            <span className='text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
+                              COGS missing
+                            </span>
+                          : null}
                         </div>
                         <p className='text-xs text-gray-500 mt-0.5 truncate'>
                           {typeof order.user === "object" ?
@@ -804,22 +882,36 @@ export default function AdminOrdersPage() {
                       }
                     >
                       {/* Product thumbnail */}
-                      {firstLine?.image && (
-                        <div className='relative h-14 w-11 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0'>
-                          <Image
-                            src={firstLine.image}
-                            alt={firstLine.name}
-                            fill
-                            sizes='44px'
-                            className='object-cover'
-                          />
-                        </div>
-                      )}
+                      <OrderLineThumbnail
+                        image={firstLine?.image}
+                        name={firstLine?.name}
+                        isOfflineManual={
+                          firstLine?.isOfflineManual ||
+                          firstLine?.slug === "offline-manual-item"
+                        }
+                        className="h-14 w-11 rounded-xl"
+                        sizes="44px"
+                      />
                       <div className='flex-1 min-w-0'>
-                        <div className='flex items-center justify-between gap-2'>
-                          <p className='text-sm font-semibold text-gray-900'>
-                            {order.orderNumber}
-                          </p>
+                        <div className='flex items-center justify-between gap-2 flex-wrap'>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className='text-sm font-semibold text-gray-900'>
+                              {order.orderNumber}
+                            </p>
+                            {(() => {
+                              const badge = orderChannelBadge(order);
+                              return badge ?
+                                  <span className={cn("text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border", badge.className)}>
+                                    {badge.label}
+                                  </span>
+                                : null;
+                            })()}
+                            {orderHasMissingManualLineCost(order) ?
+                              <span className='text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
+                                COGS missing
+                              </span>
+                            : null}
+                          </div>
                           <span
                             className={cn(
                               "text-xs font-semibold px-2.5 py-1 rounded-full capitalize flex-shrink-0",

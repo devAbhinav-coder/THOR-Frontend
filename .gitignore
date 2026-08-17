@@ -18,3 +18,5 @@
 /playwright-junit-report.xml.gz.base64.gz.base64
 /playwright-junit-report.xml.gz.base64.gz.base64.gz
 /e2e
+debug.log
+**/debug.log

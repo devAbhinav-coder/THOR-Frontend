@@ -37,11 +37,11 @@ import {
   readPersistedCartCouponCode,
 } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
-import { authApi, couponApi, orderApi } from "@/lib/api";
+import { authApi, cartApi, couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
 import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Input } from "@/components/ui/input";
-import { Coupon, Order } from "@/types";
+import { Coupon, Order, type CartPromotion } from "@/types";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
 import type { CheckoutDisplayItem } from "@/types/checkoutDisplay";
@@ -68,9 +68,16 @@ import {
   trackInitiateCheckout,
 } from "@/lib/metaPixel";
 import { getMarketingAttributionForCheckout } from "@/lib/marketingAttribution";
+import { getShopSessionKey } from "@/lib/shopSession";
 import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { armPostCheckoutAuthGuard } from "@/lib/checkoutSuccessGuard";
+import {
+  clearBuyNowSession,
+  readBuyNowFromSession,
+  writeBuyNowToSession,
+  type BuyNowCheckoutItem,
+} from "@/lib/buyNowCheckoutSession";
 
 function normalizeIndianMobileDigits(val: string): string {
   let d = val.replace(/\D/g, "");
@@ -131,26 +138,6 @@ const SHIPPING_CHARGE = 99;
 /** Must match backend `COD_HANDLING_FEE` — added when paying cash on delivery */
 const COD_HANDLING_FEE = 99;
 const TAX_RATE = 0;
-const BUY_NOW_SESSION_KEY = "hor_buy_now_checkout_item";
-
-type BuyNowCheckoutItem = {
-  productId: string;
-  name: string;
-  image: string;
-  quantity: number;
-  price: number;
-  variant: {
-    size?: string;
-    color?: string;
-    colorCode?: string;
-    sku: string;
-    stock?: number;
-    price?: number;
-  };
-  customFieldAnswers?: { label: string; value: string }[];
-  /** Variant stock when saved from PDP; caps qty in checkout. */
-  maxStock?: number;
-};
 
 const INDIAN_STATES = [
   "Andhra Pradesh",
@@ -295,9 +282,17 @@ export default function CheckoutClient() {
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
-  const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(null);
+  const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(
+    () => readBuyNowFromSession(),
+  );
   const [buyNowCouponCode, setBuyNowCouponCode] = useState<string | null>(null);
   const [buyNowCouponDiscount, setBuyNowCouponDiscount] = useState(0);
+  const [buyNowPromotion, setBuyNowPromotion] = useState<CartPromotion | null>(null);
+  const [buyNowPromotionDiscount, setBuyNowPromotionDiscount] = useState(0);
+  const [buyNowPromotionHint, setBuyNowPromotionHint] = useState<{
+    label: string;
+    message: string;
+  } | null>(null);
   const [pendingOrderSuccessId, setPendingOrderSuccessId] = useState<
     string | null
   >(null);
@@ -344,8 +339,9 @@ export default function CheckoutClient() {
     appliedCouponCode,
     updateItem,
     removeItem,
+    isLoading: isCartLoading,
   } = useCartStore();
-  const { user, isAuthenticated, setUser } = useAuthStore();
+  const { user, isAuthenticated, setUser, fetchUser } = useAuthStore();
   const router = useRouter();
 
   const {
@@ -381,31 +377,60 @@ export default function CheckoutClient() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!isExplicitBuyNowFlow) {
-      setBuyNowItem(null);
-      setBuyNowCouponCode(null);
-      setBuyNowCouponDiscount(0);
-      sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+
+    const stored = readBuyNowFromSession();
+
+    if (isExplicitBuyNowFlow) {
+      setBuyNowItem(stored);
       return;
     }
-    try {
-      const raw = sessionStorage.getItem(BUY_NOW_SESSION_KEY);
-      if (!raw) {
-        setBuyNowItem(null);
+
+    // Tab restore / bfcache: URL may drop ?buyNow=1 while session still holds the item.
+    if (stored) {
+      const hasCartItems = (useCartStore.getState().cart?.items?.length ?? 0) > 0;
+      if (!hasCartItems) {
+        setBuyNowItem(stored);
         return;
       }
-      const parsed = JSON.parse(raw) as BuyNowCheckoutItem;
-      if (!parsed?.productId || !parsed?.variant?.sku || !parsed?.quantity) {
-        sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
-        setBuyNowItem(null);
-        return;
-      }
-      setBuyNowItem(parsed);
-    } catch {
-      sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
-      setBuyNowItem(null);
+      clearBuyNowSession();
     }
+
+    setBuyNowItem(null);
+    setBuyNowCouponCode(null);
+    setBuyNowCouponDiscount(0);
+    setBuyNowPromotion(null);
+    setBuyNowPromotionDiscount(0);
+    setBuyNowPromotionHint(null);
   }, [isExplicitBuyNowFlow]);
+
+  /** Re-hydrate buy-now or refetch cart when user returns to the tab. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const stored = readBuyNowFromSession();
+      if (stored) {
+        setBuyNowItem(stored);
+        return;
+      }
+      if (!orderId && !buyNowItem) {
+        fetchCart().catch(() => {});
+      }
+    };
+
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      onVisible();
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [orderId, buyNowItem, fetchCart]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -445,31 +470,110 @@ export default function CheckoutClient() {
     }
   }, [isAuthenticated, fetchCart, orderId, router, setValue, buyNowItem]);
 
+  /** Live buy-now price + auto-offer preview (sale-aware, matches checkout). */
+  useEffect(() => {
+    if (!isAuthenticated || !buyNowItem) {
+      setBuyNowPromotion(null);
+      setBuyNowPromotionDiscount(0);
+      setBuyNowPromotionHint(null);
+      return;
+    }
+
+    let cancelled = false;
+    void cartApi
+      .previewBuyNow({
+        productId: String(buyNowItem.productId),
+        variant: buyNowItem.variant,
+        quantity: buyNowItem.quantity,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        const data = res.data as {
+          price?: number;
+          maxStock?: number;
+          minQuantity?: number;
+          promotion?: CartPromotion | null;
+          promotionDiscount?: number;
+          promotionHint?: { label: string; message: string } | null;
+        };
+
+        const livePrice = Number(data.price);
+        const maxStock = Number(data.maxStock);
+        if (Number.isFinite(livePrice) && livePrice >= 0) {
+          setBuyNowItem((prev) => {
+            if (!prev) return prev;
+            const next = {
+              ...prev,
+              price: livePrice,
+              ...(Number.isFinite(maxStock) && maxStock > 0 ?
+                { maxStock }
+              : {}),
+            };
+            writeBuyNowToSession(next);
+            return next;
+          });
+        }
+
+        setBuyNowPromotion(data.promotion ?? null);
+        setBuyNowPromotionDiscount(Number(data.promotionDiscount) || 0);
+        setBuyNowPromotionHint(data.promotionHint ?? null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setBuyNowPromotion(null);
+        setBuyNowPromotionDiscount(0);
+        setBuyNowPromotionHint(null);
+
+        const status =
+          err && typeof err === "object" && "response" in err ?
+            (err as { response?: { status?: number } }).response?.status
+          : undefined;
+        if (status !== 400 && status !== 404) return;
+
+        const msg =
+          err instanceof Error ? err.message : "This product is unavailable.";
+        toast.error(msg);
+        clearBuyNowSession();
+        setBuyNowItem(null);
+        router.replace("/shop");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isAuthenticated,
+    buyNowItem?.productId,
+    buyNowItem?.quantity,
+    buyNowItem?.variant?.sku,
+    router,
+  ]);
+
   /** If cart still has a discount but Zustand lost the code (race / sync bug), restore from sessionStorage. */
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!isAuthenticated || buyNowItem || existingOrder) return;
     const { cart: stCart, appliedCouponCode: stCode } = useCartStore.getState();
-    if (!stCart?.items?.length || (stCart.discount ?? 0) <= 0) return;
+    if (!stCart?.items?.length || (stCart.couponDiscount ?? 0) <= 0) return;
     if (stCode) return;
     const stored = readPersistedCartCouponCode();
     if (stored) useCartStore.setState({ appliedCouponCode: stored });
   }, [
     isAuthenticated,
-    cart?.discount,
+    cart?.couponDiscount,
     cart?.items?.length,
     appliedCouponCode,
     buyNowItem,
     existingOrder,
   ]);
 
-  /** Drop stale coupon label when server no longer applies a discount. */
+  /** Drop stale coupon label when server no longer applies a coupon discount. */
   useEffect(() => {
     if (buyNowItem || existingOrder) return;
-    if ((cart?.discount ?? 0) <= 0 && appliedCouponCode) {
+    if ((cart?.couponDiscount ?? 0) <= 0 && appliedCouponCode) {
       useCartStore.setState({ appliedCouponCode: null });
     }
-  }, [cart?.discount, appliedCouponCode, buyNowItem, existingOrder]);
+  }, [cart?.couponDiscount, appliedCouponCode, buyNowItem, existingOrder]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -504,7 +608,8 @@ export default function CheckoutClient() {
     isAuthenticated,
     buyNowItem?.productId,
     buyNowItem?.quantity,
-    buyNowItem?.price,
+    buyNowPromotionDiscount,
+    buyNowCouponDiscount,
   ]);
 
   const paymentMethodForApi =
@@ -513,6 +618,8 @@ export default function CheckoutClient() {
   const {
     subtotal,
     discount,
+    promotionDiscount,
+    couponDiscount,
     subtotalAfterDiscount,
     shippingCharge,
     codFee,
@@ -521,16 +628,33 @@ export default function CheckoutClient() {
     hasAppliedCoupon,
     activeCouponCode,
     activeCouponDiscount,
+    activePromotion,
+    activePromotionHint,
   } = useMemo(() => {
     const subtotal =
       existingOrder ? existingOrder.subtotal
       : buyNowItem ? buyNowItem.price * buyNowItem.quantity
       : cart?.subtotal || 0;
-    const discount =
-      existingOrder ? existingOrder.discount
+
+    const promotionDiscount =
+      existingOrder ? 0
+      : buyNowItem ? buyNowPromotionDiscount
+      : cart?.promotionDiscount ?? 0;
+
+    const couponDiscount =
+      existingOrder ?
+        existingOrder.coupon && (existingOrder.discount ?? 0) > 0 ?
+          existingOrder.discount ?? 0
+        : 0
       : buyNowItem ? buyNowCouponDiscount
-      : cart?.discount || 0;
-    const subtotalAfterDiscount = subtotal - discount;
+      : cart?.couponDiscount ?? 0;
+
+    const discount =
+      existingOrder ?
+        existingOrder.discount ?? 0
+      : promotionDiscount + couponDiscount;
+
+    const subtotalAfterDiscount = Math.max(0, subtotal - discount);
     const shippingCharge =
       existingOrder ? existingOrder.shippingCharge
       : subtotalAfterDiscount >= SHIPPING_THRESHOLD ? 0
@@ -552,7 +676,7 @@ export default function CheckoutClient() {
         !!existingOrder.coupon && (existingOrder.discount ?? 0) > 0
       : buyNowItem ?
         !!buyNowCouponCode && buyNowCouponDiscount > 0
-      : (cart?.discount ?? 0) > 0;
+      : Boolean(appliedCouponCode?.trim()) || (cart?.couponDiscount ?? 0) > 0;
     const activeCouponCode =
       hasAppliedCoupon ?
         buyNowItem ? buyNowCouponCode
@@ -561,11 +685,22 @@ export default function CheckoutClient() {
     const activeCouponDiscount =
       hasAppliedCoupon ?
         buyNowItem ? buyNowCouponDiscount
-        : cart?.discount || 0
+        : cart?.couponDiscount ?? 0
       : 0;
+    const activePromotion =
+      existingOrder ? null
+      : buyNowItem ? buyNowPromotion
+      : cart?.promotion ?? null;
+    const activePromotionHint =
+      existingOrder ? null
+      : buyNowItem ? buyNowPromotionHint
+      : cart?.promotionHint ?? null;
+
     return {
       subtotal,
       discount,
+      promotionDiscount,
+      couponDiscount,
       subtotalAfterDiscount,
       shippingCharge,
       codFee,
@@ -574,14 +709,22 @@ export default function CheckoutClient() {
       hasAppliedCoupon,
       activeCouponCode,
       activeCouponDiscount,
+      activePromotion,
+      activePromotionHint,
     };
   }, [
     existingOrder,
     buyNowItem,
     cart?.subtotal,
-    cart?.discount,
+    cart?.promotionDiscount,
+    cart?.couponDiscount,
+    cart?.promotion,
+    cart?.promotionHint,
     buyNowCouponCode,
     buyNowCouponDiscount,
+    buyNowPromotion,
+    buyNowPromotionDiscount,
+    buyNowPromotionHint,
     appliedCouponCode,
     checkoutPaymentMethod,
   ]);
@@ -925,15 +1068,16 @@ export default function CheckoutClient() {
       trackGaPurchase(order);
       if (buyNowItem) {
         if (typeof window !== "undefined") {
-          sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+          clearBuyNowSession();
         }
         setBuyNowItem(null);
       } else {
         await purgeCartAfterCheckout();
       }
+      void fetchUser().catch(() => {});
       setIsPlacingOrder(false);
     },
-    [buyNowItem, purgeCartAfterCheckout],
+    [buyNowItem, purgeCartAfterCheckout, fetchUser],
   );
 
   const recoverFromAbortedPayment = useCallback(
@@ -1052,12 +1196,14 @@ export default function CheckoutClient() {
             : getCartAppliedCouponCodeForOrder() || undefined;
 
           const marketingAttribution = getMarketingAttributionForCheckout();
+          const shopSessionKey = getShopSessionKey() ?? undefined;
 
           const res = await orderApi.create(
             {
               shippingAddress: { ...addressData, phone: normalizedPhone },
               paymentMethod: paymentMethodForApi,
               ...(couponCodeForOrder ? { couponCode: couponCodeForOrder } : {}),
+              ...(shopSessionKey ? { shopSessionKey } : {}),
               ...(marketingAttribution ?
                 { marketingAttribution }
               : {}),
@@ -1267,7 +1413,7 @@ export default function CheckoutClient() {
       if (next < 1) {
         setLineBusySku(sku);
         try {
-          sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+          clearBuyNowSession();
           setBuyNowItem(null);
           toast.success("Item removed from checkout");
         } finally {
@@ -1291,7 +1437,7 @@ export default function CheckoutClient() {
         const updated = { ...buyNowItem, quantity: capped };
         setBuyNowItem(updated);
         if (typeof window !== "undefined") {
-          sessionStorage.setItem(BUY_NOW_SESSION_KEY, JSON.stringify(updated));
+          writeBuyNowToSession(updated);
         }
       } finally {
         setLineBusySku(null);
@@ -1305,7 +1451,7 @@ export default function CheckoutClient() {
     const sku = buyNowItem.variant.sku;
     setLineBusySku(sku);
     try {
-      sessionStorage.removeItem(BUY_NOW_SESSION_KEY);
+      clearBuyNowSession();
       setBuyNowItem(null);
       toast.success("Item removed from checkout");
     } finally {
@@ -1326,6 +1472,30 @@ export default function CheckoutClient() {
           aria-hidden
         />
         <p className='text-sm text-gray-600'>Preparing checkout…</p>
+      </div>
+    );
+
+  const awaitingCartHydration =
+    !existingOrder &&
+    !orderId &&
+    !buyNowItem &&
+    !pendingOrderSuccessId &&
+    isCartLoading &&
+    (!cart || cart.items.length === 0);
+
+  if (awaitingCartHydration)
+    return (
+      <div
+        className={cn(
+          "flex min-h-[50vh] flex-col items-center justify-center px-4 py-24",
+          heritagePageBg,
+        )}
+      >
+        <Loader2
+          className='mx-auto mb-4 h-10 w-10 animate-spin text-[#c5a059]'
+          aria-hidden
+        />
+        <p className='text-sm text-gray-600'>Loading your bag…</p>
       </div>
     );
 
@@ -1505,6 +1675,36 @@ export default function CheckoutClient() {
                 showCheckoutWizard && checkoutStep === 3 && "hidden lg:block",
               )}
             >
+              {buyNowItem && !existingOrder && (activePromotion || activePromotionHint) ? (
+                <div className="rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/80 px-4 py-3 shadow-sm">
+                  {activePromotion ? (
+                    <>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]">
+                        Auto offer applied
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-navy-900">
+                        {activePromotion.label}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-600">
+                        You save {formatPrice(activePromotion.appliedDiscount)} on this order
+                      </p>
+                    </>
+                  ) : activePromotionHint ? (
+                    <>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]">
+                        Offer available
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-navy-900">
+                        {activePromotionHint.label}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-600">
+                        {activePromotionHint.message}
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+
               {(!showCheckoutWizard || checkoutStep === 1) && (
                 <section className={heritageSectionCard}>
                   <h2 className='mb-6 font-serif text-2xl font-medium text-navy-900 sm:text-3xl'>
@@ -1963,6 +2163,32 @@ export default function CheckoutClient() {
                       checkoutStep === 3 && "order-2 border-b-0 pb-0 pt-6",
                     )}
                   >
+                    {!existingOrder && activePromotion ? (
+                      <div className='mb-5 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3'>
+                        <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800'>
+                          Offer applied
+                        </p>
+                        <p className='mt-1 text-sm font-semibold text-emerald-900'>
+                          {activePromotion.label}
+                        </p>
+                        <p className='mt-0.5 text-xs text-emerald-800/80'>
+                          You save {formatPrice(activePromotion.appliedDiscount)}
+                        </p>
+                      </div>
+                    ) : !existingOrder && activePromotionHint ? (
+                      <div className='mb-5 rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/70 px-4 py-3'>
+                        <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'>
+                          Offer available
+                        </p>
+                        <p className='mt-1 text-sm font-semibold text-navy-900'>
+                          {activePromotionHint.label}
+                        </p>
+                        <p className='mt-0.5 text-xs text-gray-600'>
+                          {activePromotionHint.message}
+                        </p>
+                      </div>
+                    ) : null}
+
                     <div className='mb-4 flex min-w-0 items-center justify-between gap-2'>
                       <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
                         Promotional Code
@@ -2361,11 +2587,27 @@ export default function CheckoutClient() {
                         {formatPrice(subtotal)}
                       </span>
                     </div>
-                    {discount > 0 && (
+                    {existingOrder && discount > 0 && (
                       <div className='flex justify-between text-[#c5a059]'>
                         <span>Discount</span>
                         <span className='font-semibold tabular-nums'>
                           − {formatPrice(discount)}
+                        </span>
+                      </div>
+                    )}
+                    {!existingOrder && promotionDiscount > 0 && (
+                      <div className='flex justify-between text-emerald-700'>
+                        <span>{activePromotion?.label || "Auto offer"}</span>
+                        <span className='font-semibold tabular-nums'>
+                          − {formatPrice(promotionDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    {!existingOrder && couponDiscount > 0 && (
+                      <div className='flex justify-between text-[#c5a059]'>
+                        <span>Coupon discount</span>
+                        <span className='font-semibold tabular-nums'>
+                          − {formatPrice(couponDiscount)}
                         </span>
                       </div>
                     )}

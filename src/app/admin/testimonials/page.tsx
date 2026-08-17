@@ -142,7 +142,7 @@ export default function AdminTestimonialsPage() {
         title: 'The House of Rani',
         text: `${label}\n${url}`,
         qrDataUrl: qrDataUrl || qrPreview,
-        filename: 'HOR-share-QR.png',
+        filename: 'THOR-share-QR.png',
       });
       if (mode === 'native') toast.success('Shared');
       else if (mode === 'whatsapp') toast.success('Opened WhatsApp');
@@ -234,7 +234,7 @@ export default function AdminTestimonialsPage() {
                   storyUrl,
                   'The House of Rani',
                   'Share your story',
-                  'HOR-story-QR.png',
+                  'THOR-story-QR.png',
                 )
               }
             >
@@ -352,7 +352,7 @@ export default function AdminTestimonialsPage() {
                       productReviewUrl,
                       'The House of Rani',
                       selectedProduct?.name || 'Product review',
-                      `HOR-review-${selectedProduct?._id || 'product'}.png`,
+                      `THOR-review-${selectedProduct?._id || 'product'}.png`,
                     )
                   }
                 >

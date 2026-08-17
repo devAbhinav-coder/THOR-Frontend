@@ -3,26 +3,25 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { X, Copy, Check, Tag, Percent } from 'lucide-react';
-import { couponApi, saleCampaignApi } from '@/lib/api';
-import type { PublicCoupon, PublicSale } from '@/types';
+import { X, Copy, Check, Tag, Percent, Sparkles } from 'lucide-react';
+import { couponApi, saleCampaignApi, promotionApi, storefrontApi } from '@/lib/api';
+import type { PublicCoupon, PublicSale, PublicPromotion } from '@/types';
 import { cn } from '@/lib/utils';
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/bodyScrollLock';
+import { getShopSessionKey } from '@/lib/shopSession';
 import toast from 'react-hot-toast';
 
 /** Session: which offer keys already dismissed this tab */
-const SEEN_KEY = 'hor_offer_popup_seen_v3';
+const SEEN_KEY = 'hor_offer_popup_seen_v4';
 
-type OfferKind = 'coupon' | 'sale';
+type OfferKind = 'coupon' | 'sale' | 'promotion';
 
 type ActiveOffer =
   | { kind: 'coupon'; key: string; data: PublicCoupon }
-  | { kind: 'sale'; key: string; data: PublicSale };
+  | { kind: 'sale'; key: string; data: PublicSale }
+  | { kind: 'promotion'; key: string; data: PublicPromotion };
 
-function discountLabel(
-  type: 'percentage' | 'flat' | 'fixed',
-  value: number,
-) {
+function saleDiscountLabel(type: 'percentage' | 'flat' | 'fixed', value: number) {
   if (type === 'percentage') return `${value}% OFF`;
   if (type === 'fixed') return `At ₹${value}`;
   return `₹${value} OFF`;
@@ -32,11 +31,19 @@ function offerKey(kind: OfferKind, id: string) {
   return `${kind}:${id}`;
 }
 
-/** Build queue: sales first (with image first), then coupons (with image first). All public/active storefront items. */
-function buildOfferQueue(coupons: PublicCoupon[], sales: PublicSale[]): ActiveOffer[] {
+function buildOfferQueue(
+  coupons: PublicCoupon[],
+  sales: PublicSale[],
+  promotions: PublicPromotion[],
+): ActiveOffer[] {
   const saleOffers: ActiveOffer[] = sales.map((data, i) => ({
     kind: 'sale' as const,
     key: offerKey('sale', data._id || `${data.name}|${data.startDate}|${i}`),
+    data,
+  }));
+  const promoOffers: ActiveOffer[] = promotions.map((data) => ({
+    kind: 'promotion' as const,
+    key: offerKey('promotion', data._id),
     data,
   }));
   const couponOffers: ActiveOffer[] = coupons.map((data) => ({
@@ -48,7 +55,11 @@ function buildOfferQueue(coupons: PublicCoupon[], sales: PublicSale[]): ActiveOf
   const withImageFirst = <T extends ActiveOffer>(list: T[]) =>
     [...list].sort((a, b) => Number(Boolean(b.data.imageUrl)) - Number(Boolean(a.data.imageUrl)));
 
-  return [...withImageFirst(saleOffers), ...withImageFirst(couponOffers)];
+  return [
+    ...withImageFirst(saleOffers),
+    ...withImageFirst(promoOffers),
+    ...withImageFirst(couponOffers),
+  ];
 }
 
 function readSeen(): Set<string> {
@@ -69,6 +80,47 @@ function writeSeen(seen: Set<string>) {
   } catch {
     /* ignore */
   }
+}
+
+function offerMeta(offer: ActiveOffer): {
+  offerId?: string;
+  offerLabel: string;
+} {
+  if (offer.kind === 'coupon') {
+    return {
+      offerId: offer.data.code,
+      offerLabel: offer.data.displayTitle || offer.data.code || 'Coupon',
+    };
+  }
+  if (offer.kind === 'promotion') {
+    return {
+      offerId: offer.data._id,
+      offerLabel: offer.data.displayTitle || offer.data.name || offer.data.label || 'Auto offer',
+    };
+  }
+  return {
+    offerId: offer.data._id,
+    offerLabel: offer.data.name || saleDiscountLabel(offer.data.discountType, offer.data.discountValue),
+  };
+}
+
+function trackOfferEvent(
+  offer: ActiveOffer,
+  eventType: 'popup_impression' | 'popup_dismiss' | 'popup_cta_click' | 'coupon_copy',
+) {
+  const sessionKey = getShopSessionKey();
+  if (!sessionKey) return;
+  const meta = offerMeta(offer);
+  storefrontApi
+    .recordOfferEvent({
+      eventType,
+      offerKind: offer.kind,
+      offerId: meta.offerId,
+      offerLabel: meta.offerLabel,
+      sessionKey,
+      path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+    })
+    .catch(() => {});
 }
 
 export default function OfferVisitPopup() {
@@ -98,6 +150,15 @@ export default function OfferVisitPopup() {
     });
   }, []);
 
+  const impressionSentRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !offer) return;
+    if (impressionSentRef.current === offer.key) return;
+    impressionSentRef.current = offer.key;
+    trackOfferEvent(offer, 'popup_impression');
+  }, [open, offer]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     seenRef.current = readSeen();
@@ -107,7 +168,8 @@ export default function OfferVisitPopup() {
       Promise.all([
         couponApi.getPublic().catch(() => null),
         saleCampaignApi.getPublic().catch(() => null),
-      ]).then(([couponRes, saleRes]) => {
+        promotionApi.getPublic().catch(() => null),
+      ]).then(([couponRes, saleRes, promoRes]) => {
         if (cancelled) return;
         const coupons = Array.isArray(couponRes?.data?.coupons)
           ? (couponRes!.data.coupons as PublicCoupon[])
@@ -115,9 +177,11 @@ export default function OfferVisitPopup() {
         const sales = Array.isArray(saleRes?.data?.campaigns)
           ? (saleRes!.data.campaigns as PublicSale[])
           : [];
+        const promotions = Array.isArray(promoRes?.data?.promotions)
+          ? (promoRes!.data.promotions as PublicPromotion[])
+          : [];
 
-        // Public APIs already return only active + showOnStorefront
-        const all = buildOfferQueue(coupons, sales);
+        const all = buildOfferQueue(coupons, sales, promotions);
         const remaining = all.filter((o) => !seenRef.current.has(o.key));
         if (!remaining.length) return;
 
@@ -138,13 +202,15 @@ export default function OfferVisitPopup() {
     writeSeen(seenRef.current);
   }, []);
 
-  /** Close current → immediately open next remaining offer in the stack */
   const dismiss = useCallback(() => {
     if (advancingRef.current) return;
     advancingRef.current = true;
 
     const current = queue[index];
-    if (current) markSeen(current.key);
+    if (current) {
+      markSeen(current.key);
+      trackOfferEvent(current, 'popup_dismiss');
+    }
 
     setVisible(false);
 
@@ -185,6 +251,7 @@ export default function OfferVisitPopup() {
     try {
       await navigator.clipboard.writeText(offer.data.code);
       setCopied(true);
+      trackOfferEvent(offer, 'coupon_copy');
       toast.success('Code copied');
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -195,12 +262,17 @@ export default function OfferVisitPopup() {
   if (!mounted || !open || !offer) return null;
 
   const imageUrl = offer.data.imageUrl;
-  const label = discountLabel(offer.data.discountType, offer.data.discountValue);
+  const label =
+    offer.kind === 'promotion'
+      ? offer.data.label
+      : saleDiscountLabel(offer.data.discountType, offer.data.discountValue);
 
   const title =
     offer.kind === 'coupon'
       ? (offer.data.displayTitle || offer.data.code || label).trim()
-      : (offer.data.name || label).trim();
+      : offer.kind === 'promotion'
+        ? (offer.data.displayTitle || offer.data.name || label).trim()
+        : (offer.data.name || label).trim();
 
   const rawDescription = (offer.data.description || '').trim();
   const description =
@@ -208,15 +280,25 @@ export default function OfferVisitPopup() {
       ? rawDescription
       : '';
 
+  const terms =
+    offer.kind === 'promotion' ? (offer.data.termsAndConditions || '').trim() : '';
+
   const badge =
-    offer.kind === 'sale' ? offer.data.badgeText || 'Sale' : 'Limited offer';
+    offer.kind === 'sale'
+      ? offer.data.badgeText || 'Sale'
+      : offer.kind === 'promotion'
+        ? offer.data.badgeText || 'Auto offer'
+        : 'Coupon code';
+
+  const ariaLabel =
+    offer.kind === 'sale' ? 'Sale offer' : offer.kind === 'promotion' ? 'Auto offer' : 'Coupon offer';
 
   return createPortal(
     <div
       className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label={offer.kind === 'sale' ? 'Sale offer' : 'Special offer'}
+      aria-label={ariaLabel}
     >
       <button
         type="button"
@@ -265,7 +347,14 @@ export default function OfferVisitPopup() {
               )}
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-navy-900 via-brand-800 to-navy-800" />
+            <div
+              className={cn(
+                'absolute inset-0',
+                offer.kind === 'promotion'
+                  ? 'bg-gradient-to-br from-[#8a6d3b] via-navy-900 to-brand-800'
+                  : 'bg-gradient-to-br from-navy-900 via-brand-800 to-navy-800',
+              )}
+            />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/50 to-navy-950/15" />
 
@@ -273,6 +362,8 @@ export default function OfferVisitPopup() {
             <p className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] backdrop-blur-md">
               {offer.kind === 'sale' ? (
                 <Percent className="h-3 w-3" />
+              ) : offer.kind === 'promotion' ? (
+                <Sparkles className="h-3 w-3" />
               ) : (
                 <Tag className="h-3 w-3" />
               )}
@@ -292,10 +383,22 @@ export default function OfferVisitPopup() {
                 Min order ₹{offer.data.minOrderAmount}
               </p>
             ) : null}
+            {offer.kind === 'promotion' ? (
+              <p className="mt-2 text-xs text-[#e8d5a3]/90">
+                No code needed — adds to cart automatically
+              </p>
+            ) : null}
           </div>
         </div>
 
         <div className="space-y-3 bg-white p-4 sm:p-5">
+          {terms ? (
+            <p className="text-xs leading-relaxed text-gray-500 border-t border-gray-100 pt-3">
+              <span className="font-semibold text-gray-600">T&amp;C: </span>
+              {terms}
+            </p>
+          ) : null}
+
           {offer.kind === 'coupon' ? (
             <>
               <p className="text-center text-xs text-gray-500">Copy code &amp; use at checkout</p>
@@ -332,13 +435,17 @@ export default function OfferVisitPopup() {
           ) : (
             <Link
               href="/shop"
-              onClick={dismiss}
+              onClick={() => {
+                trackOfferEvent(offer, 'popup_cta_click');
+                dismiss();
+              }}
               className={cn(
-                'flex w-full items-center justify-center rounded-xl bg-navy-900 px-4 py-3.5',
-                'text-sm font-semibold text-white shadow-sm transition hover:bg-navy-800 active:scale-[0.99]',
+                'flex w-full items-center justify-center rounded-xl px-4 py-3.5',
+                'text-sm font-semibold text-white shadow-sm transition active:scale-[0.99]',
+                offer.kind === 'promotion' ? 'bg-[#c5a059] hover:bg-[#b8924d]' : 'bg-navy-900 hover:bg-navy-800',
               )}
             >
-              Shop the sale
+              {offer.kind === 'promotion' ? 'Shop now — offer auto-applies' : 'Shop the sale'}
             </Link>
           )}
           <button

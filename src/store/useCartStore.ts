@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Cart, CartItem, Product } from '@/types';
 import { cartApi } from '@/lib/api';
+import { variantSellPrice } from '@/lib/productPricing';
 import {
   getOrCreateCartIdempotencyKey,
   clearCartIdempotencyKey,
@@ -80,7 +81,8 @@ function answersMatch(
 
 function unitPriceForVariant(product: Product, variantSku: string): number {
   const v = product.variants.find((x) => x.sku === variantSku);
-  return v?.price ?? product.price;
+  if (!v) return product.sellPriceMin ?? product.price;
+  return variantSellPrice(v, product);
 }
 
 /**
@@ -574,3 +576,4 @@ export function getCartAppliedCouponCodeForOrder(): string | null {
   }
   return readStoredCouponCode();
 }
+

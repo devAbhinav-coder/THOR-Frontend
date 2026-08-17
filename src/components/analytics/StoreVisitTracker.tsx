@@ -6,24 +6,7 @@ import {
   captureMarketingAttributionFromUrl,
   getStoredMarketingAttribution,
 } from '@/lib/marketingAttribution';
-
-const SESSION_KEY = 'hor_sv';
-
-function getOrCreateSessionId(): string | null {
-  try {
-    if (typeof sessionStorage === 'undefined') return null;
-    const existing = sessionStorage.getItem(SESSION_KEY);
-    if (existing) return existing;
-    const id =
-      typeof crypto !== 'undefined' && crypto.randomUUID ?
-        crypto.randomUUID()
-      : `v_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
-    sessionStorage.setItem(SESSION_KEY, id);
-    return id;
-  } catch {
-    return null;
-  }
-}
+import { getShopSessionKey } from '@/lib/shopSession';
 
 /** Counts one website visit per browser tab session (IST day). Fires on any storefront page load. */
 export default function StoreVisitTracker() {
@@ -31,7 +14,7 @@ export default function StoreVisitTracker() {
 
   useEffect(() => {
     if (sent.current) return;
-    const sessionId = getOrCreateSessionId();
+    const sessionId = getShopSessionKey();
     if (!sessionId) return;
     sent.current = true;
 

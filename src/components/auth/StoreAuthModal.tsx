@@ -25,6 +25,33 @@ const ForgotPasswordClient = dynamic(
   { ssr: false },
 );
 
+function AuthFormLoadingSpinner() {
+  return (
+    <div
+      className="absolute inset-0 z-10 flex min-h-[160px] items-center justify-center bg-[#faf9f7]/90"
+      role="status"
+      aria-label="Loading sign in"
+    >
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#c5a059] border-t-transparent" />
+    </div>
+  );
+}
+
+/** Signals when the dynamically imported auth form has mounted. */
+function AuthFormReadyGate({
+  onReady,
+  children,
+}: {
+  onReady: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    onReady();
+  }, [onReady]);
+
+  return <>{children}</>;
+}
+
 const TITLES: Record<AuthModalView, string> = {
   login: "Enter the House",
   signup: "Join the House",
@@ -54,14 +81,16 @@ export default function StoreAuthModal() {
     [redirectRaw],
   );
 
-  /** Optimistic close so X unlocks scroll immediately (don't wait on router). */
-  const [dismissed, setDismissed] = useState(false);
+  const [formMounted, setFormMounted] = useState(false);
   useEffect(() => {
-    setDismissed(false);
+    setFormMounted(false);
   }, [view]);
 
+  const onFormReady = useCallback(() => {
+    setFormMounted(true);
+  }, []);
+
   const dismissModal = useCallback(() => {
-    setDismissed(true);
     router.replace(closeAuthModalUrl(pathname, search), { scroll: false });
   }, [pathname, router, search]);
 
@@ -91,9 +120,11 @@ export default function StoreAuthModal() {
     dismissModal();
   }, [view, sessionReady, isAuthenticated, dismissModal]);
 
-  if (!view || dismissed) return null;
+  if (!view) return null;
 
   if (sessionReady && isAuthenticated) return null;
+
+  const showFormLoading = !sessionReady || !formMounted;
 
   return (
     <AuthModal
@@ -104,16 +135,10 @@ export default function StoreAuthModal() {
       onClose={dismissModal}
     >
       <AuthGoogleShell>
-        {!sessionReady ?
-          <div
-            className="min-h-[160px] flex items-center justify-center"
-            role="status"
-            aria-label="Loading sign in"
-          >
-            <div className="h-9 w-9 animate-spin border-2 border-[#c5a059] border-t-transparent" />
-          </div>
-        : <>
-            {view === "login" && (
+        <div className="relative min-h-[160px]">
+          {showFormLoading && <AuthFormLoadingSpinner />}
+          {view === "login" && (
+            <AuthFormReadyGate onReady={onFormReady}>
               <LoginPageClient
                 embedded
                 redirect={redirect}
@@ -121,23 +146,27 @@ export default function StoreAuthModal() {
                 onSwitchToSignup={() => switchView("signup")}
                 onForgotPassword={() => switchView("forgot")}
               />
-            )}
-            {view === "signup" && (
+            </AuthFormReadyGate>
+          )}
+          {view === "signup" && (
+            <AuthFormReadyGate onReady={onFormReady}>
               <SignupPageClient
                 embedded
                 onSuccess={onAuthSuccess}
                 onSwitchToLogin={() => switchView("login")}
               />
-            )}
-            {view === "forgot" && (
+            </AuthFormReadyGate>
+          )}
+          {view === "forgot" && (
+            <AuthFormReadyGate onReady={onFormReady}>
               <ForgotPasswordClient
                 embedded
                 onSuccess={onAuthSuccess}
                 onBackToLogin={() => switchView("login")}
               />
-            )}
-          </>
-        }
+            </AuthFormReadyGate>
+          )}
+        </div>
       </AuthGoogleShell>
     </AuthModal>
   );

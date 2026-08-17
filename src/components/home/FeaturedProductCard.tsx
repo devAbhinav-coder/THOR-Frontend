@@ -3,9 +3,11 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingBag, Star } from "lucide-react";
+import { ShoppingBag, Star } from "lucide-react";
 import { Product } from "@/types";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import ProductPriceBlock from "@/components/product/ProductPriceBlock";
+import { getStorefrontPriceDisplay, storefrontPriceMeta } from "@/lib/productPricing";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
@@ -13,34 +15,42 @@ import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
+import WishlistHeartButton from "@/components/wishlist/WishlistHeartButton";
+import { resolveShopCardImage } from "@/lib/pdpImages";
+import { shopProductHref } from "@/lib/shopProductListing";
 
 interface FeaturedProductCardProps {
   product: Product;
+  displayColor?: string | null;
   className?: string;
-}
-
-function toMerchantPrice(n: number): string {
-  return n.toFixed(2);
 }
 
 function FeaturedProductCardInner({
   product,
+  displayColor = null,
   className,
 }: FeaturedProductCardProps) {
   const [primaryImageError, setPrimaryImageError] = useState(false);
-  const { toggleWishlist, isInWishlist } = useWishlistStore();
+  const { toggleWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
-  const inWishlist = isInWishlist(product._id);
   const hasReviews = product.ratings.count > 0;
 
   const primaryUrl = useMemo(() => {
+    if (displayColor) {
+      const strict = resolveShopCardImage(product, displayColor);
+      if (strict) {
+        return normalizeCloudinaryDeliveryUrl(strict) || strict;
+      }
+    }
     return (
       normalizeCloudinaryDeliveryUrl(product.images[0]?.url) ||
       String(product.images[0]?.url || "").trim()
     );
-  }, [product.images]);
+  }, [product, displayColor]);
+
+  const productHref = shopProductHref(product.slug, displayColor);
 
   const showPrimaryImage = Boolean(primaryUrl) && !primaryImageError;
 
@@ -50,6 +60,15 @@ function FeaturedProductCardInner({
     if (product.fabric) parts.push(product.fabric);
     return parts.join(" — ");
   }, [product.category, product.fabric, product.name]);
+
+  const priceMeta = useMemo(
+    () => storefrontPriceMeta(product, displayColor),
+    [product, displayColor],
+  );
+  const priceDisplay = useMemo(
+    () => getStorefrontPriceDisplay(product, displayColor),
+    [product, displayColor],
+  );
 
   const fabricLine = useMemo(() => {
     const line =
@@ -112,7 +131,7 @@ function FeaturedProductCardInner({
         aria-hidden='true'
       >
         <meta itemProp='priceCurrency' content='INR' />
-        <meta itemProp='price' content={toMerchantPrice(product.price)} />
+        <meta itemProp='price' content={priceMeta.priceContent} />
         <link
           itemProp='availability'
           href={
@@ -124,7 +143,7 @@ function FeaturedProductCardInner({
         <link itemProp='itemCondition' href='https://schema.org/NewCondition' />
         <link
           itemProp='url'
-          href={`/shop/${encodeURIComponent(product.slug)}`}
+          href={productHref}
         />
       </div>
 
@@ -150,7 +169,7 @@ function FeaturedProductCardInner({
       )}
 
       <Link
-        href={`/shop/${encodeURIComponent(product.slug)}`}
+        href={productHref}
         className='flex h-full min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/50 focus-visible:ring-offset-2'
         aria-label={`View ${product.name}`}
       >
@@ -175,24 +194,11 @@ function FeaturedProductCardInner({
             </div>
           }
 
-          <button
-            type='button'
-            onClick={handleWishlist}
-            className={cn(
-              "absolute right-2.5 top-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition-colors",
-              inWishlist ? "text-brand-600" : (
-                "text-gray-500 hover:text-brand-600"
-              ),
-            )}
-            aria-label={
-              inWishlist ?
-                `Remove ${product.name} from wishlist`
-              : `Add ${product.name} to wishlist`
-            }
-            aria-pressed={inWishlist}
-          >
-            <Heart className={cn("h-4 w-4", inWishlist && "fill-current")} />
-          </button>
+          <WishlistHeartButton
+            productId={product._id}
+            productName={product.name}
+            onToggle={handleWishlist}
+          />
         </div>
 
         <div className='flex min-h-[3rem] flex-1 flex-col px-3 py-2 text-left sm:min-h-[3.25rem] sm:px-4 sm:py-3'>
@@ -243,14 +249,17 @@ function FeaturedProductCardInner({
             }
           </div>
 
-          <p
-            className=' pt-1 text-sm font-semibold text-[#c5a059] sm:pt-1 sm:text-[15px]'
-            aria-label={`Price: ${formatPrice(product.price)}`}
-          >
-            {formatPrice(product.price)}
-            <meta itemProp='price' content={toMerchantPrice(product.price)} />
+          <div className='pt-1 sm:pt-1'>
+            <ProductPriceBlock
+              product={product}
+              displayColor={displayColor}
+              size='md'
+              sellClassName='text-[#c5a059]'
+              showBadge={priceDisplay.showDiscount}
+            />
+            <meta itemProp='price' content={priceMeta.priceContent} />
             <meta itemProp='priceCurrency' content='INR' />
-          </p>
+          </div>
         </div>
       </Link>
     </article>

@@ -25,6 +25,7 @@ import { CartItem, Coupon } from "@/types";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
+import { clearBuyNowSession } from "@/lib/buyNowCheckoutSession";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
@@ -125,6 +126,7 @@ export default function CartClient() {
       await playCheckoutLaunchAnimation(checkoutBtnRef.current, {
         gifSrc: shoppingCartGif.src,
       });
+      clearBuyNowSession();
       router.push("/checkout");
     } finally {
       setTimeout(() => setIsCheckoutLaunching(false), 250);
@@ -192,11 +194,17 @@ export default function CartClient() {
     );
   }
 
+  const payableSubtotal = Math.max(
+    0,
+    cart.total ?? cart.subtotal - (cart.discount ?? 0),
+  );
+  const promotionDiscount = cart.promotionDiscount ?? 0;
+  const couponDiscount = cart.couponDiscount ?? 0;
+  const hasCouponApplied = Boolean(appliedCouponCode?.trim()) || couponDiscount > 0;
   const shippingCharge =
-    cart.subtotal - cart.discount >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE;
-  const estimatedTotal = cart.subtotal - cart.discount + shippingCharge;
-  const freeShippingRemaining =
-    SHIPPING_THRESHOLD - (cart.subtotal - cart.discount);
+    payableSubtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE;
+  const estimatedTotal = payableSubtotal + shippingCharge;
+  const freeShippingRemaining = SHIPPING_THRESHOLD - payableSubtotal;
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
@@ -502,17 +510,48 @@ export default function CartClient() {
                   Order Summary
                 </h2>
 
-                <div className="mb-6 space-y-4 border-b border-white/10 pb-6 sm:mb-8">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
-                    Promotional Code
-                  </p>
+                {cart.promotion ? (
+                  <div className="mb-6 rounded-lg border border-[#c5a059]/40 bg-[#c5a059]/10 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffdea5]/90">
+                      Auto offer applied
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-white">
+                      {cart.promotion.label}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#e8d5a3]/90">
+                      You save {formatPrice(cart.promotion.appliedDiscount)}
+                    </p>
+                  </div>
+                ) : cart.promotionHint ? (
+                  <div className="mb-6 rounded-lg border border-[#c5a059]/30 bg-white/5 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffdea5]/80">
+                      Offer available
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-white">
+                      {cart.promotionHint.label}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#e8d5a3]/85">
+                      {cart.promotionHint.message}
+                    </p>
+                  </div>
+                ) : null}
 
-                  {cart.discount > 0 ? (
+                <div className="mb-6 space-y-4 border-b border-white/10 pb-6 sm:mb-8">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
+                      Coupon code
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/45 leading-relaxed">
+                      Optional — type a code here. Auto offers apply on their own.
+                    </p>
+                  </div>
+
+                  {hasCouponApplied ? (
                     <div className="space-y-3 border border-[#c5a059]/35 bg-white p-3 shadow-sm sm:p-4">
                       <CouponAppliedBanner
                         variant="heritage"
                         code={appliedCouponCode}
-                        savedAmount={cart.discount}
+                        savedAmount={couponDiscount}
                         eligibleCoupons={eligibleCoupons}
                       />
                       <button
@@ -579,7 +618,7 @@ export default function CartClient() {
                           key={c._id}
                           type="button"
                           title={
-                            cart.discount > 0
+                            hasCouponApplied
                               ? "Remove your current coupon to use another"
                               : undefined
                           }
@@ -595,11 +634,11 @@ export default function CartClient() {
                           }}
                           className={cn(
                             "w-full min-w-0 border border-[#c5a059]/25 bg-white p-3 text-left transition-all",
-                            cart.discount > 0 || couponLoading
+                            hasCouponApplied || couponLoading
                               ? "cursor-not-allowed opacity-50"
                               : "hover:border-[#c5a059]/60 hover:bg-[#fff8eb]/80 hover:shadow-sm",
                           )}
-                          disabled={couponLoading || cart.discount > 0}
+                          disabled={couponLoading || hasCouponApplied}
                         >
                           <CouponOfferPreview coupon={c} />
                         </button>
@@ -615,13 +654,23 @@ export default function CartClient() {
                       {formatPrice(cart.subtotal)}
                     </span>
                   </div>
-                  {cart.discount > 0 && (
+                  {promotionDiscount > 0 && (
                     <div className="flex items-center justify-between border-b border-white/10 pb-4">
                       <span className="text-sm text-[#ffdea5]/90">
-                        Discount
+                        {cart.promotion?.label || 'Auto offer'}
+                      </span>
+                      <span className="text-sm text-[#e8d5a3]">
+                        − {formatPrice(promotionDiscount)}
+                      </span>
+                    </div>
+                  )}
+                  {couponDiscount > 0 && (
+                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                      <span className="text-sm text-[#ffdea5]/90">
+                        Coupon discount
                       </span>
                       <span className="text-sm text-[#ffdea5]">
-                        − {formatPrice(cart.discount)}
+                        − {formatPrice(couponDiscount)}
                       </span>
                     </div>
                   )}

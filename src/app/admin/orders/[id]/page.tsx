@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import OrderLineThumbnail from '@/components/orders/OrderLineThumbnail';
+import OrderLineCogEditor from '@/components/admin/orders/OrderLineCogEditor';
+import { isUsableOrderLineImage, isManualOfflineOrderLine } from '@/lib/offlineOrder';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Truck,
@@ -30,6 +33,8 @@ import {
   Download,
   Printer,
   Trash2,
+  Receipt,
+  Building2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminApi } from '@/lib/api';
@@ -58,6 +63,16 @@ function adminPaymentMethodLabel(pm: Order['paymentMethod']): string {
   }
 }
 
+function getLinkedTaxInvoiceId(order: Order): string | null {
+  const raw = order.taxSalesInvoiceId;
+  if (!raw) return null;
+  if (typeof raw === 'string') return raw;
+  if (typeof raw === 'object' && raw !== null && '_id' in raw) {
+    return String((raw as { _id: string })._id);
+  }
+  return null;
+}
+
 const ORDER_STATUSES: OrderStatus[] = [
   'pending',
   'confirmed',
@@ -68,7 +83,7 @@ const ORDER_STATUSES: OrderStatus[] = [
   'refunded',
 ];
 
-function loyaltyTierBadge(segment: string | null) {
+function customerSegmentBadge(segment: string | null) {
   if (!segment) return null;
   const tiers: Record<string, { label: string; className: string }> = {
     frequent_buyer: { label: 'VIP', className: 'bg-amber-100 text-amber-950 border-amber-200' },
@@ -913,12 +928,15 @@ function DelhiveryAutomationCard({
 export default function AdminOrderDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const highlightNewB2b = searchParams.get('newB2b') === '1';
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [creatingTaxInvoice, setCreatingTaxInvoice] = useState(false);
 
   const [tracking, setTracking] = useState({
     shippingCarrier: '',
@@ -935,7 +953,7 @@ export default function AdminOrderDetailsPage() {
   const [refunding, setRefunding] = useState(false);
   const [resolvingReturn, setResolvingReturn] = useState(false);
   const [returnAdminNote, setReturnAdminNote] = useState('');
-  const [loyaltySegment, setLoyaltySegment] = useState<string | null>(null);
+  const [customerSegment, setCustomerSegment] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const trackingHref = useMemo(() => {
@@ -975,7 +993,7 @@ export default function AdminOrderDetailsPage() {
 
   useEffect(() => {
     if (!order) {
-      setLoyaltySegment(null);
+      setCustomerSegment(null);
       return;
     }
     const uid =
@@ -985,17 +1003,17 @@ export default function AdminOrderDetailsPage() {
           ? order.user
           : null;
     if (!uid) {
-      setLoyaltySegment(null);
+      setCustomerSegment(null);
       return;
     }
     let cancelled = false;
     adminApi
       .getUserInsights(uid)
       .then((res) => {
-        if (!cancelled) setLoyaltySegment(res.data.metrics.userSegment);
+        if (!cancelled) setCustomerSegment(res.data.metrics.userSegment);
       })
       .catch(() => {
-        if (!cancelled) setLoyaltySegment(null);
+        if (!cancelled) setCustomerSegment(null);
       });
     return () => {
       cancelled = true;
@@ -1123,6 +1141,8 @@ export default function AdminOrderDetailsPage() {
   const orderItems = order.items ?? [];
   const invoiceEligible = order.paymentStatus === 'paid' || order.status === 'delivered';
   const isPaid = order.paymentStatus === 'paid';
+  const isB2bOrder = order.offlineMeta?.source === 'b2b';
+  const linkedTaxInvoiceId = getLinkedTaxInvoiceId(order);
 
   return (
     <div className='min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white pb-10'>
@@ -1148,7 +1168,12 @@ export default function AdminOrderDetailsPage() {
 
         <AdminPageHeader
           title={`Order ${order.orderNumber}`}
-          badge={order.productType === 'custom' ? 'Bespoke Gift' : order.offlineMeta ? 'Offline Order' : undefined}
+          badge={
+            order.productType === 'custom' ? 'Bespoke Gift'
+            : order.offlineMeta?.source === 'b2b' ? 'B2B Order'
+            : order.offlineMeta ? 'Offline Order'
+            : undefined
+          }
           description={`Placed on ${formatDateTime(order.createdAt)}`}
           actions={
             <div className="flex flex-wrap items-center gap-2">
@@ -1176,7 +1201,7 @@ export default function AdminOrderDetailsPage() {
                   invoiceEligible ? "border-brand-200 text-brand-700 bg-white hover:bg-brand-50" : "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
                 )}
               >
-                {generatingInvoice ? 'Generating…' : order.invoice?.isGenerated ? 'Regenerate Invoice' : 'Generate Invoice'}
+                {generatingInvoice ? 'Generating…' : order.invoice?.isGenerated ? 'Regenerate order invoice' : 'Order invoice (THOR)'}
               </button>
               {order.invoice?.isGenerated && (
                 <Link
@@ -1184,8 +1209,44 @@ export default function AdminOrderDetailsPage() {
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-800 text-sm font-semibold text-white shadow-sm transition-all hover:from-navy-800 hover:to-navy-700 hover:shadow-md"
                 >
                   <FileText className="h-4 w-4" />
-                  View Invoice
+                  View order invoice
                 </Link>
+              )}
+              {isB2bOrder && (
+                linkedTaxInvoiceId ?
+                  <Link
+                    href={`/admin/invoices/new?id=${encodeURIComponent(linkedTaxInvoiceId)}`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100"
+                  >
+                    <Receipt className="h-4 w-4" />
+                    View GST invoice (INV)
+                  </Link>
+                : <button
+                    type="button"
+                    disabled={creatingTaxInvoice}
+                    onClick={async () => {
+                      setCreatingTaxInvoice(true);
+                      try {
+                        const res = await adminApi.createTaxInvoiceFromOrder(order._id);
+                        const invoiceId = res.data.invoice.id;
+                        toast.success('GST tax invoice created');
+                        router.push(`/admin/invoices/new?id=${encodeURIComponent(invoiceId)}`);
+                      } catch (err: unknown) {
+                        toast.error((err as { message?: string })?.message || 'Failed to create tax invoice');
+                      } finally {
+                        setCreatingTaxInvoice(false);
+                      }
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-colors",
+                      creatingTaxInvoice ?
+                        "border-gray-200 text-gray-400 bg-gray-50 cursor-wait"
+                      : "border-emerald-200 text-emerald-800 bg-white hover:bg-emerald-50",
+                    )}
+                  >
+                    <Receipt className="h-4 w-4" />
+                    {creatingTaxInvoice ? 'Creating…' : 'GST tax invoice (INV)'}
+                  </button>
               )}
               <button
                 type="button"
@@ -1221,6 +1282,38 @@ export default function AdminOrderDetailsPage() {
             </div>
           }
         />
+
+        {highlightNewB2b && isB2bOrder && !linkedTaxInvoiceId && (
+          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-emerald-50/60 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-emerald-950">B2B order saved</p>
+              <p className="text-sm text-emerald-800 mt-1">
+                GST tax invoice uses its own <strong>INV-</strong> number (separate from order <strong>{order.orderNumber}</strong>, THOR series).
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={creatingTaxInvoice}
+              onClick={async () => {
+                setCreatingTaxInvoice(true);
+                try {
+                  const res = await adminApi.createTaxInvoiceFromOrder(order._id);
+                  const invoiceId = res.data.invoice.id;
+                  toast.success('GST tax invoice created');
+                  router.replace(`/admin/invoices/new?id=${encodeURIComponent(invoiceId)}`);
+                } catch (err: unknown) {
+                  toast.error((err as { message?: string })?.message || 'Failed to create tax invoice');
+                } finally {
+                  setCreatingTaxInvoice(false);
+                }
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 disabled:opacity-60"
+            >
+              <Receipt className="h-4 w-4" />
+              {creatingTaxInvoice ? 'Creating…' : 'Create GST invoice (INV) now'}
+            </button>
+          </div>
+        )}
 
         {/* Status badges row */}
         <div className="flex flex-wrap items-center gap-3">
@@ -1369,33 +1462,77 @@ export default function AdminOrderDetailsPage() {
                     </h2>
                   </div>
                   <div className="p-5 sm:p-6 space-y-4">
-                    {(o.items || []).map((it, idx) => (
+                    {(o.items || []).map((it, idx) => {
+                      const isManual = isManualOfflineOrderLine(it);
+                      return (
                       <div key={idx} className="flex gap-4 p-3 -mx-3 rounded-xl hover:bg-gray-50/80 transition-colors group">
-                        <div
+                        <OrderLineThumbnail
+                          image={it.image}
+                          name={it.name}
+                          isOfflineManual={isManual}
                           className={cn(
-                            "relative h-16 w-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-200 flex-shrink-0 shadow-sm transition-transform",
-                            it.image && "cursor-pointer group-hover:scale-105 group-hover:border-brand-300 group-hover:shadow"
+                            'h-16 w-14 rounded-xl shadow-sm transition-transform',
+                            isUsableOrderLineImage(it.image, {
+                              isOfflineManual: isManual,
+                            }) && 'group-hover:scale-105 group-hover:border-brand-300 group-hover:shadow',
                           )}
-                          onClick={() => it.image && setZoomedImage(it.image)}
-                        >
-                          {it.image ?
-                            <Image src={it.image} alt={it.name || 'Product'} fill sizes="56px" className="object-cover" />
-                          : <div className="h-full w-full bg-gray-100" aria-hidden />}
-                        </div>
+                          sizes="56px"
+                          onClick={() => {
+                            if (isUsableOrderLineImage(it.image, {
+                              isOfflineManual: isManual,
+                            })) {
+                              setZoomedImage(it.image!);
+                            }
+                          }}
+                        />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">{it.name}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">{it.name}</p>
+                            {isManual ?
+                              <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800">
+                                Manual line
+                              </span>
+                            : null}
+                          </div>
                           <p className="text-xs text-gray-500 mt-1 font-medium">
                             {[it.variant?.size, it.variant?.color, it.variant?.sku].filter(Boolean).join(' · ')}
                           </p>
+                          {it.lineCategory ?
+                            <p className="text-[11px] text-gray-500 mt-0.5">Category: {it.lineCategory}</p>
+                          : null}
                           <p className="text-xs text-brand-600 font-semibold mt-1.5 bg-brand-50 inline-block px-2 py-0.5 rounded-md border border-brand-100/50">
                             Qty: {it.quantity} <span className="text-brand-300 mx-1">×</span> {formatPrice(it.price)}
                           </p>
+                          {!isManual && (it.costAtSale ?? 0) > 0 ?
+                            <p className="text-[11px] text-gray-500 mt-1">
+                              COGS: {formatPrice(it.costAtSale!)} / unit
+                            </p>
+                          : null}
+                          {isManual ?
+                            <OrderLineCogEditor
+                              orderId={id}
+                              lineIndex={idx}
+                              quantity={it.quantity}
+                              unitPrice={it.price}
+                              costAtSale={it.costAtSale}
+                              onSaved={(saved) => {
+                                setOrder((prev) => {
+                                  if (!prev) return prev;
+                                  const items = [...(prev.items ?? [])];
+                                  const line = items[idx];
+                                  if (!line) return prev;
+                                  items[idx] = { ...line, costAtSale: saved };
+                                  return { ...prev, items };
+                                });
+                              }}
+                            />
+                          : null}
                         </div>
                         <p className="text-sm font-bold text-gray-900 flex-shrink-0 self-center">
                           {formatPrice(it.price * it.quantity)}
                         </p>
                       </div>
-                    ))}
+                    );})}
                   </div>
                 </div>
 
@@ -1586,12 +1723,42 @@ export default function AdminOrderDetailsPage() {
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold text-gray-900">{user?.name || '—'}</p>
-                {loyaltyTierBadge(loyaltySegment)}
+                {customerSegmentBadge(customerSegment)}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">{user?.email || ''}</p>
             {user?.phone && <p className="text-xs text-gray-500 mt-1">{user.phone}</p>}
           </div>
+
+          {isB2bOrder && (
+            <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
+                <Building2 className="h-4 w-4 text-emerald-600" /> B2B buyer
+              </h2>
+              {order.b2bMeta?.companyName || order.b2bMeta?.gstin || order.b2bMeta?.poNumber ?
+                <dl className="space-y-2 text-sm">
+                  {order.b2bMeta.companyName && (
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Company</dt>
+                      <dd className="font-semibold text-gray-900">{order.b2bMeta.companyName}</dd>
+                    </div>
+                  )}
+                  {order.b2bMeta.gstin && (
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">GSTIN</dt>
+                      <dd className="font-mono text-gray-800">{order.b2bMeta.gstin}</dd>
+                    </div>
+                  )}
+                  {order.b2bMeta.poNumber && (
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">PO number</dt>
+                      <dd className="text-gray-800">{order.b2bMeta.poNumber}</dd>
+                    </div>
+                  )}
+                </dl>
+              : <p className="text-sm text-gray-500">No company/GSTIN saved on this order — add buyer details when creating the tax invoice.</p>}
+            </div>
+          )}
 
           <OrderMarketingAttributionCard attribution={order.marketingAttribution} />
 

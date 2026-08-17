@@ -50,7 +50,6 @@ import { expandProductsForShopListing } from "@/lib/shopProductListing";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { GIFTING_HREF, SHOP_SALE_HREF } from "@/lib/shopSpecialCollections";
 import {
-  SHOP_LOAD_MORE_SKELETON_COUNT,
   SHOP_PRODUCT_GRID_CLASS,
 } from "@/lib/shopLayout";
 
@@ -492,12 +491,15 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     return first?.searchIntent ?? null;
   }, [data?.pages]);
 
+  const [loadMoreSignal, setLoadMoreSignal] = useState(0);
+
   const { sentinelRef } = useInfiniteScrollTrigger({
     hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
     isPending: isPending && products.length === 0,
     fetchNextPage,
-    rootMargin: "600px 0px",
+    onLoadMoreRequested: () => setLoadMoreSignal((n) => n + 1),
+    rootMargin: "800px 0px",
     threshold: 0,
     enabled: true,
   });
@@ -846,7 +848,8 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
                 isFetchingNextPage={isFetchingNextPage}
                 hasNextPage={Boolean(hasNextPage)}
                 pageSize={SHOP_PAGE_LIMIT}
-                loadMoreSkeletonCount={SHOP_LOAD_MORE_SKELETON_COUNT}
+                loadMoreSkeletonCount={SHOP_PAGE_LIMIT}
+                loadMoreSignal={loadMoreSignal}
                 sentinelRef={sentinelRef}
                 renderSkeleton={() => <ShopCollectionCardSkeleton />}
                 endMessage="You've reached the end of the collection."

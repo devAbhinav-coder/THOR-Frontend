@@ -8,6 +8,8 @@ type UseInfiniteScrollTriggerOptions = {
   /** Only block IO on the very first load (not background refetches). */
   isPending?: boolean;
   fetchNextPage: () => Promise<unknown>;
+  /** Fires as soon as sentinel intersects — use to show tail skeletons early. */
+  onLoadMoreRequested?: () => void;
   rootMargin?: string;
   threshold?: number;
   enabled?: boolean;
@@ -22,12 +24,19 @@ export function useInfiniteScrollTrigger({
   isFetchingNextPage,
   isPending = false,
   fetchNextPage,
+  onLoadMoreRequested,
   rootMargin = "280px 0px",
   threshold = 0,
   enabled = true,
 }: UseInfiniteScrollTriggerOptions) {
   const ioRef = useRef<IntersectionObserver | null>(null);
   const fetchLockRef = useRef(false);
+  const onLoadMoreRequestedRef = useRef(onLoadMoreRequested);
+
+  useEffect(() => {
+    onLoadMoreRequestedRef.current = onLoadMoreRequested;
+  }, [onLoadMoreRequested]);
+
   const ioStateRef = useRef({
     hasNextPage: false,
     isFetchingNextPage: false,
@@ -57,6 +66,7 @@ export function useInfiniteScrollTrigger({
           if (!s.hasNextPage || s.isFetchingNextPage || s.isPending) return;
           if (fetchLockRef.current) return;
           fetchLockRef.current = true;
+          onLoadMoreRequestedRef.current?.();
           void fetchNextPage().finally(() => {
             fetchLockRef.current = false;
           });

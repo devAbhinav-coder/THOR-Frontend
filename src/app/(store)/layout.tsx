@@ -5,6 +5,7 @@ import { StoreErrorBoundary } from "@/components/StoreErrorBoundary";
 import { StoreRaniCare } from "@/components/support/StoreRaniCare";
 import StoreAuthModal from "@/components/auth/StoreAuthModal";
 import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
+import WishlistRehydrator from "@/components/wishlist/WishlistRehydrator";
 import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
 import Navbar from "@/components/layout/Navbar";
 
@@ -19,9 +20,10 @@ export default async function StoreLayout({
 
   return (
     <>
+      <WishlistRehydrator />
       <StoreVisitTracker />
       <Navbar initialNavCategories={initialNavCategories} />
-      <main className='pb-0 lg:pb-0 min-h-screen flex flex-col '>
+      <main className='isolate min-h-screen flex flex-col bg-background pb-0 lg:pb-0'>
         <StoreErrorBoundary>{children}</StoreErrorBoundary>
       </main>
       <Footer initialNavCategories={initialNavCategories} />

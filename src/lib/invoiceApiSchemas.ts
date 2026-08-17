@@ -81,6 +81,34 @@ const salesInvoice = z.object({
   buyer: salesInvoiceBuyer,
   meta: salesInvoiceMeta,
   lines: z.array(salesInvoiceLine),
+  orderId: z.string().optional(),
+  orderNumber: z.string().optional(),
+});
+
+export const adminOrderTaxInvoice = z.object({
+  status: z.string(),
+  data: z.object({
+    invoice: salesInvoice.nullable().optional(),
+  }),
+});
+
+export const adminB2bPendingInvoiceList = z.object({
+  status: z.string(),
+  data: z.object({
+    orders: z.array(
+      z.object({
+        _id: z.string(),
+        orderNumber: z.string(),
+        total: z.number(),
+        createdAt: z.union([z.string(), z.date()]),
+        companyName: z.string().optional(),
+        gstin: z.string().optional(),
+        buyerName: z.string().optional(),
+        paymentStatus: z.string().optional(),
+        status: z.string().optional(),
+      }),
+    ),
+  }),
 });
 
 export const adminSalesInvoiceSingle = z.object({

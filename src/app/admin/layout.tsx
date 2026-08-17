@@ -30,9 +30,12 @@ import {
   BadgeCheck,
   HandIcon,
   Receipt,
+  Building2,
   Warehouse,
   Percent,
   Quote,
+  Activity,
+  Inbox,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
@@ -86,12 +89,18 @@ const navSections: NavSection[] = [
         icon: HandIcon,
       },
       {
-        label: "B2B tax invoices",
+        label: "B2B order",
+        href: "/admin/orders/b2b",
+        icon: Building2,
+      },
+      {
+        label: "GST invoices (INV)",
         href: "/admin/invoices",
         icon: Receipt,
       },
       { label: "Returns", href: "/admin/returns", icon: RotateCcw },
       { label: "Coupons", href: "/admin/coupons", icon: Tag },
+      { label: "Auto offers", href: "/admin/promotions", icon: Sparkles },
       { label: "Sale", href: "/admin/sales", icon: Percent },
     ],
   },
@@ -116,6 +125,8 @@ const navSections: NavSection[] = [
     title: "System",
     items: [
       { label: "Security audit", href: "/admin/security/audit", icon: Shield },
+      { label: "Background jobs", href: "/admin/system/jobs", icon: Activity },
+      { label: "Outbox DLQ", href: "/admin/system/outbox", icon: Inbox },
     ],
   },
 ];

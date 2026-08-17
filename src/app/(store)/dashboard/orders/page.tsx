@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { OrderCardSkeleton } from '@/components/ui/SkeletonLoader';
 import OrderHistoryCard from '@/components/dashboard/OrderHistoryCard';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const FILTER_TABS: { label: string; value: string }[] = [
   { label: 'All', value: '' },
@@ -97,6 +98,7 @@ export default function OrdersPage() {
     setCancellingId(orderId);
     try {
       await orderApi.cancel(orderId, 'Cancelled by customer');
+      await useAuthStore.getState().fetchUser();
       toast.success('Order cancelled successfully');
       setOrders((prev) =>
         prev.map((o) => (o._id === orderId ? { ...o, status: 'cancelled' } : o)),

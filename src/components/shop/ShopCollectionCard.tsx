@@ -7,8 +7,11 @@ import { useRouter } from "next/navigation";
 import { Heart, ShoppingBag, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import { Product } from "@/types";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import ProductPriceBlock from "@/components/product/ProductPriceBlock";
+import { getStorefrontPriceDisplay, storefrontPriceMeta } from "@/lib/productPricing";
 import { useWishlistStore } from "@/store/useWishlistStore";
+import { useWishlistUiState } from "@/hooks/useWishlistUiState";
 import { useAuthStore } from "@/store/useAuthStore";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
@@ -27,10 +30,6 @@ interface ShopCollectionCardProps {
   className?: string;
 }
 
-function toMerchantPrice(n: number): string {
-  return n.toFixed(2);
-}
-
 function ShopCollectionCardInner({
   product,
   displayColor = null,
@@ -38,10 +37,10 @@ function ShopCollectionCardInner({
   className,
 }: ShopCollectionCardProps) {
   const [primaryImageError, setPrimaryImageError] = useState(false);
-  const { toggleWishlist, isInWishlist } = useWishlistStore();
+  const { toggleWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
-  const inWishlist = isInWishlist(product._id);
+  const inWishlist = useWishlistUiState(product._id);
   const isOutOfStock =
     displayColor ?
       !isInStockForColor(product, displayColor)
@@ -72,20 +71,16 @@ function ShopCollectionCardInner({
     [product.category, product.fabric, product.subcategory],
   );
 
-  const hasDiscount =
-    Boolean(product.comparePrice && product.comparePrice > product.price) ||
-    Boolean(product.discountPercent && product.discountPercent > 0);
-
-  const discountPercent = useMemo(() => {
-    if (product.discountPercent && product.discountPercent > 0)
-      return Math.round(product.discountPercent);
-    if (product.comparePrice && product.comparePrice > product.price) {
-      return Math.round(
-        ((product.comparePrice - product.price) / product.comparePrice) * 100,
-      );
-    }
-    return 0;
-  }, [product.comparePrice, product.discountPercent, product.price]);
+  const priceDisplay = useMemo(
+    () => getStorefrontPriceDisplay(product, displayColor),
+    [product, displayColor],
+  );
+  const priceMeta = useMemo(
+    () => storefrontPriceMeta(product, displayColor),
+    [product, displayColor],
+  );
+  const hasDiscount = priceDisplay.showDiscount;
+  const discountPercent = priceDisplay.discountPercent;
 
   const schemaAvailability =
     isOutOfStock ?
@@ -115,7 +110,7 @@ function ShopCollectionCardInner({
       itemScope
       itemType='https://schema.org/Product'
       className={cn(
-        "group flex h-full cursor-pointer flex-col p-1 transition-[background-color,box-shadow,transform] duration-300 ease-out sm:p-1.5",
+        "shop-card-hover-lift group flex h-full cursor-pointer flex-col p-1 transition-[background-color,box-shadow,transform] duration-300 ease-out sm:p-1.5",
         "hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_22px_-12px_rgba(15,23,42,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         className,
       )}
@@ -140,7 +135,7 @@ function ShopCollectionCardInner({
         aria-hidden='true'
       >
         <meta itemProp='priceCurrency' content='INR' />
-        <meta itemProp='price' content={toMerchantPrice(product.price)} />
+        <meta itemProp='price' content={priceMeta.priceContent} />
         <link itemProp='availability' href={schemaAvailability} />
       </div>
       {hasReviews && (
@@ -179,7 +174,7 @@ function ShopCollectionCardInner({
               sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
               loading='lazy'
               quality={72}
-              className='object-cover transition-transform duration-500 group-hover:scale-[1.02]'
+              className='card-hover-zoom object-cover transition-transform duration-500 group-hover:scale-[1.02]'
               onError={() => setPrimaryImageError(true)}
             />
           : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center'>
@@ -190,7 +185,7 @@ function ShopCollectionCardInner({
             </div>
           }
 
-          {discountPercent >= 5 && !isOutOfStock && (
+          {product.saleCampaignId && discountPercent >= 1 && !isOutOfStock && (
             <span className='absolute left-0 top-0 z-10 bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white sm:px-2.5 sm:py-1 sm:text-[10px]'>
               {product.saleBadge ? `${product.saleBadge} · ${discountPercent}% off` : `${discountPercent}% off`}
             </span>
@@ -274,18 +269,14 @@ function ShopCollectionCardInner({
             }
           </div>
 
-          <div className='mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1 sm:pt-1.5'>
-            <span className='text-sm font-semibold text-[#c5a059] sm:text-[15px]'>
-              {formatPrice(product.price)}
-            </span>
-            {hasDiscount &&
-              product.comparePrice &&
-              product.comparePrice > product.price && (
-                <span className='text-xs text-gray-400 line-through'>
-                  {formatPrice(product.comparePrice)}
-                </span>
-              )}
-          </div>
+          <ProductPriceBlock
+            product={product}
+            displayColor={displayColor}
+            size='md'
+            sellClassName='text-[#c5a059]'
+            className='mt-auto pt-1 sm:pt-1.5'
+            showBadge={false}
+          />
         </div>
       </Link>
     </article>
