@@ -498,30 +498,24 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     return first?.searchIntent ?? null;
   }, [data?.pages]);
 
-  const canLoadMore = useMemo(() => {
-    if (!hasNextPage) return false;
-    const pages = data?.pages ?? [];
-    if (pages.length === 0) return false;
-    const lastBatch = (pages[pages.length - 1]?.data?.products ?? []) as Product[];
-    return lastBatch.length > 0;
-  }, [hasNextPage, data?.pages]);
+  const loadedPagesRef = useRef(data?.pages?.length ?? 0);
+  loadedPagesRef.current = data?.pages?.length ?? 0;
 
   const [loadMoreSignal, setLoadMoreSignal] = useState(0);
 
-  useEffect(() => {
-    if (!canLoadMore) setLoadMoreSignal(0);
-  }, [canLoadMore]);
-
-  const { sentinelRef } = useInfiniteScrollTrigger({
-    hasNextPage: canLoadMore,
+  const { sentinelRef, exhausted: loadExhausted } = useInfiniteScrollTrigger({
+    hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
     isPending: isPending && products.length === 0,
     fetchNextPage,
+    getLoadedCount: () => loadedPagesRef.current,
     onLoadMoreRequested: () => setLoadMoreSignal((n) => n + 1),
-    rootMargin: "360px 0px",
+    rootMargin: "500px 0px",
     threshold: 0,
-    enabled: canLoadMore,
+    enabled: Boolean(hasNextPage) || listingEntries.length > 0,
   });
+
+  const showMoreProducts = Boolean(hasNextPage) && !loadExhausted;
 
   const applyColor = useCallback(
     (color: string) => {
@@ -865,7 +859,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
                 )}
                 isInitialLoading={false}
                 isFetchingNextPage={isFetchingNextPage}
-                hasNextPage={canLoadMore}
+                hasNextPage={showMoreProducts}
                 pageSize={SHOP_PAGE_LIMIT}
                 loadMoreSkeletonCount={SHOP_LOAD_MORE_SKELETON_COUNT}
                 loadMoreSignal={loadMoreSignal}

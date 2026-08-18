@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type UseInfiniteScrollTriggerOptions = {
   hasNextPage: boolean;
@@ -10,6 +10,8 @@ type UseInfiniteScrollTriggerOptions = {
   fetchNextPage: () => Promise<unknown>;
   /** Fires as soon as sentinel intersects — use to show tail skeletons early. */
   onLoadMoreRequested?: () => void;
+  /** Return current loaded item count — used to detect end-of-list (no growth). */
+  getLoadedCount?: () => number;
   rootMargin?: string;
   threshold?: number;
   enabled?: boolean;
@@ -32,9 +34,10 @@ function isSentinelInLoadZone(node: HTMLDivElement, rootMargin: string): boolean
   return rect.top <= window.innerHeight + margin;
 }
 
+const MAX_CONSECUTIVE_LOADS = 10;
+
 /**
  * Callback-ref sentinel so IntersectionObserver attaches when the sentinel mounts.
- * (useRef + useEffect missed the first paint when the sentinel appeared only after page 1 loaded.)
  */
 export function useInfiniteScrollTrigger({
   hasNextPage,
@@ -42,6 +45,7 @@ export function useInfiniteScrollTrigger({
   isPending = false,
   fetchNextPage,
   onLoadMoreRequested,
+  getLoadedCount,
   rootMargin = "280px 0px",
   threshold = 0,
   enabled = true,
@@ -49,24 +53,41 @@ export function useInfiniteScrollTrigger({
   const ioRef = useRef<IntersectionObserver | null>(null);
   const fetchLockRef = useRef(false);
   const onLoadMoreRequestedRef = useRef(onLoadMoreRequested);
+  const getLoadedCountRef = useRef(getLoadedCount);
   const sentinelNodeRef = useRef<HTMLDivElement | null>(null);
   const rootMarginRef = useRef(rootMargin);
-  /** After a fetch, require sentinel to leave viewport before another load (prevents end-of-list loops). */
-  const awaitingSentinelExitRef = useRef(false);
+  const consecutiveLoadsRef = useRef(0);
+  const exhaustedRef = useRef(false);
+  const trackedPageCountRef = useRef(0);
+  const requestLoadMoreRef = useRef<() => void>(() => {});
+  const [exhausted, setExhausted] = useState(false);
 
   useEffect(() => {
     onLoadMoreRequestedRef.current = onLoadMoreRequested;
   }, [onLoadMoreRequested]);
 
   useEffect(() => {
+    getLoadedCountRef.current = getLoadedCount;
+  }, [getLoadedCount]);
+
+  useEffect(() => {
     rootMarginRef.current = rootMargin;
   }, [rootMargin]);
 
   useEffect(() => {
-    if (!hasNextPage) {
-      awaitingSentinelExitRef.current = false;
+    if (hasNextPage) {
+      exhaustedRef.current = false;
+      setExhausted(false);
+      consecutiveLoadsRef.current = 0;
     }
   }, [hasNextPage]);
+
+  useEffect(() => {
+    const external = getLoadedCountRef.current?.();
+    if (typeof external === "number" && external >= 0) {
+      trackedPageCountRef.current = external;
+    }
+  });
 
   const ioStateRef = useRef({
     hasNextPage: false,
@@ -85,45 +106,80 @@ export function useInfiniteScrollTrigger({
     ioRef.current = null;
   }, []);
 
-  const requestLoadMore = useCallback(
-    (allowOneChain = false) => {
-      const s = ioStateRef.current;
-      if (!s.hasNextPage || s.isFetchingNextPage || s.isPending) return;
-      if (fetchLockRef.current) return;
+  const markExhausted = useCallback(() => {
+    exhaustedRef.current = true;
+    setExhausted(true);
+  }, []);
 
-      fetchLockRef.current = true;
-      onLoadMoreRequestedRef.current?.();
-      void fetchNextPage()
-        .finally(() => {
-          fetchLockRef.current = false;
-          awaitingSentinelExitRef.current = true;
+  const scheduleFollowUp = useCallback(() => {
+    requestAnimationFrame(() => {
+      const latest = ioStateRef.current;
+      if (
+        exhaustedRef.current ||
+        !latest.hasNextPage ||
+        latest.isFetchingNextPage ||
+        latest.isPending
+      ) {
+        return;
+      }
 
-          if (!allowOneChain) return;
+      if (consecutiveLoadsRef.current >= MAX_CONSECUTIVE_LOADS) {
+        return;
+      }
 
-          requestAnimationFrame(() => {
-            const latest = ioStateRef.current;
-            if (!latest.hasNextPage || latest.isFetchingNextPage || latest.isPending) {
-              return;
-            }
+      const node = sentinelNodeRef.current;
+      if (!node || !isSentinelInLoadZone(node, rootMarginRef.current)) {
+        return;
+      }
 
-            const node = sentinelNodeRef.current;
-            if (!node || !isSentinelInLoadZone(node, rootMarginRef.current)) {
-              return;
-            }
+      requestLoadMoreRef.current();
+    });
+  }, []);
 
-            // At most one chained fetch per intersection (fast scroll prefetch).
-            requestLoadMore(false);
-          });
-        });
-    },
-    [fetchNextPage],
-  );
+  const requestLoadMore = useCallback(() => {
+    const s = ioStateRef.current;
+    if (exhaustedRef.current || !s.hasNextPage || s.isFetchingNextPage || s.isPending) {
+      return;
+    }
+    if (fetchLockRef.current) return;
+
+    const countBefore =
+      getLoadedCountRef.current?.() ?? trackedPageCountRef.current;
+    fetchLockRef.current = true;
+    onLoadMoreRequestedRef.current?.();
+
+    void fetchNextPage()
+      .then((result) => {
+        const pagesAfter =
+          (result as { data?: { pages?: unknown[] } } | undefined)?.data?.pages
+            ?.length ?? countBefore;
+        trackedPageCountRef.current = pagesAfter;
+        return pagesAfter > countBefore;
+      })
+      .then((grew) => {
+        if (!grew) {
+          markExhausted();
+          return;
+        }
+        scheduleFollowUp();
+      })
+      .catch(() => {
+        markExhausted();
+      })
+      .finally(() => {
+        fetchLockRef.current = false;
+        consecutiveLoadsRef.current += 1;
+      });
+  }, [fetchNextPage, markExhausted, scheduleFollowUp]);
+
+  useEffect(() => {
+    requestLoadMoreRef.current = requestLoadMore;
+  }, [requestLoadMore]);
 
   const sentinelRef = useCallback(
     (node: HTMLDivElement | null) => {
       disconnect();
       sentinelNodeRef.current = node;
-      awaitingSentinelExitRef.current = false;
       if (!node || !enabled) return;
 
       const io = new IntersectionObserver(
@@ -132,13 +188,11 @@ export function useInfiniteScrollTrigger({
           if (!entry) return;
 
           if (!entry.isIntersecting) {
-            awaitingSentinelExitRef.current = false;
+            consecutiveLoadsRef.current = 0;
             return;
           }
 
-          if (awaitingSentinelExitRef.current) return;
-
-          requestLoadMore(true);
+          requestLoadMoreRef.current();
         },
         { root: null, rootMargin, threshold },
       );
@@ -146,10 +200,10 @@ export function useInfiniteScrollTrigger({
       io.observe(node);
       ioRef.current = io;
     },
-    [disconnect, enabled, requestLoadMore, rootMargin, threshold],
+    [disconnect, enabled, rootMargin, threshold],
   );
 
   useEffect(() => () => disconnect(), [disconnect]);
 
-  return { sentinelRef };
+  return { sentinelRef, exhausted };
 }
