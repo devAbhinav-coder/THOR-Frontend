@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 export const AUTH_HERO_IMAGE =
-  "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&q=85";
+  "https://res.cloudinary.com/dgfgnbogj/image/upload/v1786966232/house-of-rani/promotions/vxhr7p4mf7aieqocoisx.jpg";
 
 export const authHeritageGold = "#c5a059";
 export const authHeritageGoldHover = "#b8924d";

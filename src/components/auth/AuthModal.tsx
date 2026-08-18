@@ -7,6 +7,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { cn } from "@/lib/utils";
+import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { BRAND_NAME } from "@/lib/brandSeo";
 import type { AuthModalView } from "@/lib/authModal";
 import { lockBodyScroll, unlockBodyScroll } from "@/lib/bodyScrollLock";
@@ -95,6 +96,7 @@ export default function AuthModal({
             alt=""
             fill
             priority
+            loader={cloudinaryLoader}
             sizes="420px"
             className="object-cover"
           />
