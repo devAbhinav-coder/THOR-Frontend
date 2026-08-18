@@ -31,23 +31,29 @@ export function getNextNumericPage(
   const page = lastPage as ProductListPage;
   const pages = allPages as ProductListPage[];
   const p = page.pagination;
-  const cur = p?.currentPage ?? 1;
+  const cur = p?.currentPage ?? pages.length;
   const batch = batchProducts(page);
   const total = p?.total ?? p?.totalProducts ?? 0;
   const loadedSoFar = countLoadedProducts(pages);
+  const totalPages = Math.max(
+    1,
+    p?.totalPages ?? (total > 0 ? Math.ceil(total / pageSize) : 1),
+  );
 
-  if (p?.hasNextPage === false) return undefined;
   if (batch.length === 0) return undefined;
+  if (p?.hasNextPage === false) return undefined;
+  if (total > 0 && loadedSoFar >= total) return undefined;
+  if (cur >= totalPages) return undefined;
 
   if (p?.hasNextPage === true) {
-    if (total > 0 && loadedSoFar >= total) return undefined;
     return cur + 1;
   }
 
-  const totalPages = Math.max(1, p?.totalPages ?? 1);
   if (cur < totalPages) return cur + 1;
 
-  if (batch.length >= pageSize && loadedSoFar < total) return cur + 1;
+  if (batch.length >= pageSize && total > 0 && loadedSoFar < total) {
+    return cur + 1;
+  }
 
   return undefined;
 }

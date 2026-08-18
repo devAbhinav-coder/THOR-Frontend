@@ -299,8 +299,8 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   const productQueryKey = useMemo(
     () =>
       JSON.stringify({
-        routeCategory: categoryContext?.slug ?? "",
-        routeSubcategory: categoryContext?.subcategory?.slug ?? "",
+        routeCategory: pathCategoryContext?.slug ?? "",
+        routeSubcategory: pathCategoryContext?.subcategory?.slug ?? "",
         categories: dedupeShopFilterValues(
           filters.categories.map(toShopCategorySlug),
         ).sort(),
@@ -319,7 +319,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
         onSale: filters.onSale,
         hasOffer: filters.hasOffer,
       }),
-    [filters, categoryContext],
+    [filters, pathCategoryContext],
   );
 
   useEffect(() => {
@@ -422,40 +422,6 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
       getNextNumericPage(lastPage, allPages, SHOP_PAGE_LIMIT),
     // 5-min cache keeps random page-1 stable within a tab; new visit = new $sample
     staleTime: 5 * 60 * 1000,
-    placeholderData: (previousData, previousQuery) => {
-      if (!previousData?.pages?.length) return previousData;
-
-      const prevKeyRaw = previousQuery?.queryKey?.[2];
-      if (typeof prevKeyRaw !== "string" || prevKeyRaw === productQueryKey) {
-        return previousData;
-      }
-
-      try {
-        const prev = JSON.parse(prevKeyRaw) as {
-          routeCategory?: string;
-          routeSubcategory?: string;
-        };
-        const curr = JSON.parse(productQueryKey) as {
-          routeCategory?: string;
-          routeSubcategory?: string;
-        };
-        if (
-          prev.routeCategory !== curr.routeCategory ||
-          prev.routeSubcategory !== curr.routeSubcategory
-        ) {
-          return undefined;
-        }
-      } catch {
-        return previousData;
-      }
-
-      // Intentional filter/search/sort change — show page 1 while refetching.
-      return {
-        ...previousData,
-        pages: previousData.pages.slice(0, 1),
-        pageParams: previousData.pageParams.slice(0, 1),
-      };
-    },
   });
 
   const products = useMemo(() => {
@@ -498,24 +464,17 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     return first?.searchIntent ?? null;
   }, [data?.pages]);
 
-  const loadedPagesRef = useRef(data?.pages?.length ?? 0);
-  loadedPagesRef.current = data?.pages?.length ?? 0;
-
   const [loadMoreSignal, setLoadMoreSignal] = useState(0);
 
-  const { sentinelRef, exhausted: loadExhausted } = useInfiniteScrollTrigger({
+  const { sentinelRef } = useInfiniteScrollTrigger({
     hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
     isPending: isPending && products.length === 0,
     fetchNextPage,
-    getLoadedCount: () => loadedPagesRef.current,
     onLoadMoreRequested: () => setLoadMoreSignal((n) => n + 1),
-    rootMargin: "500px 0px",
-    threshold: 0,
-    enabled: Boolean(hasNextPage) || listingEntries.length > 0,
+    rootMargin: "400px 0px",
+    enabled: Boolean(hasNextPage),
   });
-
-  const showMoreProducts = Boolean(hasNextPage) && !loadExhausted;
 
   const applyColor = useCallback(
     (color: string) => {
@@ -859,7 +818,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
                 )}
                 isInitialLoading={false}
                 isFetchingNextPage={isFetchingNextPage}
-                hasNextPage={showMoreProducts}
+                hasNextPage={Boolean(hasNextPage)}
                 pageSize={SHOP_PAGE_LIMIT}
                 loadMoreSkeletonCount={SHOP_LOAD_MORE_SKELETON_COUNT}
                 loadMoreSignal={loadMoreSignal}

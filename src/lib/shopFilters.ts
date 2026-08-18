@@ -590,9 +590,7 @@ export function buildShopProductQueryParams(
     limit,
   };
 
-  if (effective.categories.length === 0 && !hasSecondaryShopFilters(effective)) {
-    params.isRandom = "true";
-  }
+  // Stable paginated listing — do not use isRandom here (breaks page-based infinite scroll).
   if (effective.categories.length) {
     params.categories = effective.categories.join(",");
   }
