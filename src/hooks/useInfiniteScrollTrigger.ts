@@ -51,6 +51,8 @@ export function useInfiniteScrollTrigger({
   const onLoadMoreRequestedRef = useRef(onLoadMoreRequested);
   const sentinelNodeRef = useRef<HTMLDivElement | null>(null);
   const rootMarginRef = useRef(rootMargin);
+  /** After a fetch, require sentinel to leave viewport before another load (prevents end-of-list loops). */
+  const awaitingSentinelExitRef = useRef(false);
 
   useEffect(() => {
     onLoadMoreRequestedRef.current = onLoadMoreRequested;
@@ -59,6 +61,12 @@ export function useInfiniteScrollTrigger({
   useEffect(() => {
     rootMarginRef.current = rootMargin;
   }, [rootMargin]);
+
+  useEffect(() => {
+    if (!hasNextPage) {
+      awaitingSentinelExitRef.current = false;
+    }
+  }, [hasNextPage]);
 
   const ioStateRef = useRef({
     hasNextPage: false,
@@ -77,49 +85,60 @@ export function useInfiniteScrollTrigger({
     ioRef.current = null;
   }, []);
 
-  const requestLoadMore = useCallback(() => {
-    const s = ioStateRef.current;
-    if (!s.hasNextPage || s.isFetchingNextPage || s.isPending) return;
-    if (fetchLockRef.current) return;
+  const requestLoadMore = useCallback(
+    (allowOneChain = false) => {
+      const s = ioStateRef.current;
+      if (!s.hasNextPage || s.isFetchingNextPage || s.isPending) return;
+      if (fetchLockRef.current) return;
 
-    fetchLockRef.current = true;
-    onLoadMoreRequestedRef.current?.();
-    void fetchNextPage().finally(() => {
-      fetchLockRef.current = false;
+      fetchLockRef.current = true;
+      onLoadMoreRequestedRef.current?.();
+      void fetchNextPage()
+        .finally(() => {
+          fetchLockRef.current = false;
+          awaitingSentinelExitRef.current = true;
 
-      const node = sentinelNodeRef.current;
-      const io = ioRef.current;
-      if (!node || !io) return;
+          if (!allowOneChain) return;
 
-      requestAnimationFrame(() => {
-        if (!isSentinelInLoadZone(node, rootMarginRef.current)) {
-          io.unobserve(node);
-          io.observe(node);
-          return;
-        }
+          requestAnimationFrame(() => {
+            const latest = ioStateRef.current;
+            if (!latest.hasNextPage || latest.isFetchingNextPage || latest.isPending) {
+              return;
+            }
 
-        const latest = ioStateRef.current;
-        if (!latest.hasNextPage || latest.isFetchingNextPage || latest.isPending) {
-          io.unobserve(node);
-          io.observe(node);
-          return;
-        }
+            const node = sentinelNodeRef.current;
+            if (!node || !isSentinelInLoadZone(node, rootMarginRef.current)) {
+              return;
+            }
 
-        requestLoadMore();
-      });
-    });
-  }, [fetchNextPage]);
+            // At most one chained fetch per intersection (fast scroll prefetch).
+            requestLoadMore(false);
+          });
+        });
+    },
+    [fetchNextPage],
+  );
 
   const sentinelRef = useCallback(
     (node: HTMLDivElement | null) => {
       disconnect();
       sentinelNodeRef.current = node;
+      awaitingSentinelExitRef.current = false;
       if (!node || !enabled) return;
 
       const io = new IntersectionObserver(
         (entries) => {
-          if (!entries[0]?.isIntersecting) return;
-          requestLoadMore();
+          const entry = entries[0];
+          if (!entry) return;
+
+          if (!entry.isIntersecting) {
+            awaitingSentinelExitRef.current = false;
+            return;
+          }
+
+          if (awaitingSentinelExitRef.current) return;
+
+          requestLoadMore(true);
         },
         { root: null, rootMargin, threshold },
       );

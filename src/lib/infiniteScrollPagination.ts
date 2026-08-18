@@ -37,7 +37,12 @@ export function getNextNumericPage(
   const loadedSoFar = countLoadedProducts(pages);
 
   if (p?.hasNextPage === false) return undefined;
-  if (p?.hasNextPage === true) return cur + 1;
+  if (batch.length === 0) return undefined;
+
+  if (p?.hasNextPage === true) {
+    if (total > 0 && loadedSoFar >= total) return undefined;
+    return cur + 1;
+  }
 
   const totalPages = Math.max(1, p?.totalPages ?? 1);
   if (cur < totalPages) return cur + 1;

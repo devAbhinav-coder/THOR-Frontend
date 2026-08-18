@@ -78,7 +78,7 @@ export function ProductInfiniteGrid<T>({
     }
   }, [items.length]);
 
-  /** Fetch finished with no growth (error or end) — release tail after paint. */
+  /** Fetch finished with no growth (error or end) — release tail quickly. */
   useEffect(() => {
     if (!tailSkeletons || isFetchingNextPage) return;
 
@@ -92,10 +92,9 @@ export function ProductInfiniteGrid<T>({
       return;
     }
 
-    // Grace period: keep skeletons until new rows commit or timeout (failed fetch).
     const timer = window.setTimeout(() => {
       setTailSkeletons(false);
-    }, 600);
+    }, 200);
 
     return () => window.clearTimeout(timer);
   }, [tailSkeletons, isFetchingNextPage, hasNextPage, items.length]);

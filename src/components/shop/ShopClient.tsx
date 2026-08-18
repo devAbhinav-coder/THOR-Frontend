@@ -498,17 +498,29 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     return first?.searchIntent ?? null;
   }, [data?.pages]);
 
+  const canLoadMore = useMemo(() => {
+    if (!hasNextPage) return false;
+    const pages = data?.pages ?? [];
+    if (pages.length === 0) return false;
+    const lastBatch = (pages[pages.length - 1]?.data?.products ?? []) as Product[];
+    return lastBatch.length > 0;
+  }, [hasNextPage, data?.pages]);
+
   const [loadMoreSignal, setLoadMoreSignal] = useState(0);
 
+  useEffect(() => {
+    if (!canLoadMore) setLoadMoreSignal(0);
+  }, [canLoadMore]);
+
   const { sentinelRef } = useInfiniteScrollTrigger({
-    hasNextPage: Boolean(hasNextPage),
+    hasNextPage: canLoadMore,
     isFetchingNextPage,
     isPending: isPending && products.length === 0,
     fetchNextPage,
     onLoadMoreRequested: () => setLoadMoreSignal((n) => n + 1),
     rootMargin: "360px 0px",
     threshold: 0,
-    enabled: Boolean(hasNextPage) || products.length > 0,
+    enabled: canLoadMore,
   });
 
   const applyColor = useCallback(
@@ -853,7 +865,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
                 )}
                 isInitialLoading={false}
                 isFetchingNextPage={isFetchingNextPage}
-                hasNextPage={Boolean(hasNextPage)}
+                hasNextPage={canLoadMore}
                 pageSize={SHOP_PAGE_LIMIT}
                 loadMoreSkeletonCount={SHOP_LOAD_MORE_SKELETON_COUNT}
                 loadMoreSignal={loadMoreSignal}
