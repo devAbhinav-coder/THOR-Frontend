@@ -125,34 +125,64 @@ export function restoreScrollOptionsForPath(pathname: string): {
   intervalMs: number;
 } {
   if (isStoreShopListingPath(pathname) || isStoreProductDetailPath(pathname)) {
-    return { maxAttempts: 6, intervalMs: 100 };
+    return { maxAttempts: 24, intervalMs: 150 };
   }
   return { maxAttempts: 12, intervalMs: 120 };
 }
+
+type RestoreScrollOptions = {
+  maxAttempts?: number;
+  intervalMs?: number;
+};
 
 /** Re-apply saved Y while lazy sections grow (home / shop infinite grids). */
 export function restoreScrollPosition(
   y: number,
   apply: ScrollApply,
-  { maxAttempts = 12, intervalMs = 120 } = {},
+  { maxAttempts = 12, intervalMs = 120 }: RestoreScrollOptions = {},
 ): () => void {
   let attempts = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let cancelled = false;
+  let lastAppliedY = -1;
+
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
+    if (timer != null) clearTimeout(timer);
+    window.removeEventListener("wheel", cancel, true);
+    window.removeEventListener("touchstart", cancel, true);
+    window.removeEventListener("keydown", cancel, true);
+  };
+
+  window.addEventListener("wheel", cancel, { passive: true, capture: true });
+  window.addEventListener("touchstart", cancel, { passive: true, capture: true });
+  window.addEventListener("keydown", cancel, true);
 
   const tryRestore = () => {
     if (cancelled) return;
-    apply(y);
-    attempts += 1;
 
     const maxScroll = Math.max(
       0,
       document.documentElement.scrollHeight - window.innerHeight,
     );
+    const targetY = Math.min(y, maxScroll);
     const current = getCurrentScrollY();
-    const closeEnough = Math.abs(current - y) <= 8 || y >= maxScroll - 8;
+    const closeEnough = Math.abs(current - targetY) <= 12;
+    const needsMoreContent = y > maxScroll + 12;
 
-    if (closeEnough || attempts >= maxAttempts) return;
+    if (!closeEnough && lastAppliedY !== targetY) {
+      apply(targetY);
+      lastAppliedY = targetY;
+    }
+
+    attempts += 1;
+
+    if ((closeEnough && !needsMoreContent) || attempts >= maxAttempts) {
+      cancel();
+      return;
+    }
+
     timer = setTimeout(tryRestore, intervalMs);
   };
 
@@ -162,9 +192,8 @@ export function restoreScrollPosition(
   });
 
   return () => {
-    cancelled = true;
+    cancel();
     cancelAnimationFrame(outer);
     if (inner) cancelAnimationFrame(inner);
-    if (timer != null) clearTimeout(timer);
   };
 }

@@ -8,16 +8,28 @@ export function navShellClass(scrolled: boolean) {
   );
 }
 
-/** Sticky shell for header — collapses on mobile scroll-down (no transform — WebKit-safe). */
-export function navStickyShellClass(visible: boolean) {
-  return cn(
-    "sticky top-0 z-50 max-lg:overflow-hidden lg:overflow-visible",
-    "transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none",
-    "lg:max-h-none lg:opacity-100 lg:pointer-events-auto",
-    visible ?
-      "max-lg:max-h-[12rem] max-lg:opacity-100"
-    : "max-lg:max-h-0 max-lg:opacity-0 max-lg:pointer-events-none",
-  );
+/**
+ * Sticky/fixed shell for header.
+ * Auto-hide mobile routes use fixed + translateY so hide/show never changes document height (no scrollY feedback loop).
+ */
+export function navStickyShellClass(visible: boolean, autoHide = false) {
+  if (autoHide) {
+    return cn(
+      "fixed inset-x-0 top-0 z-50 lg:sticky",
+      "transition-transform duration-300 ease-out motion-reduce:transition-none",
+      "lg:translate-y-0",
+      visible ?
+        "translate-y-0"
+      : "-translate-y-full pointer-events-none",
+    );
+  }
+
+  return cn("sticky top-0 z-50 lg:overflow-visible");
+}
+
+/** Reserves header height in flow when the bar is fixed (auto-hide mobile routes). */
+export function navMobileFlowSpacerClass(autoHide: boolean) {
+  return autoHide ? "h-[4.25rem] shrink-0 lg:hidden" : "hidden";
 }
 
 export function navLinkClass(active: boolean) {

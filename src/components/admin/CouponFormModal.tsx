@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import {
+  Tag,
+  Eye,
+  EyeOff,
+  Percent,
+  Calendar,
+  Users,
+  ShoppingBag,
+  ImageIcon,
+} from 'lucide-react';
 import { Coupon, Category, SubCategory, Product, PromoScopeType } from '@/types';
 import { couponApi, adminApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -9,6 +18,17 @@ import { Input } from '@/components/ui/input';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
 import { UPLOAD_MAX_MB } from '@/lib/uploadLimits';
+import {
+  AdminOfferModal,
+  AdminOfferSection,
+  AdminOfferField,
+  AdminOfferSelect,
+  AdminOfferDateTime,
+  AdminOfferToggleCards,
+  AdminOfferSwitch,
+  AdminOfferInfoBox,
+} from '@/components/admin/shared/AdminOfferFormUi';
+import PromoScopePicker from '@/components/admin/shared/PromoScopePicker';
 
 interface Props {
   coupon: Coupon | null;
@@ -16,15 +36,13 @@ interface Props {
   onSave: () => void;
 }
 
-const field =
-  'w-full h-10 px-3 rounded-lg text-sm bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy-900/15 focus:border-navy-900/30';
-
 export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
   const [productQuery, setProductQuery] = useState('');
   const [productHits, setProductHits] = useState<Product[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [clearImage, setClearImage] = useState(false);
   const existingImageUrl = clearImage ? null : coupon?.imageUrl || null;
@@ -62,6 +80,19 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const ids = (coupon?.applicableProductIds || []).map(String);
+    if (!ids.length) {
+      setSelectedProducts([]);
+      return;
+    }
+    Promise.all(
+      ids.map((id) =>
+        adminApi.getProductById(id).then((res) => (res.data?.product as Product) ?? null).catch(() => null),
+      ),
+    ).then((products) => setSelectedProducts(products.filter(Boolean) as Product[]));
+  }, [coupon?._id, coupon?.applicableProductIds]);
 
   useEffect(() => {
     if (formData.scopeType !== 'products' || productQuery.trim().length < 2) {
@@ -177,95 +208,83 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="w-full sm:max-w-xl max-h-[94vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-gray-400 font-semibold">Offers</p>
-            <h2 className="text-lg font-serif font-semibold text-navy-900">
-              {coupon ? 'Edit coupon' : 'New coupon'}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+    <AdminOfferModal
+      accent="coupon"
+      eyebrow="Offers"
+      title={coupon ? 'Edit coupon' : 'New coupon'}
+      subtitle="Create discount codes — public for storefront or hidden for influencers."
+      onClose={onClose}
+      maxWidth="2xl"
+      footer={
+        <>
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="brand"
+            className="flex-1"
+            loading={isSaving}
+            onClick={handleSubmit as unknown as React.MouseEventHandler}
           >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
-          {/* Visibility — public marketing vs secret / influencer codes */}
-          <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-2.5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Visibility
-              </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Who can discover this code in the store.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, showOnStorefront: true })}
-                className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
-                  formData.showOnStorefront
-                    ? 'border-navy-900 bg-navy-900/[0.04] ring-1 ring-navy-900/20'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <p className="text-sm font-semibold text-navy-900">Public offer</p>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Shown on visit popup, cart &amp; checkout offer lists, and shop filters.
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, showOnStorefront: false })}
-                className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
-                  !formData.showOnStorefront
-                    ? 'border-navy-900 bg-navy-900/[0.04] ring-1 ring-navy-900/20'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <p className="text-sm font-semibold text-navy-900">Code only</p>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Hidden everywhere. For influencers &amp; private promos — shoppers must type the code.
-                </p>
-              </button>
-            </div>
-            {!formData.showOnStorefront ? (
-              <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
-                This code will <span className="font-semibold">not</span> appear in the visit
-                popup, cart offers, checkout offers, or shop “has offer” filters. Anyone who
-                knows the code can still apply it at cart/checkout. Share it only with the
-                people you intend (e.g. an influencer’s audience).
-              </div>
-            ) : null}
-          </div>
-
-          {/* Banner upload — crop matches visit popup (3:4); useful mainly for public */}
-          {formData.showOnStorefront ? (
-            <div>
-              <ImageUploader
-                maxFiles={1}
-                aspectRatio="3:4"
-                maxSizeMB={UPLOAD_MAX_MB.coupon}
-                label="Offer image (visit popup)"
-                hint="Crop frame = what shoppers see on the visit popup. Keep important content inside the box."
-                existingImages={imageFile ? [] : existingImageUrl ? [existingImageUrl] : []}
-                onRemoveExisting={removeImage}
-                onChange={onPickImage}
-              />
-            </div>
+            {coupon ? 'Save changes' : 'Create coupon'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AdminOfferSection
+          title="Visibility"
+          description="Who can discover this code in the store"
+          icon={formData.showOnStorefront ? Eye : EyeOff}
+        >
+          <AdminOfferToggleCards
+            value={formData.showOnStorefront}
+            onChange={(v) => setFormData({ ...formData, showOnStorefront: v as boolean })}
+            options={[
+              {
+                value: true,
+                title: 'Public offer',
+                description: 'Shown on visit popup, cart & checkout offer lists, and shop filters.',
+              },
+              {
+                value: false,
+                title: 'Code only',
+                description: 'Hidden everywhere — shoppers must type the code manually.',
+              },
+            ]}
+          />
+          {!formData.showOnStorefront ? (
+            <AdminOfferInfoBox tone="amber">
+              This code will <strong>not</strong> appear in popups, cart offers, or shop filters.
+              Share it only with people you intend (e.g. influencer audience).
+            </AdminOfferInfoBox>
           ) : null}
+        </AdminOfferSection>
 
+        {formData.showOnStorefront ? (
+          <AdminOfferSection
+            title="Offer image"
+            description="Shown on visit popup — 3:4 crop frame"
+            icon={ImageIcon}
+          >
+            <ImageUploader
+              maxFiles={1}
+              aspectRatio="3:4"
+              maxSizeMB={UPLOAD_MAX_MB.coupon}
+              label="Visit popup banner"
+              hint="Keep important text and product inside the crop box."
+              existingImages={imageFile ? [] : existingImageUrl ? [existingImageUrl] : []}
+              onRemoveExisting={removeImage}
+              onChange={onPickImage}
+            />
+          </AdminOfferSection>
+        ) : null}
+
+        <AdminOfferSection title="Coupon details" description="Code, discount & display info" icon={Tag}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <Input
-                label="Code *"
+                label="Coupon code *"
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                 placeholder="SAVE20"
@@ -279,9 +298,8 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
               onChange={(e) => setFormData({ ...formData, displayTitle: e.target.value })}
               placeholder="Festive offer"
             />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-              <select
+            <AdminOfferField label="Discount type" required>
+              <AdminOfferSelect
                 value={formData.discountType}
                 onChange={(e) =>
                   setFormData({
@@ -289,13 +307,12 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
                     discountType: e.target.value as 'percentage' | 'flat' | 'fixed',
                   })
                 }
-                className={field}
               >
                 <option value="percentage">Percentage (%)</option>
                 <option value="flat">Flat off (₹)</option>
                 <option value="fixed">Direct price (₹)</option>
-              </select>
-            </div>
+              </AdminOfferSelect>
+            </AdminOfferField>
             <Input
               label={
                 formData.discountType === 'percentage'
@@ -327,32 +344,31 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
               />
             )}
             {formData.discountType === 'fixed' ? (
-              <p className="sm:col-span-2 text-xs text-gray-500">
+              <p className="sm:col-span-2 text-xs text-gray-500 bg-gray-50/80 rounded-lg px-3 py-2 border border-gray-100">
                 {formData.scopeType === 'all'
                   ? 'Whole eligible cart pays this price (e.g. ₹1150). Extra above that is the discount.'
-                  : 'Each matching product unit is charged at this price (e.g. ₹1150 each). 5 products ≠ cart at ₹1150 — each item is ₹1150.'}
+                  : 'Each matching product unit is charged at this price — 5 products ≠ cart at ₹1150.'}
               </p>
             ) : null}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Starts *</label>
-              <input
-                type="datetime-local"
+          </div>
+        </AdminOfferSection>
+
+        <AdminOfferSection title="Schedule & limits" description="When the coupon is valid" icon={Calendar}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AdminOfferField label="Starts" required>
+              <AdminOfferDateTime
                 value={formData.startDate}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className={field}
                 required
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expires *</label>
-              <input
-                type="datetime-local"
+            </AdminOfferField>
+            <AdminOfferField label="Expires" required>
+              <AdminOfferDateTime
                 value={formData.expiryDate}
                 onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                className={field}
                 required
               />
-            </div>
+            </AdminOfferField>
             <Input
               label="Total uses"
               type="number"
@@ -361,16 +377,20 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
               placeholder="Unlimited"
             />
             <Input
-              label="Per user"
+              label="Per user limit"
               type="number"
               value={formData.userUsageLimit}
               onChange={(e) =>
                 setFormData({ ...formData, userUsageLimit: parseInt(e.target.value) || 1 })
               }
             />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Who can use</label>
-              <select
+          </div>
+        </AdminOfferSection>
+
+        <AdminOfferSection title="Eligibility" description="Who can redeem this coupon" icon={Users}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AdminOfferField label="Who can use">
+              <AdminOfferSelect
                 value={formData.eligibilityType}
                 onChange={(e) =>
                   setFormData({
@@ -378,13 +398,12 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
                     eligibilityType: e.target.value as 'all' | 'first_order' | 'returning',
                   })
                 }
-                className={field}
               >
                 <option value="all">Everyone</option>
                 <option value="first_order">First order only</option>
-                <option value="returning">Returning only</option>
-              </select>
-            </div>
+                <option value="returning">Returning customers only</option>
+              </AdminOfferSelect>
+            </AdminOfferField>
             <Input
               label="Min completed orders"
               type="number"
@@ -394,109 +413,47 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
               }
             />
           </div>
+        </AdminOfferSection>
 
-          <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Applies to</p>
-            <select
-              value={formData.scopeType}
-              onChange={(e) => setFormData({ ...formData, scopeType: e.target.value as PromoScopeType })}
-              className={field}
-            >
-              <option value="all">Entire cart</option>
-              <option value="categories">Categories</option>
-              <option value="subcategories">Subcategories</option>
-              <option value="products">Products</option>
-            </select>
+        <AdminOfferSection title="Applies to" description="Which items get the discount" icon={ShoppingBag}>
+          <PromoScopePicker
+            scopeType={formData.scopeType}
+            onScopeTypeChange={(type) => setFormData({ ...formData, scopeType: type })}
+            categories={categories}
+            subcategories={subcategories}
+            categoryIds={formData.applicableCategoryIds}
+            subcategoryIds={formData.applicableSubcategoryIds}
+            productIds={formData.applicableProductIds}
+            onToggleCategory={(id) => toggleId('applicableCategoryIds', id)}
+            onToggleSubcategory={(id) => toggleId('applicableSubcategoryIds', id)}
+            onToggleProduct={(id) => toggleId('applicableProductIds', id)}
+            productQuery={productQuery}
+            onProductQueryChange={setProductQuery}
+            productHits={productHits}
+            selectedProducts={selectedProducts}
+            onAddProduct={(p) =>
+              setSelectedProducts((prev) => (prev.some((x) => x._id === p._id) ? prev : [...prev, p]))
+            }
+            onRemoveProduct={(id) => setSelectedProducts((prev) => prev.filter((x) => x._id !== id))}
+            allLabel="Entire cart"
+          />
+        </AdminOfferSection>
 
-            {formData.scopeType === 'categories' ?
-              <div className="max-h-36 overflow-y-auto space-y-1.5 pt-1">
-                {categories.map((c) => (
-                  <label key={c._id} className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.applicableCategoryIds.includes(c._id)}
-                      onChange={() => toggleId('applicableCategoryIds', c._id)}
-                      className="rounded border-gray-300 text-navy-900"
-                    />
-                    {c.name}
-                  </label>
-                ))}
-              </div>
-            : null}
-
-            {formData.scopeType === 'subcategories' ?
-              <div className="max-h-36 overflow-y-auto space-y-1.5 pt-1">
-                {subcategories.map((s) => (
-                  <label key={s._id} className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.applicableSubcategoryIds.includes(s._id)}
-                      onChange={() => toggleId('applicableSubcategoryIds', s._id)}
-                      className="rounded border-gray-300 text-navy-900"
-                    />
-                    {s.name}
-                  </label>
-                ))}
-              </div>
-            : null}
-
-            {formData.scopeType === 'products' ?
-              <div className="space-y-2 pt-1">
-                <Input
-                  label="Search products"
-                  value={productQuery}
-                  onChange={(e) => setProductQuery(e.target.value)}
-                  placeholder="Type name…"
-                />
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {productHits.map((p) => (
-                    <label key={p._id} className="flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={formData.applicableProductIds.includes(p._id)}
-                        onChange={() => toggleId('applicableProductIds', p._id)}
-                        className="rounded border-gray-300 text-navy-900"
-                      />
-                      <span className="truncate">{p.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            : null}
-          </div>
-
+        <AdminOfferSection title="Description & status" icon={Percent} variant="muted">
           <Input
             label="Short description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Shown under the offer"
+            placeholder="Shown under the offer card"
           />
-
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={formData.isActive}
-              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-              className="rounded border-gray-300 text-navy-900"
-            />
-            Active (can be applied when rules pass)
-          </label>
-        </form>
-
-        <div className="flex gap-2 p-4 border-t border-gray-100 bg-white shrink-0">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="brand"
-            className="flex-1"
-            loading={isSaving}
-            onClick={handleSubmit as unknown as React.MouseEventHandler}
-          >
-            {coupon ? 'Save' : 'Create'}
-          </Button>
-        </div>
-      </div>
-    </div>
+          <AdminOfferSwitch
+            checked={formData.isActive}
+            onChange={(v) => setFormData({ ...formData, isActive: v })}
+            label="Active"
+            description="Coupon can be applied when all rules pass"
+          />
+        </AdminOfferSection>
+      </form>
+    </AdminOfferModal>
   );
 }

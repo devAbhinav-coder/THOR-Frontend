@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Percent, Calendar, ShoppingBag, ImageIcon, Megaphone } from 'lucide-react';
 import {
   SaleCampaign,
   Category,
@@ -14,8 +14,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImageUploader from '@/components/ui/ImageUploader';
 import toast from 'react-hot-toast';
-import { cn } from '@/lib/utils';
 import { UPLOAD_MAX_MB } from '@/lib/uploadLimits';
+import {
+  AdminOfferModal,
+  AdminOfferSection,
+  AdminOfferField,
+  AdminOfferSelect,
+  AdminOfferDateTime,
+  AdminOfferSwitch,
+  AdminOfferInfoBox,
+} from '@/components/admin/shared/AdminOfferFormUi';
+import PromoScopePicker from '@/components/admin/shared/PromoScopePicker';
 
 interface Props {
   campaign: SaleCampaign | null;
@@ -24,9 +33,6 @@ interface Props {
 }
 
 type DiscountType = 'percentage' | 'flat' | 'fixed';
-
-const selectClass =
-  'w-full h-10 px-3 rounded-xl text-sm bg-white/60 border border-white/40 focus:outline-none focus:ring-2 focus:ring-brand-500/40 backdrop-blur-sm';
 
 function valueLabel(type: DiscountType) {
   if (type === 'percentage') return 'Discount (%) *';
@@ -91,7 +97,6 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
       .catch(() => {});
   }, []);
 
-  // Pre-load selected products when editing a product-scoped sale
   useEffect(() => {
     const ids = (campaign?.productIds || []).map(String);
     if (!ids.length) {
@@ -224,40 +229,48 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/55 backdrop-blur-sm p-3 sm:p-6">
-      <div
-        className={cn(
-          'w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-3xl',
-          'bg-white/75 backdrop-blur-xl border border-white/50 shadow-2xl shadow-navy-900/20',
-        )}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/40 bg-gradient-to-r from-navy-900/90 to-brand-700/90 text-white">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/70 font-semibold">Catalog</p>
-            <h2 className="text-lg font-serif font-bold">
-              {campaign ? 'Edit Sale' : 'Create Sale'}
-            </h2>
-          </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white rounded-full p-1.5 hover:bg-white/10">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <AdminOfferModal
+      accent="sale"
+      eyebrow="Catalog pricing"
+      title={campaign ? 'Edit sale' : 'Create sale'}
+      subtitle="Put products on sale — prices update on shop & PDP while live."
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="brand"
+            className="flex-1"
+            loading={isSaving}
+            onClick={handleSubmit as unknown as React.MouseEventHandler}
+          >
+            {campaign ? 'Update sale' : 'Create sale'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AdminOfferSection
+          title="Sale popup image"
+          description="Optional banner for storefront visit popup"
+          icon={ImageIcon}
+        >
+          <ImageUploader
+            maxFiles={1}
+            aspectRatio="3:4"
+            maxSizeMB={UPLOAD_MAX_MB.sale}
+            label="Popup banner"
+            hint="Keep key text and product inside the 3:4 crop box."
+            existingImages={imageFile ? [] : existingImageUrl ? [existingImageUrl] : []}
+            onRemoveExisting={removeImage}
+            onChange={onPickImage}
+          />
+        </AdminOfferSection>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[calc(92vh-8rem)] overflow-y-auto">
-          <div>
-            <ImageUploader
-              maxFiles={1}
-              aspectRatio="3:4"
-              maxSizeMB={UPLOAD_MAX_MB.sale}
-              label="Sale popup image"
-              hint="Crop frame = what shoppers see on the visit popup. Keep key text and product inside the box."
-              existingImages={imageFile ? [] : existingImageUrl ? [existingImageUrl] : []}
-              onRemoveExisting={removeImage}
-              onChange={onPickImage}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <AdminOfferSection title="Sale details" description="Name, badge & discount" icon={Percent}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <Input
                 label="Sale name *"
@@ -273,20 +286,18 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
               onChange={(e) => setFormData({ ...formData, badgeText: e.target.value })}
               placeholder="Sale"
             />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Discount type *</label>
-              <select
+            <AdminOfferField label="Discount type" required>
+              <AdminOfferSelect
                 value={formData.discountType}
                 onChange={(e) =>
                   setFormData({ ...formData, discountType: e.target.value as DiscountType })
                 }
-                className={selectClass}
               >
                 <option value="percentage">Percentage (%)</option>
                 <option value="flat">Flat off (₹)</option>
                 <option value="fixed">Direct sell price (₹)</option>
-              </select>
-            </div>
+              </AdminOfferSelect>
+            </AdminOfferField>
             <Input
               label={valueLabel(formData.discountType)}
               type="number"
@@ -303,189 +314,82 @@ export default function SaleCampaignFormModal({ campaign, onClose, onSave }: Pro
                 onChange={(e) => setFormData({ ...formData, maxDiscountPerItem: e.target.value })}
               />
             ) : null}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start *</label>
-              <input
-                type="datetime-local"
+          </div>
+          {formData.discountType === 'fixed' ? (
+            <AdminOfferInfoBox tone="blue">
+              Products in this sale will sell at this price (e.g. ₹1150) when MRP is higher.
+            </AdminOfferInfoBox>
+          ) : null}
+        </AdminOfferSection>
+
+        <AdminOfferSection title="Schedule" description="When the sale is live" icon={Calendar}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AdminOfferField label="Start" required>
+              <AdminOfferDateTime
                 value={formData.startDate}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className={selectClass}
                 required
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End *</label>
-              <input
-                type="datetime-local"
+            </AdminOfferField>
+            <AdminOfferField label="End" required>
+              <AdminOfferDateTime
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className={selectClass}
                 required
               />
-            </div>
+            </AdminOfferField>
           </div>
+        </AdminOfferSection>
 
-          {formData.discountType === 'fixed' ? (
-            <p className="text-xs text-gray-500 rounded-xl bg-white/50 px-3 py-2 border border-white/60">
-              Products in this sale will sell at this price (e.g. ₹1150) when MRP is higher.
-            </p>
-          ) : null}
+        <AdminOfferSection title="Apply sale to" description="Which products get the discount" icon={ShoppingBag}>
+          <PromoScopePicker
+            scopeType={formData.scopeType}
+            onScopeTypeChange={(type) => setFormData({ ...formData, scopeType: type })}
+            categories={categories}
+            subcategories={subcategories}
+            categoryIds={formData.categoryIds}
+            subcategoryIds={formData.subcategoryIds}
+            productIds={formData.productIds}
+            onToggleCategory={(id) => toggleId('categoryIds', id)}
+            onToggleSubcategory={(id) => toggleId('subcategoryIds', id)}
+            onToggleProduct={(id) => toggleId('productIds', id)}
+            productQuery={productQuery}
+            onProductQueryChange={setProductQuery}
+            productHits={productHits}
+            selectedProducts={selectedProducts}
+            onAddProduct={(p) =>
+              setSelectedProducts((prev) => (prev.some((x) => x._id === p._id) ? prev : [...prev, p]))
+            }
+            onRemoveProduct={(id) => setSelectedProducts((prev) => prev.filter((x) => x._id !== id))}
+            previewCount={previewCount}
+            onPreview={refreshPreview}
+            allLabel="All products"
+          />
+        </AdminOfferSection>
 
-          <div className="rounded-2xl bg-white/50 border border-white/60 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-gray-800">Apply sale to</p>
-              <button
-                type="button"
-                onClick={refreshPreview}
-                className="text-xs font-medium text-brand-700 hover:underline"
-              >
-                Preview count{previewCount != null ? `: ${previewCount}` : ''}
-              </button>
-            </div>
-            <select
-              value={formData.scopeType}
-              onChange={(e) => setFormData({ ...formData, scopeType: e.target.value as PromoScopeType })}
-              className={selectClass}
-            >
-              <option value="all">All products</option>
-              <option value="categories">Categories</option>
-              <option value="subcategories">Subcategories</option>
-              <option value="products">Specific products</option>
-            </select>
-
-            {formData.scopeType === 'categories' ? (
-              <div className="max-h-40 overflow-y-auto space-y-1.5">
-                {categories.map((c) => (
-                  <label key={c._id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.categoryIds.includes(c._id)}
-                      onChange={() => toggleId('categoryIds', c._id)}
-                      className="rounded text-brand-600"
-                    />
-                    {c.name}
-                  </label>
-                ))}
-              </div>
-            ) : null}
-
-            {formData.scopeType === 'subcategories' ? (
-              <div className="max-h-40 overflow-y-auto space-y-1.5">
-                {subcategories.map((s) => (
-                  <label key={s._id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.subcategoryIds.includes(s._id)}
-                      onChange={() => toggleId('subcategoryIds', s._id)}
-                      className="rounded text-brand-600"
-                    />
-                    {s.name}
-                  </label>
-                ))}
-              </div>
-            ) : null}
-
-            {formData.scopeType === 'products' ? (
-              <div className="space-y-2">
-                {formData.productIds.length > 0 ? (
-                  <div className="rounded-lg bg-brand-50/60 border border-brand-100 px-3 py-2 space-y-1">
-                    <p className="text-xs font-semibold text-brand-800">
-                      Selected ({formData.productIds.length})
-                    </p>
-                    <div className="max-h-28 overflow-y-auto space-y-1">
-                      {selectedProducts.map((p) => (
-                        <label key={p._id} className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.productIds.includes(p._id)}
-                            onChange={() => {
-                              toggleId('productIds', p._id);
-                              if (formData.productIds.includes(p._id)) {
-                                setSelectedProducts((prev) => prev.filter((x) => x._id !== p._id));
-                              }
-                            }}
-                            className="rounded text-brand-600"
-                          />
-                          <span className="truncate">{p.name}</span>
-                        </label>
-                      ))}
-                      {selectedProducts.length < formData.productIds.length ? (
-                        <p className="text-xs text-gray-400 pl-6">
-                          {formData.productIds.length - selectedProducts.length} product(s) loading…
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
-                <Input
-                  label="Search products"
-                  value={productQuery}
-                  onChange={(e) => setProductQuery(e.target.value)}
-                  placeholder="Type name to add more…"
-                />
-                <div className="max-h-36 overflow-y-auto space-y-1">
-                  {productHits
-                    .filter((p) => !formData.productIds.includes(p._id))
-                    .map((p) => (
-                      <label key={p._id} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={false}
-                          onChange={() => {
-                            toggleId('productIds', p._id);
-                            setSelectedProducts((prev) =>
-                              prev.some((x) => x._id === p._id) ? prev : [...prev, p],
-                            );
-                          }}
-                          className="rounded text-brand-600"
-                        />
-                        <span className="truncate">{p.name}</span>
-                      </label>
-                    ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
+        <AdminOfferSection title="Storefront & status" icon={Megaphone} variant="muted">
           <Input
             label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Optional internal note"
           />
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
+          <div className="space-y-3 pt-1">
+            <AdminOfferSwitch
               checked={formData.showOnStorefront}
-              onChange={(e) => setFormData({ ...formData, showOnStorefront: e.target.checked })}
-              className="rounded text-brand-600"
+              onChange={(v) => setFormData({ ...formData, showOnStorefront: v })}
+              label="Show on storefront visit popup"
+              description="Display popup banner when customers visit the shop"
             />
-            <span className="text-sm text-gray-700">Show on storefront visit popup</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
+            <AdminOfferSwitch
               checked={formData.isActive}
-              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-              className="rounded text-brand-600"
+              onChange={(v) => setFormData({ ...formData, isActive: v })}
+              label="Active"
+              description="Sale prices apply while live and within date range"
             />
-            <span className="text-sm text-gray-700">Active</span>
-          </label>
-        </form>
-
-        <div className="flex gap-3 p-5 border-t border-white/40 bg-white/40">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="brand"
-            className="flex-1"
-            loading={isSaving}
-            onClick={handleSubmit as unknown as React.MouseEventHandler}
-          >
-            {campaign ? 'Update Sale' : 'Create Sale'}
-          </Button>
-        </div>
-      </div>
-    </div>
+          </div>
+        </AdminOfferSection>
+      </form>
+    </AdminOfferModal>
   );
 }

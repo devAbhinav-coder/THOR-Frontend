@@ -63,6 +63,7 @@ import {
   navIconButton,
   navLinkClass,
   navSearchInputClass,
+  navMobileFlowSpacerClass,
   navShellClass,
   navStickyShellClass,
   navUserMenuShellClass,
@@ -312,7 +313,11 @@ export default function Navbar({
     <>
       <BrowserNotificationPrompt />
       <div
-        className={navStickyShellClass(navChromeVisible)}
+        className={navMobileFlowSpacerClass(navAutoHideEnabled)}
+        aria-hidden='true'
+      />
+      <div
+        className={navStickyShellClass(navChromeVisible, navAutoHideEnabled)}
         data-store-sticky-nav
       >
         <header className={navShellClass(isScrolled)}>

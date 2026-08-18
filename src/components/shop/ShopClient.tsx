@@ -51,6 +51,7 @@ import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { GIFTING_HREF, SHOP_SALE_HREF } from "@/lib/shopSpecialCollections";
 import {
   SHOP_PRODUCT_GRID_CLASS,
+  SHOP_LOAD_MORE_SKELETON_COUNT,
 } from "@/lib/shopLayout";
 
 function buildShopCategoryTree(
@@ -300,16 +301,20 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
       JSON.stringify({
         routeCategory: categoryContext?.slug ?? "",
         routeSubcategory: categoryContext?.subcategory?.slug ?? "",
-        categories: filters.categories,
-        subcategories: filters.subcategories,
-        occasions: filters.occasions,
-        fabrics: filters.fabrics,
-        colors: filters.colors,
+        categories: dedupeShopFilterValues(
+          filters.categories.map(toShopCategorySlug),
+        ).sort(),
+        subcategories: dedupeShopFilterValues(
+          filters.subcategories.map(toShopCategorySlug),
+        ).sort(),
+        occasions: [...filters.occasions].sort(),
+        fabrics: [...filters.fabrics].sort(),
+        colors: [...filters.colors].sort(),
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
         ratings: filters.ratings,
         sort: filters.sort,
-        search: filters.search,
+        search: filters.search.trim(),
         isFeatured: filters.isFeatured,
         onSale: filters.onSale,
         hasOffer: filters.hasOffer,
@@ -421,28 +426,30 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
       if (!previousData?.pages?.length) return previousData;
 
       const prevKeyRaw = previousQuery?.queryKey?.[2];
-      if (typeof prevKeyRaw === "string" && prevKeyRaw !== productQueryKey) {
-        try {
-          const prev = JSON.parse(prevKeyRaw) as {
-            routeCategory?: string;
-            routeSubcategory?: string;
-          };
-          const curr = JSON.parse(productQueryKey) as {
-            routeCategory?: string;
-            routeSubcategory?: string;
-          };
-          if (
-            prev.routeCategory !== curr.routeCategory ||
-            prev.routeSubcategory !== curr.routeSubcategory
-          ) {
-            return undefined;
-          }
-        } catch {
-          /* keep previous placeholder on parse failure */
-        }
+      if (typeof prevKeyRaw !== "string" || prevKeyRaw === productQueryKey) {
+        return previousData;
       }
 
-      // Keep only page 1 while filters change — avoids stale multi-page scroll state.
+      try {
+        const prev = JSON.parse(prevKeyRaw) as {
+          routeCategory?: string;
+          routeSubcategory?: string;
+        };
+        const curr = JSON.parse(productQueryKey) as {
+          routeCategory?: string;
+          routeSubcategory?: string;
+        };
+        if (
+          prev.routeCategory !== curr.routeCategory ||
+          prev.routeSubcategory !== curr.routeSubcategory
+        ) {
+          return undefined;
+        }
+      } catch {
+        return previousData;
+      }
+
+      // Intentional filter/search/sort change — show page 1 while refetching.
       return {
         ...previousData,
         pages: previousData.pages.slice(0, 1),
@@ -499,9 +506,9 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     isPending: isPending && products.length === 0,
     fetchNextPage,
     onLoadMoreRequested: () => setLoadMoreSignal((n) => n + 1),
-    rootMargin: "800px 0px",
+    rootMargin: "360px 0px",
     threshold: 0,
-    enabled: true,
+    enabled: Boolean(hasNextPage) || products.length > 0,
   });
 
   const applyColor = useCallback(
@@ -848,7 +855,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
                 isFetchingNextPage={isFetchingNextPage}
                 hasNextPage={Boolean(hasNextPage)}
                 pageSize={SHOP_PAGE_LIMIT}
-                loadMoreSkeletonCount={SHOP_PAGE_LIMIT}
+                loadMoreSkeletonCount={SHOP_LOAD_MORE_SKELETON_COUNT}
                 loadMoreSignal={loadMoreSignal}
                 sentinelRef={sentinelRef}
                 renderSkeleton={() => <ShopCollectionCardSkeleton />}

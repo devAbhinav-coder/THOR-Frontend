@@ -2,11 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  X,
   ChevronDown,
   ChevronUp,
-  Sparkles,
   Loader2,
+  Package,
+  IndianRupee,
+  FolderTree,
+  Palette,
+  List,
+  Search,
 } from "lucide-react";
 import { Product, Category, SubCategory } from "@/types";
 import { productApi, adminApi } from "@/lib/api";
@@ -39,34 +43,24 @@ import ProductColorVariantEditor, {
 } from "@/components/admin/ProductColorVariantEditor";
 import { evaluateProductSeo } from "@/lib/productSeoChecklist";
 import { fetchAdminCatalogCategories } from "@/lib/adminCatalog";
+import {
+  AdminOfferModal,
+  AdminOfferSection,
+  AdminOfferField,
+  AdminOfferSwitch,
+  adminOfferInputCls,
+  adminOfferTextareaCls,
+  adminOfferSelectCls,
+} from "@/components/admin/shared/AdminOfferFormUi";
 
 const MAX_PRODUCT_IMAGES = 20;
+const PRODUCT_FORM_ID = "admin-product-form";
 
 interface Props {
   product: Product | null;
   onClose: () => void;
   onSave: (savedProduct?: Product) => void;
 }
-
-const Field = ({
-  label,
-  children,
-  required,
-}: {
-  label: string;
-  children: React.ReactNode;
-  required?: boolean;
-}) => (
-  <div>
-    <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-      {label} {required && <span className='text-brand-500'>*</span>}
-    </label>
-    {children}
-  </div>
-);
-
-const inputCls =
-  "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all placeholder:text-gray-300";
 
 export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
@@ -486,525 +480,403 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6'>
-      <div className='bg-white rounded-3xl w-full max-w-4xl max-h-full shadow-2xl animate-fadeIn flex flex-col overflow-hidden'>
-        {/* ── Header ── */}
-        <div className='flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 shrink-0'>
-          <div>
-            <h2 className='text-xl font-serif font-bold text-gray-900'>
-              {editingProduct ? "Edit Product" : "Add New Product"}
-            </h2>
-            <p className='text-xs text-gray-400 mt-0.5'>
-              {editingProduct ?
-                `Editing: ${editingProduct.name}`
-              : "Fill in product details below"}
-            </p>
+    <AdminOfferModal
+      accent="product"
+      maxWidth="4xl"
+      eyebrow="Catalog"
+      title={editingProduct ? "Edit product" : "Add product"}
+      subtitle={
+        editingProduct ?
+          `Editing: ${editingProduct.name}`
+        : "Name, pricing, photos per color, variants & SEO"
+      }
+      onClose={onClose}
+      footerClassName="flex-col sm:flex-row sm:items-center sm:justify-between"
+      footer={
+        <>
+          <p className="text-xs text-gray-500 sm:flex-1">
+            {editingProduct ?
+              "Changes save immediately."
+            : "* Required fields"}
+            {uploadProgress != null ?
+              ` · Uploading ${Math.round(uploadProgress)}%`
+            : null}
+          </p>
+          <div className="flex gap-2.5 w-full sm:w-auto">
+            <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form={PRODUCT_FORM_ID}
+              variant="brand"
+              loading={isSaving}
+              disabled={loadingProduct}
+              className="flex-1 sm:flex-none sm:min-w-[140px]"
+            >
+              {isSaving ?
+                "Saving…"
+              : editingProduct ?
+                "Save changes"
+              : "Create product"}
+            </Button>
           </div>
-          <button
-            type='button'
-            onClick={onClose}
-            className='h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0'
-          >
-            <X className='h-5 w-5' />
-          </button>
-        </div>
+        </>
+      }
+    >
+      <form id={PRODUCT_FORM_ID} onSubmit={handleSubmit} className="relative space-y-4">
+        {loadingProduct && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm rounded-2xl min-h-[200px]">
+            <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
+            <p className="text-sm font-medium text-gray-600">Loading product…</p>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className='flex flex-col min-h-0 flex-1'>
-          <div className='relative p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] gap-8 overflow-y-auto overflow-x-hidden min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-            {loadingProduct && (
-              <div className='absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm'>
-                <Loader2 className='h-8 w-8 text-brand-600 animate-spin' />
-                <p className='text-sm font-medium text-gray-600'>
-                  Loading product…
-                </p>
-              </div>
-            )}
-
-            {/* ── LEFT: Details ── */}
-            <div className='space-y-6 min-w-0'>
-              {/* Basic info */}
-              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
-                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
-                  Basic Information
-                </h3>
-                <Field label='Product Name' required>
-                  <input
-                    className={inputCls}
-                    value={form.name}
-                    onChange={(e) => set("name", e.target.value)}
-                    placeholder='e.g. Banarasi Silk Saree in Royal Blue'
-                    required
-                  />
-                </Field>
-                <Field label='Description' required>
-                  <textarea
-                    className={`${inputCls} resize-none`}
-                    value={form.description}
-                    onChange={(e) => set("description", e.target.value)}
-                    placeholder={
-                      "Paste rich text with line breaks/bullets, e.g.\n- Pure silk weave\n- Handcrafted border\n- Dry clean only"
-                    }
-                    rows={6}
-                    required
-                  />
-                  <p className='mt-1 text-[11px] text-gray-400'>
-                    Tip: You can paste multi-line text and bullet points;
-                    storefront now renders it in a readable format.
-                  </p>
-                </Field>
-                <Field label='Short Description'>
-                  <input
-                    className={inputCls}
-                    value={form.shortDescription}
-                    onChange={(e) => set("shortDescription", e.target.value)}
-                    placeholder='2 sentences for listings (~120–200 chars) — AI fills this separately from long description'
-                  />
-                </Field>
-                <Field label='HSN Code'>
-                  <input
-                    className={inputCls}
-                    value={form.hsnCode}
-                    onChange={(e) => set("hsnCode", e.target.value)}
-                    placeholder='e.g. 6204'
-                  />
-                </Field>
-              </div>
-
-              {/* Pricing */}
-              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
-                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
-                  Pricing
-                </h3>
-                <div className='grid grid-cols-2 gap-4'>
-                  <Field label='Selling Price (₹)' required>
-                    <input
-                      type='number'
-                      min='0'
-                      step='0.01'
-                      className={inputCls}
-                      value={form.price}
-                      onChange={(e) => set("price", e.target.value)}
-                      placeholder='1499'
-                      required
-                    />
-                  </Field>
-                  <Field label='MRP / Compare Price (₹)'>
-                    <input
-                      type='number'
-                      min='0'
-                      step='0.01'
-                      className={inputCls}
-                      value={form.comparePrice}
-                      onChange={(e) => set("comparePrice", e.target.value)}
-                      placeholder='1999'
-                    />
-                  </Field>
-                </div>
-                {form.price &&
-                  form.comparePrice &&
-                  Number(form.comparePrice) > Number(form.price) && (
-                    <p className='text-xs text-green-600 font-medium'>
-                      ✓{" "}
-                      {Math.round(
-                        ((Number(form.comparePrice) - Number(form.price)) /
-                          Number(form.comparePrice)) *
-                          100,
-                      )}
-                      % discount will be shown
-                    </p>
-                  )}
-              </div>
-
-              {/* Categorisation */}
-              <div className='bg-gray-50 rounded-2xl p-5 space-y-4'>
-                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
-                  Categorisation
-                </h3>
-                <div className='grid grid-cols-2 gap-4'>
-                  <Field label='Category' required>
-                    <select
-                      className={inputCls}
-                      value={form.category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      required
-                    >
-                      <option value=''>Select category</option>
-                      {categories
-                        .filter(
-                          (c) =>
-                            !c.isGiftCategory &&
-                            c.name.toLowerCase() !== "gifting",
-                        )
-                        .map((c) => (
-                          <option key={c._id} value={c.name}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </select>
-                    {categories.length === 0 && (
-                      <p className='text-xs text-amber-500 mt-1'>
-                        Create categories in Admin → Categories first.
-                      </p>
-                    )}
-                  </Field>
-                  <Field label='Subcategory'>
-                      <select
-                        className={inputCls}
-                        value={form.subcategory}
-                        onChange={(e) => set("subcategory", e.target.value)}
-                        disabled={!form.category || subcategories.length === 0}
-                      >
-                        <option value=''>None</option>
-                        {subcategories.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                      {!form.category ? (
-                        <p className='text-xs text-gray-400 mt-1'>Select a category first.</p>
-                      ) : subcategories.length === 0 ? (
-                        <p className='text-xs text-amber-500 mt-1'>No subcategories found for this category.</p>
-                      ) : null}
-                  </Field>
-                </div>
-                <div className='grid grid-cols-2 gap-4'>
-                  <Field label='Fabric'>
-                    <select
-                      className={inputCls}
-                      value={form.fabric}
-                      onChange={(e) => set("fabric", e.target.value)}
-                    >
-                      <option value=''>Select fabric</option>
-                      {PRODUCT_FABRICS.map((f) => (
-                        <option key={f} value={f}>
-                          {f}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label='Tags (comma separated)'>
-                    <input
-                      className={inputCls}
-                      value={form.tags}
-                      onChange={(e) => set("tags", e.target.value)}
-                      placeholder='silk, wedding, festive'
-                    />
-                  </Field>
-                </div>
-                <div className='grid grid-cols-1 gap-4'>
-                  <Field label='Occasions'>
-                    <div className='flex flex-wrap gap-2'>
-                      {PRODUCT_OCCASIONS.map((occ) => (
-                        <button
-                          key={occ}
-                          type='button'
-                          onClick={() => toggleOccasion(occ)}
-                          className={cn(
-                            "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
-                            form.occasions.some(
-                              (o) => o.toLowerCase() === occ.toLowerCase(),
-                            ) ?
-                              "border-[#c5a059] bg-[#c5a059] text-white"
-                            : "border-gray-200 bg-white text-gray-600 hover:border-[#c5a059]",
-                          )}
-                        >
-                          {occ}
-                        </button>
-                      ))}
-                      {form.occasions
-                        .filter(
-                          (o) =>
-                            !PRODUCT_OCCASIONS.some(
-                              (p) => p.toLowerCase() === o.toLowerCase(),
-                            ),
-                        )
-                        .map((occ) => (
-                          <button
-                            key={occ}
-                            type='button'
-                            onClick={() => toggleOccasion(occ)}
-                            className='rounded-full border border-[#c5a059] bg-[#c5a059]/10 px-3 py-1.5 text-xs font-semibold text-[#c5a059]'
-                          >
-                            {occ} ×
-                          </button>
-                        ))}
-                    </div>
-                    <div className='mt-3 flex gap-2'>
-                      <input
-                        className={inputCls}
-                        value={customOccasion}
-                        onChange={(e) => setCustomOccasion(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addCustomOccasion();
-                          }
-                        }}
-                        placeholder='Add custom occasion…'
-                      />
-                      <Button
-                        type='button'
-                        variant='outline'
-                        onClick={addCustomOccasion}
-                        disabled={!customOccasion.trim()}
-                      >
-                        Add
-                      </Button>
-                    </div>
-                  </Field>
-                </div>
-                <div className='flex gap-6 pt-1'>
-                  <label className='flex items-center gap-2.5 cursor-pointer group'>
-                    <button
-                      type='button'
-                      onClick={() => set("isFeatured", !form.isFeatured)}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${form.isFeatured ? "bg-brand-500" : "bg-gray-300"}`}
-                    >
-                      <span
-                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isFeatured ? "translate-x-5" : ""}`}
-                      />
-                    </button>
-                    <span className='text-sm text-gray-700 group-hover:text-gray-900 transition-colors flex items-center gap-1'>
-                      <Sparkles className='h-3.5 w-3.5 text-gold-500' />{" "}
-                      Featured
-                    </span>
-                  </label>
-                  <label className='flex items-center gap-2.5 cursor-pointer group'>
-                    <button
-                      type='button'
-                      onClick={() => set("isActive", !form.isActive)}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${form.isActive ? "bg-green-500" : "bg-gray-300"}`}
-                    >
-                      <span
-                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? "translate-x-5" : ""}`}
-                      />
-                    </button>
-                    <span className='text-sm text-gray-700 group-hover:text-gray-900 transition-colors'>
-                      Active / Visible
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Colors, sizes & photos */}
-              <div className='bg-gray-50 rounded-2xl p-5'>
-                <ProductColorVariantEditor
-                  groups={colorGroups}
-                  onChange={setColorGroups}
-                  suggestedColors={suggestedColors}
-                  productId={editingProduct?._id}
-                  baseSellPrice={form.price}
-                  untaggedImageCount={untaggedImageCount}
-                  onDeleteExistingImage={handleDeleteExistingImage}
+        <AdminOfferSection title="Basic information" description="Name, description & HSN" icon={Package}>
+          <div className="space-y-3">
+            <AdminOfferField label="Product name" required>
+              <input
+                className={adminOfferInputCls}
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="e.g. Banarasi Silk Saree in Royal Blue"
+                required
+              />
+            </AdminOfferField>
+            <AdminOfferField label="Description" required hint="Paste bullets or multi-line text — storefront renders it cleanly.">
+              <textarea
+                className={cn(adminOfferTextareaCls, "min-h-[120px]")}
+                value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+                placeholder={"Pure silk weave\nHandcrafted border\nDry clean only"}
+                rows={5}
+                required
+              />
+            </AdminOfferField>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <AdminOfferField label="Short description" hint="~120–200 chars for listings">
+                <input
+                  className={adminOfferInputCls}
+                  value={form.shortDescription}
+                  onChange={(e) => set("shortDescription", e.target.value)}
+                  placeholder="2 sentences for shop cards"
                 />
-              </div>
+              </AdminOfferField>
+              <AdminOfferField label="HSN code">
+                <input
+                  className={adminOfferInputCls}
+                  value={form.hsnCode}
+                  onChange={(e) => set("hsnCode", e.target.value)}
+                  placeholder="e.g. 6204"
+                />
+              </AdminOfferField>
+            </div>
+          </div>
+        </AdminOfferSection>
 
-              <AdminAiProductCopySection
-                name={form.name}
-                category={form.category}
-                subcategory={form.subcategory}
-                fabric={form.fabric}
-                price={form.price}
-                comparePrice={form.comparePrice}
-                tags={form.tags}
-                variants={flattenedVariants}
-                productId={editingProduct?._id}
-                onApply={(d: ProductCopyDraft) => {
-                  setForm((f) => ({
-                    ...f,
-                    shortDescription: d.shortDescription ?? f.shortDescription,
-                    description: d.description ?? f.description,
-                    seoTitle: d.seoTitle ?? f.seoTitle,
-                    seoDescription: d.seoDescription ?? f.seoDescription,
-                    tags: d.tags?.length ? d.tags.join(", ") : f.tags,
-                  }));
-                  const merged = mergeFabricIntoProductDetails(
-                    d.productDetailKeys || "",
-                    d.productDetailValues || "",
-                    form.fabric,
-                  );
-                  if (merged.keys.trim()) {
-                    setDetailsKeysText(merged.keys);
-                    setDetailsValuesText(merged.values);
+        <AdminOfferSection title="Pricing" icon={IndianRupee}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AdminOfferField label="Selling price (₹)" required>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className={adminOfferInputCls}
+                value={form.price}
+                onChange={(e) => set("price", e.target.value)}
+                placeholder="1499"
+                required
+              />
+            </AdminOfferField>
+            <AdminOfferField label="MRP / compare price (₹)">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className={adminOfferInputCls}
+                value={form.comparePrice}
+                onChange={(e) => set("comparePrice", e.target.value)}
+                placeholder="1999"
+              />
+            </AdminOfferField>
+          </div>
+          {form.price && form.comparePrice && Number(form.comparePrice) > Number(form.price) && (
+            <p className="text-xs text-emerald-700 font-medium bg-emerald-50/80 rounded-lg px-3 py-2 border border-emerald-100">
+              {Math.round(
+                ((Number(form.comparePrice) - Number(form.price)) / Number(form.comparePrice)) * 100,
+              )}
+              % discount will show on storefront
+            </p>
+          )}
+        </AdminOfferSection>
+
+        <AdminOfferSection title="Category & tags" icon={FolderTree}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AdminOfferField label="Category" required>
+              <select
+                className={adminOfferSelectCls}
+                value={form.category}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+              >
+                <option value="">Select category</option>
+                {categories
+                  .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== "gifting")
+                  .map((c) => (
+                    <option key={c._id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+              {categories.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">Create categories in Admin → Categories first.</p>
+              )}
+            </AdminOfferField>
+            <AdminOfferField label="Subcategory">
+              <select
+                className={adminOfferSelectCls}
+                value={form.subcategory}
+                onChange={(e) => set("subcategory", e.target.value)}
+                disabled={!form.category || subcategories.length === 0}
+              >
+                <option value="">None</option>
+                {subcategories.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </AdminOfferField>
+            <AdminOfferField label="Fabric">
+              <select
+                className={adminOfferSelectCls}
+                value={form.fabric}
+                onChange={(e) => set("fabric", e.target.value)}
+              >
+                <option value="">Select fabric</option>
+                {PRODUCT_FABRICS.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </AdminOfferField>
+            <AdminOfferField label="Tags" hint="Comma separated">
+              <input
+                className={adminOfferInputCls}
+                value={form.tags}
+                onChange={(e) => set("tags", e.target.value)}
+                placeholder="silk, wedding, festive"
+              />
+            </AdminOfferField>
+          </div>
+
+          <AdminOfferField label="Occasions">
+            <div className="flex flex-wrap gap-2">
+              {PRODUCT_OCCASIONS.map((occ) => (
+                <button
+                  key={occ}
+                  type="button"
+                  onClick={() => toggleOccasion(occ)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                    form.occasions.some((o) => o.toLowerCase() === occ.toLowerCase()) ?
+                      "border-brand-600 bg-brand-600 text-white shadow-sm"
+                    : "border-gray-200 bg-white/80 text-gray-600 hover:border-brand-400",
+                  )}
+                >
+                  {occ}
+                </button>
+              ))}
+              {form.occasions
+                .filter((o) => !PRODUCT_OCCASIONS.some((p) => p.toLowerCase() === o.toLowerCase()))
+                .map((occ) => (
+                  <button
+                    key={occ}
+                    type="button"
+                    onClick={() => toggleOccasion(occ)}
+                    className="rounded-full border border-brand-500 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800"
+                  >
+                    {occ} ×
+                  </button>
+                ))}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <input
+                className={cn(adminOfferInputCls, "flex-1")}
+                value={customOccasion}
+                onChange={(e) => setCustomOccasion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomOccasion();
                   }
-                  setShowSeo(true);
+                }}
+                placeholder="Add custom occasion…"
+              />
+              <Button type="button" variant="outline" onClick={addCustomOccasion} disabled={!customOccasion.trim()}>
+                Add
+              </Button>
+            </div>
+          </AdminOfferField>
+
+          <div className="flex flex-col sm:flex-row sm:gap-6 gap-3 pt-1 border-t border-gray-100/80">
+            <AdminOfferSwitch
+              checked={form.isFeatured}
+              onChange={(v) => set("isFeatured", v)}
+              label="Featured"
+              description="Highlight on homepage & collections"
+            />
+            <AdminOfferSwitch
+              checked={form.isActive}
+              onChange={(v) => set("isActive", v)}
+              label="Active / visible"
+              description="Product appears on shop when on"
+            />
+          </div>
+        </AdminOfferSection>
+
+        <AdminOfferSection
+          title="Colors, sizes & photos"
+          description="Upload photos per color — customer sees images for their chosen color"
+          icon={Palette}
+        >
+          <ProductColorVariantEditor
+            groups={colorGroups}
+            onChange={setColorGroups}
+            suggestedColors={suggestedColors}
+            productId={editingProduct?._id}
+            baseSellPrice={form.price}
+            untaggedImageCount={untaggedImageCount}
+            onDeleteExistingImage={handleDeleteExistingImage}
+          />
+        </AdminOfferSection>
+
+        <AdminAiProductCopySection
+          name={form.name}
+          category={form.category}
+          subcategory={form.subcategory}
+          fabric={form.fabric}
+          price={form.price}
+          comparePrice={form.comparePrice}
+          tags={form.tags}
+          variants={flattenedVariants}
+          productId={editingProduct?._id}
+          onApply={(d: ProductCopyDraft) => {
+            setForm((f) => ({
+              ...f,
+              shortDescription: d.shortDescription ?? f.shortDescription,
+              description: d.description ?? f.description,
+              seoTitle: d.seoTitle ?? f.seoTitle,
+              seoDescription: d.seoDescription ?? f.seoDescription,
+              tags: d.tags?.length ? d.tags.join(", ") : f.tags,
+            }));
+            const merged = mergeFabricIntoProductDetails(
+              d.productDetailKeys || "",
+              d.productDetailValues || "",
+              form.fabric,
+            );
+            if (merged.keys.trim()) {
+              setDetailsKeysText(merged.keys);
+              setDetailsValuesText(merged.values);
+            }
+            setShowSeo(true);
+          }}
+        />
+
+        <AdminOfferSection
+          title="Product specs table"
+          description="Keys & values on the product page — Fabric row syncs from dropdown above"
+          icon={List}
+          variant="muted"
+        >
+          <ProductDetailsBulkFields
+            keysText={detailsKeysText}
+            valuesText={detailsValuesText}
+            onKeysChange={setDetailsKeysText}
+            onValuesChange={setDetailsValuesText}
+            textareaCls={cn(adminOfferTextareaCls, "min-h-[120px] font-mono text-[13px] leading-relaxed")}
+          />
+        </AdminOfferSection>
+
+        <AdminOfferSection
+          title="SEO for Google India"
+          icon={Search}
+          variant="muted"
+          action={
+            <button
+              type="button"
+              onClick={() => setShowSeo(!showSeo)}
+              className="text-xs font-medium text-brand-700 hover:text-brand-800 flex items-center gap-1"
+            >
+              {showSeo ? "Collapse" : "Expand"}
+              {showSeo ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+          }
+        >
+          {evaluateProductSeo({
+            name: form.name,
+            shortDescription: form.shortDescription,
+            seoTitle: form.seoTitle,
+            seoDescription: form.seoDescription,
+            fabric: form.fabric,
+            category: form.category,
+          }).score < 100 && (
+            <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              SEO needs work — expand to fix
+            </p>
+          )}
+          {showSeo && (
+            <div className="space-y-3">
+              <ProductSeoChecklist
+                name={form.name}
+                shortDescription={form.shortDescription}
+                seoTitle={form.seoTitle}
+                seoDescription={form.seoDescription}
+                fabric={form.fabric}
+                category={form.category}
+                onApplySuggestion={(patch) => {
+                  if (patch.seoTitle) set("seoTitle", patch.seoTitle);
+                  if (patch.seoDescription) set("seoDescription", patch.seoDescription);
+                  toast.success("SEO suggestions applied — review and save.");
                 }}
               />
-
-              <div className='bg-gray-50 rounded-2xl p-5 space-y-3'>
-                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
-                  Product detail table (keys & values)
-                </h3>
-                <p className='text-xs text-gray-400'>
-                  Shown on the product page as a specs table.{" "}
-                  <strong>Fabric</strong> row fills automatically when you pick
-                  fabric above (or use AI generate).
-                </p>
-                <ProductDetailsBulkFields
-                  keysText={detailsKeysText}
-                  valuesText={detailsValuesText}
-                  onKeysChange={setDetailsKeysText}
-                  onValuesChange={setDetailsValuesText}
-                  textareaCls={`${inputCls} resize-y min-h-[140px] font-mono text-[13px] leading-relaxed`}
+              <AdminOfferField label="SEO title" hint={`${form.seoTitle.length}/70 · brand added in Google`}>
+                <input
+                  className={adminOfferInputCls}
+                  value={form.seoTitle}
+                  onChange={(e) => set("seoTitle", e.target.value)}
+                  placeholder="Buy Handpainted Kalamkari Silk Saree Online in India"
+                  maxLength={70}
                 />
-              </div>
-
-              {/* SEO */}
-              <div className='bg-gray-50 rounded-2xl overflow-hidden'>
-                <button
-                  type='button'
-                  onClick={() => setShowSeo(!showSeo)}
-                  className='w-full flex items-center justify-between px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest hover:bg-gray-100 transition-colors'
+              </AdminOfferField>
+              <AdminOfferField label="SEO description">
+                <textarea
+                  className={cn(adminOfferTextareaCls, "min-h-[80px]")}
+                  value={form.seoDescription}
+                  onChange={(e) => set("seoDescription", e.target.value)}
+                  rows={3}
+                  placeholder="120–160 chars: fabric, occasion, delivery, returns"
+                  maxLength={160}
+                />
+                <p
+                  className={cn(
+                    "text-[11px] mt-1",
+                    form.seoDescription.length >= 120 ? "text-emerald-600" : "text-amber-600",
+                  )}
                 >
-                  <span className='flex items-center gap-2'>
-                    SEO for Google India
-                    {evaluateProductSeo({
-                      name: form.name,
-                      shortDescription: form.shortDescription,
-                      seoTitle: form.seoTitle,
-                      seoDescription: form.seoDescription,
-                      fabric: form.fabric,
-                      category: form.category,
-                    }).score < 100 && (
-                      <span className='normal-case font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full text-[10px]'>
-                        Needs work
-                      </span>
-                    )}
-                  </span>
-                  {showSeo ?
-                    <ChevronUp className='h-4 w-4' />
-                  : <ChevronDown className='h-4 w-4' />}
-                </button>
-                {showSeo && (
-                  <div className='px-5 pb-5 space-y-4'>
-                    <ProductSeoChecklist
-                      name={form.name}
-                      shortDescription={form.shortDescription}
-                      seoTitle={form.seoTitle}
-                      seoDescription={form.seoDescription}
-                      fabric={form.fabric}
-                      category={form.category}
-                      onApplySuggestion={(patch) => {
-                        if (patch.seoTitle) set("seoTitle", patch.seoTitle);
-                        if (patch.seoDescription)
-                          set("seoDescription", patch.seoDescription);
-                        toast.success(
-                          "SEO suggestions applied — review and save.",
-                        );
-                      }}
-                    />
-                    <Field label='SEO Title'>
-                      <input
-                        className={inputCls}
-                        value={form.seoTitle}
-                        onChange={(e) => set("seoTitle", e.target.value)}
-                        placeholder='e.g. Buy Handpainted Kalamkari Silk Saree Online in India'
-                        maxLength={70}
-                      />
-                      <p className='text-[11px] text-gray-400 mt-1'>
-                        {form.seoTitle.length}/70 · Brand name is added
-                        automatically in Google.
-                      </p>
-                    </Field>
-                    <Field label='SEO Description'>
-                      <textarea
-                        className={`${inputCls} resize-none`}
-                        value={form.seoDescription}
-                        onChange={(e) => set("seoDescription", e.target.value)}
-                        rows={3}
-                        placeholder='120–160 chars: fabric, occasion, free delivery over ₹1,099, 5-day returns across India.'
-                        maxLength={160}
-                      />
-                      <p
-                        className={`text-[11px] mt-1 ${
-                          form.seoDescription.length >= 120 ?
-                            "text-emerald-600"
-                          : "text-amber-600"
-                        }`}
-                      >
-                        {form.seoDescription.length}/160 characters
-                        {(
-                          form.seoDescription.length > 0 &&
-                          form.seoDescription.length < 120
-                        ) ?
-                          " — add more detail for better click-through"
-                        : form.seoDescription.length >= 120 ?
-                          " — good length for Google"
-                        : ""}
-                      </p>
-                    </Field>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── RIGHT: Photo tips ── */}
-            <div className='space-y-4 min-w-0'>
-              <div className='bg-gray-50 rounded-2xl p-5 space-y-4 sticky top-2'>
-                <h3 className='text-xs font-bold text-gray-400 uppercase tracking-widest'>
-                  Photo guide
-                </h3>
-                <p className='text-xs text-gray-400 leading-relaxed'>
-                  Har color ke liye alag photos upload karo (left panel). Customer
-                  jis color ko choose karega, product page par wahi images
-                  dikhengi.
+                  {form.seoDescription.length}/160
+                  {form.seoDescription.length > 0 && form.seoDescription.length < 120 ?
+                    " — add more for better click-through"
+                  : form.seoDescription.length >= 120 ?
+                    " — good length"
+                  : ""}
                 </p>
-
-                <div className='bg-white rounded-xl p-3 border border-gray-100 space-y-1.5'>
-                  <p className='text-xs font-semibold text-gray-600'>
-                    Photo tips
-                  </p>
-                  {[
-                    "Use natural or studio lighting",
-                    "3:4 portrait ratio (e.g. 900×1200px)",
-                    "Show drape, texture & embroidery",
-                    "Include model shots when possible",
-                    "Same color ke saare angles ek color group mein rakho",
-                  ].map((tip) => (
-                    <p key={tip} className='text-xs text-gray-400 flex gap-1.5'>
-                      <span className='text-brand-400 flex-shrink-0'>·</span>{" "}
-                      {tip}
-                    </p>
-                  ))}
-                </div>
-              </div>
+              </AdminOfferField>
             </div>
-          </div>
-
-          {/* ── Footer ── */}
-          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 sm:px-8 py-5 border-t border-gray-100 bg-gray-50 shrink-0'>
-            <p className='text-xs text-gray-400'>
-              {editingProduct ?
-                "Changes will be saved immediately."
-              : "* Required fields"}
-            </p>
-            <div className='flex gap-3'>
-              <Button
-                type='button'
-                variant='outline'
-                onClick={onClose}
-                className='rounded-xl'
-              >
-                Cancel
-              </Button>
-              <Button
-                type='submit'
-                variant='brand'
-                loading={isSaving}
-                disabled={loadingProduct}
-                className='rounded-xl px-8'
-              >
-                {isSaving ?
-                  "Saving…"
-                : editingProduct ?
-                  "Save Changes"
-                : "Create Product"}
-              </Button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+          )}
+        </AdminOfferSection>
+      </form>
+    </AdminOfferModal>
   );
 }

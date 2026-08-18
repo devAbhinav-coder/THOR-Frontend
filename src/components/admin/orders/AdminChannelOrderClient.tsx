@@ -27,6 +27,7 @@ import { adminApi, categoryApi } from "@/lib/api";
 import type { AdminCreateB2bOrderBody, AdminCreateOfflineOrderBody, Category, Product } from "@/types";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { cn, formatPrice } from "@/lib/utils";
+import { hideScrollbarCls } from "@/components/admin/shared/AdminOfferFormUi";
 import { Button } from "@/components/ui/button";
 import { SearchField } from "@/components/ui/SearchField";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -40,9 +41,6 @@ const pill =
 export type CatalogDraft = {
   id: string;
   kind: "catalog";
-  productSearch: string;
-  searchHits: Product[];
-  searchLoading: boolean;
   pickLoading: boolean;
   selectedProduct: Product | null;
   variantSku: string;
@@ -119,9 +117,6 @@ function catalogWithId(id: string): CatalogDraft {
   return {
     id,
     kind: "catalog",
-    productSearch: "",
-    searchHits: [],
-    searchLoading: false,
     pickLoading: false,
     selectedProduct: null,
     variantSku: "",
@@ -141,10 +136,6 @@ function manualWithId(id: string): ManualDraft {
     unitPrice: "",
     unitCost: "",
   };
-}
-
-function emptyCatalogDraft(): CatalogDraft {
-  return catalogWithId(newLineId());
 }
 
 function emptyManualDraft(): ManualDraft {
@@ -198,279 +189,195 @@ function LineProfitHint({ line }: { line: DraftLine }) {
   );
 }
 
-function CatalogLineEditor({
+function buildCatalogLineFromProduct(full: Product, id?: string): CatalogDraft | null {
+  if (!full.variants?.length) return null;
+  const first = full.variants[0]!;
+  const listed =
+    typeof first.price === "number" && first.price >= 0 ? first.price : full.price;
+  const cost = variantCostFromProduct(full, first.sku);
+  return {
+    id: id ?? newLineId(),
+    kind: "catalog",
+    pickLoading: false,
+    selectedProduct: full,
+    variantSku: first.sku,
+    quantity: 1,
+    unitPrice: String(listed),
+    unitCost: formatCostInput(cost),
+  };
+}
+
+function QtyInput({
+  value,
+  onChange,
+  min = 1,
+  max = 50,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  max?: number;
+}) {
+  const [text, setText] = useState(String(value));
+
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === "" || /^\d+$/.test(v)) setText(v);
+      }}
+      onBlur={() => {
+        let n = parseInt(text, 10);
+        if (!Number.isFinite(n) || n < min) n = min;
+        if (n > max) {
+          n = max;
+          toast.error(`Max quantity is ${max}`);
+        }
+        setText(String(n));
+        onChange(n);
+      }}
+      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-300"
+      aria-label="Quantity"
+    />
+  );
+}
+
+function CatalogLineCard({
   lineId,
   line,
+  index,
   patch,
   onRemove,
-  canRemove,
+  onChangeProduct,
 }: {
   lineId: string;
   line: CatalogDraft;
+  index: number;
   patch: (id: string, p: Partial<CatalogDraft>) => void;
   onRemove: () => void;
-  canRemove: boolean;
+  onChangeProduct: () => void;
 }) {
-  const debouncedSearch = useDebouncedValue(line.productSearch.trim(), 320);
-  const selectedNameRef = useRef<string | undefined>(undefined);
-  selectedNameRef.current = line.selectedProduct?.name;
+  const product = line.selectedProduct;
+  if (!product) return null;
 
-  useEffect(() => {
-    const d = debouncedSearch;
-    if (!d) {
-      patch(lineId, { searchHits: [], searchLoading: false });
-      return;
-    }
-    const sn = selectedNameRef.current;
-    if (sn && d === sn.trim()) {
-      patch(lineId, { searchHits: [], searchLoading: false });
-      return;
-    }
-    let cancelled = false;
-    patch(lineId, { searchLoading: true });
-    adminApi
-      .searchProducts({ q: d, limit: 14, page: 1, isActive: "true" })
-      .then((res) => {
-        if (cancelled) return;
-        patch(lineId, {
-          searchHits: res.data.products,
-          searchLoading: false,
-        });
-      })
-      .catch(() => {
-        if (!cancelled) patch(lineId, { searchHits: [], searchLoading: false });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedSearch, lineId, patch]);
-
-  const applyCatalogPick = (full: Product) => {
-    if (!full.variants?.length) {
-      toast.error("This product has no variants.");
-      patch(lineId, {
-        selectedProduct: null,
-        variantSku: "",
-        unitPrice: "",
-        unitCost: "",
-        pickLoading: false,
-      });
-      return;
-    }
-    const first = full.variants[0]!;
-    const listed =
-      typeof first.price === "number" && first.price >= 0 ?
-        first.price
-      : full.price;
-    const cost = variantCostFromProduct(full, first.sku);
-    patch(lineId, {
-      selectedProduct: full,
-      productSearch: full.name,
-      searchHits: [],
-      variantSku: first.sku,
-      unitPrice: String(listed),
-      unitCost: formatCostInput(cost),
-      pickLoading: false,
-    });
-  };
-
-  const pickProduct = async (p: Product) => {
-    // Keep selectedProduct.name in sync so the search effect does not re-fire.
-    patch(lineId, {
-      productSearch: p.name,
-      searchHits: [],
-      pickLoading: true,
-      selectedProduct: p,
-      variantSku: "",
-      unitPrice: "",
-      unitCost: "",
-    });
-
-    try {
-      const res = await adminApi.getProductById(p._id);
-      applyCatalogPick(res.data.product as Product);
-    } catch {
-      toast.error("Could not load product variants.");
-      patch(lineId, {
-        selectedProduct: null,
-        variantSku: "",
-        unitPrice: "",
-        unitCost: "",
-        pickLoading: false,
-      });
-    }
-  };
+  const variant = product.variants.find((v) => v.sku === line.variantSku);
+  const variantLabel =
+    variant ?
+      [variant.size, variant.color].filter(Boolean).join(" · ") || variant.sku
+    : line.variantSku;
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm'>
-      <div className='flex items-start justify-between gap-2'>
-        <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-          Catalog product
-        </p>
-        {canRemove ?
+    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200/80">
+          {product.images[0]?.url ?
+            <Image src={product.images[0].url} alt="" fill className="object-cover" sizes="56px" />
+          : null}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-brand-600">
+                Item {index + 1} · Catalog
+              </p>
+              <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+              {variantLabel ?
+                <p className="text-xs text-gray-500 truncate">{variantLabel}</p>
+              : null}
+            </div>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+              aria-label="Remove line"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
           <button
-            type='button'
-            onClick={onRemove}
-            className='shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600'
-            aria-label='Remove line'
+            type="button"
+            onClick={onChangeProduct}
+            className="mt-1 text-xs font-medium text-brand-700 hover:text-brand-800 hover:underline"
           >
-            <Trash2 className='h-4 w-4' />
+            Change product
           </button>
-        : null}
-      </div>
-      <div className='relative z-[8]'>
-        <SearchField
-          value={line.productSearch}
-          onChange={(v) => {
-            patch(lineId, { productSearch: v });
-            if (
-              line.selectedProduct &&
-              v.trim() !== line.selectedProduct.name.trim()
-            ) {
-              patch(lineId, {
-                selectedProduct: null,
-                variantSku: "",
-                unitPrice: "",
-                unitCost: "",
-                pickLoading: false,
-              });
-            }
-          }}
-          placeholder='Search products by name…'
-          className='w-full'
-          isLoading={line.searchLoading || line.pickLoading}
-        />
-        {line.searchHits.length > 0 && (
-          <ul
-            role='listbox'
-            className='absolute z-[90] mt-1 w-full max-h-56 overflow-auto rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black/5'
-          >
-            {line.searchHits.map((p) => (
-              <li key={p._id}>
-                <button
-                  type='button'
-                  role='option'
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pickProduct(p)}
-                  className='flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-brand-50/60'
-                >
-                  <div className='relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gray-100'>
-                    {p.images[0]?.url ?
-                      <Image
-                        src={p.images[0].url}
-                        alt=''
-                        fill
-                        className='object-cover'
-                        sizes='44px'
-                      />
-                    : null}
-                  </div>
-                  <span className='min-w-0 flex-1 truncate font-medium text-gray-900'>
-                    {p.name}
-                  </span>
-                  <span className='shrink-0 text-xs text-gray-500'>
-                    {formatPrice(p.price)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        </div>
       </div>
 
-      {line.selectedProduct && (
-        <div className='rounded-lg border border-gray-100 bg-gray-50/60 p-3 space-y-3'>
-          <div className='grid gap-3 sm:grid-cols-2'>
-            <label className='block space-y-1.5 sm:col-span-2'>
-              <span className='text-xs text-gray-500'>
-                Choose variant
-                {line.selectedProduct.variants.length > 1 ?
-                  ` (${line.selectedProduct.variants.length} options)`
-                : null}
-              </span>
-              {line.pickLoading ?
-                <div className='flex h-11 items-center rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-500'>
-                  Loading variants…
-                </div>
-              : line.selectedProduct.variants.length === 0 ?
-                <div className='flex h-11 items-center rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm text-amber-800'>
-                  No variants on this product
-                </div>
-              : <select
-                  value={line.variantSku}
-                  onChange={(e) => {
-                    const sku = e.target.value;
-                    const v = line.selectedProduct!.variants.find(
-                      (x) => x.sku === sku,
-                    );
-                    const listed =
-                      v && typeof v.price === "number" && v.price >= 0 ?
-                        v.price
-                      : line.selectedProduct!.price;
-                    const cost = variantCostFromProduct(line.selectedProduct, sku);
-                    patch(lineId, {
-                      variantSku: sku,
-                      unitPrice: String(listed),
-                      unitCost: formatCostInput(cost),
-                    });
-                  }}
-                  className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-                >
-                  {line.selectedProduct.variants.map((v) => {
-                    const label =
-                      [v.size, v.color].filter(Boolean).join(" · ") ||
-                      "Default";
-                    return (
-                      <option key={v.sku} value={v.sku}>
-                        {label} — {v.sku} (stock {v.stock})
-                      </option>
-                    );
-                  })}
-                </select>
-              }
-            </label>
-            <label className='block space-y-1.5'>
-              <span className='text-xs text-gray-500'>Quantity</span>
-              <input
-                type='number'
-                min={1}
-                max={50}
-                value={line.quantity}
-                onChange={(e) =>
-                  patch(lineId, { quantity: Number(e.target.value) || 1 })
-                }
-                className='h-11 w-full rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-              />
-            </label>
-            <label className='block space-y-1.5'>
-              <span className='text-xs text-gray-500'>Selling price (₹)</span>
-              <input
-                value={line.unitPrice}
-                onChange={(e) => patch(lineId, { unitPrice: e.target.value })}
-                className='h-11 w-full rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-              />
-            </label>
-            <label className='block space-y-1.5 sm:col-span-2'>
-              <span className='text-xs text-gray-500'>
-                Cost of goods — COGS (₹)
-                {line.selectedProduct && line.variantSku ?
-                  <span className='text-gray-400 font-normal'>
-                    {" "}
-                    · per unit, editable
-                  </span>
-                : null}
-              </span>
-              <input
-                value={line.unitCost}
-                onChange={(e) => patch(lineId, { unitCost: e.target.value })}
-                className='h-11 w-full rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-                placeholder='Purchase cost per unit'
-              />
-            </label>
-          </div>
-          <LineProfitHint line={line} />
-        </div>
-      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block space-y-1.5 sm:col-span-2">
+          <span className="text-xs text-gray-500">
+            Variant
+            {product.variants.length > 1 ? ` (${product.variants.length} options)` : ""}
+          </span>
+          {line.pickLoading ?
+            <div className="flex h-11 items-center rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+              Loading variants…
+            </div>
+          : product.variants.length === 0 ?
+            <div className="flex h-11 items-center rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm text-amber-800">
+              No variants on this product
+            </div>
+          : <select
+              value={line.variantSku}
+              onChange={(e) => {
+                const sku = e.target.value;
+                const v = product.variants.find((x) => x.sku === sku);
+                const listed =
+                  v && typeof v.price === "number" && v.price >= 0 ? v.price : product.price;
+                const cost = variantCostFromProduct(product, sku);
+                patch(lineId, {
+                  variantSku: sku,
+                  unitPrice: String(listed),
+                  unitCost: formatCostInput(cost),
+                });
+              }}
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+            >
+              {product.variants.map((v) => {
+                const label = [v.size, v.color].filter(Boolean).join(" · ") || "Default";
+                return (
+                  <option key={v.sku} value={v.sku}>
+                    {label} — stock {v.stock}
+                  </option>
+                );
+              })}
+            </select>
+          }
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs text-gray-500">Quantity (1–50)</span>
+          <QtyInput
+            value={line.quantity}
+            onChange={(n) => patch(lineId, { quantity: n })}
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs text-gray-500">Selling price (₹)</span>
+          <input
+            value={line.unitPrice}
+            onChange={(e) => patch(lineId, { unitPrice: e.target.value })}
+            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+          />
+        </label>
+        <label className="block space-y-1.5 sm:col-span-2">
+          <span className="text-xs text-gray-500">Cost of goods — COGS (₹) · per unit</span>
+          <input
+            value={line.unitCost}
+            onChange={(e) => patch(lineId, { unitCost: e.target.value })}
+            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+            placeholder="Purchase cost per unit"
+          />
+        </label>
+      </div>
+      <LineProfitHint line={line} />
     </div>
   );
 }
@@ -502,23 +409,8 @@ function ManualLineEditor({
     : selectedCategory?.name || "Category line";
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm'>
-      <div className='flex items-start justify-between gap-2'>
-        <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-          Shop category (or other)
-        </p>
-        {canRemove ?
-          <button
-            type='button'
-            onClick={onRemove}
-            className='shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600'
-            aria-label='Remove line'
-          >
-            <Trash2 className='h-4 w-4' />
-          </button>
-        : null}
-      </div>
-      <label className='block space-y-1.5'>
+    <div className="space-y-3">
+      <label className="block space-y-1.5">
         <span className='text-xs text-gray-600'>Category</span>
         <select
           value={line.categorySelect}
@@ -583,16 +475,10 @@ function ManualLineEditor({
       )}
       <div className='grid gap-3 sm:grid-cols-2'>
         <label className='block space-y-1.5'>
-          <span className='text-xs text-gray-500'>Quantity</span>
-          <input
-            type='number'
-            min={1}
-            max={50}
+          <span className='text-xs text-gray-500'>Quantity (1–50)</span>
+          <QtyInput
             value={line.quantity}
-            onChange={(e) =>
-              patch(lineId, { quantity: Number(e.target.value) || 1 })
-            }
-            className='h-11 w-full rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+            onChange={(n) => patch(lineId, { quantity: n })}
           />
         </label>
         <label className='block space-y-1.5'>
@@ -637,7 +523,16 @@ export default function AdminChannelOrderClient({
   const [fulfillment, setFulfillment] = useState<"delhivery" | "offline_handover">("offline_handover");
   const [paymentMethod, setPaymentMethod] = useState<"offline_upi" | "offline_cash">("offline_upi");
 
-  const [lines, setLines] = useState<DraftLine[]>(() => [emptyCatalogDraft()]);
+  const [lines, setLines] = useState<DraftLine[]>(() => []);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogHits, setCatalogHits] = useState<Product[]>([]);
+  const [catalogSearchLoading, setCatalogSearchLoading] = useState(false);
+  const [catalogPickLoading, setCatalogPickLoading] = useState(false);
+  const [replaceCatalogLineId, setReplaceCatalogLineId] = useState<string | null>(null);
+  const debouncedCatalogSearch = useDebouncedValue(catalogSearch.trim(), 320);
+  const catalogSearchRef = useRef<HTMLDivElement>(null);
+  const lineRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const pendingScrollLineId = useRef<string | null>(null);
   const [shopCategories, setShopCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
@@ -683,21 +578,120 @@ export default function AdminChannelOrderClient({
     setLines((prev) => prev.map((l) => (l.id === id && l.kind === "manual" ? { ...l, ...p } : l)));
   }, []);
 
-  const setLineKind = useCallback((id: string, kind: "catalog" | "manual") => {
-    setLines((prev) =>
-      prev.map((l) => {
-        if (l.id !== id) return l;
-        return kind === "catalog" ? catalogWithId(id) : manualWithId(id);
-      }),
-    );
+  const removeLine = useCallback((id: string) => {
+    setLines((prev) => prev.filter((l) => l.id !== id));
+    setReplaceCatalogLineId((cur) => (cur === id ? null : cur));
   }, []);
 
-  const removeLine = useCallback((id: string) => {
-    setLines((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((l) => l.id !== id);
+  useEffect(() => {
+    const q = debouncedCatalogSearch;
+    if (!q || q.length < 2) {
+      setCatalogHits([]);
+      setCatalogSearchLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCatalogSearchLoading(true);
+    adminApi
+      .searchProducts({ q, limit: 14, page: 1, isActive: "true" })
+      .then((res) => {
+        if (cancelled) return;
+        setCatalogHits(res.data.products);
+        setCatalogSearchLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCatalogHits([]);
+          setCatalogSearchLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedCatalogSearch]);
+
+  const setLineRef = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) lineRefs.current.set(id, el);
+    else lineRefs.current.delete(id);
+  }, []);
+
+  const scrollToLine = useCallback((lineId: string) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const el = lineRefs.current.get(lineId);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+      });
     });
   }, []);
+
+  const scrollToCatalogSearch = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      catalogSearchRef.current?.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+    });
+  }, []);
+
+  useEffect(() => {
+    const id = pendingScrollLineId.current;
+    if (!id) return;
+    if (!lines.some((l) => l.id === id)) return;
+    pendingScrollLineId.current = null;
+    scrollToLine(id);
+  }, [lines, scrollToLine]);
+
+  useEffect(() => {
+    if (currentStep === 3) {
+      scrollToCatalogSearch();
+    }
+  }, [currentStep, scrollToCatalogSearch]);
+
+  const pickCatalogProduct = useCallback(
+    async (p: Product) => {
+      setCatalogSearch("");
+      setCatalogHits([]);
+      setCatalogPickLoading(true);
+      try {
+        const res = await adminApi.getProductById(p._id);
+        const full = res.data.product as Product;
+        const built = buildCatalogLineFromProduct(full);
+        if (!built) {
+          toast.error("This product has no variants.");
+          return;
+        }
+        if (replaceCatalogLineId) {
+          setLines((prev) =>
+            prev.map((l) =>
+              l.id === replaceCatalogLineId && l.kind === "catalog" ?
+                { ...built, id: replaceCatalogLineId }
+              : l,
+            ),
+          );
+          pendingScrollLineId.current = replaceCatalogLineId;
+          setReplaceCatalogLineId(null);
+        } else {
+          setLines((prev) => [...prev, built]);
+          pendingScrollLineId.current = built.id;
+        }
+      } catch {
+        toast.error("Could not load product variants.");
+      } finally {
+        setCatalogPickLoading(false);
+      }
+    },
+    [replaceCatalogLineId],
+  );
+
+  const addManualLine = useCallback(() => {
+    const draft = emptyManualDraft();
+    pendingScrollLineId.current = draft.id;
+    setLines((prev) => [...prev, draft]);
+  }, []);
+
+  const step3Subtotal = lines.reduce((sum, line) => {
+    const up = lineUnitPrice(line);
+    if (!Number.isFinite(up)) return sum;
+    return sum + up * lineQty(line);
+  }, 0);
 
   const handleNext = () => {
     if (currentStep === 1) {
@@ -726,6 +720,9 @@ export default function AdminChannelOrderClient({
       }
       setCurrentStep(3);
     } else if (currentStep === 3) {
+      if (lines.length === 0) {
+        return toast.error("Add at least one product line");
+      }
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]!;
         if (line.kind === "catalog") {
@@ -1236,42 +1233,157 @@ export default function AdminChannelOrderClient({
 
         {/* Step 3 */}
         <div className={cn(currentStep === 3 ? "block" : "hidden")}>
-          <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm'>
-            <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 '>
-              <h2 className="text-lg font-bold text-gray-900">Products &amp; Prices</h2>
-              <div className='flex flex-row flex-wrap gap-2'>
-                <Button type='button' variant='outline' size='sm' className='rounded-xl flex-1 sm:flex-none' onClick={() => setLines((p) => [...p, emptyCatalogDraft()])}>
-                  <Plus className='mr-1.5 h-4 w-4' /> Catalog Product
-                </Button>
-                <Button type='button' variant='outline' size='sm' className='rounded-xl flex-1 sm:flex-none' onClick={() => setLines((p) => [...p, emptyManualDraft()])}>
-                  <Plus className='mr-1.5 h-4 w-4' /> Custom Line
+          <section className='rounded-2xl border border-gray-100 bg-white shadow-sm overflow-visible'>
+            {/* Sticky search + summary */}
+            <div className='sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur-md px-4 py-4 sm:px-6 space-y-3'>
+              <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Products &amp; prices</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Search once at top — pick product, set qty &amp; price on the line below.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-sm shrink-0">
+                  <span className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 tabular-nums">
+                    {lines.length} item{lines.length === 1 ? "" : "s"}
+                  </span>
+                  {lines.length > 0 ?
+                    <span className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-800 tabular-nums">
+                      {formatPrice(step3Subtotal)}
+                    </span>
+                  : null}
+                </div>
+              </div>
+
+            <div ref={catalogSearchRef} className="relative z-50 scroll-mt-4">
+                {replaceCatalogLineId ?
+                  <p className="mb-2 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    Replacing item — pick a new product from search, or{" "}
+                    <button
+                      type="button"
+                      className="underline font-semibold"
+                      onClick={() => setReplaceCatalogLineId(null)}
+                    >
+                      cancel
+                    </button>
+                  </p>
+                : null}
+                <SearchField
+                  value={catalogSearch}
+                  onChange={setCatalogSearch}
+                  placeholder="Search catalog product to add…"
+                  className="w-full"
+                  isLoading={catalogSearchLoading || catalogPickLoading}
+                />
+                {catalogHits.length > 0 ?
+                  <ul
+                    role="listbox"
+                    className={cn(
+                      "absolute z-[200] mt-1 w-full max-h-60 overflow-auto rounded-xl border border-gray-200 bg-white shadow-2xl ring-1 ring-black/5",
+                      hideScrollbarCls,
+                    )}
+                  >
+                    {catalogHits.map((p) => (
+                      <li key={p._id}>
+                        <button
+                          type="button"
+                          role="option"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickCatalogProduct(p)}
+                          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-brand-50/60"
+                        >
+                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                            {p.images[0]?.url ?
+                              <Image src={p.images[0].url} alt="" fill className="object-cover" sizes="44px" />
+                            : null}
+                          </div>
+                          <span className="min-w-0 flex-1 truncate font-medium text-gray-900">{p.name}</span>
+                          <span className="shrink-0 text-xs text-gray-500">{formatPrice(p.price)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                : null}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addManualLine}>
+                  <Plus className="mr-1.5 h-4 w-4" /> Custom category line
                 </Button>
               </div>
             </div>
 
-            <div className='space-y-2'>
-              {lines.map((line, idx) => (
-                <div key={line.id} className='rounded-2xl border border-gray-200 bg-gray-50/50 p-3 sm:p-4'>
-                  <div className='mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
-                    <span className='text-xs font-bold uppercase tracking-wide text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md w-max'>Item {idx + 1}</span>
-                    <div className='flex p-1 bg-gray-200/50 rounded-lg w-full sm:w-auto'>
-                      <button type='button' onClick={() => setLineKind(line.id, "catalog")} className={cn("flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all", line.kind === "catalog" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}>Catalog</button>
-                      <button type='button' onClick={() => setLineKind(line.id, "manual")} className={cn("flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all", line.kind === "manual" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}>Category / Other</button>
-                    </div>
-                  </div>
-
-                  {line.kind === "catalog" ? (
-                    <CatalogLineEditor lineId={line.id} line={line} patch={patchCatalog} onRemove={() => removeLine(line.id)} canRemove={lines.length > 1} />
-                  ) : (
-                    <ManualLineEditor lineId={line.id} line={line} patch={patchManual} shopCategories={shopCategories} categoriesLoading={categoriesLoading} onRemove={() => removeLine(line.id)} canRemove={lines.length > 1} />
-                  )}
+            {/* Line items */}
+            <div className={cn("px-4 py-4 sm:px-6 space-y-3 min-h-[120px]", hideScrollbarCls)}>
+              {lines.length === 0 ?
+                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-10 text-center">
+                  <PackageSearch className="h-9 w-9 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-600">No items yet</p>
+                  <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                    Type a product name in the search above, or add a custom category line for non-catalog items.
+                  </p>
                 </div>
-              ))}
+              : lines.map((line, idx) => (
+                  <div
+                    key={line.id}
+                    ref={(el) => setLineRef(line.id, el)}
+                    className="scroll-mt-36 scroll-mb-32"
+                  >
+                    {line.kind === "catalog" ?
+                      line.selectedProduct ?
+                        <CatalogLineCard
+                          lineId={line.id}
+                          line={line}
+                          index={idx}
+                          patch={patchCatalog}
+                          onRemove={() => removeLine(line.id)}
+                          onChangeProduct={() => {
+                            setReplaceCatalogLineId(line.id);
+                            scrollToCatalogSearch();
+                            toast("Search above to replace this product", { icon: "↩️" });
+                          }}
+                        />
+                      : null
+                    : <div className="rounded-2xl border border-gray-200 bg-gray-50/40 p-3 sm:p-4">
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700 bg-violet-50 px-2.5 py-1 rounded-md">
+                            Item {idx + 1} · Custom
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeLine(line.id)}
+                            className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                            aria-label="Remove line"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <ManualLineEditor
+                          lineId={line.id}
+                          line={line}
+                          patch={patchManual}
+                          shopCategories={shopCategories}
+                          categoriesLoading={categoriesLoading}
+                          onRemove={() => removeLine(line.id)}
+                          canRemove={false}
+                        />
+                      </div>
+                    }
+                  </div>
+                ))
+              }
             </div>
 
-            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-between gap-3">
-              <Button type="button" variant="outline" onClick={handleBack} className="w-24 rounded-xl shadow-sm">← Back</Button>
-              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">Next →</Button>
+            <div className="sticky bottom-0 z-30 flex items-center justify-between gap-3 border-t border-gray-100 bg-white/95 backdrop-blur-md px-4 py-4 sm:px-6">
+              <Button type="button" variant="outline" onClick={handleBack} className="w-24 rounded-xl shadow-sm">
+                ← Back
+              </Button>
+              <div className="hidden sm:block text-xs text-gray-500 tabular-nums">
+                {lines.length > 0 ? `${lines.length} items · ${formatPrice(step3Subtotal)}` : "Add items to continue"}
+              </div>
+              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">
+                Next →
+              </Button>
             </div>
           </section>
         </div>
