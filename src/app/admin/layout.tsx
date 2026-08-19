@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import NotificationBell from "@/components/layout/NotificationBell";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
 
@@ -125,6 +126,7 @@ const navSections: NavSection[] = [
     title: "System",
     items: [
       { label: "Security audit", href: "/admin/security/audit", icon: Shield },
+      { label: "Admin 2FA", href: "/admin/security/2fa", icon: Shield },
       { label: "Background jobs", href: "/admin/system/jobs", icon: Activity },
       { label: "Outbox DLQ", href: "/admin/system/outbox", icon: Inbox },
     ],
@@ -276,7 +278,7 @@ export default function AdminLayout({
   useEffect(() => {
     if (!_hasHydrated) return;
     if (!isAuthenticated || user?.role !== "admin") {
-      router.push("/");
+      router.push(loginUrlWithRedirect("/admin"));
     }
   }, [isAuthenticated, user, router, _hasHydrated]);
 

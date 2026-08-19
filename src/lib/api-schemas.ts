@@ -13,6 +13,22 @@ export const authWithUser = z
   })
   .passthrough();
 
+/** Login may complete immediately or require admin TOTP. */
+export const authLoginResponse = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    token: z.string().optional(),
+    data: z
+      .object({
+        user: doc.optional(),
+        requiresAdmin2FA: z.boolean().optional(),
+        pendingToken: z.string().optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
 export const authMe = z.object({
   status: z.string(),
   data: z.object({ user: doc }),
@@ -330,7 +346,41 @@ export const adminJobHealth = z.object({
   data: z.object({
     jobCount: z.number(),
     jobs: z.record(z.string(), z.unknown()),
+    infrastructure: z.unknown().optional(),
     timestamp: z.string(),
+  }),
+});
+
+export const adminTwoFactorStatus = z.object({
+  status: z.string(),
+  data: z.object({
+    enabled: z.boolean(),
+    required: z.boolean(),
+  }),
+});
+
+export const adminTwoFactorSetup = z.object({
+  status: z.string(),
+  data: z.object({
+    secret: z.string(),
+    otpauthUrl: z.string(),
+    qrDataUrl: z.string(),
+    alreadyEnabled: z.boolean().optional(),
+  }),
+});
+
+export const adminTwoFactorEnable = z.object({
+  status: z.string(),
+  data: z.object({
+    enabled: z.boolean(),
+    backupCodes: z.array(z.string()),
+  }),
+});
+
+export const adminTwoFactorDisable = z.object({
+  status: z.string(),
+  data: z.object({
+    enabled: z.boolean(),
   }),
 });
 

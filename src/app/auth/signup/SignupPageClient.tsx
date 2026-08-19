@@ -35,6 +35,7 @@ import { TurnstileField } from "@/components/auth/TurnstileField";
 import { useTurnstileToken } from "@/hooks/useTurnstileToken";
 import { ApiValidationError } from "@/lib/parseApi";
 import { safeRedirectPath } from "@/lib/safeRedirect";
+import AdminTwoFactorLoginStep from "@/components/auth/AdminTwoFactorLoginStep";
 
 const strongPassword = z
   .string()
@@ -97,7 +98,7 @@ export default function SignupPageClient({
     title: "Please wait",
     description: "We are preparing your secure authentication session.",
   });
-  const { signupStart, signupVerify, loginWithGoogle, isLoading } =
+  const { signupStart, signupVerify, loginWithGoogle, isLoading, admin2faPending } =
     useAuthStore();
   const turnstile = useTurnstileToken();
   const router = useRouter();
@@ -182,7 +183,11 @@ export default function SignupPageClient({
       description: "Securing Google sign-up and preparing your account.",
     });
     try {
-      await loginWithGoogle(credential, turnstileToken);
+      const result = await loginWithGoogle(credential, turnstileToken);
+      if (result.requiresAdmin2FA) {
+        toast("Enter the 6-digit code from your authenticator app.", { icon: "🔐" });
+        return;
+      }
       toast.success("Welcome! Your account is ready.");
       navigateAfterAuth();
     } catch (err: unknown) {
@@ -209,6 +214,30 @@ export default function SignupPageClient({
     : null;
 
   const isPending = isLoading;
+
+  if (embedded && admin2faPending) {
+    return null;
+  }
+
+  if (admin2faPending) {
+    return (
+      <>
+        <AdminTwoFactorLoginStep
+          embedded={embedded}
+          pendingToken={admin2faPending.pendingToken}
+          email={admin2faPending.email}
+          name={admin2faPending.name}
+          onSuccess={navigateAfterAuth}
+          onBack={() => useAuthStore.getState().clearAdmin2faPending()}
+        />
+        <AuthPendingOverlay
+          active={isLoading}
+          title={pendingCopy.title}
+          description={pendingCopy.description}
+        />
+      </>
+    );
+  }
 
   return (
     <>

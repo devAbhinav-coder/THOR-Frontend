@@ -18,8 +18,33 @@ type JobHealthEntry = {
   errorCount: number;
 };
 
+type InfraCheck = {
+  status: string;
+  message: string;
+};
+
+type InfrastructureReport = {
+  ready: boolean;
+  runMode: string;
+  checks: {
+    redis: InfraCheck;
+    email: InfraCheck;
+    workerProcess: InfraCheck;
+    abandonedCartRecovery: InfraCheck;
+    paymentRecovery: InfraCheck;
+  };
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  ok: 'text-emerald-700',
+  degraded: 'text-amber-700',
+  missing: 'text-red-700',
+  disabled: 'text-gray-500',
+};
+
 export default function AdminJobHealthPage() {
   const [jobs, setJobs] = useState<Record<string, JobHealthEntry>>({});
+  const [infrastructure, setInfrastructure] = useState<InfrastructureReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
@@ -30,6 +55,7 @@ export default function AdminJobHealthPage() {
     try {
       const res = await adminApi.getJobHealth();
       setJobs((res.data.jobs as Record<string, JobHealthEntry>) ?? {});
+      setInfrastructure((res.data.infrastructure as InfrastructureReport) ?? null);
       setFetchedAt(String(res.data.timestamp ?? new Date().toISOString()));
     } catch {
       setLoadError(true);
@@ -68,6 +94,33 @@ export default function AdminJobHealthPage() {
           </Button>
         }
       />
+
+      {!isLoading && !loadError && infrastructure && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            Infrastructure ({infrastructure.runMode})
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+            {(
+              [
+                ['Redis', infrastructure.checks.redis],
+                ['Email', infrastructure.checks.email],
+                ['Worker', infrastructure.checks.workerProcess],
+                ['Abandoned cart', infrastructure.checks.abandonedCartRecovery],
+                ['Payment recovery', infrastructure.checks.paymentRecovery],
+              ] as const
+            ).map(([label, check]) => (
+              <div key={label} className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2">
+                <p className="font-medium text-gray-800">{label}</p>
+                <p className={cn('mt-0.5 capitalize', STATUS_COLOR[check.status] ?? 'text-gray-600')}>
+                  {check.status}
+                </p>
+                <p className="text-gray-500 mt-1 leading-snug">{check.message}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!isLoading && !loadError && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

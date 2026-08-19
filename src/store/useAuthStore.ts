@@ -6,6 +6,45 @@ import { authApi } from '@/lib/api';
 /** Set after persist rehydrates — avoids TDZ if referenced before `useAuthStore` is assigned */
 let markAuthHydrated: () => void;
 
+export type LoginResult =
+  | { requiresAdmin2FA: false }
+  | {
+      requiresAdmin2FA: true;
+      pendingToken: string;
+      email?: string;
+      name?: string;
+    };
+
+export type Admin2FAPending = {
+  pendingToken: string;
+  email?: string;
+  name?: string;
+};
+
+function loginResultFromBody(
+  body: {
+    data?: {
+      user?: unknown;
+      requiresAdmin2FA?: boolean;
+      pendingToken?: string;
+    };
+  },
+  setPending: (pending: Admin2FAPending | null) => void,
+): LoginResult {
+  if (body.data?.requiresAdmin2FA && body.data.pendingToken) {
+    const preview = body.data.user as { email?: string; name?: string } | undefined;
+    const pending: Admin2FAPending = {
+      pendingToken: body.data.pendingToken,
+      email: preview?.email,
+      name: preview?.name,
+    };
+    setPending(pending);
+    return { requiresAdmin2FA: true, ...pending };
+  }
+  setPending(null);
+  return { requiresAdmin2FA: false };
+}
+
 interface AuthState {
   user: User | null;
   /** Kept null — access token lives in httpOnly cookie only (no localStorage). */
@@ -16,7 +55,11 @@ interface AuthState {
   hasSessionChecked: boolean;
   /** After zustand persist finishes reading localStorage — avoids admin redirect race on full page load */
   _hasHydrated: boolean;
-  login: (email: string, password: string, turnstileToken?: string) => Promise<void>;
+  /** Admin TOTP step — in-memory only (not persisted). */
+  admin2faPending: Admin2FAPending | null;
+  clearAdmin2faPending: () => void;
+  login: (email: string, password: string, turnstileToken?: string) => Promise<LoginResult>;
+  verifyAdmin2FA: (pendingToken: string, code: string) => Promise<void>;
   signupStart: (data: {
     name: string;
     email: string;
@@ -25,7 +68,7 @@ interface AuthState {
     turnstileToken?: string;
   }) => Promise<void>;
   signupVerify: (email: string, otp: string, turnstileToken?: string) => Promise<void>;
-  loginWithGoogle: (credential: string, turnstileToken?: string) => Promise<void>;
+  loginWithGoogle: (credential: string, turnstileToken?: string) => Promise<LoginResult>;
   /** Passwordless login after `/auth/verify-otp` with type `login`. */
   loginWithOtp: (email: string, otp: string, turnstileToken?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -44,16 +87,41 @@ export const useAuthStore = create<AuthState>()(
         isLoading: false,
         hasSessionChecked: false,
         _hasHydrated: false,
+        admin2faPending: null,
+
+        clearAdmin2faPending: () => set({ admin2faPending: null }),
 
         login: async (email, password, turnstileToken) => {
           set({ isLoading: true });
           try {
             const body = await authApi.login({ email, password, turnstileToken });
+            const result = loginResultFromBody(body, (pending) =>
+              set({ admin2faPending: pending }),
+            );
+            if (result.requiresAdmin2FA) return result;
             set({
               user: body.data.user,
               token: null,
               isAuthenticated: true,
               hasSessionChecked: true,
+              admin2faPending: null,
+            });
+            return result;
+          } finally {
+            set({ isLoading: false });
+          }
+        },
+
+        verifyAdmin2FA: async (pendingToken, code) => {
+          set({ isLoading: true });
+          try {
+            const body = await authApi.verifyAdmin2FA({ pendingToken, code });
+            set({
+              user: body.data.user,
+              token: null,
+              isAuthenticated: true,
+              hasSessionChecked: true,
+              admin2faPending: null,
             });
           } finally {
             set({ isLoading: false });
@@ -88,12 +156,18 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           try {
             const body = await authApi.google({ credential, turnstileToken });
+            const result = loginResultFromBody(body, (pending) =>
+              set({ admin2faPending: pending }),
+            );
+            if (result.requiresAdmin2FA) return result;
             set({
               user: body.data.user,
               token: null,
               isAuthenticated: true,
               hasSessionChecked: true,
+              admin2faPending: null,
             });
+            return result;
           } finally {
             set({ isLoading: false });
           }
@@ -125,6 +199,7 @@ export const useAuthStore = create<AuthState>()(
               token: null,
               isAuthenticated: false,
               hasSessionChecked: true,
+              admin2faPending: null,
             });
           }
         },

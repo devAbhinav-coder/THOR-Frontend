@@ -24,6 +24,10 @@ const ForgotPasswordClient = dynamic(
   () => import("@/app/auth/forgot-password/ForgotPasswordClient"),
   { ssr: false },
 );
+const AdminTwoFactorLoginStep = dynamic(
+  () => import("@/components/auth/AdminTwoFactorLoginStep"),
+  { ssr: false },
+);
 
 function AuthFormLoadingSpinner() {
   return (
@@ -72,6 +76,8 @@ export default function StoreAuthModal() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasSessionChecked = useAuthStore((s) => s.hasSessionChecked);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const admin2faPending = useAuthStore((s) => s.admin2faPending);
+  const clearAdmin2faPending = useAuthStore((s) => s.clearAdmin2faPending);
   const sessionReady = hasHydrated && hasSessionChecked;
 
   const view = parseAuthModalView(searchParams.get("auth"));
@@ -116,28 +122,44 @@ export default function StoreAuthModal() {
   }, [pathname, redirect, router, search]);
 
   useEffect(() => {
-    if (!view || !sessionReady || !isAuthenticated) return;
+    if (!view || !sessionReady || !isAuthenticated || admin2faPending) return;
     dismissModal();
-  }, [view, sessionReady, isAuthenticated, dismissModal]);
+  }, [view, sessionReady, isAuthenticated, admin2faPending, dismissModal]);
 
-  if (!view) return null;
+  if (!view && !admin2faPending) return null;
 
-  if (sessionReady && isAuthenticated) return null;
+  if (sessionReady && isAuthenticated && !admin2faPending) return null;
 
   const showFormLoading = !sessionReady || !formMounted;
+  const modalView = admin2faPending ? "login" : view!;
+  const modalTitle = admin2faPending ? "Admin two-factor" : TITLES[view!];
+  const modalSubtitle = admin2faPending
+    ? "Enter the code from your authenticator app"
+    : SUBTITLES[view!];
 
   return (
     <AuthModal
       open
-      view={view}
-      title={TITLES[view]}
-      subtitle={SUBTITLES[view]}
-      onClose={dismissModal}
+      view={modalView}
+      title={modalTitle}
+      subtitle={modalSubtitle}
+      onClose={admin2faPending ? clearAdmin2faPending : dismissModal}
     >
       <AuthGoogleShell>
         <div className="relative min-h-[160px]">
-          {showFormLoading && <AuthFormLoadingSpinner />}
-          {view === "login" && (
+          {showFormLoading && !admin2faPending && <AuthFormLoadingSpinner />}
+          {admin2faPending ? (
+            <AuthFormReadyGate onReady={onFormReady}>
+              <AdminTwoFactorLoginStep
+                embedded
+                pendingToken={admin2faPending.pendingToken}
+                email={admin2faPending.email}
+                name={admin2faPending.name}
+                onSuccess={onAuthSuccess}
+                onBack={clearAdmin2faPending}
+              />
+            </AuthFormReadyGate>
+          ) : view === "login" ? (
             <AuthFormReadyGate onReady={onFormReady}>
               <LoginPageClient
                 embedded
@@ -147,8 +169,7 @@ export default function StoreAuthModal() {
                 onForgotPassword={() => switchView("forgot")}
               />
             </AuthFormReadyGate>
-          )}
-          {view === "signup" && (
+          ) : view === "signup" ? (
             <AuthFormReadyGate onReady={onFormReady}>
               <SignupPageClient
                 embedded
@@ -156,8 +177,7 @@ export default function StoreAuthModal() {
                 onSwitchToLogin={() => switchView("login")}
               />
             </AuthFormReadyGate>
-          )}
-          {view === "forgot" && (
+          ) : view === "forgot" ? (
             <AuthFormReadyGate onReady={onFormReady}>
               <ForgotPasswordClient
                 embedded
@@ -165,7 +185,7 @@ export default function StoreAuthModal() {
                 onBackToLogin={() => switchView("login")}
               />
             </AuthFormReadyGate>
-          )}
+          ) : null}
         </div>
       </AuthGoogleShell>
     </AuthModal>

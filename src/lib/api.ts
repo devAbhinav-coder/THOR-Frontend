@@ -132,12 +132,18 @@ export const authApi = {
   signupVerify: (data: WithTurnstile<{ email: string; otp: string }>) =>
     unwrapAxios("auth.signupVerify", api.post("/auth/signup/verify", data), schemas.authWithUser),
   login: (data: WithTurnstile<{ email: string; password: string }>) =>
-    unwrapAxios("auth.login", api.post("/auth/login", data), schemas.authWithUser),
+    unwrapAxios("auth.login", api.post("/auth/login", data), schemas.authLoginResponse),
+  verifyAdmin2FA: (data: { pendingToken: string; code: string }) =>
+    unwrapAxios(
+      "auth.verifyAdmin2FA",
+      api.post("/auth/admin-2fa/verify", data),
+      schemas.authWithUser,
+    ),
   google: (data: WithTurnstile<{ credential: string }>) =>
     unwrapAxios(
       "auth.google",
       api.post("/auth/google", data, { timeout: 30000 }),
-      schemas.authWithUser,
+      schemas.authLoginResponse,
     ),
   forgotPassword: (data: WithTurnstile<{ email: string }>) =>
     unwrapAxios(
@@ -804,6 +810,22 @@ export const adminApi = {
     ),
   getJobHealth: () =>
     unwrapAxios("admin.jobHealth", api.get("/admin/jobs/health"), schemas.adminJobHealth),
+  getTwoFactorStatus: () =>
+    unwrapAxios("admin.twoFactorStatus", api.get("/admin/security/2fa/status"), schemas.adminTwoFactorStatus),
+  setupTwoFactor: () =>
+    unwrapAxios("admin.twoFactorSetup", api.post("/admin/security/2fa/setup"), schemas.adminTwoFactorSetup),
+  enableTwoFactor: (data: { secret: string; code: string }) =>
+    unwrapAxios(
+      "admin.twoFactorEnable",
+      api.post("/admin/security/2fa/enable", data),
+      schemas.adminTwoFactorEnable,
+    ),
+  disableTwoFactor: (data: { password: string; code: string }) =>
+    unwrapAxios(
+      "admin.twoFactorDisable",
+      api.post("/admin/security/2fa/disable", data),
+      schemas.adminTwoFactorDisable,
+    ),
   listOutboxDeadLetter: (type: string, params?: { limit?: number }) =>
     unwrapAxios(
       "admin.outboxDlq",

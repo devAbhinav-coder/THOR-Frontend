@@ -39,6 +39,7 @@ import {
   otpRetryAfterFromSuccess,
   parseApiClientError,
 } from "@/lib/authOtpClient";
+import AdminTwoFactorLoginStep from "@/components/auth/AdminTwoFactorLoginStep";
 import { safeRedirectPath } from "@/lib/safeRedirect";
 
 const loginSchema = z.object({
@@ -78,7 +79,14 @@ export default function LoginPageClient({
   onForgotPassword,
 }: LoginPageClientProps = {}) {
   const [showPassword, setShowPassword] = useState(false);
-  const { login, loginWithGoogle, loginWithOtp, isLoading } = useAuthStore();
+  const {
+    login,
+    loginWithGoogle,
+    loginWithOtp,
+    isLoading,
+    admin2faPending,
+    clearAdmin2faPending,
+  } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect =
@@ -193,7 +201,11 @@ export default function LoginPageClient({
       description: "Validating credentials and loading your account.",
     });
     try {
-      await login(data.email, data.password, turnstileToken);
+      const result = await login(data.email, data.password, turnstileToken);
+      if (result.requiresAdmin2FA) {
+        toast("Enter the 6-digit code from your authenticator app.", { icon: "🔐" });
+        return;
+      }
       toast.success("Welcome back!");
       navigateAfterAuth();
     } catch (err: unknown) {
@@ -215,7 +227,11 @@ export default function LoginPageClient({
       description: "Securing your Google sign-in and preparing your session.",
     });
     try {
-      await loginWithGoogle(credential, turnstileToken);
+      const result = await loginWithGoogle(credential, turnstileToken);
+      if (result.requiresAdmin2FA) {
+        toast("Enter the 6-digit code from your authenticator app.", { icon: "🔐" });
+        return;
+      }
       toast.success("Welcome back!");
       navigateAfterAuth();
     } catch (err: unknown) {
@@ -234,8 +250,29 @@ export default function LoginPageClient({
     : null;
 
   const isPending = isLoading || otpSending;
-  const showOtpCode = loginMode === "otp" && otpStep === "code";
-  const showOtpEmail = loginMode === "otp" && otpStep === "email";
+  const showAdmin2FA = !embedded && Boolean(admin2faPending);
+  const showOtpCode = !showAdmin2FA && loginMode === "otp" && otpStep === "code";
+  const showOtpEmail = !showAdmin2FA && loginMode === "otp" && otpStep === "email";
+
+  if (showAdmin2FA && admin2faPending) {
+    return (
+      <>
+        <AdminTwoFactorLoginStep
+          embedded={embedded}
+          pendingToken={admin2faPending.pendingToken}
+          email={admin2faPending.email}
+          name={admin2faPending.name}
+          onSuccess={navigateAfterAuth}
+          onBack={clearAdmin2faPending}
+        />
+        <AuthPendingOverlay active={isLoading} title={pendingCopy.title} description={pendingCopy.description} />
+      </>
+    );
+  }
+
+  if (embedded && admin2faPending) {
+    return null;
+  }
 
   return (
     <>
