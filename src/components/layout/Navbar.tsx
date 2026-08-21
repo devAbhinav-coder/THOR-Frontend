@@ -20,6 +20,7 @@ import {
   Package,
   Home,
   Store,
+  Sparkles,
   Gift,
   AlertTriangle,
 } from "lucide-react";
@@ -51,6 +52,7 @@ import { useNavDropdown } from "@/hooks/useNavDropdown";
 import { useMobileNavAutoHide } from "@/hooks/useMobileNavAutoHide";
 import { subscribeWindowScroll } from "@/lib/windowScrollBus";
 import {
+  isPremiumProductDetailPath,
   isStoreProductDetailPath,
   isStoreShopListingPath,
 } from "@/lib/storeRoutes";
@@ -164,7 +166,7 @@ export default function Navbar({
   }, [isMenuOpen, isAuthenticated, fetchUser]);
 
   const urlSearchForNav = useMemo(() => {
-    if (pathname.startsWith("/shop") || pathname.startsWith("/gifting")) {
+    if (pathname.startsWith("/shop") || pathname.startsWith("/premium")) {
       return (searchParams.get("search") || "").slice(0, 30);
     }
     return "";
@@ -244,9 +246,11 @@ export default function Navbar({
   const isCheckoutFlow =
     pathname === "/cart" || pathname.startsWith("/checkout");
   const isProductDetailPage = isStoreProductDetailPath(pathname);
+  const isPremiumProductPage = isPremiumProductDetailPath(pathname);
   const isShopListingPage = isStoreShopListingPath(pathname);
   /** Shop + PDP mobile: persistent search bar, cart/wishlist top-right (no search icon). */
   const showCommerceMobileShell = isProductDetailPage || isShopListingPage;
+  const navAutoHideAllViewports = isPremiumProductPage;
   const navAutoHideEnabled =
     !isCheckoutFlow &&
     !isMenuOpen &&
@@ -254,9 +258,32 @@ export default function Navbar({
     !showCommerceMobileShell;
   const navChromeVisible = useMobileNavAutoHide({
     enabled: navAutoHideEnabled,
+    allViewports: navAutoHideAllViewports,
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const syncOffset = () => {
+      const mobile = window.matchMedia("(max-width: 1023px)").matches;
+      const navHidden =
+        navAutoHideEnabled &&
+        !navChromeVisible &&
+        (navAutoHideAllViewports || mobile);
+      root.style.setProperty(
+        "--store-sticky-nav-offset",
+        navHidden ? "0px" : "4.25rem",
+      );
+    };
+    syncOffset();
+    const mq = window.matchMedia("(max-width: 1023px)");
+    mq.addEventListener("change", syncOffset);
+    return () => mq.removeEventListener("change", syncOffset);
+  }, [navAutoHideEnabled, navAutoHideAllViewports, navChromeVisible]);
   const showMobileBottomNav =
-    !isCheckoutFlow && !isProductDetailPage && !isShopListingPage;
+    !isCheckoutFlow &&
+    !isProductDetailPage &&
+    !isPremiumProductPage &&
+    !isShopListingPage;
 
   const handleWishlistPress = useCallback(() => {
     if (isAuthedStable) {
@@ -277,11 +304,11 @@ export default function Navbar({
         activeKey: "shop",
       },
       {
-        id: "gifting",
-        label: "Gifting",
-        Icon: Gift,
-        href: "/gifting",
-        activeKey: "gifting",
+        id: "premium",
+        label: "Premium",
+        Icon: Sparkles,
+        href: "/premium",
+        activeKey: "premium",
       },
       {
         id: "cart",
@@ -313,11 +340,18 @@ export default function Navbar({
     <>
       <BrowserNotificationPrompt />
       <div
-        className={navMobileFlowSpacerClass(navAutoHideEnabled)}
+        className={navMobileFlowSpacerClass(
+          navAutoHideEnabled,
+          navAutoHideAllViewports,
+        )}
         aria-hidden='true'
       />
       <div
-        className={navStickyShellClass(navChromeVisible, navAutoHideEnabled)}
+        className={navStickyShellClass(
+          navChromeVisible,
+          navAutoHideEnabled,
+          navAutoHideAllViewports,
+        )}
         data-store-sticky-nav
       >
         <header className={navShellClass(isScrolled)}>
@@ -428,10 +462,10 @@ export default function Navbar({
                 </div>
 
                 <Link
-                  href='/gifting'
-                  className={navLinkClass(navActive.gifting)}
+                  href='/premium'
+                  className={navLinkClass(navActive.premium)}
                 >
-                  Gifting
+                  Premium
                 </Link>
                 <Link
                   href='/about'
@@ -449,7 +483,7 @@ export default function Navbar({
 
               <div className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'>
                 <StoreSearchAutocomplete
-                  scope={navActive.gifting ? "gifting" : "shop"}
+                  scope="shop"
                   variant='nav-dark'
                   searchInstance='desktop'
                   urlSearch={urlSearchForNav}
@@ -622,7 +656,7 @@ export default function Navbar({
                 className='border-t border-white/10 pb-3 pt-3 lg:hidden'
               >
                 <StoreSearchAutocomplete
-                  scope={navActive.gifting ? "gifting" : "shop"}
+                  scope="shop"
                   variant='nav-mobile'
                   searchInstance='mobile'
                   urlSearch={urlSearchForNav}
@@ -705,13 +739,13 @@ export default function Navbar({
                 </Link>
                 <Link
                   onClick={() => setIsMenuOpen(false)}
-                  href='/gifting'
+                  href='/premium'
                   className='group flex items-center gap-3.5 border border-transparent px-3 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-white transition-all hover:border-[#c5a059]/40 hover:bg-navy-900'
                 >
                   <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
-                    <Gift className='w-4 h-4' />
+                    <Sparkles className='w-4 h-4' />
                   </div>
-                  Bespoke Gifting
+                  Premium Edit
                 </Link>
                 <Link
                   onClick={() => setIsMenuOpen(false)}

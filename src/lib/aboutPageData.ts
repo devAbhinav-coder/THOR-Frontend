@@ -250,9 +250,9 @@ function buildStaticInternalLinks(): AboutInternalLink[] {
       group: "shop",
     },
     {
-      href: "/gifting",
-      label: "Handmade & corporate gifting",
-      description: "Handmade gifts, corporate sets, and curated hampers.",
+      href: "/premium",
+      label: "Premium saree edit",
+      description: "Handwoven silks and heritage weaves curated for the discerning few.",
       group: "shop",
     },
     {

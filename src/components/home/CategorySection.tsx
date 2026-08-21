@@ -12,7 +12,7 @@ import { categoryApi } from "@/lib/api";
 import { isGiftCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import {
-  resolveGiftingCard,
+  resolvePremiumCard,
   resolveSaleCard,
 } from "@/lib/shopSpecialCollections";
 import { Category, HomeExploreHouse } from "@/types";
@@ -121,9 +121,9 @@ export default function CategorySection({
     [exploreHouseImages],
   );
 
-  const giftingCard = useMemo(
-    () => resolveGiftingCard(categories, exploreHouseImages),
-    [categories, exploreHouseImages],
+  const premiumCard = useMemo(
+    () => resolvePremiumCard(exploreHouseImages),
+    [exploreHouseImages],
   );
 
   const showcaseCards = useMemo<ExploreHouseCard[]>(() => {
@@ -139,8 +139,8 @@ export default function CategorySection({
       };
     });
 
-    return [saleCard, ...catalogCards, giftingCard];
-  }, [filteredCategories, saleCard, giftingCard]);
+    return [saleCard, ...catalogCards, premiumCard];
+  }, [filteredCategories, saleCard, premiumCard]);
 
   if (loading) return <CategorySectionSkeleton />;
 

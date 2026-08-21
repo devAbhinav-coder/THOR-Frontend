@@ -998,6 +998,17 @@ export const giftingProductsList = z.object({
   data: z.object({ products: z.array(doc) }).passthrough().optional(),
 }).passthrough();
 
+export const premiumProductsList = z.object({
+  status: z.string(),
+  pagination: z.any().optional(),
+  data: z.object({ products: z.array(doc) }).passthrough().optional(),
+}).passthrough();
+
+export const premiumProductSingle = z.object({
+  status: z.string(),
+  data: z.object({ product: doc }).passthrough().optional(),
+}).passthrough();
+
 export const giftingRequestsList = z.object({
   status: z.string(),
   pagination: z.any().optional(),

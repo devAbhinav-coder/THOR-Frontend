@@ -1229,6 +1229,21 @@ export const giftingApi = {
     unwrapAxios("gifting.updateRequest", api.patch(`/gifting/requests/${id}`, data), schemas.giftingRequestSingle),
 };
 
+export const premiumApi = {
+  getProducts: (params?: Record<string, string | number>) =>
+    unwrapAxios(
+      "premium.getProducts",
+      api.get("/premium/products", { params }),
+      schemas.premiumProductsList,
+    ),
+  getBySlug: (slug: string) =>
+    unwrapAxios(
+      "premium.getBySlug",
+      api.get(`/premium/products/${encodeURIComponent(slug)}`),
+      schemas.premiumProductSingle,
+    ),
+};
+
 export const raniCareApi = {
   getStatus: () =>
     unwrapAxios("raniCare.status", api.get("/rani-care/status"), schemas.raniCareStatus),

@@ -39,6 +39,7 @@
     --input: 220 13% 91%;
     --ring: 40 48% 56%;
     --radius: 0.5rem;
+    --store-sticky-nav-offset: 4.25rem;
   }
 
   .dark {
@@ -723,7 +724,26 @@ html.lenis body {
   }
 }
 
+.premium-fade-in-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 0.8s ease-out,
+    transform 0.8s ease-out;
+}
+
+.premium-fade-in-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .premium-fade-in-up {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
   .journal-hover-lift:hover {
     transform: none;
   }

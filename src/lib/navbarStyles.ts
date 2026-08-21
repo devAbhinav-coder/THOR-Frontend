@@ -12,8 +12,22 @@ export function navShellClass(scrolled: boolean) {
  * Sticky/fixed shell for header.
  * Auto-hide mobile routes use fixed + translateY so hide/show never changes document height (no scrollY feedback loop).
  */
-export function navStickyShellClass(visible: boolean, autoHide = false) {
+export function navStickyShellClass(
+  visible: boolean,
+  autoHide = false,
+  autoHideAllViewports = false,
+) {
   if (autoHide) {
+    if (autoHideAllViewports) {
+      return cn(
+        "fixed inset-x-0 top-0 z-50",
+        "transition-transform duration-300 ease-out motion-reduce:transition-none",
+        visible ?
+          "translate-y-0"
+        : "-translate-y-full pointer-events-none",
+      );
+    }
+
     return cn(
       "fixed inset-x-0 top-0 z-50 lg:sticky",
       "transition-transform duration-300 ease-out motion-reduce:transition-none",
@@ -27,9 +41,15 @@ export function navStickyShellClass(visible: boolean, autoHide = false) {
   return cn("sticky top-0 z-50 lg:overflow-visible");
 }
 
-/** Reserves header height in flow when the bar is fixed (auto-hide mobile routes). */
-export function navMobileFlowSpacerClass(autoHide: boolean) {
-  return autoHide ? "h-[4.25rem] shrink-0 lg:hidden" : "hidden";
+/** Reserves header height in flow when the bar is fixed (auto-hide routes). */
+export function navMobileFlowSpacerClass(
+  autoHide: boolean,
+  allViewports = false,
+) {
+  if (!autoHide) return "hidden";
+  return allViewports ?
+      "h-[4.25rem] shrink-0"
+    : "h-[4.25rem] shrink-0 lg:hidden";
 }
 
 export function navLinkClass(active: boolean) {

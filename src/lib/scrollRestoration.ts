@@ -86,7 +86,7 @@ export function shouldResetScrollOnForwardNav(
     return false;
   }
 
-  if (prevPath.startsWith("/gifting") && nextPath.startsWith("/gifting")) {
+  if (prevPath.startsWith("/premium") && nextPath.startsWith("/premium")) {
     return false;
   }
 

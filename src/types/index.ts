@@ -95,6 +95,24 @@ export interface Product {
   isCustomizable?: boolean;
   minOrderQty?: number;
   occasions?: string[];
+  // Premium collection
+  isPremium?: boolean;
+  premiumSlug?: string;
+  premiumSubtitle?: string;
+  craftNote?: string;
+  weaveHours?: number;
+  premiumEditorialOpen?: {
+    title?: string;
+    fields: Array<{ label: string; value: string }>;
+    note: string;
+  };
+  premiumEditorialClose?: {
+    title?: string;
+    fields: Array<{ label: string; value: string }>;
+    note: string;
+  };
+  premiumHeroImage?: ProductImage;
+  sortOrderPremium?: number;
   customFields?: {
     _id: string;
     label: string;

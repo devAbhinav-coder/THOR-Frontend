@@ -27,7 +27,7 @@ import type { Category } from "@/types";
 const FALLBACK_IMAGES: Record<string, string> = {
   saree: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=85",
   suit: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=85",
-  gift: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=600&q=85",
+  premium: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85",
   leheng: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85",
   default: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=85",
 };
@@ -61,12 +61,12 @@ const DEFAULT_CATEGORY_CARDS = [
     href: "/shop/collections/salwar-suits",
   },
   {
-    _id: "gifting-default",
-    name: "Luxury Gifting",
-    slug: "gifting",
-    productCount: 12,
-    image: FALLBACK_IMAGES.gift,
-    href: "/gifting",
+    _id: "premium-default",
+    name: "Premium Edit",
+    slug: "premium",
+    productCount: 4,
+    image: FALLBACK_IMAGES.premium,
+    href: "/premium",
   },
   {
     _id: "lehengas-default",
@@ -121,14 +121,14 @@ export default function NotFoundClient() {
             productCount: (cat as any).productCount ?? 0,
           }));
 
-          // Always append Gifting card if not present
+          // Always append Premium card if not present
           formatted.push({
-            _id: "gifting-card",
-            name: "Luxury Gifting",
-            slug: "gifting",
-            image: FALLBACK_IMAGES.gift,
-            href: "/gifting",
-            productCount: 12,
+            _id: "premium-card",
+            name: "Premium Edit",
+            slug: "premium",
+            image: FALLBACK_IMAGES.premium,
+            href: "/premium",
+            productCount: 4,
           });
 
           setCategories(formatted);

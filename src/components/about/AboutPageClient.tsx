@@ -7,7 +7,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   ChevronRight,
-  Gift,
   Sparkles,
   ShoppingBag,
 } from "lucide-react";
@@ -490,9 +489,9 @@ export default function AboutPageClient({
                 <ShoppingBag className="h-4 w-4" aria-hidden />
                 Explore the collection
               </Link>
-              <Link href="/gifting" className={cn(aboutPageStyles.ctaOutlineOnDark, "min-w-[220px]")}>
-                <Gift className="h-4 w-4" aria-hidden />
-                Shop gifting
+              <Link href="/premium" className={cn(aboutPageStyles.ctaOutlineOnDark, "min-w-[220px]")}>
+                <Sparkles className="h-4 w-4" aria-hidden />
+                Premium edit
               </Link>
             </div>
           </div>

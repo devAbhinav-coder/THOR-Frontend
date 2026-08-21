@@ -64,5 +64,5 @@ export const authGhostLink = (embedded?: boolean) =>
 export const authFooterLinks = [
   { label: "Craftsmanship", href: "/about" },
   { label: "Sustainability", href: "/about" },
-  { label: "Bespoke", href: "/gifting" },
+  { label: "Premium", href: "/premium" },
 ] as const;

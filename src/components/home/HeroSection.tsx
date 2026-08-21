@@ -235,10 +235,10 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                     {slide.ctaText || "Explore collection"}
                   </Link>
                   <Link
-                    href={slide.secondaryCtaLink || "/gifting"}
+                    href={slide.secondaryCtaLink || "/premium"}
                     className='text-[11px] font-medium uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white sm:text-xs'
                   >
-                    {slide.secondaryCtaText || "Curated gifting"}
+                    {slide.secondaryCtaText || "Premium edit"}
                   </Link>
                 </div>
               </div>

@@ -43,6 +43,7 @@ import ProductColorVariantEditor, {
 } from "@/components/admin/ProductColorVariantEditor";
 import { evaluateProductSeo } from "@/lib/productSeoChecklist";
 import { fetchAdminCatalogCategories } from "@/lib/adminCatalog";
+import type { PremiumEditorialPanel } from "@/lib/premiumCollectionData";
 import {
   AdminOfferModal,
   AdminOfferSection,
@@ -55,6 +56,28 @@ import {
 
 const MAX_PRODUCT_IMAGES = 20;
 const PRODUCT_FORM_ID = "admin-product-form";
+
+function defaultPremiumEditorialOpen(): PremiumEditorialPanel {
+  return {
+    title: "",
+    fields: [
+      { label: "Body", value: "" },
+      { label: "Weave", value: "" },
+    ],
+    note: "",
+  };
+}
+
+function defaultPremiumEditorialClose(): PremiumEditorialPanel {
+  return {
+    title: "",
+    fields: [
+      { label: "Detail", value: "" },
+      { label: "Finish", value: "" },
+    ],
+    note: "",
+  };
+}
 
 interface Props {
   product: Product | null;
@@ -103,10 +126,27 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     tags: "",
     isFeatured: false,
     isActive: true,
+    isPremium: false,
+    premiumSlug: "",
+    premiumSubtitle: "",
+    craftNote: "",
+    weaveHours: "",
+    sortOrderPremium: "0",
     seoTitle: "",
     seoDescription: "",
     hsnCode: "",
   });
+
+  const [editorialOpen, setEditorialOpen] = useState<PremiumEditorialPanel>(
+    defaultPremiumEditorialOpen,
+  );
+  const [editorialClose, setEditorialClose] = useState<PremiumEditorialPanel>(
+    defaultPremiumEditorialClose,
+  );
+  const [premiumHeroFile, setPremiumHeroFile] = useState<File | null>(null);
+  const [premiumHeroPreview, setPremiumHeroPreview] = useState<string | null>(
+    null,
+  );
 
   const toggleOccasion = (occasion: string) => {
     setForm((prev) => {
@@ -147,6 +187,12 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         tags: "",
         isFeatured: false,
         isActive: true,
+        isPremium: false,
+        premiumSlug: "",
+        premiumSubtitle: "",
+        craftNote: "",
+        weaveHours: "",
+        sortOrderPremium: "0",
         seoTitle: "",
         seoDescription: "",
         hsnCode: "",
@@ -154,6 +200,10 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       setColorGroups([emptyColorGroup()]);
       setDetailsKeysText("");
       setDetailsValuesText("");
+      setEditorialOpen(defaultPremiumEditorialOpen());
+      setEditorialClose(defaultPremiumEditorialClose());
+      setPremiumHeroFile(null);
+      setPremiumHeroPreview(null);
       return;
     }
     setForm({
@@ -169,6 +219,13 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       tags: (p.tags || []).join(", "),
       isFeatured: p.isFeatured ?? false,
       isActive: p.isActive !== undefined ? p.isActive : true,
+      isPremium: p.isPremium ?? false,
+      premiumSlug: p.premiumSlug || "",
+      premiumSubtitle: p.premiumSubtitle || "",
+      craftNote: p.craftNote || "",
+      weaveHours: p.weaveHours != null ? String(p.weaveHours) : "",
+      sortOrderPremium:
+        p.sortOrderPremium != null ? String(p.sortOrderPremium) : "0",
       seoTitle: p.seoTitle || "",
       seoDescription: p.seoDescription || "",
       hsnCode: p.hsnCode || "",
@@ -177,6 +234,32 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     const { keysText, valuesText } = bulkTextFromPairs(p.productDetails || []);
     setDetailsKeysText(keysText);
     setDetailsValuesText(valuesText);
+    setEditorialOpen(
+      p.premiumEditorialOpen ?
+        {
+          title: p.premiumEditorialOpen.title ?? "",
+          fields:
+            p.premiumEditorialOpen.fields?.length ?
+              p.premiumEditorialOpen.fields
+            : defaultPremiumEditorialOpen().fields,
+          note: p.premiumEditorialOpen.note ?? "",
+        }
+      : defaultPremiumEditorialOpen(),
+    );
+    setEditorialClose(
+      p.premiumEditorialClose ?
+        {
+          title: p.premiumEditorialClose.title ?? "",
+          fields:
+            p.premiumEditorialClose.fields?.length ?
+              p.premiumEditorialClose.fields
+            : defaultPremiumEditorialClose().fields,
+          note: p.premiumEditorialClose.note ?? "",
+        }
+      : defaultPremiumEditorialClose(),
+    );
+    setPremiumHeroFile(null);
+    setPremiumHeroPreview(p.premiumHeroImage?.url ?? null);
   }, []);
 
   useEffect(() => {
@@ -386,6 +469,39 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       fd.append("fabric", form.fabric);
       fd.append("isFeatured", String(form.isFeatured));
       fd.append("isActive", String(form.isActive));
+      fd.append("isPremium", String(form.isPremium));
+      if (form.premiumSlug.trim()) fd.append("premiumSlug", form.premiumSlug.trim());
+      if (form.premiumSubtitle.trim()) {
+        fd.append("premiumSubtitle", form.premiumSubtitle.trim());
+      }
+      if (form.craftNote.trim()) fd.append("craftNote", form.craftNote.trim());
+      if (form.weaveHours.trim()) fd.append("weaveHours", form.weaveHours.trim());
+      fd.append("sortOrderPremium", form.sortOrderPremium || "0");
+      if (form.isPremium) {
+        fd.append(
+          "premiumEditorialOpen",
+          JSON.stringify({
+            title: editorialOpen.title?.trim() || undefined,
+            fields: editorialOpen.fields.filter(
+              (f) => f.label.trim() || f.value.trim(),
+            ),
+            note: editorialOpen.note.trim(),
+          }),
+        );
+        fd.append(
+          "premiumEditorialClose",
+          JSON.stringify({
+            title: editorialClose.title?.trim() || undefined,
+            fields: editorialClose.fields.filter(
+              (f) => f.label.trim() || f.value.trim(),
+            ),
+            note: editorialClose.note.trim(),
+          }),
+        );
+      }
+      if (premiumHeroFile) {
+        fd.append("premiumHeroImage", premiumHeroFile);
+      }
       fd.append("seoTitle", form.seoTitle);
       fd.append("seoDescription", form.seoDescription);
       fd.append("hsnCode", form.hsnCode);
@@ -733,7 +849,211 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               label="Active / visible"
               description="Product appears on shop when on"
             />
+            <AdminOfferSwitch
+              checked={form.isPremium}
+              onChange={(v) => set("isPremium", v)}
+              label="Premium collection"
+              description="Shows on /premium with editorial layout"
+            />
           </div>
+
+          {form.isPremium && (
+            <div className="grid gap-4 rounded-xl border border-amber-100 bg-amber-50/40 p-4 sm:grid-cols-2">
+              <AdminOfferField label="Premium URL slug">
+                <input
+                  className={adminOfferInputCls}
+                  value={form.premiumSlug}
+                  onChange={(e) => set("premiumSlug", e.target.value)}
+                  placeholder="rani-silk-rose-gold"
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Sort order">
+                <input
+                  className={adminOfferInputCls}
+                  type="number"
+                  min={0}
+                  value={form.sortOrderPremium}
+                  onChange={(e) => set("sortOrderPremium", e.target.value)}
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Premium subtitle">
+                <input
+                  className={adminOfferInputCls}
+                  value={form.premiumSubtitle}
+                  onChange={(e) => set("premiumSubtitle", e.target.value)}
+                  placeholder="Handwoven Silk"
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Weave hours (Atelier headline)">
+                <input
+                  className={adminOfferInputCls}
+                  type="number"
+                  min={0}
+                  value={form.weaveHours}
+                  onChange={(e) => set("weaveHours", e.target.value)}
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Atelier craft note" className="sm:col-span-2">
+                <textarea
+                  className={adminOfferTextareaCls}
+                  rows={3}
+                  value={form.craftNote}
+                  onChange={(e) => set("craftNote", e.target.value)}
+                  placeholder="Shown in the Atelier note section below the editorial gallery…"
+                />
+              </AdminOfferField>
+
+              <AdminOfferField label="Premium hero image" className="sm:col-span-2">
+                <p className="mb-2 text-xs text-gray-500">
+                  Full-screen hero on the product page. Separate from gallery images — used in the carousel with the first gallery shot.
+                </p>
+                {premiumHeroPreview ?
+                  <div className="relative mb-3 aspect-[3/4] max-w-[200px] overflow-hidden rounded-lg border border-amber-200/80 bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={premiumHeroPreview}
+                      alt="Premium hero preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                : null}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-amber-900"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setPremiumHeroFile(file);
+                    setPremiumHeroPreview(URL.createObjectURL(file));
+                  }}
+                />
+              </AdminOfferField>
+
+              <div className="sm:col-span-2 space-y-6 border-t border-amber-200/60 pt-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
+                    First editorial row (beside 1st gallery image)
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Body, Weave labels + note — shown next to the first image after hero.
+                  </p>
+                </div>
+                <AdminOfferField label="Section title (optional)">
+                  <input
+                    className={adminOfferInputCls}
+                    value={editorialOpen.title ?? ""}
+                    onChange={(e) =>
+                      setEditorialOpen((p) => ({ ...p, title: e.target.value }))
+                    }
+                  />
+                </AdminOfferField>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {editorialOpen.fields.map((field, i) => (
+                    <div key={i} className="grid gap-2 sm:col-span-1">
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Label (e.g. Body)"
+                        value={field.label}
+                        onChange={(e) =>
+                          setEditorialOpen((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, label: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Value"
+                        value={field.value}
+                        onChange={(e) =>
+                          setEditorialOpen((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, value: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <AdminOfferField label="Editorial note">
+                  <textarea
+                    className={adminOfferTextareaCls}
+                    rows={3}
+                    value={editorialOpen.note}
+                    onChange={(e) =>
+                      setEditorialOpen((p) => ({ ...p, note: e.target.value }))
+                    }
+                  />
+                </AdminOfferField>
+
+                <div className="border-t border-amber-200/60 pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
+                    Last editorial row (beside final image)
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Same layout as the first row — title, labels + values, and editorial note beside the last gallery image.
+                  </p>
+                </div>
+                <AdminOfferField label="Section title (optional)">
+                  <input
+                    className={adminOfferInputCls}
+                    value={editorialClose.title ?? ""}
+                    onChange={(e) =>
+                      setEditorialClose((p) => ({ ...p, title: e.target.value }))
+                    }
+                    placeholder="e.g. The pallu"
+                  />
+                </AdminOfferField>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {editorialClose.fields.map((field, i) => (
+                    <div key={i} className="grid gap-2 sm:col-span-1">
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Label (e.g. Pallu)"
+                        value={field.label}
+                        onChange={(e) =>
+                          setEditorialClose((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, label: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Value"
+                        value={field.value}
+                        onChange={(e) =>
+                          setEditorialClose((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, value: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <AdminOfferField label="Editorial note">
+                  <textarea
+                    className={adminOfferTextareaCls}
+                    rows={3}
+                    value={editorialClose.note}
+                    onChange={(e) =>
+                      setEditorialClose((p) => ({ ...p, note: e.target.value }))
+                    }
+                  />
+                </AdminOfferField>
+              </div>
+            </div>
+          )}
         </AdminOfferSection>
 
         <AdminOfferSection

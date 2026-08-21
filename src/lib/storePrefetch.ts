@@ -152,3 +152,48 @@ export async function fetchGiftingProductsFirstPageServer(): Promise<GiftingProd
     return null;
   }
 }
+
+type PremiumProductsEnvelope = {
+  status: string;
+  data?: { products?: Product[] };
+};
+
+/** Premium collection grid — all active premium products. */
+export async function fetchPremiumProductsServer(): Promise<Product[] | null> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  try {
+    const qs = new URLSearchParams({ page: "1", limit: "48" });
+    const res = await serverFetch(`${base}/premium/products?${qs}`, {
+      next: { revalidate: 60 },
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as PremiumProductsEnvelope;
+    const list = json?.data?.products;
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Single premium PDP payload. */
+export async function fetchPremiumProductBySlugServer(
+  slug: string,
+): Promise<Product | null> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  const safe = encodeURIComponent(slug);
+  try {
+    const res = await serverFetch(`${base}/premium/products/${safe}`, {
+      next: { revalidate: 60 },
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { product?: Product } };
+    const p = json?.data?.product;
+    return p && typeof p === "object" ? p : null;
+  } catch {
+    return null;
+  }
+}

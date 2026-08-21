@@ -28,7 +28,7 @@ const SareeCollections = dynamic(() => import("@/components/home/SareeCollection
 const HomeMiddleBanner = dynamic(() => import("@/components/home/HomeMiddleBanner"));
 const HomeBanner = dynamic(() => import("@/components/home/HomeBanner"));
 const ExploreCollection = dynamic(() => import("@/components/home/ExploreCollection"));
-const HomeGiftShowcase = dynamic(() => import("@/components/home/HomeGiftShowcase"));
+import HomePremiumShowcase from "@/components/home/HomePremiumShowcase";
 const WhyChooseUs = dynamic(() => import("@/components/home/WhyChooseUs"));
 const BlogBanner = dynamic(() => import("@/components/home/BlogBanner"));
 const Testimonials = dynamic(() => import("@/components/home/Testimonials"));
@@ -300,7 +300,7 @@ export default async function HomePage() {
       <FeaturedProducts initialProducts={featuredProducts} />
       <HomeBanner initialSettings={storefrontSettings} />
       <ExploreCollection />
-      <HomeGiftShowcase initialSettings={storefrontSettings} />
+      <HomePremiumShowcase />
       <WhyChooseUs />
       <BlogBanner initialBlogs={latestBlogs} />
       <Testimonials />
