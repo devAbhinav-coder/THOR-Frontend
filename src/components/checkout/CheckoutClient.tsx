@@ -63,9 +63,11 @@ import {
   heritageSummaryCard,
 } from "@/components/checkout/checkoutHeritageTheme";
 import {
+  buildCheckoutMetaUserData,
   getMetaBrowserIdentifiers,
   trackPurchase,
   trackInitiateCheckout,
+  trackAddPaymentInfo,
 } from "@/lib/metaPixel";
 import { getMarketingAttributionForCheckout } from "@/lib/marketingAttribution";
 import { getShopSessionKey } from "@/lib/shopSession";
@@ -731,18 +733,61 @@ export default function CheckoutClient() {
 
   /* Meta Pixel & GA4: Track InitiateCheckout / begin_checkout */
   const hasTrackedCheckout = useRef(false);
+  const hasTrackedPaymentInfo = useRef(false);
+
+  const fireInitiateCheckoutTracking = useCallback(
+    (userData?: ReturnType<typeof buildCheckoutMetaUserData>) => {
+      if (hasTrackedCheckout.current || total <= 0) return;
+      const numItems =
+        existingOrder ?
+          existingOrder.items?.length || 1
+        : buyNowItem ? 1
+        : cart?.items?.length || 1;
+      const trackingItems =
+        existingOrder ? existingOrder.items
+        : buyNowItem ? [buyNowItem]
+        : cart?.items || [];
+
+      trackInitiateCheckout(total, numItems, userData);
+      if (trackingItems.length > 0) {
+        trackGaBeginCheckout(total, trackingItems);
+      }
+
+      hasTrackedCheckout.current = true;
+    },
+    [total, existingOrder, buyNowItem, cart?.items],
+  );
+
   useEffect(() => {
     if (hasTrackedCheckout.current || total <= 0) return;
-    const numItems = existingOrder ? existingOrder.items?.length || 1 : buyNowItem ? 1 : cart?.items?.length || 1;
-    const trackingItems = existingOrder ? existingOrder.items : buyNowItem ? [buyNowItem] : cart?.items || [];
-    
-    trackInitiateCheckout(total, numItems);
-    if (trackingItems.length > 0) {
-      trackGaBeginCheckout(total, trackingItems);
+    if (existingOrder) {
+      fireInitiateCheckoutTracking(
+        buildCheckoutMetaUserData({
+          email: user?.email,
+          name: user?.name,
+          phone: user?.phone,
+          externalId: user?._id,
+        }),
+      );
+      return;
     }
-    
-    hasTrackedCheckout.current = true;
-  }, [total, existingOrder, buyNowItem, cart?.items]);
+    if (isAuthenticated && user) {
+      fireInitiateCheckoutTracking(
+        buildCheckoutMetaUserData({
+          email: user.email,
+          name: user.name,
+          phone: user.phone,
+          externalId: user._id,
+        }),
+      );
+    }
+  }, [
+    total,
+    existingOrder,
+    isAuthenticated,
+    user,
+    fireInitiateCheckoutTracking,
+  ]);
 
   const showCheckoutWizard = !existingOrder;
 
@@ -977,8 +1022,24 @@ export default function CheckoutClient() {
   const goToPaymentStep = useCallback(async () => {
     const ok = await validateAddressFields();
     if (!ok) return;
+    const values = getValues();
+    const checkoutUserData = buildCheckoutMetaUserData({
+      email: user?.email,
+      name: values.name,
+      phone: values.phone,
+      city: values.city,
+      state: values.state,
+      pincode: values.pincode,
+      country: values.country,
+      externalId: user?._id,
+    });
+    fireInitiateCheckoutTracking(checkoutUserData);
+    if (!hasTrackedPaymentInfo.current) {
+      trackAddPaymentInfo(checkoutUserData);
+      hasTrackedPaymentInfo.current = true;
+    }
     setCheckoutStep(2);
-  }, [validateAddressFields]);
+  }, [validateAddressFields, getValues, fireInitiateCheckoutTracking, user]);
 
   const goToReviewStep = useCallback(async () => {
     const ok = await validateAddressFields();

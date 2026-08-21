@@ -20,6 +20,7 @@ import { hasInStockVariant } from "@/lib/productStock";
 import { resolveShopCardImage } from "@/lib/pdpImages";
 import { isInStockForColor, shopProductHref } from "@/lib/shopProductListing";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
+import { trackAddToWishlist } from "@/lib/metaPixel";
 
 interface ShopCollectionCardProps {
   product: Product;
@@ -37,7 +38,7 @@ function ShopCollectionCardInner({
   className,
 }: ShopCollectionCardProps) {
   const [primaryImageError, setPrimaryImageError] = useState(false);
-  const { toggleWishlist } = useWishlistStore();
+  const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
   const inWishlist = useWishlistUiState(product._id);
@@ -100,9 +101,11 @@ function ShopCollectionCardInner({
         );
         return;
       }
+      const alreadySaved = isInWishlist(product._id);
       await toggleWishlist(product._id, product);
+      if (!alreadySaved) trackAddToWishlist(product);
     },
-    [isAuthenticated, product, router, toggleWishlist],
+    [isAuthenticated, isInWishlist, product, router, toggleWishlist],
   );
 
   return (

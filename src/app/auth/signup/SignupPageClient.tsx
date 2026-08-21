@@ -36,6 +36,7 @@ import { useTurnstileToken } from "@/hooks/useTurnstileToken";
 import { ApiValidationError } from "@/lib/parseApi";
 import { safeRedirectPath } from "@/lib/safeRedirect";
 import AdminTwoFactorLoginStep from "@/components/auth/AdminTwoFactorLoginStep";
+import { trackCompleteRegistration } from "@/lib/metaPixel";
 
 const strongPassword = z
   .string()
@@ -156,6 +157,14 @@ export default function SignupPageClient({
     });
     try {
       await signupVerify(pendingEmail, data.otp, turnstileToken);
+      const signupValues = form.getValues();
+      trackCompleteRegistration({
+        email: pendingEmail,
+        phone: signupValues.phone,
+        firstName: signupValues.name?.trim().split(/\s+/)[0],
+        lastName: signupValues.name?.trim().split(/\s+/).slice(1).join(" ") || undefined,
+        country: "India",
+      });
       toast.success("Account verified. Welcome to The House of Rani!");
       navigateAfterAuth();
     } catch (err: unknown) {

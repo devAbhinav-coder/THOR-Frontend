@@ -46,6 +46,12 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "https://lumberjack.razorpay.com",
     // Cloudflare Turnstile (widget + siteverify from browser SDK)
     "https://challenges.cloudflare.com",
+    // Meta Pixel (browser) — without these, CSP blocks fbq and Events Manager
+    // shows Conversions API only, which tanks Event Match Quality.
+    "https://www.facebook.com",
+    "https://web.facebook.com",
+    "https://connect.facebook.net",
+    "https://*.facebook.com",
   ].filter(Boolean);
 
   const connectSrc = connectParts.join(" ");

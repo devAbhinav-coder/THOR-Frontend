@@ -641,12 +641,16 @@ export default function ProductDetailClient({
     productApi.recordView(product.slug).catch(() => {});
   }, [product?.slug]);
 
-  /* Analytics & Meta Pixel: Track ViewContent / view_item */
+  /* Analytics & Meta Pixel: one ViewContent per product visit */
+  const hasTrackedViewContent = useRef(false);
   useEffect(() => {
-    if (product && product._id && selectedVariant) {
-      trackViewContent(product, selectedVariant);
-      trackGaViewItem(product);
-    }
+    hasTrackedViewContent.current = false;
+  }, [product?._id]);
+  useEffect(() => {
+    if (!product?._id || !selectedVariant || hasTrackedViewContent.current) return;
+    hasTrackedViewContent.current = true;
+    trackViewContent(product, selectedVariant);
+    trackGaViewItem(product);
   }, [product?._id, selectedVariant?.sku]);
 
   /* Derived */

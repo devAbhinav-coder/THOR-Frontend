@@ -15,6 +15,7 @@ import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
+import { trackAddToWishlist } from "@/lib/metaPixel";
 import WishlistHeartButton from "@/components/wishlist/WishlistHeartButton";
 import { resolveShopCardImage } from "@/lib/pdpImages";
 import { shopProductHref } from "@/lib/shopProductListing";
@@ -31,7 +32,7 @@ function FeaturedProductCardInner({
   className,
 }: FeaturedProductCardProps) {
   const [primaryImageError, setPrimaryImageError] = useState(false);
-  const { toggleWishlist } = useWishlistStore();
+  const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
@@ -91,9 +92,11 @@ function FeaturedProductCardInner({
         );
         return;
       }
+      const alreadySaved = isInWishlist(product._id);
       await toggleWishlist(product._id, product);
+      if (!alreadySaved) trackAddToWishlist(product);
     },
-    [isAuthenticated, product, router, toggleWishlist],
+    [isAuthenticated, isInWishlist, product, router, toggleWishlist],
   );
 
   return (

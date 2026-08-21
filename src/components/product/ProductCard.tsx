@@ -21,6 +21,7 @@ import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
+import { trackAddToWishlist } from "@/lib/metaPixel";
 import {
   isLenisScrolling,
   useScrollHoverPause,
@@ -53,7 +54,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
 
   const hoverScrollPaused = useScrollHoverPause();
 
-  const { toggleWishlist } = useWishlistStore();
+  const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
   const router = useRouter();
@@ -152,9 +153,11 @@ function ProductCardInner({ product, className }: ProductCardProps) {
       e.preventDefault();
       e.stopPropagation();
       if (!isAuthenticated) return requireAuth("Sign in to save to wishlist");
+      const alreadySaved = isInWishlist(product._id);
       await toggleWishlist(product._id, product);
+      if (!alreadySaved) trackAddToWishlist(product);
     },
-    [isAuthenticated, product, requireAuth, toggleWishlist],
+    [isAuthenticated, isInWishlist, product, requireAuth, toggleWishlist],
   );
 
   const handleMouseEnter = useCallback(() => {

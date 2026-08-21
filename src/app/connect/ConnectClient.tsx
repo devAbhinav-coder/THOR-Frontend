@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Instagram, Facebook, Youtube, Globe, ArrowRight, MessageCircle, Mail } from 'lucide-react';
 import { gsap } from 'gsap';
+import { trackContact } from '@/lib/metaPixel';
 
 const links = [
   {
@@ -224,6 +225,7 @@ export default function ConnectClient() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => trackContact()}
                   className="stagger-item opacity-0 group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 backdrop-blur-md transition-all duration-300 shadow-sm"
                 >
                   <div className={`w-10 h-10 mb-3 rounded-full bg-gradient-to-br ${link.color} flex items-center justify-center text-white shadow-md group-hover:-translate-y-1 transition-transform duration-300`}>
