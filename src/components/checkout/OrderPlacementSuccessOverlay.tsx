@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { lockBodyScroll, unlockBodyScroll } from "@/lib/bodyScrollLock";
 import { clearPostCheckoutAuthGuard } from "@/lib/checkoutSuccessGuard";
 import {
   heritageOverlayBody,
@@ -42,11 +43,10 @@ export default function OrderPlacementSuccessOverlay({
   const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    if (!isVisible || typeof document === "undefined") return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!isVisible) return;
+    lockBodyScroll();
     return () => {
-      document.body.style.overflow = prev;
+      unlockBodyScroll();
     };
   }, [isVisible]);
 

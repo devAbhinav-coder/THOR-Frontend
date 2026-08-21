@@ -67,3 +67,26 @@ function releaseScrollStyles(): void {
   }
   usedFixedLock = false;
 }
+
+/**
+ * Clears our scroll lock plus third-party locks (Razorpay modal, stale overflow).
+ * Call after payment cancel / failure so checkout can scroll again.
+ */
+export function releaseAllScrollLocks(): void {
+  if (typeof document === "undefined") return;
+  forceUnlockBodyScroll();
+
+  const html = document.documentElement;
+  html.style.removeProperty("overflow");
+  html.style.removeProperty("position");
+  html.style.removeProperty("height");
+  document.body.style.removeProperty("overflow");
+  document.body.style.removeProperty("position");
+  document.body.style.removeProperty("top");
+  document.body.style.removeProperty("left");
+  document.body.style.removeProperty("right");
+  document.body.style.removeProperty("width");
+  document.body.style.removeProperty("height");
+  html.classList.remove("lenis-stopped");
+  document.body.classList.remove("lenis-stopped");
+}

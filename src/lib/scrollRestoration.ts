@@ -15,6 +15,24 @@ export function scrollRouteKey(pathname: string, search = ""): string {
 
 const SCROLL_STORAGE_PREFIX = "pia-scroll:";
 
+/** Survives Lenis on/off remounts of RouteScrollManager (home → shop/PDP). */
+let lastCommittedRouteKey: string | null = null;
+
+export function commitRouteTransition(nextRouteKey: string): string | null {
+  const prev = lastCommittedRouteKey;
+  lastCommittedRouteKey = nextRouteKey;
+  return prev;
+}
+
+export function clearSavedScrollForRoute(routeKey: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(`${SCROLL_STORAGE_PREFIX}${routeKey}`);
+  } catch {
+    // ignore
+  }
+}
+
 let pendingPopState = false;
 let popStateTrackingInitialized = false;
 
@@ -97,6 +115,20 @@ export function shouldResetScrollOnForwardNav(
   }
 
   return true;
+}
+
+/** Forward route entry — always top for PDP; shop filter changes keep scroll. */
+export function shouldScrollToTopOnRouteEnter(
+  prevRouteKey: string | null,
+  nextRouteKey: string,
+  isBackForward: boolean,
+): boolean {
+  if (isBackForward) return false;
+
+  const nextPath = routePathFromKey(nextRouteKey);
+  if (isStoreProductDetailPath(nextPath)) return true;
+
+  return shouldResetScrollOnForwardNav(prevRouteKey, nextRouteKey);
 }
 
 export function readSavedScrollForRoute(routeKey: string): number | null {

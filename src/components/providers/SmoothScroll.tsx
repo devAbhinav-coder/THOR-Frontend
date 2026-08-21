@@ -8,6 +8,8 @@ import "lenis/dist/lenis.css";
 import { forceUnlockBodyScroll } from "@/lib/bodyScrollLock";
 import { shouldEnableLenisSmoothScrollForPath } from "@/lib/scrollSurface";
 import {
+  clearSavedScrollForRoute,
+  commitRouteTransition,
   consumePopStateNavigation,
   getCurrentScrollY,
   initPopStateScrollTracking,
@@ -17,7 +19,7 @@ import {
   saveScrollForRoute,
   scrollRouteKey,
   scrollWindowTo,
-  shouldResetScrollOnForwardNav,
+  shouldScrollToTopOnRouteEnter,
 } from "@/lib/scrollRestoration";
 import { subscribeWindowScroll } from "@/lib/windowScrollBus";
 
@@ -38,24 +40,15 @@ function RouteScrollManager({ lenis }: { lenis?: Lenis | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
-  const prevRouteRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pathnameRef = useRef(pathname);
-  const searchKeyRef = useRef(searchKey);
-
-  useEffect(() => {
-    pathnameRef.current = pathname;
-    searchKeyRef.current = searchKey;
-  }, [pathname, searchKey]);
 
   useEffect(() => initPopStateScrollTracking(), []);
 
   useEffect(() => {
+    const routeAtMount = scrollRouteKey(pathname, searchKey);
+
     const persistScroll = () => {
-      saveScrollForRoute(
-        scrollRouteKey(pathnameRef.current, searchKeyRef.current),
-        getCurrentScrollY(),
-      );
+      saveScrollForRoute(routeAtMount, getCurrentScrollY());
     };
 
     const unsubscribe = subscribeWindowScroll(() => {
@@ -63,15 +56,13 @@ function RouteScrollManager({ lenis }: { lenis?: Lenis | null }) {
       saveTimerRef.current = setTimeout(persistScroll, 80);
     });
 
-    persistScroll();
-
     return () => {
       unsubscribe();
       if (saveTimerRef.current != null) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
-      persistScroll();
+      saveScrollForRoute(routeAtMount, getCurrentScrollY());
     };
   }, [pathname, searchKey]);
 
@@ -79,12 +70,10 @@ function RouteScrollManager({ lenis }: { lenis?: Lenis | null }) {
     forceUnlockBodyScroll();
 
     const routeKey = scrollRouteKey(pathname, searchKey);
-    const prevRoute = prevRouteRef.current;
-    prevRouteRef.current = routeKey;
+    const prevRoute = commitRouteTransition(routeKey);
 
     if (prevRoute && prevRoute !== routeKey) {
-      const leavingY = readSavedScrollForRoute(prevRoute) ?? getCurrentScrollY();
-      saveScrollForRoute(prevRoute, leavingY);
+      saveScrollForRoute(prevRoute, getCurrentScrollY());
     }
 
     const isBackForward = consumePopStateNavigation();
@@ -105,8 +94,11 @@ function RouteScrollManager({ lenis }: { lenis?: Lenis | null }) {
             return;
           }
         }
-        if (shouldResetScrollOnForwardNav(prevRoute, routeKey)) {
+
+        if (shouldScrollToTopOnRouteEnter(prevRoute, routeKey, isBackForward)) {
+          clearSavedScrollForRoute(routeKey);
           scrollToTop(lenis);
+          requestAnimationFrame(() => scrollToTop(lenis));
         }
       });
     });
@@ -175,6 +167,7 @@ function LenisResizeSync() {
 export default function SmoothScroll({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [lenisOn, setLenisOn] = useState(false);
+  const prevLenisOnRef = useRef(false);
 
   useEffect(() => {
     const mqReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -192,6 +185,15 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       mqPointer.removeEventListener("change", sync);
     };
   }, [pathname]);
+
+  useEffect(() => {
+    const wasLenis = prevLenisOnRef.current;
+    prevLenisOnRef.current = lenisOn;
+
+    if (wasLenis && !lenisOn) {
+      scrollWindowTo(0, true);
+    }
+  }, [lenisOn]);
 
   return (
     <>
@@ -215,4 +217,3 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     </>
   );
 }
-

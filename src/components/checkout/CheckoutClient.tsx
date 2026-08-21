@@ -74,6 +74,7 @@ import { getShopSessionKey } from "@/lib/shopSession";
 import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { armPostCheckoutAuthGuard } from "@/lib/checkoutSuccessGuard";
+import { releaseAllScrollLocks } from "@/lib/bodyScrollLock";
 import {
   clearBuyNowSession,
   readBuyNowFromSession,
@@ -277,6 +278,7 @@ function CheckoutReviewRecap({
 
 export default function CheckoutClient() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   /** Default open so mobile users always see qty/delete without an extra tap. */
   const [showItems, setShowItems] = useState(true);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
@@ -834,6 +836,12 @@ export default function CheckoutClient() {
   ]);
 
   useEffect(() => {
+    return () => {
+      releaseAllScrollLocks();
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [checkoutStep]);
@@ -1144,6 +1152,10 @@ export default function CheckoutClient() {
   const recoverFromAbortedPayment = useCallback(
     (opts?: { message?: string; asError?: boolean }) => {
       setIsPlacingOrder(false);
+      setIsSubmittingOrder(false);
+      releaseAllScrollLocks();
+      window.requestAnimationFrame(() => releaseAllScrollLocks());
+      window.setTimeout(() => releaseAllScrollLocks(), 200);
       void fetchCart().catch(() => {});
       const msg =
         opts?.message ??
@@ -1171,8 +1183,9 @@ export default function CheckoutClient() {
 
   const onSubmit = useCallback(
     async (addressData: AddressForm) => {
-      setIsPlacingOrder(true);
+      setIsSubmittingOrder(true);
       let holdPlacingUntilOverlay = false;
+      let openedRazorpay = false;
       try {
         const normalizedPhone =
           parsePhoneNumberFromString(
@@ -1222,6 +1235,7 @@ export default function CheckoutClient() {
                 toast.error(msg);
                 await fetchCart().catch(() => {});
                 setIsPlacingOrder(false);
+                releaseAllScrollLocks();
               }
             },
             modal: {
@@ -1244,7 +1258,11 @@ export default function CheckoutClient() {
           if (!RazorpayCtor) throw new Error("Razorpay SDK not available");
           const rzp = new RazorpayCtor(options);
           bindRazorpayEvents(rzp);
+          setIsSubmittingOrder(false);
+          releaseAllScrollLocks();
+          openedRazorpay = true;
           rzp.open();
+          return;
         } else {
           const idempotencyKey =
             typeof crypto !== "undefined" && crypto.randomUUID ?
@@ -1364,6 +1382,7 @@ export default function CheckoutClient() {
                     toast.error(msg);
                     await fetchCart().catch(() => {});
                     setIsPlacingOrder(false);
+                    releaseAllScrollLocks();
                   }
                 },
                 modal: {
@@ -1391,11 +1410,16 @@ export default function CheckoutClient() {
               }
               const rzp = new RazorpayCtor(options);
               bindRazorpayEvents(rzp);
+              setIsSubmittingOrder(false);
+              releaseAllScrollLocks();
+              openedRazorpay = true;
               rzp.open();
             };
 
             openRazorpay();
+            return;
           } else {
+            setIsPlacingOrder(true);
             const { order } = res.data;
             holdPlacingUntilOverlay = true;
             await finalizeSuccessfulOrder(order);
@@ -1405,7 +1429,11 @@ export default function CheckoutClient() {
         const error = err as { message?: string };
         toast.error(error.message || "Failed to process order");
       } finally {
-        if (!holdPlacingUntilOverlay) setIsPlacingOrder(false);
+        setIsSubmittingOrder(false);
+        if (!holdPlacingUntilOverlay && !openedRazorpay) {
+          setIsPlacingOrder(false);
+          releaseAllScrollLocks();
+        }
       }
     },
     [
@@ -2787,9 +2815,9 @@ export default function CheckoutClient() {
                           heritageCta,
                           "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] max-lg:hidden",
                         )}
-                        disabled={isPlacingOrder}
+                        disabled={isSubmittingOrder || isPlacingOrder}
                       >
-                        {isPlacingOrder
+                        {isSubmittingOrder || isPlacingOrder
                           ? "Placing order…"
                           : existingOrder
                             ? `Confirm & Pay — ${formatPrice(total)}`
@@ -2885,9 +2913,9 @@ export default function CheckoutClient() {
                 checkoutFormRef.current?.requestSubmit();
               }}
               className={heritageCta}
-              disabled={isPlacingOrder}
+              disabled={isSubmittingOrder || isPlacingOrder}
             >
-              {isPlacingOrder
+              {isSubmittingOrder || isPlacingOrder
                 ? "Placing order…"
                 : existingOrder
                   ? `Pay — ${formatPrice(total)}`
