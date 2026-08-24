@@ -150,6 +150,9 @@ export default function Navbar({
     setIsMenuOpen(false);
     shopMenu.close();
     userMenu.close();
+    if (isStoreProductDetailPath(pathname)) {
+      setIsSearchOpen(false);
+    }
   }, [pathname, shopMenu.close, userMenu.close]);
 
   /** Refresh profile when account menu opens */
@@ -245,7 +248,9 @@ export default function Navbar({
     pathname === "/cart" || pathname.startsWith("/checkout");
   const isProductDetailPage = isStoreProductDetailPath(pathname);
   const isShopListingPage = isStoreShopListingPath(pathname);
-  /** Shop + PDP mobile: persistent search bar, cart/wishlist top-right (no search icon). */
+  /** Shop listing only: search stays open. PDP uses the navbar search icon instead. */
+  const persistMobileSearch = isShopListingPage;
+  /** Shop + PDP mobile: cart/wishlist top-right (no bottom tab bar). */
   const showCommerceMobileShell = isProductDetailPage || isShopListingPage;
   const navAutoHideEnabled =
     !isCheckoutFlow &&
@@ -518,7 +523,7 @@ export default function Navbar({
                   )}
                 </Link>
 
-                {!showCommerceMobileShell && (
+                {!persistMobileSearch && (
                   <button
                     type='button'
                     onClick={() => {
@@ -530,7 +535,9 @@ export default function Navbar({
                     aria-expanded={isSearchOpen}
                     aria-controls='mobile-search-panel'
                   >
-                    <Search className='h-5 w-5' aria-hidden='true' />
+                    {isSearchOpen ?
+                      <X className='h-5 w-5' aria-hidden='true' />
+                    : <Search className='h-5 w-5' aria-hidden='true' />}
                   </button>
                 )}
 
@@ -615,21 +622,35 @@ export default function Navbar({
               )}
             </div>
 
-            {/* Mobile search — always open on shop/PDP; toggle elsewhere */}
-            {!isCheckoutFlow && (showCommerceMobileShell || isSearchOpen) && (
+            {/* Mobile search — always open on shop listing; toggle on PDP and elsewhere */}
+            {!isCheckoutFlow && (persistMobileSearch || isSearchOpen) && (
               <div
                 id='mobile-search-panel'
                 className='border-t border-white/10 pb-3 pt-3 lg:hidden'
               >
-                <StoreSearchAutocomplete
-                  scope={navActive.gifting ? "gifting" : "shop"}
-                  variant='nav-mobile'
-                  searchInstance='mobile'
-                  urlSearch={urlSearchForNav}
-                  onNavigate={() => {
-                    if (!showCommerceMobileShell) setIsSearchOpen(false);
-                  }}
-                />
+                <div className='flex items-center gap-2'>
+                  <div className='min-w-0 flex-1'>
+                    <StoreSearchAutocomplete
+                      scope={navActive.gifting ? "gifting" : "shop"}
+                      variant='nav-mobile'
+                      searchInstance='mobile'
+                      urlSearch={urlSearchForNav}
+                      onNavigate={() => {
+                        if (!persistMobileSearch) setIsSearchOpen(false);
+                      }}
+                    />
+                  </div>
+                  {!persistMobileSearch && (
+                    <button
+                      type='button'
+                      onClick={() => setIsSearchOpen(false)}
+                      className={cn(navIconButton, "shrink-0")}
+                      aria-label='Close search'
+                    >
+                      <X className='h-5 w-5' aria-hidden='true' />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

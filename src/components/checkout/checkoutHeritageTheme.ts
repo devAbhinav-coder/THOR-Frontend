@@ -4,7 +4,7 @@ export const checkoutGoldHover = "#b8924d";
 
 export const heritagePageBg = "bg-[#f8f9fa]";
 export const heritageSectionCard =
-  "border border-gray-200/70 bg-white p-5 sm:p-6 lg:p-8";
+  "border border-gray-200/70 bg-white p-4 sm:p-6 lg:p-8";
 export const heritageSummaryCard =
   "border border-gray-200/70 bg-white p-5 sm:p-6 lg:p-8 shadow-[0px_20px_40px_rgba(3,22,50,0.04)]";
 

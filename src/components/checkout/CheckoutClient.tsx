@@ -51,11 +51,24 @@ import {
   type RazorpayInstance,
   type RazorpaySuccessPayload,
 } from "@/lib/razorpayTypes";
-import { toCheckoutRowDisplay, type CheckoutRowDisplay } from "@/lib/checkoutDisplayHelpers";
+import {
+  toCheckoutRowDisplay,
+  type CheckoutRowDisplay,
+} from "@/lib/checkoutDisplayHelpers";
 import type { CartItem } from "@/types";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import OrderPlacementSuccessOverlay from "@/components/checkout/OrderPlacementSuccessOverlay";
+import DeliveryEstimateCard from "@/components/checkout/DeliveryEstimateCard";
+import CheckoutTrustStrip from "@/components/checkout/CheckoutTrustStrip";
+import CheckoutMiniSummaryBar from "@/components/checkout/CheckoutMiniSummaryBar";
+import CheckoutMobileStepper from "@/components/checkout/CheckoutMobileStepper";
+import { useDeliveryEstimate } from "@/hooks/useDeliveryEstimate";
+import type { DeliveryEstimate } from "@/lib/deliveryEstimate";
+import {
+  formatDeliveryDateRange,
+  formatPromisedDate,
+} from "@/lib/deliveryEstimate";
 import {
   heritageCta,
   heritagePageBg,
@@ -190,12 +203,14 @@ type ReviewAddressDisplay = {
 function CheckoutReviewRecap({
   address,
   paymentMethod,
+  deliveryEstimate,
   onEditAddress,
   onEditPayment,
   className,
 }: {
   address: ReviewAddressDisplay;
   paymentMethod: "cod" | "razorpay";
+  deliveryEstimate?: DeliveryEstimate | null;
   onEditAddress: () => void;
   onEditPayment: () => void;
   className?: string;
@@ -245,21 +260,45 @@ function CheckoutReviewRecap({
             Edit
           </button>
         </div>
+        {deliveryEstimate?.serviceable && (
+          <div className='border border-emerald-200/70 bg-emerald-50/40 p-5'>
+            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
+              Estimated Delivery
+            </p>
+            <p className='mt-2 text-sm font-semibold text-navy-900'>
+              Get it by{" "}
+              {formatPromisedDate(
+                deliveryEstimate.promisedDate ||
+                  deliveryEstimate.estimatedDelivery.to,
+              )}
+            </p>
+            <p className='mt-1 text-xs text-gray-600'>
+              Window{" "}
+              {formatDeliveryDateRange(
+                deliveryEstimate.estimatedDelivery.from,
+                deliveryEstimate.estimatedDelivery.to,
+              )}
+              {deliveryEstimate.zoneLabel ?
+                ` · ${deliveryEstimate.zoneLabel}`
+              : ""}{" "}
+              · via {deliveryEstimate.carrier}
+            </p>
+          </div>
+        )}
         <div className='flex items-start justify-between gap-4 border border-gray-200/70 bg-white p-5'>
           <div className='min-w-0'>
             <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
               Payment Method
             </p>
             <p className='mt-2 flex items-center gap-2 font-medium text-navy-900'>
-              {paymentMethod === "razorpay" ? (
+              {paymentMethod === "razorpay" ?
                 <Wallet className='h-4 w-4 shrink-0 text-[#c5a059]' />
-              ) : (
-                <Banknote className='h-4 w-4 shrink-0 text-[#c5a059]' />
-              )}
+              : <Banknote className='h-4 w-4 shrink-0 text-[#c5a059]' />}
               <span className='text-sm sm:text-base'>
-                {paymentMethod === "razorpay"
-                  ? "Pay online (UPI, cards & net banking)"
-                  : `Cash on delivery (${formatPrice(COD_HANDLING_FEE)} handling fee)`}
+                {paymentMethod === "razorpay" ?
+                  "Pay online (UPI, cards & net banking)"
+                : `Cash on delivery (${formatPrice(COD_HANDLING_FEE)} handling fee)`
+                }
               </span>
             </p>
           </div>
@@ -286,12 +325,14 @@ export default function CheckoutClient() {
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
-  const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(
-    () => readBuyNowFromSession(),
+  const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(() =>
+    readBuyNowFromSession(),
   );
   const [buyNowCouponCode, setBuyNowCouponCode] = useState<string | null>(null);
   const [buyNowCouponDiscount, setBuyNowCouponDiscount] = useState(0);
-  const [buyNowPromotion, setBuyNowPromotion] = useState<CartPromotion | null>(null);
+  const [buyNowPromotion, setBuyNowPromotion] = useState<CartPromotion | null>(
+    null,
+  );
   const [buyNowPromotionDiscount, setBuyNowPromotionDiscount] = useState(0);
   const [buyNowPromotionHint, setBuyNowPromotionHint] = useState<{
     label: string;
@@ -304,6 +345,7 @@ export default function CheckoutClient() {
   const [showShippingForm, setShowShippingForm] = useState(false);
   const shippingFieldsRef = useRef<HTMLDivElement>(null);
   const checkoutFormRef = useRef<HTMLFormElement>(null);
+  const lastAutoFilledPinRef = useRef<string | null>(null);
   const didInitDefaultSavedAddress = useRef(false);
   /** Step 1 shipping → 2 payment → 3 review & place order (all screen sizes) */
   const [checkoutStep, setCheckoutStep] = useState(1);
@@ -391,7 +433,8 @@ export default function CheckoutClient() {
 
     // Tab restore / bfcache: URL may drop ?buyNow=1 while session still holds the item.
     if (stored) {
-      const hasCartItems = (useCartStore.getState().cart?.items?.length ?? 0) > 0;
+      const hasCartItems =
+        (useCartStore.getState().cart?.items?.length ?? 0) > 0;
       if (!hasCartItems) {
         setBuyNowItem(stored);
         return;
@@ -643,19 +686,19 @@ export default function CheckoutClient() {
     const promotionDiscount =
       existingOrder ? 0
       : buyNowItem ? buyNowPromotionDiscount
-      : cart?.promotionDiscount ?? 0;
+      : (cart?.promotionDiscount ?? 0);
 
     const couponDiscount =
       existingOrder ?
         existingOrder.coupon && (existingOrder.discount ?? 0) > 0 ?
-          existingOrder.discount ?? 0
+          (existingOrder.discount ?? 0)
         : 0
       : buyNowItem ? buyNowCouponDiscount
-      : cart?.couponDiscount ?? 0;
+      : (cart?.couponDiscount ?? 0);
 
     const discount =
       existingOrder ?
-        existingOrder.discount ?? 0
+        (existingOrder.discount ?? 0)
       : promotionDiscount + couponDiscount;
 
     const subtotalAfterDiscount = Math.max(0, subtotal - discount);
@@ -678,8 +721,7 @@ export default function CheckoutClient() {
     const hasAppliedCoupon =
       existingOrder ?
         !!existingOrder.coupon && (existingOrder.discount ?? 0) > 0
-      : buyNowItem ?
-        !!buyNowCouponCode && buyNowCouponDiscount > 0
+      : buyNowItem ? !!buyNowCouponCode && buyNowCouponDiscount > 0
       : Boolean(appliedCouponCode?.trim()) || (cart?.couponDiscount ?? 0) > 0;
     const activeCouponCode =
       hasAppliedCoupon ?
@@ -689,16 +731,16 @@ export default function CheckoutClient() {
     const activeCouponDiscount =
       hasAppliedCoupon ?
         buyNowItem ? buyNowCouponDiscount
-        : cart?.couponDiscount ?? 0
+        : (cart?.couponDiscount ?? 0)
       : 0;
     const activePromotion =
       existingOrder ? null
       : buyNowItem ? buyNowPromotion
-      : cart?.promotion ?? null;
+      : (cart?.promotion ?? null);
     const activePromotionHint =
       existingOrder ? null
       : buyNowItem ? buyNowPromotionHint
-      : cart?.promotionHint ?? null;
+      : (cart?.promotionHint ?? null);
 
     return {
       subtotal,
@@ -741,8 +783,7 @@ export default function CheckoutClient() {
     (userData?: ReturnType<typeof buildCheckoutMetaUserData>) => {
       if (hasTrackedCheckout.current || total <= 0) return;
       const numItems =
-        existingOrder ?
-          existingOrder.items?.length || 1
+        existingOrder ? existingOrder.items?.length || 1
         : buyNowItem ? 1
         : cart?.items?.length || 1;
       const trackingItems =
@@ -835,6 +876,77 @@ export default function CheckoutClient() {
     watchedPincode,
   ]);
 
+  const activePincode = useMemo(() => {
+    const pin = reviewAddressDisplay.pincode?.replace(/\D/g, "").slice(0, 6);
+    return pin?.length === 6 ? pin : null;
+  }, [reviewAddressDisplay.pincode]);
+
+  const activeDisplayCity = reviewAddressDisplay.city || undefined;
+
+  const {
+    estimate: deliveryEstimateRaw,
+    isLoading: isDeliveryEstimateLoadingRaw,
+    error: deliveryEstimateError,
+  } = useDeliveryEstimate(activePincode);
+
+  const deliveryEstimate =
+    deliveryEstimateRaw?.pincode === activePincode ? deliveryEstimateRaw : null;
+  const isDeliveryEstimateLoading =
+    Boolean(activePincode) &&
+    (isDeliveryEstimateLoadingRaw ||
+      (!deliveryEstimate && !deliveryEstimateError));
+
+  const deliveryBlocked =
+    Boolean(activePincode) &&
+    !isDeliveryEstimateLoading &&
+    Boolean(deliveryEstimate && !deliveryEstimate.serviceable);
+
+  useEffect(() => {
+    const digits = (watchedPincode || "").replace(/\D/g, "").slice(0, 6);
+    if (digits.length !== 6) lastAutoFilledPinRef.current = null;
+  }, [watchedPincode]);
+
+  useEffect(() => {
+    if (!deliveryEstimate || deliveryEstimate.pincode !== activePincode) return;
+    if (!showShippingForm && selectedAddressId) return;
+
+    const pin = deliveryEstimate.pincode;
+    const nextCity = (deliveryEstimate.city || "").trim();
+    const nextState =
+      deliveryEstimate.state && INDIAN_STATES.includes(deliveryEstimate.state) ?
+        deliveryEstimate.state
+      : "";
+    const isNewPin = lastAutoFilledPinRef.current !== pin;
+
+    if (isNewPin) {
+      if (nextCity) {
+        setValue("city", nextCity, { shouldValidate: true, shouldDirty: true });
+      }
+      if (nextState) {
+        setValue("state", nextState, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+      lastAutoFilledPinRef.current = pin;
+      return;
+    }
+
+    if (nextCity && !(getValues("city") || "").trim()) {
+      setValue("city", nextCity, { shouldValidate: true });
+    }
+    if (nextState && !(getValues("state") || "").trim()) {
+      setValue("state", nextState, { shouldValidate: true });
+    }
+  }, [
+    deliveryEstimate,
+    activePincode,
+    showShippingForm,
+    selectedAddressId,
+    setValue,
+    getValues,
+  ]);
+
   useEffect(() => {
     return () => {
       releaseAllScrollLocks();
@@ -864,16 +976,18 @@ export default function CheckoutClient() {
           ]);
           const saved = res.data.discount || 0;
           if (saved <= 0) {
-            throw new Error("This coupon does not reduce the price of this item.");
+            throw new Error(
+              "This coupon does not reduce the price of this item.",
+            );
           }
           setBuyNowCouponCode(res.data.coupon.code);
           setBuyNowCouponDiscount(saved);
-          toast.success(
-            `Coupon applied. You saved ${formatPrice(saved)}.`,
-          );
+          toast.success(`Coupon applied. You saved ${formatPrice(saved)}.`);
         } catch (err: unknown) {
           const msg =
-            err instanceof Error ? err.message : "This coupon cannot be applied.";
+            err instanceof Error ?
+              err.message
+            : "This coupon cannot be applied.";
           toast.error(msg);
           throw err;
         }
@@ -906,6 +1020,8 @@ export default function CheckoutClient() {
         setValue("city", addr.city);
         setValue("state", addr.state);
         setValue("pincode", addr.pincode);
+        lastAutoFilledPinRef.current =
+          addr.pincode?.replace(/\D/g, "").slice(0, 6) || null;
         setSelectedAddressId(addressId);
       }
     },
@@ -1030,6 +1146,16 @@ export default function CheckoutClient() {
   const goToPaymentStep = useCallback(async () => {
     const ok = await validateAddressFields();
     if (!ok) return;
+    if (isDeliveryEstimateLoading) {
+      toast.error("Checking delivery availability — please wait a moment.");
+      return;
+    }
+    if (deliveryEstimate && !deliveryEstimate.serviceable) {
+      toast.error(
+        "Delivery is not available to this pincode. Please choose a different address.",
+      );
+      return;
+    }
     const values = getValues();
     const checkoutUserData = buildCheckoutMetaUserData({
       email: user?.email,
@@ -1047,7 +1173,14 @@ export default function CheckoutClient() {
       hasTrackedPaymentInfo.current = true;
     }
     setCheckoutStep(2);
-  }, [validateAddressFields, getValues, fireInitiateCheckoutTracking, user]);
+  }, [
+    validateAddressFields,
+    getValues,
+    fireInitiateCheckoutTracking,
+    user,
+    isDeliveryEstimateLoading,
+    deliveryEstimate,
+  ]);
 
   const goToReviewStep = useCallback(async () => {
     const ok = await validateAddressFields();
@@ -1074,6 +1207,7 @@ export default function CheckoutClient() {
 
   const openNewAddressForm = useCallback(() => {
     setSelectedAddressId("");
+    lastAutoFilledPinRef.current = null;
     reset({
       name: user?.name || "",
       phone: (user?.phone || "").replace(/\s/g, ""),
@@ -1283,9 +1417,7 @@ export default function CheckoutClient() {
               paymentMethod: paymentMethodForApi,
               ...(couponCodeForOrder ? { couponCode: couponCodeForOrder } : {}),
               ...(shopSessionKey ? { shopSessionKey } : {}),
-              ...(marketingAttribution ?
-                { marketingAttribution }
-              : {}),
+              ...(marketingAttribution ? { marketingAttribution } : {}),
               metaBrowser,
               ...(buyNowItem ?
                 {
@@ -1309,21 +1441,23 @@ export default function CheckoutClient() {
               : undefined,
             );
             const legacyOrder =
-              "order" in res.data &&
-              (res.data as { order?: { _id?: string; orderNumber?: string } })
-                .order ?
+              (
+                "order" in res.data &&
+                (res.data as { order?: { _id?: string; orderNumber?: string } })
+                  .order
+              ) ?
                 (res.data as { order: { _id: string; orderNumber?: string } })
                   .order
               : null;
             const legacyOrderId =
               normalizeCheckoutMongoId(
-                legacyOrder &&
-                  typeof legacyOrder === "object" &&
-                  legacyOrder !== null ?
-                  (
-                    legacyOrder as { _id?: unknown; id?: unknown }
-                  )._id ??
-                    (legacyOrder as { _id?: unknown; id?: unknown }).id
+                (
+                  legacyOrder &&
+                    typeof legacyOrder === "object" &&
+                    legacyOrder !== null
+                ) ?
+                  ((legacyOrder as { _id?: unknown; id?: unknown })._id ??
+                    (legacyOrder as { _id?: unknown; id?: unknown }).id)
                 : undefined,
               ) ?? "";
             if (!checkoutIntentId && !legacyOrderId) {
@@ -1450,7 +1584,13 @@ export default function CheckoutClient() {
   );
 
   const bumpLineQty = useCallback(
-    async (cartItemId: string, sku: string, delta: number, current: number, maxQty: number) => {
+    async (
+      cartItemId: string,
+      sku: string,
+      delta: number,
+      current: number,
+      maxQty: number,
+    ) => {
       const next = current + delta;
       if (next < 1) {
         setLineBusySku(sku);
@@ -1657,64 +1797,29 @@ export default function CheckoutClient() {
         isOpen={isPlacingOrder || Boolean(pendingOrderSuccessId)}
         orderId={pendingOrderSuccessId}
       />
-      <div className='mx-auto box-border min-w-0 max-w-7xl px-4 pt-6 pb-32 sm:px-6 sm:pt-10 sm:pb-36 lg:px-8 lg:py-12'>
-        <header className='mb-8 lg:mb-10'>
-          <h1 className='font-serif text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl lg:text-5xl'>
+      <div className='mx-auto box-border min-w-0 max-w-7xl px-4 pt-3 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-10 sm:pb-18 lg:px-8 lg:py-6'>
+        <header className='mb-1 lg:mb-2.5'>
+          <h1 className='font-serif text-[1.75rem] font-semibold tracking-tight text-navy-900 sm:text-4xl lg:text-5xl'>
             Checkout
           </h1>
-          <p className='mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-base'>
+          <p className='mt-1.5 max-w-2xl text-xs leading-relaxed text-gray-600 sm:mt-2 sm:text-base'>
             Secure checkout.{" "}
-            {existingOrder
-              ? "Complete your payment to confirm this order."
-              : "Cash on delivery is available for your order."}
+            {existingOrder ?
+              "Complete your payment to confirm this order."
+            : "Cash on delivery is available for your order."}
           </p>
         </header>
 
         {showCheckoutWizard && (
-          <nav
-            className='relative mb-8 flex items-center justify-between lg:hidden sticky top-12 z-30 bg-[#FAF9F6] py-2 shadow-sm'
-            aria-label='Checkout steps'
-          >
-            <div className='absolute left-0 top-6 -z-10 h-px w-full bg-gray-200' />
-            {(
-              [
-                { step: 1, label: "Shipping" },
-                { step: 2, label: "Payment" },
-                { step: 3, label: "Review" },
-              ] as const
-            ).map(({ step, label }) => (
-              <button
-                key={step}
-                type='button'
-                onClick={() => void goToCheckoutStep(step)}
-                className='flex flex-col items-center bg-[#f8f9fa] px-2'
-              >
-                <span
-                  className={cn(
-                    "mb-1 flex h-8 w-8 items-center justify-center text-[11px] font-semibold",
-                    checkoutStep >= step
-                      ? "bg-navy-900 text-white"
-                      : "border border-gray-300 text-gray-400",
-                  )}
-                >
-                  {step}
-                </span>
-                <span
-                  className={cn(
-                    "text-[10px] font-semibold uppercase tracking-wide text-navy-900",
-                    checkoutStep < step && "opacity-40",
-                  )}
-                >
-                  {label}
-                </span>
-              </button>
-            ))}
-          </nav>
+          <CheckoutMobileStepper
+            current={checkoutStep}
+            onGo={(step) => void goToCheckoutStep(step)}
+          />
         )}
 
         {showCheckoutWizard && (
           <nav
-            className='mb-8 hidden items-center gap-10 border-b border-gray-200/70 lg:flex xl:gap-14'
+            className='mb-4 hidden items-center gap-10 border-b border-gray-200/70 lg:flex xl:gap-14'
             aria-label='Checkout progress'
           >
             {(
@@ -1729,12 +1834,12 @@ export default function CheckoutClient() {
                 type='button'
                 onClick={() => void goToCheckoutStep(step)}
                 className={cn(
-                  "flex items-center gap-2 pb-4 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors",
-                  checkoutStep === step
-                    ? "border-b-2 border-navy-900 text-navy-900"
-                    : checkoutStep > step
-                      ? "border-b-2 border-transparent text-navy-900/70 hover:text-navy-900"
-                      : "border-b-2 border-transparent text-gray-400 opacity-50",
+                  "flex items-center gap-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors",
+                  checkoutStep === step ?
+                    "border-b-2 border-navy-900 text-navy-900"
+                  : checkoutStep > step ?
+                    "border-b-2 border-transparent text-navy-900/70 hover:text-navy-900"
+                  : "border-b-2 border-transparent text-gray-400 opacity-50",
                 )}
               >
                 <span className='text-[10px] tracking-widest'>
@@ -1764,35 +1869,40 @@ export default function CheckoutClient() {
                 showCheckoutWizard && checkoutStep === 3 && "hidden lg:block",
               )}
             >
-              {buyNowItem && !existingOrder && (activePromotion || activePromotionHint) ? (
-                <div className="rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/80 px-4 py-3 shadow-sm">
-                  {activePromotion ? (
+              {(
+                buyNowItem &&
+                !existingOrder &&
+                (activePromotion || activePromotionHint)
+              ) ?
+                <div className='rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/80 px-4 py-3 shadow-sm'>
+                  {activePromotion ?
                     <>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]">
+                      <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'>
                         Auto offer applied
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-navy-900">
+                      <p className='mt-1 text-sm font-semibold text-navy-900'>
                         {activePromotion.label}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-600">
-                        You save {formatPrice(activePromotion.appliedDiscount)} on this order
+                      <p className='mt-0.5 text-xs text-gray-600'>
+                        You save {formatPrice(activePromotion.appliedDiscount)}{" "}
+                        on this order
                       </p>
                     </>
-                  ) : activePromotionHint ? (
+                  : activePromotionHint ?
                     <>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]">
+                      <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'>
                         Offer available
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-navy-900">
+                      <p className='mt-1 text-sm font-semibold text-navy-900'>
                         {activePromotionHint.label}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-600">
+                      <p className='mt-0.5 text-xs text-gray-600'>
                         {activePromotionHint.message}
                       </p>
                     </>
-                  ) : null}
+                  : null}
                 </div>
-              ) : null}
+              : null}
 
               {(!showCheckoutWizard || checkoutStep === 1) && (
                 <section className={heritageSectionCard}>
@@ -1861,19 +1971,19 @@ export default function CheckoutClient() {
                   )}
 
                   {user?.addresses && user.addresses.length > 0 && (
-                    <div className='mb-6'>
-                      <p className='mb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500'>
+                    <div className='mb-3'>
+                      <p className='mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500'>
                         Saved addresses
                       </p>
-                      <div className='grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6'>
+                      <div className='grid grid-cols-1 gap-1 md:grid-cols-2 md:gap-2'>
                         {(user.addresses || []).map((addr) => (
                           <div key={addr._id} className='relative'>
                             <label
                               className={cn(
-                                "address-card block cursor-pointer border p-6 transition-all duration-300 sm:p-8",
-                                selectedAddressId === addr._id
-                                  ? "border-2 border-navy-900 bg-[#f8f9fa]"
-                                  : "border border-gray-200/70 bg-white hover:border-[#c5a059]/50",
+                                "address-card block cursor-pointer border p-1 transition-all duration-300 sm:p-2",
+                                selectedAddressId === addr._id ?
+                                  "border-2 border-navy-900 bg-[#f8f9fa]"
+                                : "border border-gray-200/70 bg-white hover:border-[#c5a059]/50",
                               )}
                             >
                               <input
@@ -1904,12 +2014,12 @@ export default function CheckoutClient() {
                                   <br />
                                   India
                                 </p>
-                                <p className='mt-4 text-gray-600'>
+                                <p className='mt-2 text-gray-600'>
                                   {addr.phone}
                                 </p>
                               </div>
                             </label>
-                            <div className='mt-3 flex gap-4 px-1'>
+                            <div className='mt-2 flex gap-4 px-1'>
                               <button
                                 type='button'
                                 onClick={() => {
@@ -1942,7 +2052,7 @@ export default function CheckoutClient() {
                       <button
                         type='button'
                         onClick={() => openNewAddressForm()}
-                        className='mt-6 w-full border-2 border-dashed border-gray-300 py-8 transition-all hover:border-[#c5a059] hover:bg-[#fff8eb]/40'
+                        className='mt-3 w-full border-2 border-dashed border-gray-300 py-2 transition-all hover:border-[#c5a059] hover:bg-[#fff8eb]/40'
                       >
                         <span className='text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500'>
                           + Add New Address
@@ -1963,6 +2073,18 @@ export default function CheckoutClient() {
                     <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
                       {selectedAddressId ? "Edit address" : "Delivery details"}
                     </p>
+                    <Input
+                      id='checkout-field-pincode'
+                      {...register("pincode")}
+                      label='Pincode'
+                      placeholder='6-digit PIN'
+                      maxLength={6}
+                      inputMode='numeric'
+                      pattern='[0-9]*'
+                      hint='Enter PIN first to see delivery estimate'
+                      error={errors.pincode?.message}
+                      autoComplete='postal-code'
+                    />
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                       <Input
                         id='checkout-field-name'
@@ -2030,9 +2152,9 @@ export default function CheckoutClient() {
                           aria-invalid={errors.state ? true : undefined}
                           className={cn(
                             "h-10 w-full rounded-none border bg-white px-3 text-sm transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/40",
-                            errors.state
-                              ? "border-red-500 focus:ring-red-500/40"
-                              : "border-gray-300",
+                            errors.state ?
+                              "border-red-500 focus:ring-red-500/40"
+                            : "border-gray-300",
                           )}
                         >
                           <option value=''>Select state</option>
@@ -2049,18 +2171,6 @@ export default function CheckoutClient() {
                         )}
                       </div>
                     </div>
-                    <Input
-                      id='checkout-field-pincode'
-                      {...register("pincode")}
-                      label='Pincode'
-                      placeholder='6-digit PIN'
-                      maxLength={6}
-                      inputMode='numeric'
-                      pattern='[0-9]*'
-                      hint='6-digit area PIN'
-                      error={errors.pincode?.message}
-                      autoComplete='postal-code'
-                    />
                     <button
                       type='button'
                       className={cn(heritageCta, "mt-2")}
@@ -2070,26 +2180,51 @@ export default function CheckoutClient() {
                     </button>
                   </div>
 
-                  <section className='mt-8 border-t border-gray-200/70 pt-8'>
-                    <h2 className='mb-4 font-serif text-2xl font-medium text-navy-900 sm:mb-6 sm:text-3xl'>
+                  <DeliveryEstimateCard
+                    pincode={activePincode}
+                    estimate={deliveryEstimate}
+                    isLoading={isDeliveryEstimateLoading}
+                    error={deliveryEstimateError}
+                    displayCity={activeDisplayCity}
+                    className='mt-6'
+                  />
+
+                  <section className='mt-4 border-t border-gray-200/70 pt-4'>
+                    <h2 className='mb-2 font-serif text-2xl font-medium text-navy-900 sm:mb-3 sm:text-3xl'>
                       Shipping Method
                     </h2>
-                    <div className='flex items-center justify-between border border-gray-200/70 bg-white p-5 sm:p-6'>
-                      <div className='flex items-center gap-4'>
-                        <div className='flex h-5 w-5 items-center justify-center rounded-full border-2 border-navy-900'>
+                    <div className='flex items-start justify-between gap-3 border border-gray-200/70 bg-white p-3.5 sm:items-center sm:gap-4 sm:p-6'>
+                      <div className='flex min-w-0 items-start gap-3 sm:items-center sm:gap-4'>
+                        <div className='mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-navy-900 sm:mt-0'>
                           <div className='h-2.5 w-2.5 rounded-full bg-navy-900' />
                         </div>
-                        <div>
+                        <div className='min-w-0'>
                           <p className='text-sm font-semibold text-navy-900'>
                             Standard Delivery
+                            {deliveryEstimate?.carrier ?
+                              ` · ${deliveryEstimate.carrier}`
+                            : ""}
                           </p>
-                          <p className='mt-0.5 text-xs text-gray-500'>
-                            Arrives in 5–7 business days across India.
+                          <p className='mt-0.5 text-xs leading-snug text-gray-500'>
+                            {deliveryEstimate?.serviceable ?
+                              `Get it by ${formatPromisedDate(
+                                deliveryEstimate.promisedDate ||
+                                  deliveryEstimate.estimatedDelivery.to,
+                              )}${
+                                deliveryEstimate.zoneLabel ?
+                                  ` · ${deliveryEstimate.zoneLabel}`
+                                : ""
+                              }`
+                            : activePincode && isDeliveryEstimateLoading ?
+                              "Checking delivery timeline…"
+                            : "Enter pincode to see your delivery date."}
                           </p>
                         </div>
                       </div>
-                      <span className='text-xs font-bold uppercase tracking-wide text-[#c5a059]'>
-                        {shippingCharge === 0 ? "Complimentary" : formatPrice(shippingCharge)}
+                      <span className='shrink-0 pt-0.5 text-right text-[10px] font-bold uppercase tracking-wide text-[#c5a059] sm:pt-0 sm:text-xs'>
+                        {shippingCharge === 0 ?
+                          "Free"
+                        : formatPrice(shippingCharge)}
                       </span>
                     </div>
                   </section>
@@ -2102,7 +2237,7 @@ export default function CheckoutClient() {
                     Payment Method
                   </h2>
 
-                  {existingOrder ? (
+                  {existingOrder ?
                     <div className='border border-[#c5a059]/30 bg-[#fff8eb]/50 p-5 sm:p-6'>
                       <div className='flex items-start gap-3'>
                         <CheckCircle2 className='mt-0.5 h-6 w-6 shrink-0 text-[#c5a059]' />
@@ -2117,25 +2252,24 @@ export default function CheckoutClient() {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <>
+                  : <>
                       <button
                         type='button'
                         onClick={() => setCheckoutPaymentMethod("razorpay")}
                         className={cn(
                           "mb-4 w-full border p-5 text-left transition-all duration-300 sm:p-6",
-                          checkoutPaymentMethod === "razorpay"
-                            ? "border-2 border-navy-900 bg-[#f8f9fa]"
-                            : "border-gray-200/70 bg-white hover:border-[#c5a059]/50",
+                          checkoutPaymentMethod === "razorpay" ?
+                            "border-2 border-navy-900 bg-[#f8f9fa]"
+                          : "border-gray-200/70 bg-white hover:border-[#c5a059]/50",
                         )}
                       >
                         <div className='flex items-start gap-4'>
                           <div
                             className={cn(
                               "flex h-10 w-10 shrink-0 items-center justify-center",
-                              checkoutPaymentMethod === "razorpay"
-                                ? "bg-navy-900 text-white"
-                                : "border border-gray-200 text-navy-900",
+                              checkoutPaymentMethod === "razorpay" ?
+                                "bg-navy-900 text-white"
+                              : "border border-gray-200 text-navy-900",
                             )}
                           >
                             <Wallet className='h-5 w-5' />
@@ -2151,9 +2285,9 @@ export default function CheckoutClient() {
                           <CheckCircle2
                             className={cn(
                               "h-5 w-5 shrink-0",
-                              checkoutPaymentMethod === "razorpay"
-                                ? "text-[#c5a059]"
-                                : "text-gray-300",
+                              checkoutPaymentMethod === "razorpay" ?
+                                "text-[#c5a059]"
+                              : "text-gray-300",
                             )}
                           />
                         </div>
@@ -2164,9 +2298,9 @@ export default function CheckoutClient() {
                         onClick={() => setCheckoutPaymentMethod("cod")}
                         className={cn(
                           "w-full border p-5 text-left transition-all duration-300 sm:p-6",
-                          checkoutPaymentMethod === "cod"
-                            ? "border-2 border-navy-900 bg-[#f8f9fa]"
-                            : "border-gray-200/70 bg-white hover:border-[#c5a059]/50",
+                          checkoutPaymentMethod === "cod" ?
+                            "border-2 border-navy-900 bg-[#f8f9fa]"
+                          : "border-gray-200/70 bg-white hover:border-[#c5a059]/50",
                         )}
                       >
                         <div className='flex items-start gap-4'>
@@ -2188,15 +2322,19 @@ export default function CheckoutClient() {
                           <CheckCircle2
                             className={cn(
                               "h-5 w-5 shrink-0",
-                              checkoutPaymentMethod === "cod"
-                                ? "text-[#c5a059]"
-                                : "text-gray-300",
+                              checkoutPaymentMethod === "cod" ? "text-[#c5a059]"
+                              : "text-gray-300",
                             )}
                           />
                         </div>
                       </button>
                     </>
-                  )}
+                  }
+
+                  <CheckoutTrustStrip
+                    className='mt-6'
+                    subtotal={subtotalAfterDiscount}
+                  />
                 </section>
               )}
 
@@ -2205,6 +2343,7 @@ export default function CheckoutClient() {
                   <CheckoutReviewRecap
                     address={reviewAddressDisplay}
                     paymentMethod={checkoutPaymentMethod}
+                    deliveryEstimate={deliveryEstimate}
                     onEditAddress={() => setCheckoutStep(1)}
                     onEditPayment={() => setCheckoutStep(2)}
                   />
@@ -2218,195 +2357,188 @@ export default function CheckoutClient() {
                 showCheckoutWizard && checkoutStep < 3 && "max-lg:hidden",
               )}
             >
+              <div
+                className={cn(
+                  heritageSummaryCard,
+                  "lg:sticky lg:top-28",
+                  showCheckoutWizard &&
+                    checkoutStep === 3 &&
+                    "flex flex-col border-0 bg-transparent p-0 shadow-none lg:border lg:border-gray-200/70 lg:bg-white lg:p-8 lg:shadow-[0px_20px_40px_rgba(3,22,50,0.04)]",
+                )}
+              >
+                {showCheckoutWizard && checkoutStep === 3 && (
+                  <>
+                    <button
+                      type='button'
+                      className='mb-5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 transition-colors hover:text-navy-900 lg:hidden'
+                      onClick={() => setCheckoutStep(2)}
+                    >
+                      ← Back to Payment
+                    </button>
+                    <CheckoutReviewRecap
+                      className='mb-8 border-b border-gray-200/70 pb-8 lg:hidden'
+                      address={reviewAddressDisplay}
+                      paymentMethod={checkoutPaymentMethod}
+                      deliveryEstimate={deliveryEstimate}
+                      onEditAddress={() => setCheckoutStep(1)}
+                      onEditPayment={() => setCheckoutStep(2)}
+                    />
+                  </>
+                )}
+
                 <div
                   className={cn(
-                    heritageSummaryCard,
-                    "lg:sticky lg:top-28",
-                    showCheckoutWizard &&
-                      checkoutStep === 3 &&
-                      "flex flex-col border-0 bg-transparent p-0 shadow-none lg:border lg:border-gray-200/70 lg:bg-white lg:p-8 lg:shadow-[0px_20px_40px_rgba(3,22,50,0.04)]",
+                    "mb-6 min-w-0 border-b border-gray-200/70 pb-6",
+                    checkoutStep === 3 && "order-1",
                   )}
                 >
-                  {showCheckoutWizard && checkoutStep === 3 && (
-                    <>
-                      <button
-                        type='button'
-                        className='mb-5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 transition-colors hover:text-navy-900 lg:hidden'
-                        onClick={() => setCheckoutStep(2)}
-                      >
-                        ← Back to Payment
-                      </button>
-                      <CheckoutReviewRecap
-                        className='mb-8 border-b border-gray-200/70 pb-8 lg:hidden'
-                        address={reviewAddressDisplay}
-                        paymentMethod={checkoutPaymentMethod}
-                        onEditAddress={() => setCheckoutStep(1)}
-                        onEditPayment={() => setCheckoutStep(2)}
-                      />
-                    </>
-                  )}
-
-                  <div
-                    className={cn(
-                      "mb-6 min-w-0 border-b border-gray-200/70 pb-6",
-                      checkoutStep === 3 && "order-2 border-b-0 pb-0 pt-6",
-                    )}
-                  >
-                    {!existingOrder && activePromotion ? (
-                      <div className='mb-5 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3'>
-                        <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800'>
-                          Offer applied
-                        </p>
-                        <p className='mt-1 text-sm font-semibold text-emerald-900'>
-                          {activePromotion.label}
-                        </p>
-                        <p className='mt-0.5 text-xs text-emerald-800/80'>
-                          You save {formatPrice(activePromotion.appliedDiscount)}
-                        </p>
-                      </div>
-                    ) : !existingOrder && activePromotionHint ? (
-                      <div className='mb-5 rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/70 px-4 py-3'>
-                        <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'>
-                          Offer available
-                        </p>
-                        <p className='mt-1 text-sm font-semibold text-navy-900'>
-                          {activePromotionHint.label}
-                        </p>
-                        <p className='mt-0.5 text-xs text-gray-600'>
-                          {activePromotionHint.message}
-                        </p>
-                      </div>
-                    ) : null}
-
-                    <div className='mb-4 flex min-w-0 items-center justify-between gap-2'>
-                      <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
-                        Promotional Code
+                  {!existingOrder && activePromotion ?
+                    <div className='mb-5 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3'>
+                      <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800'>
+                        Offer applied
                       </p>
-                      {eligibleCoupons.length > 0 && (
-                        <span className='shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400'>
-                          {eligibleCoupons.length} available
-                        </span>
-                      )}
+                      <p className='mt-1 text-sm font-semibold text-emerald-900'>
+                        {activePromotion.label}
+                      </p>
+                      <p className='mt-0.5 text-xs text-emerald-800/80'>
+                        You save {formatPrice(activePromotion.appliedDiscount)}
+                      </p>
                     </div>
-
-                    {hasAppliedCoupon ? (
-                      <div className='min-w-0 space-y-3 border border-[#c5a059]/35 bg-[#fff8eb]/40 p-3 sm:p-4'>
-                        <CouponAppliedBanner
-                          variant='heritage'
-                          code={activeCouponCode}
-                          savedAmount={activeCouponDiscount}
-                          eligibleCoupons={eligibleCoupons}
-                          helperText='The discount is reflected in your order total below.'
-                        />
-                        <button
-                          type='button'
-                          className='w-full border border-gray-200 py-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500 transition-colors hover:border-[#c5a059]/50 hover:bg-white hover:text-navy-900 disabled:opacity-50'
-                          disabled={couponBusy}
-                          onClick={async () => {
-                            setCouponBusy(true);
-                            try {
-                              await removeSelectedCoupon();
-                            } finally {
-                              setCouponBusy(false);
-                            }
-                          }}
-                        >
-                          {couponBusy ? "Removing…" : "Remove Coupon"}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className='flex min-w-0 flex-col gap-2 sm:flex-row sm:items-stretch'>
-                        <input
-                          value={couponCode}
-                          onChange={(e) =>
-                            setCouponCode(e.target.value.toUpperCase())
-                          }
-                          placeholder='Enter coupon code'
-                          autoComplete='off'
-                          className='h-10 min-w-0 w-full border border-gray-300 bg-white px-3 text-sm focus:border-[#c5a059]/60 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/30'
-                        />
-                        <button
-                          type='button'
-                          className='h-10 shrink-0 bg-[#c5a059] px-4 text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d] disabled:opacity-50 sm:min-w-[5.5rem]'
-                          disabled={couponBusy || !couponCode.trim()}
-                          onClick={async () => {
-                            if (!couponCode.trim()) return;
-                            setCouponBusy(true);
-                            try {
-                              await applySelectedCoupon(couponCode.trim());
-                              setCouponCode("");
-                            } catch {
-                              /* toast from store */
-                            } finally {
-                              setCouponBusy(false);
-                            }
-                          }}
-                        >
-                          Apply
-                        </button>
-                      </div>
-                    )}
-
-                    {isLoadingCoupons ? (
-                      <p className='mt-3 text-xs text-gray-500'>
-                        Loading available offers…
+                  : !existingOrder && activePromotionHint ?
+                    <div className='mb-5 rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/70 px-4 py-3'>
+                      <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'>
+                        Offer available
                       </p>
-                    ) : eligibleCoupons.length === 0 ? (
-                      <p className='mt-3 text-xs text-gray-500'>
-                        No coupons are available for this order.
+                      <p className='mt-1 text-sm font-semibold text-navy-900'>
+                        {activePromotionHint.label}
                       </p>
-                    ) : (
-                      <div className='mt-3 grid max-h-72 min-w-0 grid-cols-1 gap-2 overflow-y-auto pr-0.5'>
-                        {eligibleCoupons.map((c) => (
-                          <button
-                            key={c._id}
-                            type='button'
-                            disabled={hasAppliedCoupon || couponBusy}
-                            title={
-                              hasAppliedCoupon
-                                ? "Remove your current coupon to use another"
-                                : undefined
-                            }
-                            onClick={async () => {
-                              try {
-                                await applySelectedCoupon(c.code);
-                              } catch {
-                                // store handles toast
-                              }
-                            }}
-                            className={cn(
-                              "min-w-0 border border-[#c5a059]/20 p-3 text-left transition-all",
-                              hasAppliedCoupon || couponBusy
-                                ? "cursor-not-allowed opacity-50"
-                                : "hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/50",
-                            )}
-                          >
-                            <CouponOfferPreview coupon={c} />
-                          </button>
-                        ))}
-                      </div>
+                      <p className='mt-0.5 text-xs text-gray-600'>
+                        {activePromotionHint.message}
+                      </p>
+                    </div>
+                  : null}
+
+                  <div className='mb-4 flex min-w-0 items-center justify-between gap-2'>
+                    <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
+                      Promotional Code
+                    </p>
+                    {eligibleCoupons.length > 0 && (
+                      <span className='shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400'>
+                        {eligibleCoupons.length} available
+                      </span>
                     )}
                   </div>
 
-                  <div
-                    className={cn(
-                      checkoutStep === 3 && "order-1 border-t border-gray-200/70 pt-6",
-                    )}
-                  >
+                  {hasAppliedCoupon ?
+                    <div className='min-w-0 space-y-3 border border-[#c5a059]/35 bg-[#fff8eb]/40 p-3 sm:p-4'>
+                      <CouponAppliedBanner
+                        variant='heritage'
+                        code={activeCouponCode}
+                        savedAmount={activeCouponDiscount}
+                        eligibleCoupons={eligibleCoupons}
+                        helperText='The discount is reflected in your order total below.'
+                      />
+                      <button
+                        type='button'
+                        className='w-full border border-gray-200 py-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500 transition-colors hover:border-[#c5a059]/50 hover:bg-white hover:text-navy-900 disabled:opacity-50'
+                        disabled={couponBusy}
+                        onClick={async () => {
+                          setCouponBusy(true);
+                          try {
+                            await removeSelectedCoupon();
+                          } finally {
+                            setCouponBusy(false);
+                          }
+                        }}
+                      >
+                        {couponBusy ? "Removing…" : "Remove Coupon"}
+                      </button>
+                    </div>
+                  : <div className='flex min-w-0 flex-col gap-2 sm:flex-row sm:items-stretch'>
+                      <input
+                        value={couponCode}
+                        onChange={(e) =>
+                          setCouponCode(e.target.value.toUpperCase())
+                        }
+                        placeholder='Enter coupon code'
+                        autoComplete='off'
+                        className='h-10 min-w-0 w-full border border-gray-300 bg-white px-3 text-sm focus:border-[#c5a059]/60 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/30'
+                      />
+                      <button
+                        type='button'
+                        className='h-10 shrink-0 bg-[#c5a059] px-4 text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d] disabled:opacity-50 sm:min-w-[5.5rem]'
+                        disabled={couponBusy || !couponCode.trim()}
+                        onClick={async () => {
+                          if (!couponCode.trim()) return;
+                          setCouponBusy(true);
+                          try {
+                            await applySelectedCoupon(couponCode.trim());
+                            setCouponCode("");
+                          } catch {
+                            /* toast from store */
+                          } finally {
+                            setCouponBusy(false);
+                          }
+                        }}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  }
+
+                  {isLoadingCoupons ?
+                    <p className='mt-2 text-xs text-gray-500'>
+                      Loading available offers…
+                    </p>
+                  : eligibleCoupons.length === 0 ?
+                    <p className='mt-2 text-xs text-gray-500'>
+                      No coupons are available for this order.
+                    </p>
+                  : <div className='mt-2 grid max-h-72 min-w-0 grid-cols-1 gap-2 overflow-y-auto pr-0.5'>
+                      {eligibleCoupons.map((c) => (
+                        <button
+                          key={c._id}
+                          type='button'
+                          disabled={hasAppliedCoupon || couponBusy}
+                          title={
+                            hasAppliedCoupon ?
+                              "Remove your current coupon to use another"
+                            : undefined
+                          }
+                          onClick={async () => {
+                            try {
+                              await applySelectedCoupon(c.code);
+                            } catch {
+                              // store handles toast
+                            }
+                          }}
+                          className={cn(
+                            "min-w-0 border border-[#c5a059]/20 p-2 text-left transition-all",
+                            hasAppliedCoupon || couponBusy ?
+                              "cursor-not-allowed opacity-50"
+                            : "hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/50",
+                          )}
+                        >
+                          <CouponOfferPreview coupon={c} />
+                        </button>
+                      ))}
+                    </div>
+                  }
+                </div>
+
+                <div className={cn(checkoutStep === 3 && "order-2")}>
                   <button
                     type='button'
-                    className='group mb-4 flex w-full min-w-0 items-center justify-between gap-2 lg:cursor-default'
+                    className='group mb-2 flex w-full min-w-0 items-center justify-between gap-2 lg:cursor-default'
                     onClick={() => setShowItems(!showItems)}
                   >
                     <h2 className='truncate text-left font-serif text-xl font-medium uppercase tracking-widest text-navy-900'>
                       Order Summary
                     </h2>
                     <span className='text-gray-400 lg:hidden'>
-                      {showItems ? (
+                      {showItems ?
                         <ChevronUp className='h-4 w-4' />
-                      ) : (
-                        <ChevronDown className='h-4 w-4' />
-                      )}
+                      : <ChevronDown className='h-4 w-4' />}
                     </span>
                   </button>
                   <p className='-mt-2 mb-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400'>
@@ -2470,7 +2602,7 @@ export default function CheckoutClient() {
                       return (
                         <div
                           key={rowKey}
-                          className='flex min-w-0 items-center gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0'
+                          className='flex min-w-0 items-center gap-4 border-b border-gray-100 pb-2.5 last:border-0 last:pb-0'
                         >
                           <div className='relative h-24 w-20 shrink-0 overflow-hidden bg-gray-100 sm:h-28 sm:w-24'>
                             <Image
@@ -2493,9 +2625,9 @@ export default function CheckoutClient() {
                               </p>
                               <p className='mt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500'>
                                 Qty: {row.quantity}
-                                {[row.variant?.size, row.variant?.color]
-                                  .filter(Boolean)
-                                  .length > 0 &&
+                                {[row.variant?.size, row.variant?.color].filter(
+                                  Boolean,
+                                ).length > 0 &&
                                   ` · ${[row.variant?.size, row.variant?.color].filter(Boolean).join(" · ")}`}
                               </p>
                             </div>
@@ -2548,7 +2680,7 @@ export default function CheckoutClient() {
                               </div>
                             )}
                             {showCartLineControls && sku && (
-                              <div className='mt-3 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
+                              <div className='mt-2 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
                                 <button
                                   type='button'
                                   disabled={lineBusy}
@@ -2595,7 +2727,7 @@ export default function CheckoutClient() {
                               </div>
                             )}
                             {showBuyNowLineControls && buyNowSku && (
-                              <div className='mt-3 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
+                              <div className='mt-2 inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 shadow-sm'>
                                 <button
                                   type='button'
                                   disabled={lineBusy}
@@ -2647,7 +2779,11 @@ export default function CheckoutClient() {
                                 type='button'
                                 disabled={lineBusy}
                                 onClick={() => {
-                                  if (showCartLineControls && sku && cartItemId) {
+                                  if (
+                                    showCartLineControls &&
+                                    sku &&
+                                    cartItemId
+                                  ) {
                                     void removeLine(cartItemId, sku);
                                   } else {
                                     void removeBuyNowLine();
@@ -2669,7 +2805,7 @@ export default function CheckoutClient() {
                     })}
                   </div>
 
-                  <div className='space-y-3 border-t border-gray-200/70 py-6 text-sm'>
+                  <div className='space-y-3 border-t border-gray-200/70 py-3 text-sm'>
                     <div className='flex justify-between text-gray-600'>
                       <span>Subtotal</span>
                       <span className='tabular-nums text-navy-900'>
@@ -2705,24 +2841,19 @@ export default function CheckoutClient() {
                       <span
                         className={cn(
                           "shrink-0 text-right text-xs font-bold uppercase tracking-wide",
-                          shippingCharge === 0
-                            ? "text-[#c5a059]"
-                            : "text-navy-900",
+                          shippingCharge === 0 ? "text-[#c5a059]" : (
+                            "text-navy-900"
+                          ),
                         )}
                       >
-                        {shippingCharge === 0
-                          ? "Complimentary"
-                          : formatPrice(shippingCharge)}
+                        {shippingCharge === 0 ?
+                          "Complimentary"
+                        : formatPrice(shippingCharge)}
                       </span>
                     </div>
                     {codFee > 0 && (
                       <div className='flex justify-between gap-3 text-gray-600'>
-                        <span className='min-w-0'>
-                          COD handling fee
-                          <span className='block text-[10px] font-normal text-gray-400 mt-0.5'>
-                            Cash on delivery only — not shipping
-                          </span>
-                        </span>
+                        <span className='min-w-0'>COD handling fee</span>
                         <span className='shrink-0 font-semibold tabular-nums'>
                           {formatPrice(codFee)}
                         </span>
@@ -2736,7 +2867,7 @@ export default function CheckoutClient() {
                         </span>
                       </div>
                     )}
-                    <div className='flex justify-between border-t border-navy-900/10 pt-4'>
+                    <div className='flex justify-between border-t border-navy-900/10 pt-2'>
                       <span className='font-serif text-lg font-medium uppercase tracking-tight text-navy-900'>
                         Grand Total
                       </span>
@@ -2758,52 +2889,55 @@ export default function CheckoutClient() {
                       </p>
                     )}
                   </div>
-                  </div>
+                </div>
 
-                  {showCheckoutWizard && checkoutStep === 1 && (
+                {showCheckoutWizard && checkoutStep === 1 && (
+                  <button
+                    type='button'
+                    className={cn(
+                      heritageCta,
+                      "mt-3 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] max-lg:hidden",
+                    )}
+                    disabled={deliveryBlocked || isDeliveryEstimateLoading}
+                    onClick={() => void goToPaymentStep()}
+                  >
+                    {isDeliveryEstimateLoading ?
+                      "Checking delivery…"
+                    : deliveryBlocked ?
+                      "Delivery unavailable"
+                    : "Proceed to Payment"}
+                  </button>
+                )}
+
+                {showCheckoutWizard && checkoutStep === 2 && (
+                  <div className='mt-3 space-y-3 max-lg:hidden'>
+                    <button
+                      type='button'
+                      className='h-11 w-full border border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
+                      onClick={() => setCheckoutStep(1)}
+                    >
+                      Back to Shipping
+                    </button>
                     <button
                       type='button'
                       className={cn(
                         heritageCta,
-                        "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] max-lg:hidden",
+                        "shadow-[0px_20px_40px_rgba(3,22,50,0.08)]",
                       )}
-                      onClick={() => void goToPaymentStep()}
+                      onClick={() => void goToReviewStep()}
                     >
-                      Proceed to Payment
+                      Review Order &amp; Pay
                     </button>
-                  )}
+                  </div>
+                )}
 
-                  {showCheckoutWizard && checkoutStep === 2 && (
-                    <div className='mt-6 space-y-3 max-lg:hidden'>
-                      <button
-                        type='button'
-                        className='h-11 w-full border border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
-                        onClick={() => setCheckoutStep(1)}
-                      >
-                        Back to Shipping
-                      </button>
-                      <button
-                        type='button'
-                        className={cn(
-                          heritageCta,
-                          "shadow-[0px_20px_40px_rgba(3,22,50,0.08)]",
-                        )}
-                        onClick={() => void goToReviewStep()}
-                      >
-                        Review Order &amp; Pay
-                      </button>
-                    </div>
-                  )}
-
-                  <div
-                    className={cn(checkoutStep === 3 && "order-3")}
-                  >
+                <div className={cn(checkoutStep === 3 && "order-3")}>
                   {(!showCheckoutWizard || checkoutStep === 3) && (
                     <>
                       {showCheckoutWizard && (
                         <button
                           type='button'
-                          className='mb-3 hidden w-full text-[11px] font-semibold uppercase tracking-wide text-gray-500 transition-colors hover:text-navy-900 lg:block'
+                          className='mb-2 hidden w-full text-[11px] font-semibold uppercase tracking-wide text-gray-500 transition-colors hover:text-navy-900 lg:block'
                           onClick={() => setCheckoutStep(2)}
                         >
                           ← Back to Payment
@@ -2813,20 +2947,20 @@ export default function CheckoutClient() {
                         type='submit'
                         className={cn(
                           heritageCta,
-                          "mt-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] max-lg:hidden",
+                          "mt-3 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] max-lg:hidden",
                         )}
                         disabled={isSubmittingOrder || isPlacingOrder}
                       >
-                        {isSubmittingOrder || isPlacingOrder
-                          ? "Placing order…"
-                          : existingOrder
-                            ? `Confirm & Pay — ${formatPrice(total)}`
-                            : checkoutPaymentMethod === "razorpay"
-                              ? `Confirm & Pay — ${formatPrice(total)}`
-                              : `Confirm & Place Order — ${formatPrice(total)}`}
+                        {isSubmittingOrder || isPlacingOrder ?
+                          "Placing order…"
+                        : existingOrder ?
+                          `Confirm & Pay — ${formatPrice(total)}`
+                        : checkoutPaymentMethod === "razorpay" ?
+                          `Confirm & Pay — ${formatPrice(total)}`
+                        : `Confirm & Place Order — ${formatPrice(total)}`}
                       </button>
 
-                      <p className='mt-3 text-center text-[11px] text-gray-400'>
+                      <p className='mt-2 text-center text-[11px] text-gray-400'>
                         By placing this order, you agree to our{" "}
                         <Link
                           href='/terms'
@@ -2846,11 +2980,17 @@ export default function CheckoutClient() {
                     </>
                   )}
 
-                  <div className='mt-8 grid grid-cols-3 gap-2 text-center'>
+                  <div className='mt-4 grid grid-cols-3 gap-2 text-center'>
                     {(
                       [
                         { Icon: Shield, label: "Secure Checkout" },
-                        { Icon: Truck, label: "Free Delivery" },
+                        {
+                          Icon: Truck,
+                          label:
+                            shippingCharge === 0 ? "Free Delivery" : (
+                              `Free over ${formatPrice(SHIPPING_THRESHOLD)}`
+                            ),
+                        },
                         { Icon: RotateCcw, label: "Easy Returns" },
                       ] as const
                     ).map(({ Icon, label }) => (
@@ -2858,7 +2998,7 @@ export default function CheckoutClient() {
                         key={label}
                         className='flex flex-col items-center px-1 py-2'
                       >
-                        <Icon className='mx-auto mb-2 h-5 w-5 text-[#c5a059]' />
+                        <Icon className='mx-auto mb-1.5 h-5 w-5 text-[#c5a059]' />
                         <p className='text-[9px] font-semibold uppercase leading-tight tracking-tight text-gray-500'>
                           {label}
                         </p>
@@ -2871,35 +3011,54 @@ export default function CheckoutClient() {
                       {offerText}
                     </p>
                   )}
-                  </div>
                 </div>
               </div>
+            </div>
           </div>
         </form>
 
         {/* Mobile Sticky Bottom CTA */}
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 p-4 lg:hidden pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+        <div className='fixed bottom-0 inset-x-0 z-40 border-t border-gray-200 bg-white/95 px-2 pt-1.5 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur-md lg:hidden pb-[max(0.65rem,env(safe-area-inset-bottom))]'>
+          {showCheckoutWizard && checkoutStep < 3 && (
+            <CheckoutMiniSummaryBar
+              itemCount={checkoutItems.length}
+              total={total}
+              estimate={deliveryEstimate}
+              isLoadingEstimate={isDeliveryEstimateLoading}
+            />
+          )}
           {showCheckoutWizard && checkoutStep === 1 && (
             <button
               type='button'
-              className={heritageCta}
+              className={cn(
+                heritageCta,
+                "min-h-12 py-3 text-[10px] tracking-[0.16em]",
+              )}
+              disabled={deliveryBlocked || isDeliveryEstimateLoading}
               onClick={() => void goToPaymentStep()}
             >
-              Proceed to Payment
+              {isDeliveryEstimateLoading ?
+                "Checking delivery…"
+              : deliveryBlocked ?
+                "Delivery unavailable"
+              : "Continue"}
             </button>
           )}
           {showCheckoutWizard && checkoutStep === 2 && (
-            <div className="flex gap-3">
+            <div className='flex gap-2'>
               <button
                 type='button'
-                className='h-12 w-1/3 shrink-0 border border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-600 transition-colors hover:border-navy-900 hover:text-navy-900'
+                className='h-12 w-[5.5rem] shrink-0 border border-gray-200 bg-gray-50 text-[10px] font-bold uppercase tracking-wide text-gray-600'
                 onClick={() => setCheckoutStep(1)}
               >
                 Back
               </button>
               <button
                 type='button'
-                className={cn(heritageCta, "flex-1")}
+                className={cn(
+                  heritageCta,
+                  "h-12 flex-1 py-0 text-[10px] tracking-[0.16em]",
+                )}
                 onClick={() => void goToReviewStep()}
               >
                 Review &amp; Pay
@@ -2912,16 +3071,19 @@ export default function CheckoutClient() {
               onClick={() => {
                 checkoutFormRef.current?.requestSubmit();
               }}
-              className={heritageCta}
+              className={cn(
+                heritageCta,
+                "min-h-12 py-3 text-[10px] tracking-[0.16em]",
+              )}
               disabled={isSubmittingOrder || isPlacingOrder}
             >
-              {isSubmittingOrder || isPlacingOrder
-                ? "Placing order…"
-                : existingOrder
-                  ? `Pay — ${formatPrice(total)}`
-                  : checkoutPaymentMethod === "razorpay"
-                    ? `Pay — ${formatPrice(total)}`
-                    : `Place Order — ${formatPrice(total)}`}
+              {isSubmittingOrder || isPlacingOrder ?
+                "Placing order…"
+              : existingOrder ?
+                `Pay — ${formatPrice(total)}`
+              : checkoutPaymentMethod === "razorpay" ?
+                `Pay — ${formatPrice(total)}`
+              : `Place Order — ${formatPrice(total)}`}
             </button>
           )}
         </div>

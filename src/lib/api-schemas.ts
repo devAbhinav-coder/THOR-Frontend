@@ -135,6 +135,33 @@ export const storefrontSettings = z.object({
 
 export type StorefrontSettingsApiEnvelope = z.infer<typeof storefrontSettings>;
 
+export const shippingEstimate = z.object({
+  status: z.string(),
+  data: z.object({
+    serviceable: z.boolean(),
+    pincode: z.string(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zone: z.string().optional(),
+    zoneLabel: z.string().optional(),
+    tatDaysMin: z.number(),
+    tatDaysMax: z.number(),
+    estimatedDelivery: z.object({
+      from: z.string(),
+      to: z.string(),
+    }),
+    promisedDate: z.string().optional(),
+    dispatchDaysMin: z.number(),
+    dispatchDaysMax: z.number(),
+    carrier: z.string(),
+    source: z.enum(["learned", "carrier", "zone"]).optional(),
+    fallback: z.boolean(),
+    message: z.string().optional(),
+  }),
+});
+
+export type ShippingEstimateApiEnvelope = z.infer<typeof shippingEstimate>;
+
 export const parsedSearchIntentSchema = z
   .object({
     rawQuery: z.string(),

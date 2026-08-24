@@ -690,6 +690,12 @@ export const storefrontApi = {
       api.post('/storefront/offer-event', data),
       schemas.looseDataResponse,
     ),
+  getShippingEstimate: (pin: string) =>
+    unwrapAxios(
+      'storefront.shippingEstimate',
+      api.get('/storefront/shipping/estimate', { params: { pin } }),
+      schemas.shippingEstimate,
+    ),
 };
 
 export const adminApi = {

@@ -90,7 +90,7 @@ export function resolveShopListHeading(options: {
   const search = String(options.search || "").trim();
   if (search) {
     const short = search.length > 32 ? `${search.slice(0, 32)}…` : search;
-    return `Results for “${short}”`;
+    return short;
   }
   const subcategory = String(options.subcategoryName || "").trim();
   const category = String(options.categoryName || "").trim();

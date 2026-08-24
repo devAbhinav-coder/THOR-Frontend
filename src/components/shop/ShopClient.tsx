@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useTransition, useCallback } from
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { productApi, storefrontApi, categoryApi, navigationApi } from "@/lib/api";
 import { Product, Category, FilterOptions, FilterCategoryTreeItem, StorefrontSettings } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -476,15 +476,6 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     enabled: Boolean(hasNextPage),
   });
 
-  const applyColor = useCallback(
-    (color: string) => {
-      const next = resolveNextShopFilters(filters, "colors", color);
-      const url = resolveCanonicalShopUrl(next, categoryContext);
-      router.push(url, { scroll: true });
-    },
-    [filters, categoryContext, router],
-  );
-
   const pushFilters = useCallback(
     (next: typeof filters) => {
       startFilterTransition(() => {
@@ -549,26 +540,6 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     );
   };
 
-  const applyIntentCategory = (category: string) => {
-    router.push(
-      resolveCanonicalShopUrl(
-        {
-          ...filters,
-          categories: dedupeShopFilterValues([...filters.categories, category]),
-        },
-        categoryContext,
-      ),
-      { scroll: false },
-    );
-  };
-
-  const applyIntentMaxPrice = (maxPrice: string) => {
-    router.push(
-      resolveCanonicalShopUrl({ ...filters, maxPrice }, categoryContext),
-      { scroll: false },
-    );
-  };
-
   const clearSearchOnly = () => {
     router.push(
       resolveCanonicalShopUrl({ ...filters, search: "" }, categoryContext),
@@ -610,7 +581,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   });
 
   const breadcrumbContext = useMemo(() => {
-    if (filters.search) return `Search Products: "${searchTitle}"`;
+    if (filters.search) return "Search";
     if (categoryLabel) return categoryLabel;
     if (colorLabel) return `${colorLabel} Collection`;
     if (filters.ratings.length) {
@@ -631,7 +602,6 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     filters.isFeatured,
     filters.onSale,
     filters.hasOffer,
-    searchTitle,
   ]);
   const productGridClass = SHOP_PRODUCT_GRID_CLASS;
 
@@ -706,23 +676,34 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
               )}
             </nav>
 
-            <h1 className='mt-2 line-clamp-2 font-serif text-2xl font-medium italic leading-tight tracking-tight text-[#c5a059] sm:mt-2.5 sm:text-3xl lg:text-4xl'>
-              <span className='sr-only'>{heroContent.h1Accessible}</span>
-              <span aria-hidden='true'>{heroTitle}</span>
-            </h1>
-
             {filters.search ?
-              <ShopSearchIntentChips
-                search={filters.search}
-                filters={filters}
-                searchIntent={searchIntent}
-                onApplySearch={applySearchQuery}
-                onApplyColor={applyColor}
-                onApplyCategory={applyIntentCategory}
-                onApplyMaxPrice={applyIntentMaxPrice}
-                onClearSearch={clearSearchOnly}
-              />
-            : null}
+              <div className='mt-3 sm:mt-4'>
+                <div className='flex items-baseline justify-between gap-4'>
+                  <h1 className='min-w-0 font-serif text-[1.55rem] font-medium leading-snug tracking-tight text-navy-900 sm:text-[1.85rem]'>
+                    <span className='sr-only'>{heroContent.h1Accessible}</span>
+                    <span aria-hidden='true' className='line-clamp-2'>
+                      {searchTitle}
+                    </span>
+                  </h1>
+                  <button
+                    type='button'
+                    onClick={clearSearchOnly}
+                    className='inline-flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 transition-colors hover:text-[#c5a059]'
+                  >
+                    <X className='h-3 w-3' aria-hidden />
+                    Clear
+                  </button>
+                </div>
+                <ShopSearchIntentChips
+                  search={filters.search}
+                  searchIntent={searchIntent}
+                  onApplySearch={applySearchQuery}
+                />
+              </div>
+            : <h1 className='mt-2 line-clamp-2 font-serif text-2xl font-medium italic leading-tight tracking-tight text-[#c5a059] sm:mt-2.5 sm:text-3xl lg:text-4xl'>
+                <span className='sr-only'>{heroContent.h1Accessible}</span>
+                <span aria-hidden='true'>{heroTitle}</span>
+              </h1>}
           </div>
         </section>
 

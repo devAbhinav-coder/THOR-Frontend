@@ -32,9 +32,9 @@ export function resolveShopHeroContent(options: {
   if (search) {
     const short = search.length > 36 ? `${search.slice(0, 36)}…` : search;
     return {
-      eyebrow: "Search our boutique",
-      titleLine1: "Results for",
-      titleLine2: `"${short}"`,
+      eyebrow: "Search",
+      titleLine1: short,
+      titleLine2: "",
       subtitle:
         "Refine with fabric, price, and rating filters — premium sarees, salwar suits & corsets delivered across India.",
       h1Accessible: `Search results for ${search} — sarees, salwar suits & corsets`,

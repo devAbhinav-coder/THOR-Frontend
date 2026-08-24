@@ -2,19 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import {
+  createNetworkActivityTracker,
+  routeKeyFromUrl,
+  routeKeyFromWindow,
+  waitForRoutePaint,
+} from "@/lib/navigationProgress";
 
-/** Stable key for same-origin navigations (trailing slash + search order tolerant). */
-function routeKeyFromLocation(pathname: string, searchWithoutQuestion: string): string {
-  const path =
-    pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  return `${path}?${searchWithoutQuestion}`;
-}
-
-const FAILSAFE_MS = 8000;
+const FAILSAFE_MS = 30000;
 
 /**
- * Slim top bar during client navigations. Clears when the URL updates, on back/forward,
- * or after a failsafe — avoids getting stuck when a click does not change the route key.
+ * Slim top bar during client navigations. Stays visible until the new route is
+ * painted and in-flight page/API requests settle — not merely when the URL updates.
  */
 export function NavigationProgress() {
   const pathname = usePathname();
@@ -22,6 +21,12 @@ export function NavigationProgress() {
   const [active, setActive] = useState(false);
   const skipNextRouteClear = useRef(true);
   const failsafeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navGenerationRef = useRef(0);
+  const completingRef = useRef(false);
+  const activeRef = useRef(false);
+  const trackerRef = useRef<ReturnType<typeof createNetworkActivityTracker> | null>(
+    null,
+  );
 
   const search = searchParams.toString();
 
@@ -32,17 +37,64 @@ export function NavigationProgress() {
     }
   };
 
-  /** Successful navigation (pathname or query changed) always hides the bar. */
+  const armFailsafe = () => {
+    clearFailsafe();
+    failsafeRef.current = setTimeout(() => {
+      activeRef.current = false;
+      setActive(false);
+      completingRef.current = false;
+      failsafeRef.current = null;
+    }, FAILSAFE_MS);
+  };
+
+  const beginNavigation = () => {
+    navGenerationRef.current += 1;
+    completingRef.current = false;
+    activeRef.current = true;
+    setActive(true);
+    armFailsafe();
+  };
+
+  const completeNavigation = async (generation: number) => {
+    if (completingRef.current) return;
+    completingRef.current = true;
+
+    try {
+      await waitForRoutePaint();
+      await trackerRef.current?.waitForIdle({ idleMs: 280, timeoutMs: 12000 });
+    } finally {
+      if (navGenerationRef.current !== generation) return;
+      activeRef.current = false;
+      setActive(false);
+      completingRef.current = false;
+      clearFailsafe();
+    }
+  };
+
+  /** Route committed — wait for paint + network before hiding the bar. */
   useEffect(() => {
     if (skipNextRouteClear.current) {
       skipNextRouteClear.current = false;
       return;
     }
-    setActive(false);
-    clearFailsafe();
+    if (!activeRef.current) return;
+
+    const generation = navGenerationRef.current;
+    void completeNavigation(generation);
   }, [pathname, search]);
 
   useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  useEffect(() => {
+    const tracker = createNetworkActivityTracker({
+      onNavigationRscFetch: () => {
+        if (!activeRef.current) beginNavigation();
+      },
+    });
+    trackerRef.current = tracker;
+
     const onClick = (e: MouseEvent) => {
       if (e.button !== 0) return;
       const el = e.target as HTMLElement | null;
@@ -51,6 +103,7 @@ export function NavigationProgress() {
       if (a.target === "_blank") return;
       if (a.hasAttribute("download")) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
       let url: URL;
       try {
         url = new URL(a.href);
@@ -59,31 +112,24 @@ export function NavigationProgress() {
       }
       if (url.origin !== window.location.origin) return;
 
-      const nextKey = routeKeyFromLocation(url.pathname, url.search.slice(1));
-      const currentKey = routeKeyFromLocation(
-        window.location.pathname,
-        window.location.search.slice(1),
-      );
-      if (nextKey === currentKey) return;
+      const nextKey = routeKeyFromUrl(url);
+      if (nextKey === routeKeyFromWindow()) return;
 
-      setActive(true);
-      clearFailsafe();
-      failsafeRef.current = setTimeout(() => {
-        setActive(false);
-        failsafeRef.current = null;
-      }, FAILSAFE_MS);
+      beginNavigation();
     };
 
     const onPopState = () => {
-      setActive(false);
-      clearFailsafe();
+      beginNavigation();
     };
 
     document.addEventListener("click", onClick, true);
     window.addEventListener("popstate", onPopState);
+
     return () => {
       document.removeEventListener("click", onClick, true);
       window.removeEventListener("popstate", onPopState);
+      tracker.dispose();
+      trackerRef.current = null;
       clearFailsafe();
     };
   }, []);
