@@ -1637,7 +1637,7 @@ export default function AdminStorefrontPage() {
                 className={inputCls}
                 value={settings.homeGiftShowcase?.socialHandle || ''}
                 onChange={(e) => patchShowcase({ socialHandle: e.target.value })}
-                placeholder="e.g. @thehouseofrani_"
+                placeholder="e.g. @thehouseofraniofficial"
               />
             </Field>
 

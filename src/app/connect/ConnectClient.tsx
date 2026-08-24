@@ -11,7 +11,7 @@ const links = [
   {
     name: 'Instagram',
     icon: Instagram,
-    url: 'https://www.instagram.com/thehouseofrani_',
+    url: 'https://www.instagram.com/thehouseofraniofficial',
     color: 'from-pink-500 to-rose-500',
   },
   {

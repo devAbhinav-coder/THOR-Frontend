@@ -3,17 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  createNetworkActivityTracker,
+  createNavigationRscTracker,
   routeKeyFromUrl,
   routeKeyFromWindow,
+  waitForHydrationSettle,
   waitForRoutePaint,
 } from "@/lib/navigationProgress";
 
-const FAILSAFE_MS = 30000;
+const FAILSAFE_MS = 15000;
 
 /**
- * Slim top bar during client navigations. Stays visible until the new route is
- * painted and in-flight page/API requests settle — not merely when the URL updates.
+ * Slim top bar during client navigations. Starts only on real navigations (link
+ * click / back-forward), and ends after the route commit + transition RSC fetch.
  */
 export function NavigationProgress() {
   const pathname = usePathname();
@@ -24,7 +25,7 @@ export function NavigationProgress() {
   const navGenerationRef = useRef(0);
   const completingRef = useRef(false);
   const activeRef = useRef(false);
-  const trackerRef = useRef<ReturnType<typeof createNetworkActivityTracker> | null>(
+  const trackerRef = useRef<ReturnType<typeof createNavigationRscTracker> | null>(
     null,
   );
 
@@ -61,7 +62,8 @@ export function NavigationProgress() {
 
     try {
       await waitForRoutePaint();
-      await trackerRef.current?.waitForIdle({ idleMs: 280, timeoutMs: 12000 });
+      await trackerRef.current?.waitForIdle({ idleMs: 200, timeoutMs: 8000 });
+      await waitForHydrationSettle();
     } finally {
       if (navGenerationRef.current !== generation) return;
       activeRef.current = false;
@@ -71,7 +73,7 @@ export function NavigationProgress() {
     }
   };
 
-  /** Route committed — wait for paint + network before hiding the bar. */
+  /** Route committed — wait for paint + transition fetch before hiding the bar. */
   useEffect(() => {
     if (skipNextRouteClear.current) {
       skipNextRouteClear.current = false;
@@ -88,11 +90,7 @@ export function NavigationProgress() {
   }, [active]);
 
   useEffect(() => {
-    const tracker = createNetworkActivityTracker({
-      onNavigationRscFetch: () => {
-        if (!activeRef.current) beginNavigation();
-      },
-    });
+    const tracker = createNavigationRscTracker(() => activeRef.current);
     trackerRef.current = tracker;
 
     const onClick = (e: MouseEvent) => {

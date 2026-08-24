@@ -28,93 +28,71 @@ function readHeaders(
   return new Headers();
 }
 
-/** Next.js soft-navigation RSC fetch (not viewport prefetch). */
-export function isNavigationRscFetch(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): boolean {
-  const headers = readHeaders(input, init);
-  if (headers.get("Next-Router-Prefetch") === "1") return false;
-  if (headers.get("Purpose") === "prefetch") return false;
-  if (headers.get("RSC") === "1") return true;
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
 
-  const raw =
-    typeof input === "string" ? input
-    : input instanceof URL ? input.href
-    : input.url;
+/** Next.js flight/RSC request (navigation or prefetch). */
+export function isRscFetch(input: RequestInfo | URL, init?: RequestInit): boolean {
+  const headers = readHeaders(input, init);
+  if (headers.get("rsc") === "1") return true;
+
   try {
-    const url = new URL(raw, window.location.href);
+    const url = new URL(requestUrl(input), window.location.href);
     return url.searchParams.has("_rsc");
   } catch {
     return false;
   }
 }
 
-export type NetworkActivityTracker = {
-  /** In-flight fetch/XHR count (excluding Next prefetch). */
-  pending: () => number;
-  /** Resolves after `idleMs` with no in-flight requests, or after `timeoutMs`. */
+/** Background prefetch — must not start the top loading bar. */
+export function isPrefetchRscFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): boolean {
+  const headers = readHeaders(input, init);
+  if (headers.get("next-router-prefetch") === "1") return true;
+  if (headers.has("next-router-segment-prefetch")) return true;
+  if (headers.get("purpose") === "prefetch") return true;
+  return false;
+}
+
+export type NavigationRscTracker = {
   waitForIdle: (opts?: { idleMs?: number; timeoutMs?: number }) => Promise<void>;
   dispose: () => void;
 };
 
-export function createNetworkActivityTracker(opts?: {
-  onNavigationRscFetch?: () => void;
-}): NetworkActivityTracker {
+/**
+ * Tracks in-flight route-transition RSC fetches only while a navigation is active.
+ * Ignores viewport/hover prefetches so the home page is not stuck loading.
+ */
+export function createNavigationRscTracker(
+  isNavigationActive: () => boolean,
+): NavigationRscTracker {
   let inFlight = 0;
   let disposed = false;
 
   const originalFetch = window.fetch.bind(window);
-  const originalXhrOpen = XMLHttpRequest.prototype.open;
-  const originalXhrSend = XMLHttpRequest.prototype.send;
-
-  const begin = () => {
-    if (!disposed) inFlight += 1;
-  };
-
-  const end = () => {
-    if (disposed) return;
-    inFlight = Math.max(0, inFlight - 1);
-  };
 
   window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
-    const navRsc = isNavigationRscFetch(input, init);
-    if (navRsc) {
-      opts?.onNavigationRscFetch?.();
-    } else {
-      begin();
-    }
+    const track =
+      !disposed &&
+      isNavigationActive() &&
+      isRscFetch(input, init) &&
+      !isPrefetchRscFetch(input, init);
+
+    if (track) inFlight += 1;
+
     return originalFetch(input, init).finally(() => {
-      if (!navRsc) end();
+      if (track) inFlight = Math.max(0, inFlight - 1);
     });
   }) as typeof window.fetch;
 
-  XMLHttpRequest.prototype.open = function open(
-    this: XMLHttpRequest,
-    method: string,
-    url: string | URL,
-    async?: boolean,
-    username?: string | null,
-    password?: string | null,
-  ) {
-    (this as XMLHttpRequest & { __navTrack?: boolean }).__navTrack = true;
-    return originalXhrOpen.call(this, method, url, async ?? true, username, password);
-  };
-
-  XMLHttpRequest.prototype.send = function send(
-    this: XMLHttpRequest,
-    body?: Document | XMLHttpRequestBodyInit | null,
-  ) {
-    if ((this as XMLHttpRequest & { __navTrack?: boolean }).__navTrack) {
-      begin();
-      this.addEventListener("loadend", end, { once: true });
-    }
-    return originalXhrSend.call(this, body);
-  };
-
   const waitForIdle = ({
-    idleMs = 280,
-    timeoutMs = 15000,
+    idleMs = 200,
+    timeoutMs = 10000,
   }: { idleMs?: number; timeoutMs?: number } = {}) =>
     new Promise<void>((resolve) => {
       if (disposed) {
@@ -146,13 +124,10 @@ export function createNetworkActivityTracker(opts?: {
     });
 
   return {
-    pending: () => inFlight,
     waitForIdle,
     dispose: () => {
       disposed = true;
       window.fetch = originalFetch;
-      XMLHttpRequest.prototype.open = originalXhrOpen;
-      XMLHttpRequest.prototype.send = originalXhrSend;
     },
   };
 }
@@ -163,5 +138,12 @@ export function waitForRoutePaint(): Promise<void> {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => resolve());
     });
+  });
+}
+
+/** Short buffer for client components to mount after the route commit. */
+export function waitForHydrationSettle(ms = 350): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
   });
 }

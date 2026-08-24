@@ -56,7 +56,7 @@ export const SHOP_KEYWORDS = [
 
 /** Official brand profiles for Organization / LocalBusiness sameAs. */
 export const BRAND_SAME_AS = [
-  "https://www.instagram.com/thehouseofrani_",
+  "https://www.instagram.com/thehouseofraniofficial",
   "https://www.facebook.com/people/HouseofRani/61580570102572/",
 ] as const;
 

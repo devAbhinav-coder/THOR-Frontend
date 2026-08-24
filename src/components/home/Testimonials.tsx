@@ -11,7 +11,7 @@ import { homeSectionStyles } from "@/lib/homeSectionStyles";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import HomeSectionHeader from "@/components/home/HomeSectionHeader";
 
-const FALLBACK_IG = "https://www.instagram.com/thehouseofrani_";
+const FALLBACK_IG = "https://www.instagram.com/thehouseofraniofficial";
 
 type StoryProduct = {
   _id: string;
@@ -51,9 +51,9 @@ function productHref(product?: StoryProduct) {
 function instagramHandleFromUrl(url: string) {
   try {
     const path = new URL(url).pathname.split("/").filter(Boolean)[0];
-    return path ? `@${path}` : "@thehouseofrani_";
+    return path ? `@${path}` : "@thehouseofraniofficial";
   } catch {
-    return "@thehouseofrani_";
+    return "@thehouseofraniofficial";
   }
 }
 
