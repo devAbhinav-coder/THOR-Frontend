@@ -62,9 +62,13 @@ export function PdpImageGallery({
   const hoverZoomEnabled = useFinePointerHover();
   const aspect = thumbAspect(isGiftMarketingContext);
 
+  const [skipWrapAnimation, setSkipWrapAnimation] = useState(false);
+  const skipTimeout = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     setSelectedImage(0);
     setImageLightboxOpen(false);
+    setSkipWrapAnimation(false);
   }, [productId, galleryKey, images]);
 
   useEffect(() => {
@@ -86,12 +90,32 @@ export function PdpImageGallery({
 
   const goPrev = useCallback(() => {
     if (images.length <= 1) return;
-    setSelectedImage((i) => (i - 1 + images.length) % images.length);
+    setSelectedImage((i) => {
+      const prev = (i - 1 + images.length) % images.length;
+      if (i === 0 && prev === images.length - 1) {
+        setSkipWrapAnimation(true);
+        if (skipTimeout.current) clearTimeout(skipTimeout.current);
+        skipTimeout.current = setTimeout(() => setSkipWrapAnimation(false), 50);
+      } else {
+        setSkipWrapAnimation(false);
+      }
+      return prev;
+    });
   }, [images.length]);
 
   const goNext = useCallback(() => {
     if (images.length <= 1) return;
-    setSelectedImage((i) => (i + 1) % images.length);
+    setSelectedImage((i) => {
+      const next = (i + 1) % images.length;
+      if (i === images.length - 1 && next === 0) {
+        setSkipWrapAnimation(true);
+        if (skipTimeout.current) clearTimeout(skipTimeout.current);
+        skipTimeout.current = setTimeout(() => setSkipWrapAnimation(false), 50);
+      } else {
+        setSkipWrapAnimation(false);
+      }
+      return next;
+    });
   }, [images.length]);
 
   const flushPdpLensDom = () => {
@@ -280,7 +304,10 @@ export function PdpImageGallery({
             >
               {images.length > 0 ?
                 <div 
-                  className='absolute inset-0 z-0 flex transition-transform duration-300 ease-out will-change-transform'
+                  className={cn(
+                    'absolute inset-0 z-0 flex ease-out will-change-transform',
+                    skipWrapAnimation ? 'transition-none duration-0' : 'transition-transform duration-300'
+                  )}
                   style={{ transform: `translateX(-${selectedImage * 100}%)` }}
                 >
                   {images.map((img, i) => (
