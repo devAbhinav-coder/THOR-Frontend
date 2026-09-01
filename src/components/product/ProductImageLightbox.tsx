@@ -11,7 +11,7 @@ export type LightboxImage = { url: string; alt?: string };
 /** Magnification for the right (or stacked) zoom panel only — main preview stays fixed at 1×. */
 const ZOOM_LENS_SCALE = 2.2;
 /** Cap for pinch-zoom on touch devices (browser zoom was feeling too strong). */
-const MOBILE_LIGHTBOX_MAX_PINCH_ZOOM = 1.85;
+const MOBILE_LIGHTBOX_MAX_PINCH_ZOOM = 4.0;
 
 interface ProductImageLightboxProps {
   images: LightboxImage[];
@@ -38,11 +38,14 @@ export default function ProductImageLightbox({
   const hoverZoomEnabled = useFinePointerHover();
   const [hoveringZoom, setHoveringZoom] = useState(false);
   const [focal, setFocal] = useState({ x: 50, y: 50 });
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  /** 1×–MOBILE_LIGHTBOX_MAX_PINCH_ZOOM; coarse pointer only. */
+  
   const [mobilePinchZoom, setMobilePinchZoom] = useState(1);
   const mobilePinchZoomRef = useRef(1);
   const pinchGestureRef = useRef<{ d0: number; z0: number } | null>(null);
+  
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef({ x: 0, y: 0 });
+  const touchStart1Ref = useRef<{x: number, y: number, tx: number, ty: number, time: number} | null>(null);
 
   const mainRef = useRef<HTMLDivElement>(null);
   mobilePinchZoomRef.current = mobilePinchZoom;
@@ -64,6 +67,8 @@ export default function ProductImageLightbox({
       setHoveringZoom(false);
       setMobilePinchZoom(1);
       mobilePinchZoomRef.current = 1;
+      setPan({ x: 0, y: 0 });
+      panRef.current = { x: 0, y: 0 };
       pinchGestureRef.current = null;
     }
   }, [open, initialIndex]);
@@ -71,6 +76,8 @@ export default function ProductImageLightbox({
   useEffect(() => {
     setMobilePinchZoom(1);
     mobilePinchZoomRef.current = 1;
+    setPan({ x: 0, y: 0 });
+    panRef.current = { x: 0, y: 0 };
     pinchGestureRef.current = null;
   }, [idx]);
 
@@ -91,6 +98,10 @@ export default function ProductImageLightbox({
       setIdx(i);
       setFocal({ x: 50, y: 50 });
       setHoveringZoom(false);
+      setMobilePinchZoom(1);
+      mobilePinchZoomRef.current = 1;
+      setPan({ x: 0, y: 0 });
+      panRef.current = { x: 0, y: 0 };
       onActiveIndexChange?.(i);
     },
     [images.length, onActiveIndexChange],
@@ -109,37 +120,79 @@ export default function ProductImageLightbox({
           d0: touchDistance(e.touches[0], e.touches[1]),
           z0: mobilePinchZoomRef.current,
         };
+        touchStart1Ref.current = null;
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        if (touchStart1Ref.current && now - touchStart1Ref.current.time < 300) {
+           const nextZoom = mobilePinchZoomRef.current > 1 ? 1 : 2.5;
+           mobilePinchZoomRef.current = nextZoom;
+           setMobilePinchZoom(nextZoom);
+           
+           if (nextZoom === 1) {
+             panRef.current = { x: 0, y: 0 };
+             setPan({ x: 0, y: 0 });
+           }
+           touchStart1Ref.current = null;
+           return;
+        }
+
+        touchStart1Ref.current = { 
+          x: e.touches[0].clientX, 
+          y: e.touches[0].clientY, 
+          tx: panRef.current.x, 
+          ty: panRef.current.y,
+          time: now
+        };
       }
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length !== 2 || !pinchGestureRef.current) return;
-      e.preventDefault();
-      const { d0, z0 } = pinchGestureRef.current;
-      const d = touchDistance(e.touches[0], e.touches[1]);
-      const raw = z0 * (d / d0);
-      const next = Math.max(
-        1,
-        Math.min(MOBILE_LIGHTBOX_MAX_PINCH_ZOOM, raw),
-      );
-      mobilePinchZoomRef.current = next;
-      setMobilePinchZoom(next);
+      if (e.touches.length === 2 && pinchGestureRef.current) {
+        e.preventDefault();
+        const { d0, z0 } = pinchGestureRef.current;
+        const d = touchDistance(e.touches[0], e.touches[1]);
+        const next = Math.max(1, Math.min(MOBILE_LIGHTBOX_MAX_PINCH_ZOOM, z0 * (d / d0)));
+        mobilePinchZoomRef.current = next;
+        setMobilePinchZoom(next);
+        if (next === 1) {
+          panRef.current = { x: 0, y: 0 };
+          setPan({ x: 0, y: 0 });
+        }
+      } else if (e.touches.length === 1 && touchStart1Ref.current && mobilePinchZoomRef.current > 1) {
+        e.preventDefault();
+        const start = touchStart1Ref.current;
+        const dx = (e.touches[0].clientX - start.x) / mobilePinchZoomRef.current;
+        const dy = (e.touches[0].clientY - start.y) / mobilePinchZoomRef.current;
+        panRef.current = { x: start.tx + dx, y: start.ty + dy };
+        setPan({ ...panRef.current });
+      }
     };
 
-    const endPinch = (e: TouchEvent) => {
+    const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) pinchGestureRef.current = null;
+      if (e.touches.length === 0 && touchStart1Ref.current && mobilePinchZoomRef.current === 1) {
+         const start = touchStart1Ref.current;
+         if (Date.now() - start.time > 800) return; // Prevent super slow swipes from triggering
+         const cx = e.changedTouches[0].clientX;
+         const dx = cx - start.x;
+         if (Math.abs(dx) > 48) {
+            if (dx < 0) go(idx + 1);
+            else go(idx - 1);
+            touchStart1Ref.current = null;
+         }
+      }
     };
 
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", endPinch);
-    el.addEventListener("touchcancel", endPinch);
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
 
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", endPinch);
-      el.removeEventListener("touchcancel", endPinch);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
     };
   }, [open, coarsePointer, idx]);
 
@@ -175,34 +228,6 @@ export default function ProductImageLightbox({
   const onMainMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!hoverZoomEnabled) return;
     updateFocalFromClient(e.clientX, e.clientY);
-  };
-
-  const onMainTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    setTouchStartX(e.touches[0].clientX);
-  };
-
-  const onMainTouchMove = (e: React.TouchEvent) => {
-    if (coarsePointer || e.touches.length !== 1) return;
-    updateFocalFromClient(e.touches[0].clientX, e.touches[0].clientY);
-  };
-
-  const onMainTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX == null || images.length <= 1) {
-      setTouchStartX(null);
-      return;
-    }
-    const end = e.changedTouches[0]?.clientX;
-    if (end == null) {
-      setTouchStartX(null);
-      return;
-    }
-    const dx = end - touchStartX;
-    if (Math.abs(dx) > 48) {
-      if (dx < 0) go(idx + 1);
-      else go(idx - 1);
-    }
-    setTouchStartX(null);
   };
 
   if (!mounted || !open || images.length === 0) return null;
@@ -281,9 +306,6 @@ export default function ProductImageLightbox({
               setHoveringZoom(false);
               setFocal({ x: 50, y: 50 });
             }}
-            onTouchStart={onMainTouchStart}
-            onTouchMove={onMainTouchMove}
-            onTouchEnd={onMainTouchEnd}
           >
             {/* Main preview Desktop */}
             <div className="hidden sm:block w-full h-full">
@@ -307,30 +329,28 @@ export default function ProductImageLightbox({
               />
             </div>
 
-            {/* Main preview Mobile Stack */}
+            {/* Main preview Mobile */}
             <div 
-              className="flex sm:hidden flex-col w-full h-auto"
-              style={
-                coarsePointer && mobilePinchZoom !== 1 ?
-                  {
-                    transform: `scale(${mobilePinchZoom})`,
-                    transformOrigin: "center top",
-                  }
-                : undefined
-              }
+              className="flex sm:hidden w-full h-full relative items-center justify-center overflow-hidden"
             >
-              {images.map((img, i) => (
-                <img
-                  key={i}
-                  src={img.url}
-                  alt={img.alt || `${productName} — image ${i + 1}`}
-                  draggable={false}
-                  className={cn(
-                    "w-full select-none",
-                    isSquareAspect ? "aspect-square object-cover" : "aspect-[3/4] object-contain",
-                  )}
-                />
-              ))}
+              <img
+                src={cur.url}
+                alt={cur.alt || `${productName} — image ${idx + 1}`}
+                draggable={false}
+                className={cn(
+                  "w-full h-full select-none max-h-[85vh] transition-transform",
+                  mobilePinchZoom > 1 ? "duration-0" : "duration-200 ease-out",
+                  isSquareAspect ? "object-cover" : "object-contain",
+                )}
+                style={
+                  coarsePointer ?
+                    {
+                      transform: `scale(${mobilePinchZoom}) translate(${pan.x}px, ${pan.y}px)`,
+                      transformOrigin: "center center",
+                    }
+                  : undefined
+                }
+              />
             </div>
 
             {hoverZoomEnabled && (

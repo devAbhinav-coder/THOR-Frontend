@@ -10,9 +10,19 @@ const RaniCareAssistant = dynamic(
 
 function hideRaniCareOnPath(pathname: string | null): boolean {
   if (!pathname) return false;
-  return pathname === "/checkout" || pathname.startsWith("/checkout/");
-}
 
+  const hiddenPaths = [
+    "/checkout",
+    "/cart",
+    "/wishlist",
+    "/shop",
+    "/shop/collections",
+  ];
+
+  return hiddenPaths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
 /** Client-only shell so `next/dynamic` with `ssr: false` is not used from a Server Component layout. */
 export function StoreRaniCare() {
   const pathname = usePathname();

@@ -57,6 +57,7 @@ export function PdpImageGallery({
   } | null>(null);
   const pdpLensRafRef = useRef<number | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lastTapTimeRef = useRef<number>(0);
   const [pdpLensVisible, setPdpLensVisible] = useState(false);
   const hoverZoomEnabled = useFinePointerHover();
   const aspect = thumbAspect(isGiftMarketingContext);
@@ -174,7 +175,11 @@ export function PdpImageGallery({
       } else if (images.length > 1 && tapX > rect.width * 0.7) {
         goNext();
       } else {
-        setImageLightboxOpen(true);
+        const now = Date.now();
+        if (now - lastTapTimeRef.current < 400) {
+          setImageLightboxOpen(true);
+        }
+        lastTapTimeRef.current = now;
       }
     }
   };
