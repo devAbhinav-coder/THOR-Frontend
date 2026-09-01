@@ -26,9 +26,9 @@ export function useMobileNavAutoHide({
   enabled = true,
   allBreakpoints = false,
   topReveal = 80,
-  hideThreshold = 48,
+  hideThreshold = 24,
   revealThreshold = 24,
-  cooldownMs = 350,
+  cooldownMs = 300,
 }: Options = {}) {
   const pathname = usePathname();
   const [visible, setVisible] = useState(true);
@@ -71,15 +71,15 @@ export function useMobileNavAutoHide({
         return;
       }
 
-      if (Date.now() < lockedUntil.current) {
-        lastY.current = y;
-        return;
-      }
-
       if (y <= topReveal) {
         setChromeVisible(true);
         lastY.current = y;
         accumulated.current = 0;
+        return;
+      }
+
+      if (Date.now() < lockedUntil.current) {
+        lastY.current = y;
         return;
       }
 

@@ -226,33 +226,7 @@ export default function ProductImageLightbox({
         <X className='h-5 w-5' />
       </button>
 
-      {images.length > 1 && (
-        <div className='flex shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-3 pb-1 pt-12 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden'>
-          {images.map((img, i) => (
-            <button
-              key={i}
-              type='button'
-              onClick={() => go(i)}
-              className={cn(
-                "relative h-16 w-12 shrink-0 overflow-hidden border-2 bg-gray-100 transition-all",
-                i === idx ?
-                  "border-[#c5a059] ring-1 ring-[#c5a059]/30"
-                : "border-gray-200",
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.url}
-                alt=''
-                className={cn(
-                  "h-full w-full",
-                  isSquareAspect ? "object-cover" : "object-contain",
-                )}
-              />
-            </button>
-          ))}
-        </div>
-      )}
+
 
       {images.length > 1 && (
         <div className='ml-0 mr-2 mt-16 hidden max-h-[85vh] w-[5.5rem] shrink-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:ml-0 sm:mt-0 sm:flex sm:self-center sm:pt-0 lg:w-24'>
@@ -290,13 +264,15 @@ export default function ProductImageLightbox({
           : "Swipe left or right on the image for more photos"}
         </p>
 
-        <div className='flex w-full max-w-6xl flex-1 flex-col items-center gap-3 min-[768px]:flex-row min-[768px]:items-stretch min-[768px]:justify-center min-[768px]:gap-5'>
+        <div className='flex w-full max-w-6xl flex-1 flex-col items-center gap-3 min-[768px]:flex-row min-[768px]:items-stretch min-[768px]:justify-center min-[768px]:gap-5 sm:overflow-visible overflow-hidden'>
           <div
             ref={mainRef}
             className={cn(
-              "relative w-full max-w-2xl overflow-hidden border-2 border-[#c5a059]/40 bg-gray-100 sm:bg-white/5",
-              aspectClass,
-              "max-h-[min(78vh,900px)] min-[768px]:max-h-[85vh] min-[768px]:min-w-0 min-[768px]:flex-1",
+              "relative w-full max-w-2xl border-2 border-[#c5a059]/40 bg-gray-100 sm:bg-white/5",
+              isSquareAspect ? "sm:aspect-square" : "sm:aspect-[3/4]",
+              "overflow-y-auto overflow-x-hidden sm:overflow-hidden",
+              "flex-1 flex flex-col sm:block min-h-0",
+              "min-[768px]:max-h-[85vh] min-[768px]:min-w-0",
               hoverZoomEnabled ? "cursor-crosshair" : "cursor-default",
             )}
             onMouseEnter={() => hoverZoomEnabled && setHoveringZoom(true)}
@@ -309,25 +285,53 @@ export default function ProductImageLightbox({
             onTouchMove={onMainTouchMove}
             onTouchEnd={onMainTouchEnd}
           >
-            {/* Main preview: always 1× — zoom only in the side/below panel */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={cur.url}
-              alt={cur.alt || `${productName} — image ${idx + 1}`}
-              draggable={false}
-              className={cn(
-                "h-full w-full select-none",
-                isSquareAspect ? "object-cover" : "object-contain",
-              )}
+            {/* Main preview Desktop */}
+            <div className="hidden sm:block w-full h-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cur.url}
+                alt={cur.alt || `${productName} — image ${idx + 1}`}
+                draggable={false}
+                className={cn(
+                  "h-full w-full select-none",
+                  isSquareAspect ? "object-cover" : "object-contain",
+                )}
+                style={
+                  coarsePointer && mobilePinchZoom !== 1 ?
+                    {
+                      transform: `scale(${mobilePinchZoom})`,
+                      transformOrigin: "center center",
+                    }
+                  : undefined
+                }
+              />
+            </div>
+
+            {/* Main preview Mobile Stack */}
+            <div 
+              className="flex sm:hidden flex-col w-full h-auto"
               style={
                 coarsePointer && mobilePinchZoom !== 1 ?
                   {
                     transform: `scale(${mobilePinchZoom})`,
-                    transformOrigin: "center center",
+                    transformOrigin: "center top",
                   }
                 : undefined
               }
-            />
+            >
+              {images.map((img, i) => (
+                <img
+                  key={i}
+                  src={img.url}
+                  alt={img.alt || `${productName} — image ${i + 1}`}
+                  draggable={false}
+                  className={cn(
+                    "w-full select-none",
+                    isSquareAspect ? "aspect-square object-cover" : "aspect-[3/4] object-contain",
+                  )}
+                />
+              ))}
+            </div>
 
             {hoverZoomEnabled && (
               <div
