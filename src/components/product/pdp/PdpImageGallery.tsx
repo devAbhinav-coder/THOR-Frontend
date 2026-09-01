@@ -110,8 +110,8 @@ export function PdpImageGallery({
     img.style.transform = `translate3d(${L / 2 - mx * z}px, ${L / 2 - my * z}px, 0)`;
   };
 
-  const onPdpMainImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!hoverZoomEnabled) return;
+  const onPdpMainImagePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!hoverZoomEnabled || e.pointerType !== "mouse") return;
     const el = pdpMainImageRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -133,7 +133,8 @@ export function PdpImageGallery({
     }
   };
 
-  const onPdpMainImageMouseLeave = () => {
+  const onPdpMainImagePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse") return;
     if (pdpLensRafRef.current != null) {
       cancelAnimationFrame(pdpLensRafRef.current);
       pdpLensRafRef.current = null;
@@ -252,8 +253,8 @@ export function PdpImageGallery({
                 hoverZoomEnabled && "md:cursor-crosshair",
               )}
               style={{ aspectRatio: aspect }}
-              onMouseMove={onPdpMainImageMouseMove}
-              onMouseLeave={onPdpMainImageMouseLeave}
+              onPointerMove={onPdpMainImagePointerMove}
+              onPointerLeave={onPdpMainImagePointerLeave}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             >

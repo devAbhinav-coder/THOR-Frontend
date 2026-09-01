@@ -295,7 +295,7 @@ export default function OfferVisitPopup() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-6"
+      className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center p-0 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
@@ -312,9 +312,9 @@ export default function OfferVisitPopup() {
 
       <div
         className={cn(
-          'relative z-[1] w-full sm:max-w-[420px] overflow-hidden',
+          'relative z-[1] flex flex-col w-full sm:max-w-[420px] max-h-[92vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden',
           'rounded-t-2xl sm:rounded-3xl bg-white shadow-2xl shadow-navy-950/30',
-          'transition-all duration-300 ease-out will-change-transform',
+          'transition-all duration-300 ease-out will-change-transform overscroll-contain',
           visible
             ? 'translate-y-0 opacity-100 scale-100'
             : 'translate-y-full sm:translate-y-4 opacity-0 scale-[0.96]',
@@ -330,12 +330,12 @@ export default function OfferVisitPopup() {
         </button>
 
         {total > 1 ? (
-          <p className="absolute left-3 top-3 z-10 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white backdrop-blur-sm">
+          <p className="absolute left-3 top-3 z-10 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur-sm">
             {position} / {total}
           </p>
         ) : null}
 
-        <div className="relative aspect-[5/6] sm:aspect-square w-full overflow-hidden bg-navy-900 border-b border-gray-100">
+        <div className="relative w-full shrink-0 aspect-[1/1] sm:aspect-[4/3] max-h-[45vh] bg-navy-900 border-b border-gray-100">
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -357,12 +357,12 @@ export default function OfferVisitPopup() {
             />
           )}
           {/* Subtle top gradient so the close button / page indicator is legible without making the image dark */}
-          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
         </div>
 
-        <div className="flex flex-col bg-white p-4 sm:p-5 text-left">
-          <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <span className="flex items-center gap-1.5 rounded border border-brand-200 bg-brand-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-brand-700">
+        <div className="flex flex-col bg-white p-5 sm:p-6 text-left shrink-0">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="flex items-center gap-1.5 rounded border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-brand-700">
               {offer.kind === 'sale' ? (
                 <Percent className="h-3 w-3" />
               ) : offer.kind === 'promotion' ? (
@@ -372,71 +372,71 @@ export default function OfferVisitPopup() {
               )}
               {badge}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-navy-600 bg-gray-50 border border-gray-200 rounded px-2 py-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-navy-600 bg-gray-50 border border-gray-200 rounded px-2.5 py-1">
               {label}
             </span>
           </div>
 
-          <h2 className="text-[20px] sm:text-[22px] font-bold text-navy-900 leading-tight tracking-tight mt-0.5">
+          <h2 className="text-2xl font-bold text-navy-900 leading-tight tracking-tight mt-1">
             {title}
           </h2>
           
           {description ? (
-            <p className="mt-1.5 text-[12px] sm:text-[13px] leading-snug text-gray-500 line-clamp-2">
+            <p className="mt-2 text-sm leading-relaxed text-gray-500 line-clamp-3">
               {description}
             </p>
           ) : null}
 
           {offer.kind === 'coupon' && offer.data.minOrderAmount ? (
-            <p className="mt-1.5 text-[11px] sm:text-[12px] font-semibold text-gray-400">
+            <p className="mt-2 text-xs font-semibold text-gray-500">
               Min. Order: ₹{offer.data.minOrderAmount}
             </p>
           ) : null}
           {offer.kind === 'promotion' ? (
-            <p className="mt-1.5 flex items-center gap-1 text-[11px] sm:text-[12px] font-semibold text-emerald-600">
-              <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={2.5} /> Auto-applies at checkout
+            <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+              <Check className="h-4 w-4" strokeWidth={2.5} /> Auto-applies at checkout
             </p>
           ) : null}
 
           {terms ? (
-             <p className="mt-3.5 text-[9px] sm:text-[10px] leading-snug text-gray-400 border-t border-gray-100 pt-2.5">
+             <p className="mt-4 text-[10px] leading-relaxed text-gray-400 border-t border-gray-100 pt-3">
                <span className="font-semibold text-gray-500">T&amp;C: </span>
                {terms}
              </p>
           ) : null}
 
-          <div className="mt-4 space-y-2.5">
+          <div className="mt-5 space-y-3">
             {offer.kind === 'coupon' ? (
               <button
                 type="button"
                 onClick={copyCode}
                 className={cn(
-                  'relative flex w-full items-center justify-between overflow-hidden rounded-xl border border-dashed border-brand-300 bg-brand-50/50 p-2 pl-3 sm:pl-4',
+                  'relative flex w-full items-center justify-between overflow-hidden rounded-xl border border-dashed border-brand-300 bg-brand-50/50 p-3 pl-4',
                   'transition hover:bg-brand-50 hover:border-brand-400 active:scale-[0.98]',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
                 )}
               >
                 <div className="flex flex-col items-start justify-center pt-0.5">
-                  <span className="font-mono text-lg sm:text-xl font-bold tracking-[0.05em] text-brand-700 leading-none">
+                  <span className="font-mono text-xl sm:text-2xl font-bold tracking-widest text-brand-700 leading-none">
                     {offer.data.code}
                   </span>
-                  <span className="text-[9px] sm:text-[10px] font-semibold text-brand-600/70 mt-1">
+                  <span className="text-xs font-semibold text-brand-600 mt-1">
                     Tap to copy code
                   </span>
                 </div>
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide transition-colors shadow-sm',
+                    'inline-flex items-center gap-1.5 rounded-lg px-4 py-3 text-xs font-bold uppercase tracking-wide transition-colors shadow-sm',
                     copied ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-brand-600 text-white shadow-brand-600/20',
                   )}
                 >
                   {copied ? (
                     <>
-                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Copied
+                      <Check className="h-4 w-4" strokeWidth={2.5} /> Copied
                     </>
                   ) : (
                     <>
-                      <Copy className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Copy Code</span><span className="sm:hidden">Copy</span>
+                      <Copy className="h-4 w-4" /> <span className="hidden sm:inline">Copy Code</span><span className="sm:hidden">Copy</span>
                     </>
                   )}
                 </span>
@@ -452,8 +452,8 @@ export default function OfferVisitPopup() {
                   dismiss();
                 }}
                 className={cn(
-                  'flex w-full items-center justify-center rounded-xl px-4 py-3',
-                  'text-[12px] sm:text-[13px] font-bold uppercase tracking-wide text-white shadow-sm transition active:scale-[0.98]',
+                  'flex w-full items-center justify-center rounded-xl px-4 py-3.5',
+                  'text-sm font-bold uppercase tracking-wide text-white shadow-sm transition active:scale-[0.98]',
                   offer.kind === 'promotion' ? 'bg-navy-900 hover:bg-navy-800' : 'bg-brand-600 hover:bg-brand-700',
                 )}
               >
@@ -464,7 +464,7 @@ export default function OfferVisitPopup() {
             <button
               type="button"
               onClick={dismiss}
-              className="w-full pt-1 pb-0 sm:py-1.5 text-center text-[11px] sm:text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors"
+              className="w-full py-2 text-center text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors"
             >
               {index + 1 < total ? 'View next offer' : 'Maybe later'}
             </button>
