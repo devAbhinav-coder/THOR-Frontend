@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types';
 import { authApi } from '@/lib/api';
+import { syncAuthGateCookie } from '@/lib/authGateCookie';
 
 /** Set after persist rehydrates — avoids TDZ if referenced before `useAuthStore` is assigned */
 let markAuthHydrated: () => void;
@@ -106,6 +107,7 @@ export const useAuthStore = create<AuthState>()(
               hasSessionChecked: true,
               admin2faPending: null,
             });
+            syncAuthGateCookie(body.data.user, true);
             return result;
           } finally {
             set({ isLoading: false });
@@ -123,6 +125,7 @@ export const useAuthStore = create<AuthState>()(
               hasSessionChecked: true,
               admin2faPending: null,
             });
+            syncAuthGateCookie(body.data.user, true);
           } finally {
             set({ isLoading: false });
           }
@@ -147,6 +150,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               hasSessionChecked: true,
             });
+            syncAuthGateCookie(body.data.user, true);
           } finally {
             set({ isLoading: false });
           }
@@ -167,6 +171,7 @@ export const useAuthStore = create<AuthState>()(
               hasSessionChecked: true,
               admin2faPending: null,
             });
+            syncAuthGateCookie(body.data.user, true);
             return result;
           } finally {
             set({ isLoading: false });
@@ -183,6 +188,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               hasSessionChecked: true,
             });
+            syncAuthGateCookie(body.data.user, true);
           } finally {
             set({ isLoading: false });
           }
@@ -194,6 +200,7 @@ export const useAuthStore = create<AuthState>()(
           } catch {
             /* ignore */
           } finally {
+            syncAuthGateCookie(null, false);
             set({
               user: null,
               token: null,
@@ -215,6 +222,7 @@ export const useAuthStore = create<AuthState>()(
               token: null,
               hasSessionChecked: true,
             });
+            syncAuthGateCookie(body.data.user, true);
           };
           try {
             await tryMe();
@@ -222,6 +230,7 @@ export const useAuthStore = create<AuthState>()(
             const { refreshAccessToken } = await import('@/lib/authRefresh');
             const ok = await refreshAccessToken();
             if (!ok) {
+              syncAuthGateCookie(null, false);
               set({
                 user: null,
                 token: null,
@@ -233,6 +242,7 @@ export const useAuthStore = create<AuthState>()(
             try {
               await tryMe();
             } catch {
+              syncAuthGateCookie(null, false);
               set({
                 user: null,
                 token: null,
@@ -245,7 +255,10 @@ export const useAuthStore = create<AuthState>()(
           }
         },
 
-        setUser: (user) => set({ user }),
+        setUser: (user) => {
+          syncAuthGateCookie(user, true);
+          set({ user });
+        },
       };
     },
     {
@@ -263,7 +276,8 @@ export const useAuthStore = create<AuthState>()(
           token: null,
         };
       },
-      onRehydrateStorage: () => () => {
+      onRehydrateStorage: () => (state) => {
+        if (state) syncAuthGateCookie(state.user, state.isAuthenticated);
         markAuthHydrated?.();
       },
     }

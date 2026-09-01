@@ -41,9 +41,10 @@ const TONE_OPTIONS = [
 type Props = {
   onApply: (draft: BlogCopyDraft) => void;
   prefill?: { topic?: string; keywords?: string; category?: string };
+  compact?: boolean;
 };
 
-export function AdminAiBlogDraftSection({ onApply, prefill }: Props) {
+export function AdminAiBlogDraftSection({ onApply, prefill, compact }: Props) {
   const { status, loading: statusLoading, refresh } = useAdminAiStatus();
 
   useEffect(() => {
@@ -174,15 +175,15 @@ export function AdminAiBlogDraftSection({ onApply, prefill }: Props) {
   };
 
   return (
-    <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50/80 to-white p-4 sm:p-5 space-y-4 w-full">
-      <div className="flex items-start gap-2">
-        <Sparkles className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
-        <p className="text-xs text-violet-900 leading-relaxed">
-          <strong>AI Journal Writer (Gemini + RAG):</strong> Topic + keywords + products → unique SEO
-          article. {status?.blogProvider === "gemini" ? `Model: ${status.blogModel || "gemini"}.` : ""}{" "}
-          MongoDB vector similarity — no Pinecone.
-        </p>
-      </div>
+    <div className={`space-y-4 w-full ${compact ? "" : "rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50/80 to-white p-4 sm:p-5"}`}>
+      {!compact && (
+        <div className="flex items-start gap-2">
+          <Sparkles className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
+          <p className="text-xs text-violet-900 leading-relaxed">
+            <strong>AI Journal Writer:</strong> Enter a topic, generate a draft, then apply it to the form.
+          </p>
+        </div>
+      )}
 
       <input
         value={topic}

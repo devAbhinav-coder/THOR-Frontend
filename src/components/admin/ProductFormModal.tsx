@@ -11,6 +11,7 @@ import {
   Palette,
   List,
   Search,
+  Ruler,
 } from "lucide-react";
 import { Product, Category, SubCategory } from "@/types";
 import { productApi, adminApi } from "@/lib/api";
@@ -22,7 +23,14 @@ import {
   pairsFromBulkInput,
 } from "@/lib/productDetailsBulk";
 import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
+import { ProductMotionVideoUploader } from "@/components/admin/ProductMotionVideoUploader";
+import { ProductMotionReelField } from "@/components/admin/ProductMotionReelField";
 import { PRODUCT_FABRICS, PRODUCT_OCCASIONS } from "@/lib/productCatalogOptions";
+import {
+  PDP_SIZE_GUIDE_PRESETS,
+  sizeGuideRowsFromText,
+  sizeGuideRowsToText,
+} from "@/lib/pdpSizeGuidePresets";
 import { resolveColorAgainstCatalog } from "@/lib/catalogAttributes";
 import { useQuery } from "@tanstack/react-query";
 import type { FilterOptions } from "@/types";
@@ -32,6 +40,7 @@ import {
   type ProductCopyDraft,
 } from "@/components/admin/ai/AdminAiProductCopySection";
 import ProductSeoChecklist from "@/components/admin/ProductSeoChecklist";
+import { evaluateProductSeo } from "@/lib/productSeoChecklist";
 import ProductColorVariantEditor, {
   buildImagesMetaFromGroups,
   collectNewImageFiles,
@@ -41,7 +50,10 @@ import ProductColorVariantEditor, {
   validateColorGroupsForSave,
   type ColorVariantGroup,
 } from "@/components/admin/ProductColorVariantEditor";
-import { evaluateProductSeo } from "@/lib/productSeoChecklist";
+import {
+  isValidInstagramReelUrl,
+  normalizeInstagramReelUrl,
+} from "@/lib/instagramReel";
 import { fetchAdminCatalogCategories } from "@/lib/adminCatalog";
 import {
   AdminOfferModal,
@@ -87,6 +99,18 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
   const [showSeo, setShowSeo] = useState(false);
   const [detailsKeysText, setDetailsKeysText] = useState("");
   const [detailsValuesText, setDetailsValuesText] = useState("");
+  const [highlightsText, setHighlightsText] = useState("");
+  const [motionVideoUrl, setMotionVideoUrl] = useState("");
+  const [motionVideoPublicId, setMotionVideoPublicId] = useState("");
+  const [clearMotionVideo, setClearMotionVideo] = useState(false);
+  const [motionVideoUploading, setMotionVideoUploading] = useState(false);
+  const [motionReelUrl, setMotionReelUrl] = useState("");
+  const [sizeGuideEnabled, setSizeGuideEnabled] = useState(false);
+  const [sizeGuidePreset, setSizeGuidePreset] = useState("");
+  const [sizeGuideTitle, setSizeGuideTitle] = useState("");
+  const [sizeGuideIntro, setSizeGuideIntro] = useState("");
+  const [sizeGuideRowsText, setSizeGuideRowsText] = useState("");
+  const [sizeGuideTipsText, setSizeGuideTipsText] = useState("");
 
   const [customOccasion, setCustomOccasion] = useState("");
 
@@ -99,6 +123,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     category: "",
     subcategory: "",
     fabric: "",
+    careInstructions: "",
     occasions: [] as string[],
     tags: "",
     isFeatured: false,
@@ -132,6 +157,17 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     setCustomOccasion("");
   };
 
+  const applySizeGuidePreset = (presetId: string) => {
+    setSizeGuidePreset(presetId);
+    if (!presetId) return;
+    const preset = PDP_SIZE_GUIDE_PRESETS[presetId];
+    if (!preset) return;
+    setSizeGuideTitle(preset.content.title);
+    setSizeGuideIntro(preset.content.intro);
+    setSizeGuideRowsText(sizeGuideRowsToText(preset.content.rows));
+    setSizeGuideTipsText(preset.content.tips.join("\n"));
+  };
+
   const hydrateFromProduct = useCallback((p: Product | null) => {
     if (!p) {
       setForm({
@@ -143,6 +179,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         category: "",
         subcategory: "",
         fabric: "",
+        careInstructions: "",
         occasions: [] as string[],
         tags: "",
         isFeatured: false,
@@ -154,6 +191,18 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       setColorGroups([emptyColorGroup()]);
       setDetailsKeysText("");
       setDetailsValuesText("");
+      setHighlightsText("");
+      setMotionVideoUrl("");
+      setMotionVideoPublicId("");
+      setClearMotionVideo(false);
+      setMotionVideoUploading(false);
+      setMotionReelUrl("");
+      setSizeGuideEnabled(false);
+      setSizeGuidePreset("");
+      setSizeGuideTitle("");
+      setSizeGuideIntro("");
+      setSizeGuideRowsText("");
+      setSizeGuideTipsText("");
       return;
     }
     setForm({
@@ -165,6 +214,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       category: p.category || "",
       subcategory: p.subcategory || "",
       fabric: p.fabric || "",
+      careInstructions: p.careInstructions || "",
       occasions: [...(p.occasions || [])],
       tags: (p.tags || []).join(", "),
       isFeatured: p.isFeatured ?? false,
@@ -177,6 +227,19 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     const { keysText, valuesText } = bulkTextFromPairs(p.productDetails || []);
     setDetailsKeysText(keysText);
     setDetailsValuesText(valuesText);
+    setHighlightsText((p.highlights || []).join("\n"));
+    setMotionVideoUrl(p.motionVideoUrl || "");
+    setMotionVideoPublicId(p.motionVideoPublicId || "");
+    setClearMotionVideo(false);
+    setMotionVideoUploading(false);
+    setMotionReelUrl(p.motionReelUrl || "");
+    const sg = p.sizeGuide;
+    setSizeGuideEnabled(sg?.enabled === true);
+    setSizeGuidePreset("");
+    setSizeGuideTitle(sg?.title || "");
+    setSizeGuideIntro(sg?.intro || "");
+    setSizeGuideRowsText(sizeGuideRowsToText(sg?.rows || []));
+    setSizeGuideTipsText((sg?.tips || []).join("\n"));
   }, []);
 
   useEffect(() => {
@@ -371,6 +434,12 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       detailsValuesText,
     );
     if (!detailsParsed.ok) return toast.error(detailsParsed.error);
+    if (motionVideoUploading) {
+      return toast.error("Please wait — motion video is still uploading.");
+    }
+    if (motionReelUrl.trim() && !isValidInstagramReelUrl(motionReelUrl)) {
+      return toast.error("Paste a valid public Instagram reel link.");
+    }
 
     setIsSaving(true);
     setUploadProgress(newFiles.length > 0 ? 0 : null);
@@ -384,6 +453,17 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       fd.append("category", form.category);
       fd.append("subcategory", form.subcategory);
       fd.append("fabric", form.fabric);
+      fd.append("careInstructions", form.careInstructions);
+      fd.append("clearMotionVideo", String(clearMotionVideo));
+      fd.append("motionVideoUrl", clearMotionVideo ? "" : motionVideoUrl);
+      fd.append(
+        "motionVideoPublicId",
+        clearMotionVideo ? "" : motionVideoPublicId,
+      );
+      fd.append(
+        "motionReelUrl",
+        normalizeInstagramReelUrl(motionReelUrl) || motionReelUrl.trim(),
+      );
       fd.append("isFeatured", String(form.isFeatured));
       fd.append("isActive", String(form.isActive));
       fd.append("seoTitle", form.seoTitle);
@@ -424,6 +504,30 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             value: d.value.trim(),
           })),
         ),
+      );
+      fd.append(
+        "highlights",
+        JSON.stringify(
+          highlightsText
+            .split(/\n+/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 8),
+        ),
+      );
+      fd.append(
+        "sizeGuide",
+        JSON.stringify({
+          enabled: sizeGuideEnabled,
+          title: sizeGuideTitle.trim(),
+          intro: sizeGuideIntro.trim(),
+          rows: sizeGuideRowsFromText(sizeGuideRowsText).slice(0, 12),
+          tips: sizeGuideTipsText
+            .split(/\n+/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 6),
+        }),
       );
       newFiles.forEach((f) => fd.append("images", f));
 
@@ -499,7 +603,9 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               "Changes save immediately."
             : "* Required fields"}
             {uploadProgress != null ?
-              ` · Uploading ${Math.round(uploadProgress)}%`
+              ` · Photos ${Math.round(uploadProgress)}%`
+            : motionVideoUploading ?
+              " · Motion video uploading…"
             : null}
           </p>
           <div className="flex gap-2.5 w-full sm:w-auto">
@@ -511,7 +617,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               form={PRODUCT_FORM_ID}
               variant="brand"
               loading={isSaving}
-              disabled={loadingProduct}
+              disabled={loadingProduct || motionVideoUploading}
               className="flex-1 sm:flex-none sm:min-w-[140px]"
             >
               {isSaving ?
@@ -543,7 +649,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 required
               />
             </AdminOfferField>
-            <AdminOfferField label="Description" required hint="Paste bullets or multi-line text — storefront renders it cleanly.">
+            <AdminOfferField label="Description" required hint="Heritage story & care notes — shown in Product Details accordion on PDP.">
               <textarea
                 className={cn(adminOfferTextareaCls, "min-h-[120px]")}
                 value={form.description}
@@ -551,6 +657,20 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 placeholder={"Pure silk weave\nHandcrafted border\nDry clean only"}
                 rows={5}
                 required
+              />
+            </AdminOfferField>
+            <AdminOfferField
+              label="Why You'll Love It"
+              hint="One highlight per line — shows in the gold PDP panel (max 8)."
+            >
+              <textarea
+                className={cn(adminOfferTextareaCls, "min-h-[100px]")}
+                value={highlightsText}
+                onChange={(e) => setHighlightsText(e.target.value)}
+                placeholder={
+                  "Soft, breathable Chanderi cotton\nElegant palace print with traditional borders\nLightweight with a beautiful drape"
+                }
+                rows={4}
               />
             </AdminOfferField>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -661,6 +781,18 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 ))}
               </select>
             </AdminOfferField>
+            <AdminOfferField
+              label="Care instructions"
+              hint="Shown under Fabric & Care on the PDP — e.g. dry clean only, hand wash cold."
+            >
+              <textarea
+                className={cn(adminOfferTextareaCls, "min-h-[88px]")}
+                value={form.careInstructions}
+                onChange={(e) => set("careInstructions", e.target.value)}
+                placeholder="Dry clean only. Do not bleach. Store folded in a muslin bag."
+                rows={3}
+              />
+            </AdminOfferField>
             <AdminOfferField label="Tags" hint="Comma separated">
               <input
                 className={adminOfferInputCls}
@@ -737,6 +869,32 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         </AdminOfferSection>
 
         <AdminOfferSection
+          title="See in Motion"
+          description="Upload a clip or paste an Instagram Reel — video takes priority on the storefront"
+          icon={Package}
+        >
+          <div className="space-y-4">
+            <ProductMotionVideoUploader
+              videoUrl={motionVideoUrl}
+              videoPublicId={motionVideoPublicId}
+              clearRequested={clearMotionVideo}
+              onUploadingChange={setMotionVideoUploading}
+              onChange={({ url, publicId, clear }) => {
+                setMotionVideoUrl(url);
+                setMotionVideoPublicId(publicId);
+                setClearMotionVideo(clear);
+              }}
+            />
+            <ProductMotionReelField
+              value={motionReelUrl}
+              onChange={setMotionReelUrl}
+              disabled={motionVideoUploading}
+              hasUploadedVideo={Boolean(motionVideoUrl && !clearMotionVideo)}
+            />
+          </div>
+        </AdminOfferSection>
+
+        <AdminOfferSection
           title="Colors, sizes & photos"
           description="Upload photos per color — customer sees images for their chosen color"
           icon={Palette}
@@ -750,6 +908,85 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             untaggedImageCount={untaggedImageCount}
             onDeleteExistingImage={handleDeleteExistingImage}
           />
+        </AdminOfferSection>
+
+        <AdminOfferSection
+          title="Size guide (PDP)"
+          description="Show a size chart on the product page — pick a preset or write your own"
+          icon={Ruler}
+        >
+          <div className="space-y-4">
+            <AdminOfferSwitch
+              checked={sizeGuideEnabled}
+              onChange={setSizeGuideEnabled}
+              label="Show size guide"
+              description="Appears next to size picker when this product has sizes"
+            />
+
+            {sizeGuideEnabled ?
+              <>
+                <AdminOfferField
+                  label="Preset template"
+                  hint="Loads starter copy — you can edit everything below"
+                >
+                  <select
+                    className={adminOfferSelectCls}
+                    value={sizeGuidePreset}
+                    onChange={(e) => applySizeGuidePreset(e.target.value)}
+                  >
+                    <option value="">Custom / keep current</option>
+                    {Object.entries(PDP_SIZE_GUIDE_PRESETS).map(([id, preset]) => (
+                      <option key={id} value={id}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </AdminOfferField>
+
+                <AdminOfferField label="Modal title">
+                  <input
+                    className={adminOfferInputCls}
+                    value={sizeGuideTitle}
+                    onChange={(e) => setSizeGuideTitle(e.target.value)}
+                    placeholder="Salwar suit sizing"
+                  />
+                </AdminOfferField>
+
+                <AdminOfferField label="Intro text">
+                  <textarea
+                    className={cn(adminOfferTextareaCls, "min-h-[72px]")}
+                    value={sizeGuideIntro}
+                    onChange={(e) => setSizeGuideIntro(e.target.value)}
+                    placeholder="Brief note on how to measure and pick a size"
+                    rows={3}
+                  />
+                </AdminOfferField>
+
+                <AdminOfferField
+                  label="Size rows"
+                  hint='One per line — format: Size | Fit notes (e.g. M | Bust 34–36 · Waist 28–30)'
+                >
+                  <textarea
+                    className={cn(adminOfferTextareaCls, "min-h-[140px] font-mono text-[13px]")}
+                    value={sizeGuideRowsText}
+                    onChange={(e) => setSizeGuideRowsText(e.target.value)}
+                    placeholder={"S | Bust 32–34 · Waist 26–28\nM | Bust 34–36 · Waist 28–30"}
+                    rows={6}
+                  />
+                </AdminOfferField>
+
+                <AdminOfferField label="Tips" hint="One tip per line (max 6)">
+                  <textarea
+                    className={cn(adminOfferTextareaCls, "min-h-[88px]")}
+                    value={sizeGuideTipsText}
+                    onChange={(e) => setSizeGuideTipsText(e.target.value)}
+                    placeholder={"Measure over light innerwear.\nSize up for a relaxed fit."}
+                    rows={3}
+                  />
+                </AdminOfferField>
+              </>
+            : null}
+          </div>
         </AdminOfferSection>
 
         <AdminAiProductCopySection

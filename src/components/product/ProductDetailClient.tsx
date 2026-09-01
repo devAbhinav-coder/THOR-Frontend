@@ -6,27 +6,16 @@ import Link from "next/link";
 import {
   ShoppingBag,
   ChevronRight,
-  Minus,
-  Plus,
-  Truck,
-  RotateCcw,
-  ShieldCheck,
   Star,
   Zap,
   Package,
-  MapPin,
   Check,
-  ChevronDown,
-  ChevronUp,
   Gift,
 } from "lucide-react";
 import { cartApi, productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
-import {
-  getSelectedVariantPriceDisplay,
-} from "@/lib/productPricing";
-import { variantSwatchBackground } from "@/lib/variantSwatch";
+import { getSelectedVariantPriceDisplay } from "@/lib/productPricing";
 import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/product/ProductDetailSkeleton";
 import { useCartStore } from "@/store/useCartStore";
@@ -36,18 +25,14 @@ import { useWishlistUiState } from "@/hooks/useWishlistUiState";
 import toast from "react-hot-toast";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
-import RichTextContent from "@/components/ui/RichTextContent";
-import { getVariantStockDisplay } from "@/lib/stockDisplay";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { normalizeProductImages } from "@/lib/cloudinaryUrl";
 import { colorHasTaggedImages, resolvePdpImages } from "@/lib/pdpImages";
 import { clampPurchaseQty, maxPurchasableQty } from "@/lib/variantLimits";
 import { pickVariantForColor } from "@/lib/shopProductListing";
-import {
-  colorsMatch,
-  normProductColor,
-} from "@/lib/productColorImages";
+import { colorsMatch, normProductColor } from "@/lib/productColorImages";
 import { productNeedsCustomization } from "@/lib/productCustomization";
+import { isFreeProductSize } from "@/lib/productCatalogOptions";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 import {
@@ -66,14 +51,19 @@ import {
   PdpImageGallery,
   PdpReviewsSection,
   PdpRelatedProductRows,
+  PdpVariantPicker,
+  PdpTrustBadges,
+  PdpStorySection,
+  PdpShortDescription,
+  PdpOfferTicker,
+  PdpMobilePurchaseBar,
 } from "@/components/product/pdp";
+import { usePdpPurchaseBarScroll } from "@/hooks/usePdpPurchaseBarScroll";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 
-import {
-  writeBuyNowToSession,
-} from "@/lib/buyNowCheckoutSession";
+import { writeBuyNowToSession } from "@/lib/buyNowCheckoutSession";
 const MAX_REVIEW_IMAGES = 5;
 const MAX_REVIEW_IMAGE_SIZE_MB = UPLOAD_MAX_MB.review;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
@@ -211,9 +201,7 @@ export default function ProductDetailClient({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const preferredColor =
-    searchParams.get("color")?.trim() ||
-    initialColor?.trim() ||
-    "";
+    searchParams.get("color")?.trim() || initialColor?.trim() || "";
 
   /* Core — initialize from SSR product so first paint is not a duplicate skeleton after loading.tsx */
   const [product, setProduct] = useState<Product | null>(() => {
@@ -242,6 +230,8 @@ export default function ProductDetailClient({
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const buyNowBtnRef = useRef<HTMLButtonElement>(null);
   const buyNowMobileRef = useRef<HTMLButtonElement>(null);
+  const purchaseScrollAnchorRef = useRef<HTMLDivElement>(null);
+  const purchaseBarEnriched = usePdpPurchaseBarScroll(purchaseScrollAnchorRef);
   const [copied, setCopied] = useState(false);
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
   const [customFieldAnswers, setCustomFieldAnswers] = useState<
@@ -250,10 +240,6 @@ export default function ProductDetailClient({
   const [uploadingFieldImages, setUploadingFieldImages] = useState<
     Record<string, boolean>
   >({});
-
-  /* Info tabs (Description / Product Details) */
-  const [heritageOpen, setHeritageOpen] = useState(true);
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   /* Related + More */
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -369,12 +355,29 @@ export default function ProductDetailClient({
         try {
           const main = await productApi.getBySlug(slug);
           if (cancelled) return;
-          p = main.data.product as Product;
-          setProduct({
-            ...p,
-            images: normalizeProductImages(p.images),
-          });
-          const variants = normalizeVariants(p.variants || []);
+          const fetched = main.data.product as Product;
+          p = fetched;
+          setProduct((prev) => ({
+            ...fetched,
+            images: normalizeProductImages(fetched.images),
+            activePromotions:
+              fetched.activePromotions?.length ?
+                fetched.activePromotions
+              : prev?.activePromotions,
+            nearEligiblePromotions:
+              fetched.nearEligiblePromotions?.length ?
+                fetched.nearEligiblePromotions
+              : prev?.nearEligiblePromotions,
+            activeCoupons:
+              fetched.activeCoupons?.length ?
+                fetched.activeCoupons
+              : prev?.activeCoupons,
+            nearEligibleCoupons:
+              fetched.nearEligibleCoupons?.length ?
+                fetched.nearEligibleCoupons
+              : prev?.nearEligibleCoupons,
+          }));
+          const variants = normalizeVariants(fetched.variants || []);
           setSelectedVariant(
             pickVariantForColor(variants, preferredColor || null),
           );
@@ -385,8 +388,10 @@ export default function ProductDetailClient({
 
         const shadeKey = normProductColor(
           preferredColor ||
-            pickVariantForColor(normalizeVariants(p.variants || []), preferredColor)
-              ?.color,
+            pickVariantForColor(
+              normalizeVariants(p.variants || []),
+              preferredColor,
+            )?.color,
         );
 
         let bestRelated: Product[] = [];
@@ -525,9 +530,7 @@ export default function ProductDetailClient({
               const rLower = r.name.toLowerCase();
               const pKeywords = pLower
                 .split(/\s+/)
-                .filter(
-                  (k) => k.length > 2 && !RELATED_NAME_STOPWORDS.has(k),
-                );
+                .filter((k) => k.length > 2 && !RELATED_NAME_STOPWORDS.has(k));
               let nameMatchScore = 0;
               pKeywords.forEach((keyword) => {
                 if (rLower.includes(keyword)) nameMatchScore += 15;
@@ -647,7 +650,8 @@ export default function ProductDetailClient({
     hasTrackedViewContent.current = false;
   }, [product?._id]);
   useEffect(() => {
-    if (!product?._id || !selectedVariant || hasTrackedViewContent.current) return;
+    if (!product?._id || !selectedVariant || hasTrackedViewContent.current)
+      return;
     hasTrackedViewContent.current = true;
     trackViewContent(product, selectedVariant);
     trackGaViewItem(product);
@@ -660,11 +664,22 @@ export default function ProductDetailClient({
       getSelectedVariantPriceDisplay(product, selectedVariant)
     : null;
   const selectedPrice = selectedPriceDisplay?.sell ?? product?.price ?? 0;
-  const selectedMrp = selectedPriceDisplay?.mrp ?? product?.comparePrice ?? null;
+  const selectedMrp =
+    selectedPriceDisplay?.mrp ?? product?.comparePrice ?? null;
   const saveAmount = selectedPriceDisplay?.saveAmount ?? 0;
   const productMetaLine = useMemo(() => {
     if (!product) return "";
     return buildProductMetaLine(product);
+  }, [product]);
+  const showOfferTicker = useMemo(() => {
+    if (!product) return false;
+    return (
+      (product.activePromotions?.length ?? 0) +
+        (product.nearEligiblePromotions?.length ?? 0) +
+        (product.activeCoupons?.length ?? 0) +
+        (product.nearEligibleCoupons?.length ?? 0) >
+      0
+    );
   }, [product]);
   const isOutOfStock = !selectedVariant || selectedVariant.stock === 0;
   const variants = useMemo(
@@ -692,13 +707,12 @@ export default function ProductDetailClient({
       : variants;
     return Array.from(
       new Set(scoped.filter((v) => v.size).map((v) => v.size!)),
-    );
+    ).filter((size) => !isFreeProductSize(size));
   }, [variants, colors.length, selectedVariant?.color]);
   const getVariant = (size?: string, color?: string) =>
     variants.find(
       (v) =>
-        (!size || v.size === size) &&
-        (!color || colorsMatch(v.color, color)),
+        (!size || v.size === size) && (!color || colorsMatch(v.color, color)),
     );
 
   const activeColorKey = normProductColor(selectedVariant?.color);
@@ -706,7 +720,10 @@ export default function ProductDetailClient({
   const galleryImages = useMemo(
     () =>
       product ?
-        resolvePdpImages(product, selectedVariant?.color || preferredColor || undefined)
+        resolvePdpImages(
+          product,
+          selectedVariant?.color || preferredColor || undefined,
+        )
       : [],
     [product, product?.images, selectedVariant?.color, preferredColor],
   );
@@ -773,9 +790,7 @@ export default function ProductDetailClient({
   const requireAuth = (msg: string) => {
     toast.error(msg);
     router.push(
-      loginUrlWithRedirect(
-        window.location.pathname + window.location.search,
-      ),
+      loginUrlWithRedirect(window.location.pathname + window.location.search),
     );
     return false;
   };
@@ -856,8 +871,7 @@ export default function ProductDetailClient({
           color: selectedVariant.color,
           colorCode: selectedVariant.colorCode,
         },
-        customFieldAnswers:
-          answersArray.length > 0 ? answersArray : undefined,
+        customFieldAnswers: answersArray.length > 0 ? answersArray : undefined,
       });
       await playCheckoutLaunchAnimation(
         buyNowMobileRef.current ?? buyNowBtnRef.current,
@@ -1096,9 +1110,13 @@ export default function ProductDetailClient({
   };
 
   /* JSX */
-  /* Reserve space for fixed mobile purchase bar (tab bar hidden on PDP). */
+  /* Reserve space for fixed purchase bar (tab bar hidden on PDP). */
   const mobileBottomReserve =
-    "pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-6";
+    "pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]";
+  const desktopBottomReserve =
+    purchaseBarEnriched ?
+      "lg:pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]"
+    : "lg:pb-6";
   const categoryPath = `/shop/collections/${encodeURIComponent(toShopCategorySlug(product.category))}`;
 
   return (
@@ -1106,10 +1124,11 @@ export default function ProductDetailClient({
       className={cn(
         "bg-white min-h-screen max-w-full overflow-x-hidden",
         mobileBottomReserve,
+        desktopBottomReserve,
       )}
     >
       {/* Breadcrumb */}
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-1'>
+      <div className='max-w-7xl mx-auto px-2 pb-1 pt-1.5 sm:px-6 lg:px-8 sm:pt-2'>
         <nav className='flex items-center gap-1.5 text-xs text-gray-400 flex-wrap'>
           <Link href='/' className='hover:text-brand-600 transition-colors'>
             Home
@@ -1145,8 +1164,8 @@ export default function ProductDetailClient({
       </div>
 
       {/* HERO - Gallery + Info */}
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 lg:py-6 min-w-0'>
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 xl:gap-10 min-w-0'>
+      <div className='max-w-7xl mx-auto min-w-0 px-2 py-1 sm:px-6 sm:py-2 lg:px-8  '>
+        <div className='grid min-w-0 grid-cols-1 gap-3 sm:gap-5 lg:grid-cols-2 lg:gap-8 xl:gap-10'>
           <PdpImageGallery
             productId={product._id}
             galleryKey={`${product._id}-${activeColorKey || "default"}`}
@@ -1162,263 +1181,136 @@ export default function ProductDetailClient({
           />
 
           {/* Product Info */}
-          <div className='min-w-0 space-y-5 sm:space-y-6 text-left'>
-            <div>
-              <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059]'>
+          <div className='min-w-0 space-y-2 text-left sm:space-y-2.5'>
+            <div className='space-y-1'>
+              <p className='text-[10px] font-medium uppercase tracking-[0.22em] text-[#c5a059] sm:text-[11px] sm:tracking-[0.28em]'>
                 The {product.category} Collection
               </p>
-              <h1 className='mt-3 font-serif text-2xl font-medium leading-tight text-navy-900 sm:text-3xl lg:text-4xl'>
+              <h1 className='mt-1 font-serif text-xl font-medium leading-tight text-navy-900 sm:mt-1.5 sm:text-3xl lg:text-4xl'>
                 {product.name}
               </h1>
               {productMetaLine ?
-                <p className='mt-2 line-clamp-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500'>
+                <p className='mt-1 line-clamp-1 text-[10px] font-medium uppercase tracking-[0.12em] text-gray-500 sm:text-[11px] sm:tracking-[0.14em]'>
                   {productMetaLine}
                 </p>
               : null}
               {product.shortDescription ?
-                <p className='mt-4 max-w-lg text-sm leading-relaxed text-gray-600'>
-                  {product.shortDescription}
-                </p>
+                <PdpShortDescription
+                  text={product.shortDescription}
+                  className='mt-1.5 sm:mt-2'
+                />
               : null}
             </div>
 
-            <div className='flex flex-wrap items-center gap-2'>
-              <div className='flex items-center gap-0.5' aria-hidden>
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={cn(
-                      "h-3.5 w-3.5",
-                      displayReviewCount > 0 &&
-                        i < Math.round(displayAverageRating) ?
-                        "fill-[#c5a059] text-[#c5a059]"
-                      : "fill-gray-200 text-gray-200",
-                    )}
-                  />
-                ))}
-              </div>
-              {displayReviewCount > 0 ?
-                <>
-                  <span className='text-sm font-medium text-navy-900'>
-                    {displayAverageRating.toFixed(1)}
-                  </span>
-                  <a
-                    href='#reviews-section'
-                    className='text-sm text-gray-500 underline-offset-4 hover:text-[#c5a059] hover:underline'
-                  >
-                    ({displayReviewCount}{" "}
-                    {displayReviewCount === 1 ? "review" : "reviews"})
-                  </a>
-                </>
-              : null}
-            </div>
-
-            <div>
-              <div className='flex flex-wrap items-baseline gap-3'>
-                <span className='font-serif text-3xl font-medium text-navy-900 sm:text-4xl'>
-                  {formatPrice(selectedPrice)}
-                </span>
-                {saveAmount > 0 ?
-                  <span className='inline-flex items-center bg-[#c5a059]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6d3b]'>
-                    Save {formatPrice(saveAmount)}
-                  </span>
-                : null}
-                {selectedMrp != null && selectedMrp > selectedPrice ?
-                  <span className='text-base text-gray-400 line-through'>
-                    {formatPrice(selectedMrp)}
-                  </span>
-                : null}
-                {product.saleCampaignId && selectedPriceDisplay?.showDiscount && selectedPriceDisplay.discountPercent >= 1 ?
-                  <span className='inline-flex items-center bg-[#c5a059]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6d3b]'>
-                    {selectedPriceDisplay.saleBadge ?
-                      `${selectedPriceDisplay.saleBadge} · ${selectedPriceDisplay.discountPercent}% off`
-                    : `${selectedPriceDisplay.discountPercent}% OFF`}
-                  </span>
-                : null}
-              </div>
-              {(product.activePromotions || []).length > 0 ? (
-                <div className='mt-4 space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3'>
-                  <p className='text-xs font-semibold text-emerald-900'>
-                    Something special for you
-                  </p>
-                  <p className='text-[10px] text-emerald-700/75'>
-                    {(product.activePromotions || []).length === 1
-                      ? 'An exclusive deal on this piece'
-                      : `${(product.activePromotions || []).length} deals on this piece`}
-                  </p>
-                  {(product.activePromotions || []).map((promo) => (
-                    <div
-                      key={`${promo.label}-${promo.displayTitle}`}
-                      className='border-t border-emerald-100/80 pt-2 first:border-t-0 first:pt-0'
-                    >
-                      <p className='text-sm font-semibold text-emerald-900'>
-                        {promo.badgeText ? `${promo.badgeText} · ` : ''}{promo.label}
-                      </p>
-                      {promo.description ? (
-                        <p className='mt-0.5 text-xs text-emerald-800/80'>{promo.description}</p>
-                      ) : null}
-                      {promo.termsAndConditions ? (
-                        <p className='mt-1.5 text-[11px] leading-relaxed text-emerald-900/70'>
-                          <span className='font-semibold'>T&amp;C: </span>
-                          {promo.termsAndConditions}
-                        </p>
-                      ) : null}
-                    </div>
+            <div
+              className={cn(
+                showOfferTicker ?
+                  "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 sm:gap-x-3"
+                : "space-y-1",
+              )}
+            >
+              <div className='flex min-w-0 flex-wrap items-center gap-2'>
+                <div className='flex items-center gap-0.5' aria-hidden>
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        (
+                          displayReviewCount > 0 &&
+                            i < Math.round(displayAverageRating)
+                        ) ?
+                          "fill-[#c5a059] text-[#c5a059]"
+                        : "fill-gray-200 text-gray-200",
+                      )}
+                    />
                   ))}
                 </div>
-              ) : null}
-              <p className='mt-2 text-xs text-gray-400'>
-                Inclusive of all taxes · Free delivery above Rs. 1099
-              </p>
-            </div>
-
-            {/* Sizes */}
-            {sizes.length > 0 && (
-              <div>
-                <div className='flex items-center justify-between mb-2'>
-                  <p className='text-sm font-semibold text-gray-900'>
-                    Size:{" "}
-                    <span className='text-brand-700 font-bold'>
-                      {selectedVariant?.size || "Select"}
+                {displayReviewCount > 0 ?
+                  <>
+                    <span className='text-sm font-medium text-navy-900'>
+                      {displayAverageRating.toFixed(1)}
                     </span>
-                  </p>
-                  <button className='text-xs text-brand-600 hover:underline'>
-                    Size guide
-                  </button>
-                </div>
-                <div className='flex flex-wrap gap-2'>
-                  {sizes.map((size) => {
-                    const v = getVariant(size, selectedVariant?.color);
-                    const ok = v && v.stock > 0;
-                    return (
-                      <button
-                        key={size}
-                        onClick={() => v && setSelectedVariant(v)}
-                        disabled={!ok}
-                        className={cn(
-                          "px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all",
-                          selectedVariant?.size === size ?
-                            "border-brand-600 bg-brand-600 text-white shadow-md"
-                          : ok ?
-                            "border-gray-200 text-gray-700 hover:border-brand-400 hover:bg-brand-50"
-                          : "border-gray-100 text-gray-300 cursor-not-allowed line-through",
-                        )}
-                      >
-                        {size}
-                      </button>
-                    );
-                  })}
-                </div>
+                    <a
+                      href='#reviews-section'
+                      className='text-sm text-gray-500 underline-offset-4 hover:text-[#c5a059] hover:underline'
+                    >
+                      ({displayReviewCount}{" "}
+                      {displayReviewCount === 1 ? "review" : "reviews"})
+                    </a>
+                  </>
+                : null}
               </div>
-            )}
 
-            {colors.length > 0 && (
-              <div>
-                <p className='mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900'>
-                  {colors.length > 1 ? "Select shade" : "Shade"}
-                  {selectedVariant?.color ?
-                    <span className='ml-2 font-medium normal-case tracking-normal text-gray-500'>
-                      · {selectedVariant.color}
+              {showOfferTicker ?
+                <div className='row-span-2 self-start'>
+                  <PdpOfferTicker
+                    promotions={product.activePromotions}
+                    nearEligiblePromotions={product.nearEligiblePromotions}
+                    coupons={product.activeCoupons}
+                    nearEligibleCoupons={product.nearEligibleCoupons}
+                    productId={product._id}
+                    unitPrice={selectedPrice}
+                    quantity={quantity}
+                    isAuthenticated={isAuthenticated}
+                  />
+                </div>
+              : null}
+
+              <div className='min-w-0 space-y-0.5'>
+                <div className='flex flex-wrap items-baseline gap-2 sm:gap-3'>
+                  <span className='font-serif text-2xl font-medium text-navy-900 sm:text-4xl'>
+                    {formatPrice(selectedPrice)}
+                  </span>
+                  {saveAmount > 0 ?
+                    <span className='inline-flex items-center bg-[#c5a059]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6d3b]'>
+                      Save {formatPrice(saveAmount)}
                     </span>
                   : null}
-                </p>
-                <div className='flex flex-wrap gap-2'>
-                  {colors.map((color) => {
-                    const v =
-                      getVariant(selectedVariant?.size, color) ||
-                      variants.find(
-                        (x) =>
-                          colorsMatch(x.color, color) && x.stock > 0,
-                      ) ||
-                      variants.find((x) => colorsMatch(x.color, color));
-                    const ok = v && v.stock > 0;
-                    const swatch = variantSwatchBackground(
-                      color,
-                      (v as ProductVariant & { colorCode?: string })?.colorCode,
-                    );
-                    const selected = colorsMatch(selectedVariant?.color, color);
-                    return (
-                      <button
-                        key={color}
-                        type='button'
-                        aria-label={`${color}${ok ? "" : " — out of stock"}`}
-                        aria-pressed={selected}
-                        onClick={() => {
-                          if (!v) return;
-                          selectColorVariant(v);
-                        }}
-                        disabled={!ok}
-                        title={color}
-                        className={cn(
-                          "flex h-11 w-11 items-center justify-center rounded-xl border-2 transition-all sm:h-12 sm:w-12",
-                          selected ?
-                            "border-[#c5a059] shadow-md ring-2 ring-[#c5a059]/25"
-                          : ok ?
-                            "border-gray-200 hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/60"
-                          : "cursor-not-allowed border-gray-100 opacity-40",
-                        )}
-                      >
-                        {swatch ?
-                          <span
-                            className='h-8 w-8 rounded-full border border-white/80 shadow-inner'
-                            style={{ background: swatch }}
-                            aria-hidden
-                          />
-                        : <span className='px-1 text-[10px] font-semibold uppercase tracking-wide text-gray-700'>
-                            {color.slice(0, 3)}
-                          </span>
-                        }
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Quantity + stock badge */}
-            <div className='flex items-center gap-4 flex-wrap'>
-              <div>
-                <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>
-                  Quantity
-                </p>
-                <div className='inline-flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50'>
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className='px-3.5 py-2.5 text-gray-600 hover:bg-gray-100 transition-colors'
-                  >
-                    <Minus className='h-4 w-4' />
-                  </button>
-                  <span className='px-5 py-2.5 text-sm font-bold text-gray-900 min-w-[3rem] text-center border-x border-gray-200'>
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setQuantity((q) => clampPurchaseQty(q + 1, selectedVariant))
-                    }
-                    disabled={quantity >= maxQty || maxQty < 1}
-                    className='px-3.5 py-2.5 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40'
-                  >
-                    <Plus className='h-4 w-4' />
-                  </button>
-                </div>
-              </div>
-              {selectedVariant && (() => {
-                const stock = getVariantStockDisplay(selectedVariant.stock);
-                return (
-                  <div className='pt-5'>
-                    <span
-                      className={cn(
-                        "text-sm font-semibold px-3 py-1.5 rounded-full",
-                        stock.tone === "out" && "text-red-600 bg-red-50",
-                        stock.tone === "in" && "text-emerald-700 bg-emerald-50",
-                      )}
-                    >
-                      {stock.label}
+                  {selectedMrp != null && selectedMrp > selectedPrice ?
+                    <span className='text-base text-gray-400 line-through'>
+                      {formatPrice(selectedMrp)}
                     </span>
-                  </div>
-                );
-              })()}
+                  : null}
+                  {(
+                    product.saleCampaignId &&
+                    selectedPriceDisplay?.showDiscount &&
+                    selectedPriceDisplay.discountPercent >= 1
+                  ) ?
+                    <span className='inline-flex items-center bg-[#c5a059]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6d3b]'>
+                      {selectedPriceDisplay.saleBadge ?
+                        `${selectedPriceDisplay.saleBadge} · ${selectedPriceDisplay.discountPercent}% off`
+                      : `${selectedPriceDisplay.discountPercent}% OFF`}
+                    </span>
+                  : null}
+                </div>
+                <p className='text-[8px] font-semibold tracking-[0.12em] text-gray-400 sm:text-xs'>
+                  Inclusive of all taxes · Free delivery above Rs. 1099
+                </p>
+              </div>
             </div>
+
+            <PdpVariantPicker
+              sizes={sizes}
+              colors={colors}
+              variants={variants}
+              selectedVariant={selectedVariant}
+              quantity={quantity}
+              maxQty={maxQty}
+              category={product.category}
+              productName={product.name}
+              sizeGuide={product.sizeGuide}
+              onSelectVariant={setSelectedVariant}
+              onSelectColor={selectColorVariant}
+              onQuantityChange={setQuantity}
+              getVariant={getVariant}
+            />
+
+            <div
+              ref={purchaseScrollAnchorRef}
+              className='pointer-events-none h-px w-full'
+              aria-hidden
+            />
 
             {/* Inline Gifting Fields */}
             {Array.isArray(product?.customFields) &&
@@ -1595,33 +1487,7 @@ export default function ProductDetailClient({
               </button>
             )}
 
-            <div className='grid grid-cols-3 gap-3 border-t border-gray-100 pt-5'>
-              {[
-                { icon: Truck, label: "Free Shipping" },
-                { icon: RotateCcw, label: "5 Days Return" },
-                { icon: ShieldCheck, label: "Safe Payments" },
-              ].map(({ icon: Icon, label }) => (
-                <div
-                  key={label}
-                  className='flex flex-col items-center gap-2 text-center'
-                >
-                  <Icon className='h-5 w-5 text-[#c5a059]' strokeWidth={1.25} />
-                  <span className='text-[10px] font-semibold uppercase tracking-[0.14em] text-navy-900'>
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className='flex items-start gap-3 border border-gray-100 bg-gray-50/80 px-4 py-3'>
-              <MapPin className='mt-0.5 h-4 w-4 shrink-0 text-gray-500' />
-              <p className='text-xs leading-relaxed text-gray-600'>
-                <span className='font-medium text-navy-900'>
-                  Estimated delivery in 3–7 business days.
-                </span>{" "}
-                Free shipping on orders above Rs. 1099.
-              </p>
-            </div>
+            <PdpTrustBadges className='border-t border-gray-100 pt-3 sm:pt-5' />
 
             {/* Tags */}
             {product.tags.length > 0 && (
@@ -1641,92 +1507,17 @@ export default function ProductDetailClient({
         </div>
       </div>
 
-      {/* Heritage description + product details accordions */}
-      <div className='mx-auto mt-2 max-w-7xl px-4 pb-10 sm:px-6 lg:px-8'>
-        <div className='max-w-3xl border-t border-gray-200 lg:ml-auto lg:max-w-none lg:pl-[calc(50%+1.25rem)]'>
-          <div className='border-b border-gray-200'>
-            <button
-              type='button'
-              onClick={() => setHeritageOpen((v) => !v)}
-              className='flex w-full items-center justify-between py-4 text-left'
-            >
-              <span className='text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-900'>
-                Heritage Description
-              </span>
-              {heritageOpen ?
-                <ChevronUp className='h-4 w-4 text-gray-500' />
-              : <ChevronDown className='h-4 w-4 text-gray-500' />}
-            </button>
-            {heritageOpen && product.description ?
-              <div className='pb-6 pr-2'>
-                <RichTextContent
-                  text={product.description}
-                  className='space-y-4 text-sm leading-relaxed text-gray-600'
-                />
-              </div>
-            : null}
-          </div>
-
-          <div className='border-b border-gray-200'>
-            <button
-              type='button'
-              onClick={() => setDetailsOpen((v) => !v)}
-              className='flex w-full items-center justify-between py-4 text-left'
-            >
-              <span className='text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-900'>
-                Product Details
-              </span>
-              {detailsOpen ?
-                <ChevronUp className='h-4 w-4 text-gray-500' />
-              : <ChevronDown className='h-4 w-4 text-gray-500' />}
-            </button>
-            {detailsOpen ?
-              <div className='pb-6 pr-2'>
-                <dl className='divide-y divide-gray-100'>
-                  {[
-                    { label: "Category", value: product.category },
-                    product.subcategory ?
-                      { label: "Subcategory", value: product.subcategory }
-                    : null,
-                    product.fabric ?
-                      { label: "Fabric", value: product.fabric }
-                    : null,
-                    {
-                      label: "SKU",
-                      value:
-                        selectedVariant?.sku ||
-                        (product.variants && product.variants[0]?.sku) ||
-                        "N/A",
-                    },
-                    product.tags.length > 0 ?
-                      { label: "Tags", value: product.tags.join(", ") }
-                    : null,
-                    ...(product.productDetails || []).map((d) =>
-                      d.key && d.value ?
-                        { label: d.key, value: d.value }
-                      : null,
-                    ),
-                  ]
-                    .filter(Boolean)
-                    .map((row) => {
-                      const r = row as { label: string; value: string };
-                      return (
-                        <div key={r.label} className='flex gap-4 py-3'>
-                          <dt className='w-28 shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500'>
-                            {r.label}
-                          </dt>
-                          <dd className='flex-1 break-words text-sm text-gray-800'>
-                            {r.value}
-                          </dd>
-                        </div>
-                      );
-                    })}
-                </dl>
-              </div>
-            : null}
-          </div>
-        </div>
-      </div>
+      <PdpStorySection
+        product={product}
+        selectedVariant={selectedVariant}
+        motionVideoUrl={product.motionVideoUrl}
+        motionReelUrl={product.motionReelUrl}
+        motionPosterUrl={
+          galleryImages.length > 1 ?
+            galleryImages[1]?.url
+          : galleryImages[0]?.url
+        }
+      />
 
       <PdpRelatedProductRows
         product={product}
@@ -1781,54 +1572,21 @@ export default function ProductDetailClient({
         />
       )}
 
-      {/* Mobile fixed purchase bar — Flipkart/Amazon style */}
-      <div
-        className='lg:hidden fixed inset-x-0 bottom-0 z-[88] border-t border-gray-200 bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-6px_28px_rgba(0,13,33,0.1)]'
-        role='toolbar'
-        aria-label='Purchase actions'
-      >
-        <div className='mx-auto flex max-w-7xl gap-2.5 px-4 py-3'>
-          <button
-            type='button'
-            onClick={handleAddToCart}
-            disabled={isOutOfStock || isAddingToCart}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-2 border py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors",
-              isOutOfStock ?
-                "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-              : "border-navy-900 bg-white text-navy-900 active:bg-navy-50",
-            )}
-          >
-            {isAddingToCart ?
-              <span className='h-4 w-4 animate-spin rounded-full border-2 border-navy-900/30 border-t-navy-900' />
-            : <>
-                <ShoppingBag className='h-4 w-4 shrink-0' aria-hidden />
-                Add to Bag
-              </>
-            }
-          </button>
-          <button
-            ref={buyNowMobileRef}
-            type='button'
-            onClick={handleBuyNow}
-            disabled={isOutOfStock || isBuyingNow}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-2 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors",
-              isOutOfStock ?
-                "cursor-not-allowed bg-gray-200 text-gray-400"
-              : "bg-[#c5a059] text-white active:bg-[#b8924f]",
-            )}
-          >
-            {isBuyingNow ?
-              <span className='h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white' />
-            : <>
-                <Zap className='h-4 w-4 shrink-0' aria-hidden />
-                Buy Now
-              </>
-            }
-          </button>
-        </div>
-      </div>
+      <PdpMobilePurchaseBar
+        productName={product.name}
+        productImage={galleryImages[0]?.url}
+        quantity={quantity}
+        maxQty={maxQty}
+        selectedVariant={selectedVariant}
+        isOutOfStock={isOutOfStock}
+        isAddingToCart={isAddingToCart}
+        isBuyingNow={isBuyingNow}
+        enriched={purchaseBarEnriched}
+        onAddToCart={handleAddToCart}
+        onBuyNow={handleBuyNow}
+        onQuantityChange={setQuantity}
+        buyNowRef={buyNowMobileRef}
+      />
     </div>
   );
 }

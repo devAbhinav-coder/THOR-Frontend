@@ -15,6 +15,7 @@ export type BlogsListServerResult = {
 export type BlogDetailServerResult = {
   blog: Blog;
   comments: BlogComment[];
+  redirect?: { slug: string; permanent?: boolean };
 };
 
 export async function fetchBlogsListingServer(
@@ -53,8 +54,17 @@ export async function fetchBlogBySlugServer(
     });
     if (!res.ok) return null;
     const json = (await res.json()) as {
-      data?: { blog?: Blog; comments?: BlogComment[] };
+      data?: {
+        blog?: Blog;
+        comments?: BlogComment[];
+        redirect?: { slug: string; permanent?: boolean };
+      };
     };
+
+    if (json?.data?.redirect?.slug) {
+      return { blog: {} as Blog, comments: [], redirect: json.data.redirect };
+    }
+
     const blog = json?.data?.blog;
     if (!blog?.slug) return null;
     return {

@@ -5,6 +5,7 @@ import {
   Copy,
   Check,
   Mail,
+  MessageCircle,
   QrCode,
   X,
   Download,
@@ -24,6 +25,7 @@ type InvitePayload = {
     qrDataUrl: string;
     expiresAt: string;
     emailSentAt?: string | null;
+    whatsappSentAt?: string | null;
     productCount: number;
     reviewedCount: number;
   };
@@ -31,6 +33,8 @@ type InvitePayload = {
     orderNumber: string;
     customerName: string;
     customerEmail: string | null;
+    customerPhone?: string | null;
+    hasWhatsAppPhone?: boolean;
   };
 };
 
@@ -43,6 +47,7 @@ export default function OrderReviewInvitePanel({ orderId, className }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [whatsApping, setWhatsApping] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [data, setData] = useState<InvitePayload | null>(null);
@@ -104,6 +109,19 @@ export default function OrderReviewInvitePanel({ orderId, className }: Props) {
       toast.error((err as { message?: string })?.message || 'Could not send email');
     } finally {
       setEmailing(false);
+    }
+  };
+
+  const sendWhatsApp = async () => {
+    setWhatsApping(true);
+    try {
+      const res = await adminApi.whatsAppReviewInvite(orderId);
+      setData(res.data as InvitePayload);
+      toast.success('Review invite sent on WhatsApp');
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message || 'Could not send WhatsApp');
+    } finally {
+      setWhatsApping(false);
     }
   };
 
@@ -276,6 +294,18 @@ export default function OrderReviewInvitePanel({ orderId, className }: Props) {
                 <span>
                   Reviewed {data.invite.reviewedCount}/{data.invite.productCount}
                 </span>
+                {data.invite.emailSentAt ?
+                  <>
+                    <span>·</span>
+                    <span className="text-emerald-600">Email sent</span>
+                  </>
+                : null}
+                {data.invite.whatsappSentAt ?
+                  <>
+                    <span>·</span>
+                    <span className="text-emerald-600">WhatsApp sent</span>
+                  </>
+                : null}
               </p>
 
               {/* Actions */}
@@ -320,6 +350,17 @@ export default function OrderReviewInvitePanel({ orderId, className }: Props) {
                 >
                   <Mail className="h-3.5 w-3.5 mr-1.5" />
                   {data.order.customerEmail ? 'Email' : 'No email'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl h-10 border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-900"
+                  loading={whatsApping}
+                  disabled={!data.order.hasWhatsAppPhone && !data.order.customerPhone}
+                  onClick={sendWhatsApp}
+                >
+                  <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                  {data.order.hasWhatsAppPhone || data.order.customerPhone ? 'WhatsApp' : 'No phone'}
                 </Button>
               </div>
 

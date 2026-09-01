@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "e2e/**",
+    "scripts/**",
+    "src/instrumentation*.ts",
+    "src/sentry.*.config.ts"
+  ],
+  "ignoreDependencies": [
+    "tailwindcss-animate",
+    "@vercel/analytics",
+    "@vercel/speed-insights"
+  ]
+}

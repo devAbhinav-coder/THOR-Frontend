@@ -532,7 +532,14 @@ export const couponEligible = z.object({
   status: z.string(),
   data: z.object({
     coupons: z.array(doc),
-    ineligible: z.array(z.object({ code: z.string(), reason: z.string() })).optional(),
+    nearEligible: z
+      .array(
+        z.object({
+          coupon: doc,
+          hintMessage: z.string(),
+        }),
+      )
+      .optional(),
     completedOrders: z.number().optional(),
   }),
 });
@@ -650,11 +657,16 @@ export const marketingAudiencePreview = z.object({
       offlineLeadEmails: z.number(),
       estimatedEmailRecipients: z.number(),
       estimatedNotificationRecipients: z.number(),
+      estimatedWhatsAppRecipients: z.number().optional(),
       channels: z.array(z.string()),
-      delivery: z.object({
-        resendConfigured: z.boolean(),
-        redisEnabled: z.boolean(),
-      }),
+      delivery: z
+        .object({
+          resendConfigured: z.boolean(),
+          redisEnabled: z.boolean(),
+          whatsappConfigured: z.boolean().optional(),
+          whatsappMarketingEnabled: z.boolean().optional(),
+        })
+        .passthrough(),
     })
     .passthrough(),
 });

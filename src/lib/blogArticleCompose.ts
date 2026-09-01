@@ -286,14 +286,41 @@ export function getCoverImage(images: BlogImage[]): BlogImage | undefined {
 
 
 
-/** Optional AI helper — admin can remove markers manually. */
-
+/** Insert in-story image markers after sections (index 1+; 0 = cover). */
 export function injectImagesIntoContent(content: string, imageSlots: number): string {
+  const slots = Math.max(1, imageSlots);
+  if (!content.trim()) return content;
+  if (IMAGE_MARKER.test(content)) return content;
 
-  if (imageSlots < 1 || IMAGE_MARKER.test(content)) return content;
+  let imageIdx = 1;
+  const nextMarker = (): string => {
+    if (imageIdx > slots) return "";
+    const marker = `\n\n[[image:${imageIdx}]]\n\n`;
+    imageIdx += 1;
+    return marker;
+  };
 
-  return `${content}\n[[image:1]]`;
+  let result = content.replace(/<\/h2>/gi, (match) => {
+    const marker = nextMarker();
+    return marker ? `${match}${marker}` : match;
+  });
 
+  if (imageIdx === 1) {
+    let firstParagraph = true;
+    result = result.replace(/<\/p>/gi, (match) => {
+      if (!firstParagraph) return match;
+      firstParagraph = false;
+      const marker = nextMarker();
+      return marker ? `${match}${marker}` : match;
+    });
+  }
+
+  while (imageIdx <= slots) {
+    result += `\n\n[[image:${imageIdx}]]\n\n`;
+    imageIdx += 1;
+  }
+
+  return result.trim();
 }
 
 

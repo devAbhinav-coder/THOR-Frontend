@@ -40,6 +40,8 @@ type Props = {
 
   readingTimeMin?: number;
 
+  articleTemplate?: string;
+
 };
 
 
@@ -59,6 +61,8 @@ export default function BlogAdminPreview({
   images,
 
   readingTimeMin = 5,
+
+  articleTemplate = "classic",
 
 }: Props) {
 
@@ -186,7 +190,12 @@ export default function BlogAdminPreview({
 
           >
 
-            <BlogArticleContent content={content} images={images} title={title} />
+            <BlogArticleContent
+              content={content}
+              images={images}
+              title={title}
+              template={articleTemplate}
+            />
 
           </div>
 

@@ -5,21 +5,22 @@ import {
   couponDiscountShort,
   couponEligibilityBadge,
   couponPrimaryLine,
-  couponSavingsLine,
   couponShopperTerms,
 } from "@/lib/couponDisplay";
 
 type Props = {
   coupon: Coupon;
+  /** Actionable nudge when the coupon is close but not yet unlockable. */
+  hintMessage?: string;
 };
 
 /** Storefront coupon card copy — description, savings, and shopper-friendly terms. */
-export function CouponOfferPreview({ coupon }: Props) {
+export function CouponOfferPreview({ coupon, hintMessage }: Props) {
   const badge = couponEligibilityBadge(coupon);
   const primary = couponPrimaryLine(coupon);
-  const savings = couponSavingsLine(coupon);
   const terms = couponShopperTerms(coupon);
   const hasDescription = Boolean(coupon.description?.trim());
+  const isNearEligible = Boolean(hintMessage?.trim());
 
   return (
     <>
@@ -40,9 +41,11 @@ export function CouponOfferPreview({ coupon }: Props) {
       <p className='text-xs text-gray-800 mt-1 font-medium leading-snug line-clamp-2'>
         {primary}
       </p>
-      {/* {savings ?
-        <p className="text-xs text-brand-700 mt-0.5">{savings}</p>
-      : null} */}
+      {isNearEligible ?
+        <p className='mt-1.5 text-[11px] font-medium leading-snug text-[#8a6d3b]'>
+          {hintMessage}
+        </p>
+      : null}
       {terms.length > 0 ?
         <p className='text-[11px] text-gray-500 mt-1 leading-snug'>
           {terms.join(" · ")}

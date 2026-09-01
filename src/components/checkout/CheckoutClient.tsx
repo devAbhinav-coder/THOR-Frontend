@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Fragment,
@@ -11,8 +11,6 @@ import {
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -41,9 +39,9 @@ import { authApi, cartApi, couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
 import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Input } from "@/components/ui/input";
-import { Coupon, Order, type CartPromotion } from "@/types";
+import { Coupon, Order, type CartPromotion, type NearEligibleCoupon } from "@/types";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
-import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
+import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
 import type { CheckoutDisplayItem } from "@/types/checkoutDisplay";
 import {
   getRazorpayConstructor,
@@ -66,7 +64,6 @@ import CheckoutMobileStepper from "@/components/checkout/CheckoutMobileStepper";
 import { useDeliveryEstimate } from "@/hooks/useDeliveryEstimate";
 import type { DeliveryEstimate } from "@/lib/deliveryEstimate";
 import {
-  formatDeliveryDateRange,
   formatPromisedDate,
 } from "@/lib/deliveryEstimate";
 import {
@@ -94,100 +91,18 @@ import {
   writeBuyNowToSession,
   type BuyNowCheckoutItem,
 } from "@/lib/buyNowCheckoutSession";
-
-function normalizeIndianMobileDigits(val: string): string {
-  let d = val.replace(/\D/g, "");
-  if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
-  if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
-  return d;
-}
-
-const addressSchema = z.object({
-  name: z.string().min(2, "Full name is required").max(80, "Name is too long"),
-  phone: z
-    .string()
-    .min(1, "Mobile number is required")
-    .refine(
-      (val) => normalizeIndianMobileDigits(val).length === 10,
-      "Enter exactly 10 digits",
-    )
-    .refine((val) => {
-      const raw = normalizeIndianMobileDigits(val);
-      const pn = parsePhoneNumberFromString(raw, "IN");
-      return !!pn && pn.isValid() && pn.country === "IN";
-    }, "Enter a valid Indian mobile number"),
-  /** House / flat / building (optional, separate from street). */
-  house: z.string().max(120, "House / flat / building is too long").optional(),
-  street: z.string().min(5, "Street / area is required"),
-  /** Nearby landmark (optional). */
-  landmark: z.string().max(160, "Landmark is too long").optional(),
-  city: z.string().min(2, "City required"),
-  state: z.string().min(1, "Please select state"),
-  pincode: z.string().regex(/^\d{6}$/, "Enter valid 6-digit pincode"),
-  country: z.string().default("India"),
-});
-
-type AddressForm = z.infer<typeof addressSchema>;
-
-/** Matches backend Mongo ObjectId validation for order / checkout intent ids */
-const MONGO_OBJECT_ID_HEX = /^[a-fA-F0-9]{24}$/;
-
-function normalizeCheckoutMongoId(value: unknown): string | null {
-  if (typeof value === "string") {
-    const t = value.trim();
-    return MONGO_OBJECT_ID_HEX.test(t) ? t : null;
-  }
-  if (
-    value &&
-    typeof value === "object" &&
-    "$oid" in value &&
-    typeof (value as { $oid: unknown }).$oid === "string"
-  ) {
-    const s = (value as { $oid: string }).$oid.trim();
-    return MONGO_OBJECT_ID_HEX.test(s) ? s : null;
-  }
-  return null;
-}
-
-const SHIPPING_THRESHOLD = 1099;
-const SHIPPING_CHARGE = 99;
-/** Must match backend `COD_HANDLING_FEE` — added when paying cash on delivery */
-const COD_HANDLING_FEE = 99;
-const TAX_RATE = 0;
-
-const INDIAN_STATES = [
-  "Andhra Pradesh",
-  "Arunachal Pradesh",
-  "Assam",
-  "Bihar",
-  "Chhattisgarh",
-  "Goa",
-  "Gujarat",
-  "Haryana",
-  "Himachal Pradesh",
-  "Jharkhand",
-  "Karnataka",
-  "Kerala",
-  "Madhya Pradesh",
-  "Maharashtra",
-  "Manipur",
-  "Meghalaya",
-  "Mizoram",
-  "Nagaland",
-  "Odisha",
-  "Punjab",
-  "Rajasthan",
-  "Sikkim",
-  "Tamil Nadu",
-  "Telangana",
-  "Tripura",
-  "Uttar Pradesh",
-  "Uttarakhand",
-  "West Bengal",
-  "Delhi",
-  "Jammu and Kashmir",
-  "Ladakh",
-];
+import {
+  addressSchema,
+  type AddressForm,
+  normalizeCheckoutMongoId,
+  SHIPPING_THRESHOLD,
+  SHIPPING_CHARGE,
+  COD_HANDLING_FEE,
+  TAX_RATE,
+  INDIAN_STATES,
+  toE164IndianMobile,
+} from "./checkoutForm";
+import { CheckoutReviewRecap } from "./CheckoutReviewRecap";
 
 type ReviewAddressDisplay = {
   name: string;
@@ -200,121 +115,6 @@ type ReviewAddressDisplay = {
   pincode: string;
 };
 
-function CheckoutReviewRecap({
-  address,
-  paymentMethod,
-  deliveryEstimate,
-  onEditAddress,
-  onEditPayment,
-  className,
-}: {
-  address: ReviewAddressDisplay;
-  paymentMethod: "cod" | "razorpay";
-  deliveryEstimate?: DeliveryEstimate | null;
-  onEditAddress: () => void;
-  onEditPayment: () => void;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <h2 className='mb-5 font-serif text-2xl font-medium text-navy-900 sm:mb-6 sm:text-3xl'>
-        Review Your Order
-      </h2>
-      <div className='space-y-4'>
-        <div className='flex items-start justify-between gap-4 border border-gray-200/70 bg-white p-5'>
-          <div className='min-w-0'>
-            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
-              Shipping Address
-            </p>
-            <p className='mt-2 font-medium text-navy-900'>
-              {address.name || "—"}
-            </p>
-            <p className='mt-1 text-xs leading-relaxed text-gray-600 sm:text-sm'>
-              {address.house && (
-                <>
-                  {address.house}
-                  <br />
-                </>
-              )}
-              {address.street || "—"}
-              {address.landmark && (
-                <>
-                  <br />
-                  Near {address.landmark}
-                </>
-              )}
-              <br />
-              {address.city}
-              {address.city && address.state ? ", " : ""}
-              {address.state} {address.pincode}
-            </p>
-            {address.phone && (
-              <p className='mt-3 text-sm text-gray-600'>{address.phone}</p>
-            )}
-          </div>
-          <button
-            type='button'
-            onClick={onEditAddress}
-            className='shrink-0 border-b border-[#c5a059] pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] hover:text-navy-900'
-          >
-            Edit
-          </button>
-        </div>
-        {deliveryEstimate?.serviceable && (
-          <div className='border border-emerald-200/70 bg-emerald-50/40 p-5'>
-            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
-              Estimated Delivery
-            </p>
-            <p className='mt-2 text-sm font-semibold text-navy-900'>
-              Get it by{" "}
-              {formatPromisedDate(
-                deliveryEstimate.promisedDate ||
-                  deliveryEstimate.estimatedDelivery.to,
-              )}
-            </p>
-            <p className='mt-1 text-xs text-gray-600'>
-              Window{" "}
-              {formatDeliveryDateRange(
-                deliveryEstimate.estimatedDelivery.from,
-                deliveryEstimate.estimatedDelivery.to,
-              )}
-              {deliveryEstimate.zoneLabel ?
-                ` · ${deliveryEstimate.zoneLabel}`
-              : ""}{" "}
-              · via {deliveryEstimate.carrier}
-            </p>
-          </div>
-        )}
-        <div className='flex items-start justify-between gap-4 border border-gray-200/70 bg-white p-5'>
-          <div className='min-w-0'>
-            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
-              Payment Method
-            </p>
-            <p className='mt-2 flex items-center gap-2 font-medium text-navy-900'>
-              {paymentMethod === "razorpay" ?
-                <Wallet className='h-4 w-4 shrink-0 text-[#c5a059]' />
-              : <Banknote className='h-4 w-4 shrink-0 text-[#c5a059]' />}
-              <span className='text-sm sm:text-base'>
-                {paymentMethod === "razorpay" ?
-                  "Pay online (UPI, cards & net banking)"
-                : `Cash on delivery (${formatPrice(COD_HANDLING_FEE)} handling fee)`
-                }
-              </span>
-            </p>
-          </div>
-          <button
-            type='button'
-            onClick={onEditPayment}
-            className='shrink-0 border-b border-[#c5a059] pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c5a059] hover:text-navy-900'
-          >
-            Edit
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function CheckoutClient() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
@@ -323,6 +123,7 @@ export default function CheckoutClient() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [couponCode, setCouponCode] = useState("");
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
+  const [nearEligibleCoupons, setNearEligibleCoupons] = useState<NearEligibleCoupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
   const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(() =>
@@ -642,8 +443,16 @@ export default function CheckoutClient() {
           : undefined;
         const res = await couponApi.getEligible(amountForEligibility, items);
         setEligibleCoupons(res.data.coupons || []);
+        setNearEligibleCoupons(
+          (res.data.nearEligible ?? []).flatMap((entry) =>
+            entry.coupon ?
+              [{ coupon: entry.coupon as Coupon, hintMessage: entry.hintMessage }]
+            : [],
+          ),
+        );
       } catch {
         setEligibleCoupons([]);
+        setNearEligibleCoupons([]);
       } finally {
         setIsLoadingCoupons(false);
       }
@@ -1321,11 +1130,7 @@ export default function CheckoutClient() {
       let holdPlacingUntilOverlay = false;
       let openedRazorpay = false;
       try {
-        const normalizedPhone =
-          parsePhoneNumberFromString(
-            addressData.phone.replace(/\s+/g, ""),
-            "IN",
-          )?.number || addressData.phone;
+        const normalizedPhone = toE164IndianMobile(addressData.phone);
         const metaBrowser = getMetaBrowserIdentifiers();
 
         if (existingOrder) {
@@ -2422,9 +2227,11 @@ export default function CheckoutClient() {
                     <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
                       Promotional Code
                     </p>
-                    {eligibleCoupons.length > 0 && (
+                    {(eligibleCoupons.length > 0 || nearEligibleCoupons.length > 0) && (
                       <span className='shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400'>
-                        {eligibleCoupons.length} available
+                        {eligibleCoupons.length > 0
+                          ? `${eligibleCoupons.length} ready`
+                          : `${nearEligibleCoupons.length} to unlock`}
                       </span>
                     )}
                   </div>
@@ -2486,44 +2293,25 @@ export default function CheckoutClient() {
                     </div>
                   }
 
-                  {isLoadingCoupons ?
-                    <p className='mt-2 text-xs text-gray-500'>
-                      Loading available offers…
-                    </p>
-                  : eligibleCoupons.length === 0 ?
-                    <p className='mt-2 text-xs text-gray-500'>
-                      No coupons are available for this order.
-                    </p>
-                  : <div className='mt-2 grid max-h-72 min-w-0 grid-cols-1 gap-2 overflow-y-auto pr-0.5'>
-                      {eligibleCoupons.map((c) => (
-                        <button
-                          key={c._id}
-                          type='button'
-                          disabled={hasAppliedCoupon || couponBusy}
-                          title={
-                            hasAppliedCoupon ?
-                              "Remove your current coupon to use another"
-                            : undefined
-                          }
-                          onClick={async () => {
-                            try {
-                              await applySelectedCoupon(c.code);
-                            } catch {
-                              // store handles toast
-                            }
-                          }}
-                          className={cn(
-                            "min-w-0 border border-[#c5a059]/20 p-2 text-left transition-all",
-                            hasAppliedCoupon || couponBusy ?
-                              "cursor-not-allowed opacity-50"
-                            : "hover:border-[#c5a059]/50 hover:bg-[#fff8eb]/50",
-                          )}
-                        >
-                          <CouponOfferPreview coupon={c} />
-                        </button>
-                      ))}
-                    </div>
-                  }
+                  <div className='mt-2 max-h-72 overflow-y-auto pr-0.5'>
+                    <CouponEligibleOffersList
+                      variant='light'
+                      eligibleCoupons={eligibleCoupons}
+                      nearEligibleCoupons={nearEligibleCoupons}
+                      isLoading={isLoadingCoupons}
+                      hasCouponApplied={hasAppliedCoupon}
+                      couponLoading={couponBusy}
+                      onApply={async (code) => {
+                        try {
+                          await applySelectedCoupon(code);
+                        } catch {
+                          // store handles toast
+                        }
+                      }}
+                      emptyText='No coupons are available for this order.'
+                      loadingText='Loading available offers…'
+                    />
+                  </div>
                 </div>
 
                 <div className={cn(checkoutStep === 3 && "order-2")}>
@@ -2816,7 +2604,7 @@ export default function CheckoutClient() {
                       <div className='flex justify-between text-[#c5a059]'>
                         <span>Discount</span>
                         <span className='font-semibold tabular-nums'>
-                          − {formatPrice(discount)}
+                          - {formatPrice(discount)}
                         </span>
                       </div>
                     )}
@@ -2824,7 +2612,7 @@ export default function CheckoutClient() {
                       <div className='flex justify-between text-emerald-700'>
                         <span>{activePromotion?.label || "Auto offer"}</span>
                         <span className='font-semibold tabular-nums'>
-                          − {formatPrice(promotionDiscount)}
+                          - {formatPrice(promotionDiscount)}
                         </span>
                       </div>
                     )}
@@ -2832,7 +2620,7 @@ export default function CheckoutClient() {
                       <div className='flex justify-between text-[#c5a059]'>
                         <span>Coupon discount</span>
                         <span className='font-semibold tabular-nums'>
-                          − {formatPrice(couponDiscount)}
+                          - {formatPrice(couponDiscount)}
                         </span>
                       </div>
                     )}

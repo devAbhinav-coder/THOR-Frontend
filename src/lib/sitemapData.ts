@@ -50,10 +50,12 @@ export function fetchAllSitemapProducts() {
 }
 
 export function fetchAllSitemapBlogs() {
-  return fetchPaginatedList<{ slug?: string; updatedAt?: string; viewCount?: number }>(
-    "/blogs",
-    "blogs",
-  );
+  return fetchPaginatedList<{
+    slug?: string;
+    updatedAt?: string;
+    viewCount?: number;
+    images?: { url?: string }[];
+  }>("/blogs", "blogs");
 }
 
 export function fetchAllSitemapGiftingProducts() {

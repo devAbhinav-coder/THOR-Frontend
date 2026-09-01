@@ -86,6 +86,9 @@ export default function LoginPageClient({
     isLoading,
     admin2faPending,
     clearAdmin2faPending,
+    isAuthenticated,
+    user,
+    hasSessionChecked,
   } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -99,6 +102,12 @@ export default function LoginPageClient({
     }
     router.push(redirect);
   }, [onSuccess, redirect, router]);
+
+  useEffect(() => {
+    if (!hasSessionChecked || !isAuthenticated || !user) return;
+    if (redirect.startsWith("/admin") && user.role !== "admin") return;
+    navigateAfterAuth();
+  }, [hasSessionChecked, isAuthenticated, user, redirect, navigateAfterAuth]);
 
   const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
   const [otpStep, setOtpStep] = useState<"email" | "code">("email");

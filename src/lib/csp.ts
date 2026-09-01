@@ -46,6 +46,9 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "https://lumberjack.razorpay.com",
     // Cloudflare Turnstile (widget + siteverify from browser SDK)
     "https://challenges.cloudflare.com",
+    // Cloudinary direct uploads (motion video from admin)
+    "https://api.cloudinary.com",
+    "https://*.cloudinary.com",
     // Meta Pixel (browser) — without these, CSP blocks fbq and Events Manager
     // shows Conversions API only, which tanks Event Match Quality.
     "https://www.facebook.com",
@@ -55,6 +58,12 @@ export function buildContentSecurityPolicy(nonce: string): string {
   ].filter(Boolean);
 
   const connectSrc = connectParts.join(" ");
+
+  // Meta Pixel (GTM + fbq) posts events via hidden forms/iframes to facebook.com/tr.
+  const metaPixelFormAction =
+    "https://www.facebook.com https://web.facebook.com https://*.facebook.com";
+  const metaPixelFrameSrc =
+    "https://www.facebook.com https://web.facebook.com https://*.facebook.com";
 
   // Next.js dev (webpack + React Fast Refresh) relies on eval(); production builds do not.
   const scriptSrcExtra =
@@ -67,18 +76,19 @@ export function buildContentSecurityPolicy(nonce: string): string {
     // become a fallback for browsers that don't support strict-dynamic and
     // satisfy Lighthouse "Ensure CSP is effective against XSS attacks".
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline'${scriptSrcExtra}`,
-    // Modern Lighthouse audit accepts `script-src-elem` separately.
-    `script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline'`,
+    // Keep strict-dynamic off script-src-elem so Next.js lazy chunks on 'self' still load.
+    `script-src-elem 'self' 'nonce-${nonce}' https: 'unsafe-inline'${scriptSrcExtra}`,
     "style-src 'self' 'unsafe-inline'",
     "style-src-elem 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src ${connectSrc}`,
-    "frame-src 'self' https://accounts.google.com https://*.google.com https://api.razorpay.com https://checkout.razorpay.com https://www.googletagmanager.com https://challenges.cloudflare.com",
+    // Instagram reel embeds + Meta Pixel tracking iframes (GTM / fbq fallback)
+    `frame-src 'self' https://accounts.google.com https://*.google.com https://api.razorpay.com https://checkout.razorpay.com https://www.googletagmanager.com https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com ${metaPixelFrameSrc}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "media-src 'self' https: data: blob:",
-    "form-action 'self'",
+    `form-action 'self' ${metaPixelFormAction}`,
     "base-uri 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",

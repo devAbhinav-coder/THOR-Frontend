@@ -4,6 +4,8 @@ import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 import { FAQ_H1 } from "@/lib/pageHeadings";
+import { FaqAccordion } from "@/components/legal/FaqAccordion";
+import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/faq",
@@ -101,18 +103,8 @@ export default function FaqPage() {
         lastUpdated='31 March 2026'
       >
         <h2>Common questions</h2>
-        {faqItems.map((item) => (
-          <div
-            key={item.q}
-            className='rounded-2xl border border-gray-100 bg-white/80 px-4 py-3.5 mb-3'
-          >
-            <h3 className='text-gray-900 font-extrabold tracking-tight'>
-              {item.q}
-            </h3>
-            <p className='text-gray-700 mt-1.5'>{item.a}</p>
-          </div>
-        ))}
-
+        <FaqAccordion items={faqItems} />
+        <Separator className="my-8" />
         <h2>Need more help?</h2>
         <p>
           Explore policy pages for detailed information:{" "}

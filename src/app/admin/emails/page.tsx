@@ -15,6 +15,7 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle2,
+  MessageCircle,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import toast from "react-hot-toast";
@@ -22,7 +23,7 @@ import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import { AdminAiEmailDraftButton } from "@/components/admin/ai";
 
 type Audience = "users" | "admins" | "all";
-type Channel = "email" | "in_app" | "push";
+type Channel = "email" | "in_app" | "push" | "whatsapp";
 
 const presetMessages = [
   {
@@ -68,7 +69,13 @@ type PreviewStats = {
   offlineLeadEmails: number;
   estimatedEmailRecipients: number;
   estimatedNotificationRecipients: number;
-  delivery: { resendConfigured: boolean; redisEnabled: boolean };
+  estimatedWhatsAppRecipients?: number;
+  delivery: {
+    resendConfigured: boolean;
+    redisEnabled: boolean;
+    whatsappConfigured?: boolean;
+    whatsappMarketingEnabled?: boolean;
+  };
 };
 
 export default function AdminEmailsPage() {
@@ -142,9 +149,21 @@ export default function AdminEmailsPage() {
       return;
     }
 
+    if (
+      channels.includes("whatsapp") &&
+      stats &&
+      !stats.delivery.whatsappMarketingEnabled
+    ) {
+      toast.error(
+        "WhatsApp is not configured on the server. Configure Meta credentials or use other channels.",
+      );
+      return;
+    }
+
     const emailCount = stats?.estimatedEmailRecipients ?? 0;
     const notifCount = stats?.estimatedNotificationRecipients ?? 0;
-    const totalReach = Math.max(emailCount, notifCount);
+    const waCount = stats?.estimatedWhatsAppRecipients ?? 0;
+    const totalReach = Math.max(emailCount, notifCount, waCount);
 
     if (totalReach > 500) {
       const ok = window.confirm(
@@ -183,7 +202,7 @@ export default function AdminEmailsPage() {
     <div className='p-4 sm:p-6 xl:p-8 space-y-6 max-w-6xl mx-auto'>
       <AdminPageHeader
         title='Marketing campaigns'
-        description='Professional broadcasts — email (Resend), in-app alerts, and browser push. Queued in the background so large sends never freeze the admin panel.'
+        description='Professional broadcasts — email (Resend), WhatsApp (Meta), in-app alerts, and browser push. Queued in the background so large sends never freeze the admin panel.'
         actions={
           <Link
             href='/admin/storefront'
@@ -217,7 +236,7 @@ export default function AdminEmailsPage() {
             <p className='text-xs font-bold text-gray-400 uppercase tracking-widest mb-3'>
               Delivery channels
             </p>
-            <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2'>
               {(
                 [
                   {
@@ -225,6 +244,12 @@ export default function AdminEmailsPage() {
                     label: "Email",
                     sub: "Branded HTML via Resend",
                     icon: Mail,
+                  },
+                  {
+                    id: "whatsapp" as const,
+                    label: "WhatsApp",
+                    sub: "Meta template broadcast",
+                    icon: MessageCircle,
                   },
                   {
                     id: "in_app" as const,
@@ -441,6 +466,16 @@ export default function AdminEmailsPage() {
                     </span>
                     <span className='font-bold text-navy-800 tabular-nums'>
                       ~{stats.estimatedNotificationRecipients.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                {channels.includes("whatsapp") && (
+                  <div className='flex justify-between gap-2 pt-2 border-t border-gray-100'>
+                    <span className='text-gray-700 font-medium'>
+                      WhatsApp queued
+                    </span>
+                    <span className='font-bold text-emerald-700 tabular-nums'>
+                      ~{(stats.estimatedWhatsAppRecipients ?? 0).toLocaleString()}
                     </span>
                   </div>
                 )}

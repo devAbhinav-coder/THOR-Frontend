@@ -46,7 +46,7 @@ const nextConfig = {
         key: 'Permissions-Policy',
         // No `browsing-topics` — not accepted by several scanners/browsers as a valid token yet.
         value:
-          'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), browsing-topics=()',
+          'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), browsing-topics=(), unload=(self "https://www.instagram.com")',
       },
       // COOP — Lighthouse "Ensure proper origin isolation with COOP".
       // `same-origin-allow-popups` keeps Razorpay / Google OAuth popups working.

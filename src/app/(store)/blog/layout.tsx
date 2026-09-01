@@ -5,7 +5,7 @@ const appUrl = getSiteUrl();
 const OG_IMAGE = `${appUrl}/ogimage.png`;
 
 export const metadata: Metadata = {
-    title: "Saree Styling & Ethnic Wear Journal",
+  title: "Saree Styling & Ethnic Wear Journal",
   description:
     "Saree & salwar styling, corset pairings, bridal ideas, fabric care, festive tips & gifting inspiration from The House of Rani Journal.",
   keywords: [
@@ -26,6 +26,9 @@ export const metadata: Metadata = {
   ],
   alternates: {
     canonical: "/blog",
+    types: {
+      "application/rss+xml": `${appUrl}/api/feed/blog`,
+    },
   },
   robots: {
     index: true,
@@ -62,61 +65,7 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * Blog layout — renders JSON-LD for the Blog listing page.
- * Individual blog post JSON-LD (BlogPosting) is rendered in blog/[slug]/page.tsx
- */
+/** Listing layout — JSON-LD lives on blog/page.tsx to avoid duplicate schema on article URLs. */
 export default function BlogLayout({ children }: { children: React.ReactNode }) {
-  const blogListingLd = {
-    "@context": "https://schema.org",
-    "@type": "Blog",
-    "@id": `${appUrl}/blog#blog`,
-    name: "The House of Rani Journal",
-    description:
-      "Saree styling tips, bridal inspiration, gifting ideas, and behind-the-scenes stories from The House of Rani.",
-    url: `${appUrl}/blog`,
-    publisher: {
-      "@type": "Organization",
-      "@id": `${appUrl}/#organization`,
-      name: "The House of Rani",
-      logo: {
-        "@type": "ImageObject",
-        url: `${appUrl}/logoNew.png`,
-      },
-    },
-    inLanguage: "en-IN",
-  };
-
-  const breadcrumbLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: `${appUrl}/`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Journal",
-        item: `${appUrl}/blog`,
-      },
-    ],
-  };
-
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogListingLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
-      {children}
-    </>
-  );
+  return children;
 }

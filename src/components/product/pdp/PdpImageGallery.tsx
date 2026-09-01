@@ -1,18 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import Image from "next/image";
-import {
-  Package,
-  Heart,
-  Share2,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Star,
-} from "lucide-react";
+import { Package, Heart, Share2, Check, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFinePointerHover } from "@/hooks/useFinePointerHover";
 import ProductImageLightbox from "@/components/product/ProductImageLightbox";
 import { PDP_MAIN_LENS_PX, PDP_MAIN_LENS_ZOOM } from "./constants";
 
@@ -29,6 +22,12 @@ export interface PdpImageGalleryProps {
   copied: boolean;
   onWishlist: () => void;
   onShare: () => void;
+}
+
+const SWIPE_THRESHOLD_PX = 48;
+
+function thumbAspect(isGift: boolean) {
+  return isGift ? ("1/1" as const) : ("3/4" as const);
 }
 
 export function PdpImageGallery({
@@ -57,7 +56,10 @@ export function PdpImageGallery({
     ch: number;
   } | null>(null);
   const pdpLensRafRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pdpLensVisible, setPdpLensVisible] = useState(false);
+  const hoverZoomEnabled = useFinePointerHover();
+  const aspect = thumbAspect(isGiftMarketingContext);
 
   useEffect(() => {
     setSelectedImage(0);
@@ -81,6 +83,16 @@ export function PdpImageGallery({
     };
   }, []);
 
+  const goPrev = useCallback(() => {
+    if (images.length <= 1) return;
+    setSelectedImage((i) => (i - 1 + images.length) % images.length);
+  }, [images.length]);
+
+  const goNext = useCallback(() => {
+    if (images.length <= 1) return;
+    setSelectedImage((i) => (i + 1) % images.length);
+  }, [images.length]);
+
   const flushPdpLensDom = () => {
     pdpLensRafRef.current = null;
     const m = pdpLensMetricsRef.current;
@@ -99,7 +111,7 @@ export function PdpImageGallery({
   };
 
   const onPdpMainImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
+    if (!hoverZoomEnabled) return;
     const el = pdpMainImageRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -130,232 +142,289 @@ export function PdpImageGallery({
     pdpLensMetricsRef.current = null;
   };
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0]?.clientX ?? 0,
+      y: e.touches[0]?.clientY ?? 0,
+    };
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || images.length <= 1) return;
+    const endX = e.changedTouches[0]?.clientX ?? start.x;
+    const endY = e.changedTouches[0]?.clientY ?? start.y;
+    const dx = endX - start.x;
+    const dy = endY - start.y;
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy))
+      return;
+    if (dx > 0) goPrev();
+    else goNext();
+  };
+
+  const handleImageZoneClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    action: "prev" | "next" | "zoom",
+  ) => {
+    e.stopPropagation();
+    if (action === "prev") goPrev();
+    else if (action === "next") goNext();
+    else setImageLightboxOpen(true);
+  };
+
+  const renderThumb = (
+    img: { url: string; alt?: string },
+    i: number,
+    opts: { layout: "side" | "tablet"; sizes: string; widthClass: string },
+  ) => (
+    <button
+      key={img.url || i}
+      type='button'
+      onMouseEnter={
+        opts.layout === "side" && hoverZoomEnabled ?
+          () => setSelectedImage(i)
+        : undefined
+      }
+      onClick={() => setSelectedImage(i)}
+      className={cn(
+        "flex-shrink-0 overflow-hidden border-2 bg-gray-50 transition-all duration-150",
+        opts.widthClass,
+        i === selectedImage ?
+          "border-[#c5a059] ring-1 ring-[#c5a059]/30"
+        : "border-gray-200 hover:border-[#c5a059]/50",
+      )}
+      style={{ aspectRatio: aspect }}
+    >
+      <div className='relative h-full w-full'>
+        <Image
+          src={img.url}
+          alt={img.alt || `${name} ${i + 1}`}
+          fill
+          sizes={opts.sizes}
+          quality={opts.layout === "side" ? 90 : 88}
+          className={isGiftMarketingContext ? "object-cover" : "object-contain"}
+        />
+      </div>
+    </button>
+  );
+
   return (
     <>
-      <div className='relative flex gap-3.5 lg:gap-5 min-w-0 overflow-x-hidden overflow-y-visible lg:overflow-visible'>
-        {images.length > 1 && (
+      <div className='relative flex min-w-0 gap-3.5 overflow-x-hidden overflow-y-visible lg:gap-5 lg:overflow-visible'>
+        {images.length > 1 ?
           <div
             ref={thumbsRef}
-            className='hidden lg:flex flex-col gap-2 w-[88px] flex-shrink-0 overflow-y-auto scrollbar-hide relative z-30'
+            className='relative z-30 hidden w-[88px] flex-shrink-0 flex-col gap-2 overflow-y-auto scrollbar-hide lg:flex'
             style={{
               marginLeft:
                 "calc(-1 * (max((100vw - 1280px) / 2, 0px) + 2rem) + 12px)",
             }}
           >
-            {images.map((img, i) => (
-              <button
-                key={img.url || i}
-                type='button'
-                onMouseEnter={() => setSelectedImage(i)}
-                onClick={() => setSelectedImage(i)}
-                className={cn(
-                  "flex-shrink-0 w-full overflow-hidden border-2 transition-all duration-150 bg-gray-50",
-                  i === selectedImage ?
-                    "border-[#c5a059] ring-1 ring-[#c5a059]/30"
-                  : "border-gray-200 hover:border-[#c5a059]/50",
-                )}
-                style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
-              >
-                <div className='relative w-full h-full'>
-                  <Image
-                    src={img.url}
-                    alt={img.alt || `${name} ${i + 1}`}
-                    fill
-                    sizes='176px'
-                    quality={90}
-                    className={
-                      isGiftMarketingContext ? "object-cover" : "object-contain"
-                    }
-                  />
-                </div>
-              </button>
-            ))}
+            {images.map((img, i) =>
+              renderThumb(img, i, {
+                layout: "side",
+                sizes: "176px",
+                widthClass: "w-full",
+              }),
+            )}
           </div>
-        )}
+        : null}
 
-        <div className='flex-1 min-w-0 space-y-3'>
-          <div className='border border-[#c5a059]/40 bg-white p-2 sm:p-2.5'>
+        <div className='min-w-0 flex-1 '>
+          {images.length > 1 ?
+            <HorizontalScrollSurface className='hidden w-full min-w-0 max-w-full gap-2 pb-1 scrollbar-hide md:flex lg:hidden'>
+              {images.map((img, i) =>
+                renderThumb(img, i, {
+                  layout: "tablet",
+                  sizes: "112px",
+                  widthClass: "w-16",
+                }),
+              )}
+            </HorizontalScrollSurface>
+          : null}
+
+          <div className='border border-[#c5a059]/40 bg-white p-0.5 sm:p-1'>
             <div
               ref={pdpMainImageRef}
-              className='relative w-full overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/20'
-              style={{ aspectRatio: isGiftMarketingContext ? "1/1" : "3/4" }}
+              className={cn(
+                "relative w-full touch-pan-y overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/20",
+                hoverZoomEnabled && "md:cursor-crosshair",
+              )}
+              style={{ aspectRatio: aspect }}
               onMouseMove={onPdpMainImageMouseMove}
               onMouseLeave={onPdpMainImageMouseLeave}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
             >
-            {images[selectedImage]?.url ?
-              <div className='absolute inset-0 z-0'>
-                <Image
-                  src={images[selectedImage].url}
-                  alt={images[selectedImage].alt || name}
-                  fill
-                  sizes='(max-width: 1024px) 100vw, (max-width: 1536px) 50vw, 720px'
-                  quality={92}
-                  className={cn(
-                    "transition-opacity duration-200",
-                    isGiftMarketingContext ? "object-cover" : "object-contain",
-                  )}
-                  priority
-                />
-              </div>
-            : <div className='absolute inset-0 flex items-center justify-center text-gray-300'>
-                <Package className='w-20 h-20' />
-              </div>
-            }
+              {images[selectedImage]?.url ?
+                <div className='absolute inset-0 z-0'>
+                  <Image
+                    src={images[selectedImage].url}
+                    alt={images[selectedImage].alt || name}
+                    fill
+                    sizes='(max-width: 1024px) 100vw, (max-width: 1536px) 50vw, 720px'
+                    quality={92}
+                    className={cn(
+                      "select-none transition-opacity duration-200",
+                      isGiftMarketingContext ? "object-cover" : (
+                        "object-contain"
+                      ),
+                    )}
+                    priority
+                    draggable={false}
+                  />
+                </div>
+              : <div className='absolute inset-0 flex items-center justify-center text-gray-300'>
+                  <Package className='h-20 w-20' />
+                </div>
+              }
 
-            {images[selectedImage]?.url && (
-              <div
-                ref={pdpLensBoxRef}
-                className={cn(
-                  "pointer-events-none absolute left-0 top-0 z-[7] hidden overflow-hidden border-2 border-[#c5a059]/40 bg-white shadow-2xl lg:block",
-                  "will-change-transform [backface-visibility:hidden]",
-                  "transition-opacity duration-200 ease-out",
-                  pdpLensVisible ? "opacity-100" : "opacity-0",
-                )}
-                style={{
-                  width: PDP_MAIN_LENS_PX,
-                  height: PDP_MAIN_LENS_PX,
-                  transform: "translate3d(0,0,0)",
-                }}
-                aria-hidden
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={pdpLensImgRef}
-                  src={images[selectedImage].url}
-                  alt=''
-                  draggable={false}
-                  className='absolute max-w-none object-cover [backface-visibility:hidden]'
+              {images[selectedImage]?.url && (
+                <div
+                  ref={pdpLensBoxRef}
+                  className={cn(
+                    "pointer-events-none absolute left-0 top-0 z-[7] overflow-hidden border-2 border-[#c5a059]/40 bg-white shadow-2xl",
+                    hoverZoomEnabled ? "block" : "hidden",
+                    "will-change-transform [backface-visibility:hidden]",
+                    "transition-opacity duration-200 ease-out",
+                    pdpLensVisible ? "opacity-100" : "opacity-0",
+                  )}
                   style={{
-                    willChange: "transform",
+                    width: PDP_MAIN_LENS_PX,
+                    height: PDP_MAIN_LENS_PX,
                     transform: "translate3d(0,0,0)",
                   }}
-                />
-              </div>
-            )}
-
-            {images[selectedImage]?.url && (
-              <button
-                type='button'
-                className='absolute inset-0 z-[5] cursor-default bg-transparent transition-colors hover:bg-black/[0.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 lg:cursor-zoom-in'
-                aria-label='Open zoom gallery'
-                onClick={() => setImageLightboxOpen(true)}
-              >
-                <span className='sr-only'>Open zoom gallery</span>
-              </button>
-            )}
-
-            <div className='pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5'>
-              {isFeatured && (
-                <span className='flex items-center gap-1 bg-[#c5a059] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow'>
-                  <Star className='h-3 w-3 fill-white' />
-                  Editor&apos;s Pick
-                </span>
-              )}
-              {isOutOfStock && (
-                <span className='bg-navy-900/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white'>
-                  Sold Out
-                </span>
-              )}
-            </div>
-
-            <div className='absolute top-3 right-3 z-20 flex flex-col gap-2'>
-              <button
-                type='button'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onWishlist();
-                }}
-                className={cn(
-                  "h-9 w-9 rounded-full flex items-center justify-center shadow-md transition-all",
-                  inWishlist ?
-                    "bg-brand-600 text-white"
-                  : "bg-white/90 text-gray-600 hover:bg-white hover:text-brand-600",
-                )}
-                aria-label='Wishlist'
-              >
-                <Heart
-                  className={cn("h-4 w-4", inWishlist && "fill-current")}
-                />
-              </button>
-              <button
-                type='button'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onShare();
-                }}
-                className='h-9 w-9 rounded-full bg-white/90 hover:bg-white text-gray-600 hover:text-navy-700 flex items-center justify-center shadow-md'
-                aria-label='Share'
-              >
-                {copied ?
-                  <Check className='h-4 w-4 text-green-500' />
-                : <Share2 className='h-4 w-4' />}
-              </button>
-            </div>
-
-            {images.length > 1 && (
-              <>
-                <button
-                  type='button'
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImage(
-                      (selectedImage - 1 + images.length) % images.length,
-                    );
-                  }}
-                  className='lg:hidden absolute left-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow hover:bg-white'
+                  aria-hidden
                 >
-                  <ChevronLeft className='h-4 w-4' />
-                </button>
-                <button
-                  type='button'
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImage((selectedImage + 1) % images.length);
-                  }}
-                  className='lg:hidden absolute right-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow hover:bg-white'
-                >
-                  <ChevronRight className='h-4 w-4' />
-                </button>
-              </>
-            )}
-          </div>
-          </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    ref={pdpLensImgRef}
+                    src={images[selectedImage].url}
+                    alt=''
+                    draggable={false}
+                    className='absolute max-w-none object-cover [backface-visibility:hidden]'
+                    style={{
+                      willChange: "transform",
+                      transform: "translate3d(0,0,0)",
+                    }}
+                  />
+                </div>
+              )}
 
-          {images.length > 1 && (
-            <HorizontalScrollSurface className='lg:hidden flex w-full min-w-0 max-w-full gap-2 scrollbar-hide pb-1'>
-              {images.map((img, i) => (
+              {images.length > 1 && (
+                <div className='absolute inset-0 z-[4] flex md:hidden'>
+                  <button
+                    type='button'
+                    className='h-full w-[32%] bg-transparent'
+                    aria-label='Previous image'
+                    onClick={(e) => handleImageZoneClick(e, "prev")}
+                  />
+                  <button
+                    type='button'
+                    className='h-full w-[36%] bg-transparent'
+                    aria-label='Open zoom gallery'
+                    onClick={(e) => handleImageZoneClick(e, "zoom")}
+                  />
+                  <button
+                    type='button'
+                    className='h-full w-[32%] bg-transparent'
+                    aria-label='Next image'
+                    onClick={(e) => handleImageZoneClick(e, "next")}
+                  />
+                </div>
+              )}
+
+              {images.length > 1 && hoverZoomEnabled ?
+                <div className='absolute inset-0 z-[4] hidden md:flex'>
+                  <button
+                    type='button'
+                    className='h-full w-[32%] cursor-w-resize bg-transparent'
+                    aria-label='Previous image'
+                    onClick={(e) => handleImageZoneClick(e, "prev")}
+                  />
+                  <button
+                    type='button'
+                    className='h-full w-[36%] cursor-zoom-in bg-transparent'
+                    aria-label='Open zoom gallery'
+                    onClick={(e) => handleImageZoneClick(e, "zoom")}
+                  />
+                  <button
+                    type='button'
+                    className='h-full w-[32%] cursor-e-resize bg-transparent'
+                    aria-label='Next image'
+                    onClick={(e) => handleImageZoneClick(e, "next")}
+                  />
+                </div>
+              : null}
+
+              {images.length === 1 && images[0]?.url && (
                 <button
-                  key={i}
                   type='button'
-                  onClick={() => setSelectedImage(i)}
                   className={cn(
-                    "flex-shrink-0 w-14 overflow-hidden border-2 transition-all bg-gray-50",
-                    i === selectedImage ?
-                      "border-[#c5a059] ring-1 ring-[#c5a059]/30"
-                    : "border-gray-200 hover:border-[#c5a059]/50",
+                    "absolute inset-0 z-[4] bg-transparent",
+                    hoverZoomEnabled ? "cursor-zoom-in" : "",
                   )}
-                  style={{
-                    aspectRatio: isGiftMarketingContext ? "1/1" : "3/4",
+                  aria-label='Open zoom gallery'
+                  onClick={() => setImageLightboxOpen(true)}
+                />
+              )}
+
+              <div className='pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-1.5'>
+                {isFeatured && (
+                  <span className='flex items-center gap-1 bg-[#c5a059] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow'>
+                    <Star className='h-3 w-3 fill-white' />
+                    Editor&apos;s Pick
+                  </span>
+                )}
+                {isOutOfStock && (
+                  <span className='bg-navy-900/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white'>
+                    Sold Out
+                  </span>
+                )}
+              </div>
+
+              {images.length > 1 && (
+                <div className='pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-navy-900/70 px-3 py-1 text-[10px] font-semibold tracking-wider text-white backdrop-blur-sm md:hidden'>
+                  {selectedImage + 1} / {images.length}
+                </div>
+              )}
+
+              <div className='absolute right-3 top-3 z-20 flex flex-col gap-2'>
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onWishlist();
                   }}
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-full shadow-md transition-all",
+                    inWishlist ?
+                      "bg-brand-600 text-white"
+                    : "bg-white/90 text-gray-600 hover:bg-white hover:text-brand-600",
+                  )}
+                  aria-label='Wishlist'
                 >
-                  <div className='relative w-full h-full'>
-                    <Image
-                      src={img.url}
-                      alt={img.alt || `${name} ${i + 1}`}
-                      fill
-                      sizes='112px'
-                      quality={88}
-                      className={
-                        isGiftMarketingContext ? "object-cover" : (
-                          "object-contain"
-                        )
-                      }
-                    />
-                  </div>
+                  <Heart
+                    className={cn("h-4 w-4", inWishlist && "fill-current")}
+                  />
                 </button>
-              ))}
-            </HorizontalScrollSurface>
-          )}
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare();
+                  }}
+                  className='flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-md hover:bg-white hover:text-navy-700'
+                  aria-label='Share'
+                >
+                  {copied ?
+                    <Check className='h-4 w-4 text-green-500' />
+                  : <Share2 className='h-4 w-4' />}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

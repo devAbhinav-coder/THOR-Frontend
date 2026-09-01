@@ -212,6 +212,7 @@ export default async function RootLayout({
       },
     ],
   };
+  const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim();
   const consentModeDefaultScript = `
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
@@ -224,6 +225,15 @@ gtag('consent', 'default', {
   security_storage: 'granted',
   wait_for_update: 500
 });
+`;
+  /** Queue fbq calls before fbevents.js loads (GTM tags, early tracking). */
+  const metaPixelStubScript = `
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[]}(window,document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
 `;
 
   return (
@@ -252,6 +262,14 @@ gtag('consent', 'default', {
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: consentModeDefaultScript }}
         />
+        {metaPixelId ?
+          <script
+            id='meta-pixel-stub'
+            nonce={nonce}
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: metaPixelStubScript }}
+          />
+        : null}
         <script
           type='application/ld+json'
           nonce={nonce}

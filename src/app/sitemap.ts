@@ -119,12 +119,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         : views >= 200 ? 0.78
         : views >= 50 ? 0.74
         : 0.7;
+      const blogImages = (b.images || [])
+        .filter((img) => img?.url)
+        .slice(0, 5)
+        .map((img) => img.url as string);
       return [
         {
           url: `${appUrl}/blog/${encodeURIComponent(b.slug)}`,
           lastModified: b.updatedAt ? new Date(b.updatedAt) : undefined,
           changeFrequency: "weekly" as const,
           priority,
+          ...(blogImages.length > 0 ? { images: blogImages } : {}),
         },
       ];
     });

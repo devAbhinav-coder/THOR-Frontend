@@ -13,6 +13,9 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error(error);
+    void import("@sentry/nextjs")
+      .then((Sentry) => Sentry.captureException(error))
+      .catch(() => {});
   }, [error]);
 
   return (

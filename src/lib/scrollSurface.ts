@@ -27,12 +27,9 @@ export function shouldEnableLenisSmoothScroll(): boolean {
   return !prefersReducedMotion() && prefersSmoothWheelScroll();
 }
 
-/** Marketing-only routes — shop/PDP/checkout use native scroll on desktop (Phase 3). */
+/** Home only — shop/PDP/checkout/about use native scroll (low-end devices). */
 export function isLenisMarketingPath(pathname: string): boolean {
-  if (pathname === "/") return true;
-  if (pathname === "/about" || pathname.startsWith("/about/")) return true;
-  if (pathname === "/connect" || pathname.startsWith("/connect/")) return true;
-  return false;
+  return pathname === "/";
 }
 
 export function shouldEnableLenisSmoothScrollForPath(pathname: string): boolean {
