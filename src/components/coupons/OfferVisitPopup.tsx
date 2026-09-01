@@ -312,7 +312,7 @@ export default function OfferVisitPopup() {
 
       <div
         className={cn(
-          'relative z-[1] flex flex-col w-full sm:max-w-[420px] max-h-[92vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden',
+          'relative z-[1] flex flex-col w-full sm:max-w-[420px] max-h-[80vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden',
           'rounded-t-2xl sm:rounded-3xl bg-white shadow-2xl shadow-navy-950/30',
           'transition-all duration-300 ease-out will-change-transform overscroll-contain',
           visible
@@ -335,7 +335,7 @@ export default function OfferVisitPopup() {
           </p>
         ) : null}
 
-        <div className="relative w-full shrink-0 aspect-[1/1] sm:aspect-[4/3] max-h-[45vh] bg-navy-900 border-b border-gray-100">
+        <div className="relative w-full shrink-0 aspect-[1/1] sm:aspect-[4/3] max-h-[65vh] bg-navy-900 border-b border-gray-100">
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -360,7 +360,7 @@ export default function OfferVisitPopup() {
           <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
         </div>
 
-        <div className="flex flex-col bg-white p-5 sm:p-6 text-left shrink-0">
+        <div className="flex flex-col bg-white p-4 sm:p-6 text-left shrink-0">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="flex items-center gap-1.5 rounded border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-brand-700">
               {offer.kind === 'sale' ? (
