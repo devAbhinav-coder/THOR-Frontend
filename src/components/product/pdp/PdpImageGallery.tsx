@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 import Image from "next/image";
-import { Package, Heart, Share2, Check, Star } from "lucide-react";
+import { Package, Heart, Share2, Check, Star, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFinePointerHover } from "@/hooks/useFinePointerHover";
 import ProductImageLightbox from "@/components/product/ProductImageLightbox";
@@ -153,15 +153,30 @@ export function PdpImageGallery({
   const onTouchEnd = (e: React.TouchEvent) => {
     const start = touchStartRef.current;
     touchStartRef.current = null;
-    if (!start || images.length <= 1) return;
+    if (!start) return;
+    
     const endX = e.changedTouches[0]?.clientX ?? start.x;
     const endY = e.changedTouches[0]?.clientY ?? start.y;
     const dx = endX - start.x;
     const dy = endY - start.y;
-    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy))
+    
+    if (images.length > 1 && Math.abs(dx) >= SWIPE_THRESHOLD_PX && Math.abs(dx) >= Math.abs(dy)) {
+      if (dx > 0) goPrev();
+      else goNext();
       return;
-    if (dx > 0) goPrev();
-    else goNext();
+    }
+
+    const rect = pdpMainImageRef.current?.getBoundingClientRect();
+    if (rect) {
+      const tapX = endX - rect.left;
+      if (images.length > 1 && tapX < rect.width * 0.3) {
+        goPrev();
+      } else if (images.length > 1 && tapX > rect.width * 0.7) {
+        goNext();
+      } else {
+        setImageLightboxOpen(true);
+      }
+    }
   };
 
   const handleImageZoneClick = (
@@ -318,28 +333,7 @@ export function PdpImageGallery({
                 </div>
               )}
 
-              {images.length > 1 && (
-                <div className='absolute inset-0 z-[4] flex md:hidden'>
-                  <button
-                    type='button'
-                    className='h-full w-[32%] bg-transparent'
-                    aria-label='Previous image'
-                    onClick={(e) => handleImageZoneClick(e, "prev")}
-                  />
-                  <button
-                    type='button'
-                    className='h-full w-[36%] bg-transparent'
-                    aria-label='Open zoom gallery'
-                    onClick={(e) => handleImageZoneClick(e, "zoom")}
-                  />
-                  <button
-                    type='button'
-                    className='h-full w-[32%] bg-transparent'
-                    aria-label='Next image'
-                    onClick={(e) => handleImageZoneClick(e, "next")}
-                  />
-                </div>
-              )}
+              {/* Desktop invisible zoom/prev/next overlay targets */}
 
               {images.length > 1 && hoverZoomEnabled ?
                 <div className='absolute inset-0 z-[4] hidden md:flex'>
@@ -364,13 +358,10 @@ export function PdpImageGallery({
                 </div>
               : null}
 
-              {images.length === 1 && images[0]?.url && (
+              {images.length === 1 && images[0]?.url && hoverZoomEnabled && (
                 <button
                   type='button'
-                  className={cn(
-                    "absolute inset-0 z-[4] bg-transparent",
-                    hoverZoomEnabled ? "cursor-zoom-in" : "",
-                  )}
+                  className="absolute inset-0 z-[4] bg-transparent cursor-zoom-in hidden md:block"
                   aria-label='Open zoom gallery'
                   onClick={() => setImageLightboxOpen(true)}
                 />
@@ -399,6 +390,8 @@ export function PdpImageGallery({
               <div className='absolute right-3 top-3 z-20 flex flex-col gap-2'>
                 <button
                   type='button'
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     onWishlist();
@@ -417,6 +410,8 @@ export function PdpImageGallery({
                 </button>
                 <button
                   type='button'
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     onShare();
@@ -427,6 +422,26 @@ export function PdpImageGallery({
                   {copied ?
                     <Check className='h-4 w-4 text-green-500' />
                   : <Share2 className='h-4 w-4' />}
+                </button>
+              </div>
+
+              {/* Mobile Fullscreen Icon Button */}
+              <div className='absolute bottom-3 right-3 z-20 md:hidden'>
+                <button
+                  type='button'
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                    setImageLightboxOpen(true);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageLightboxOpen(true);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm shadow-md active:bg-black/60 transition-colors"
+                  aria-label="View Full Screen"
+                >
+                  <Maximize2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
