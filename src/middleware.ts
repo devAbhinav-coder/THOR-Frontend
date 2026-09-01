@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { buildContentSecurityPolicy, randomNonce } from "@/lib/csp";
 import { isAuthModalSearchParam } from "@/lib/seoCrawl";
+import { AUTH_GATE_COOKIE } from "@/lib/authGateCookie";
 
 /** Block proxy/tunnel verbs at the edge (no legitimate use for this storefront). */
 const DISALLOWED_METHODS = new Set(["TRACE", "TRACK"]);
@@ -41,6 +42,21 @@ export function middleware(request: NextRequest) {
 
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    const gate = request.cookies.get(AUTH_GATE_COOKIE)?.value;
+    if (gate !== "admin") {
+      const login = new URL("/auth/login", request.url);
+      login.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(login);
+    }
+  }
+
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    const gate = request.cookies.get(AUTH_GATE_COOKIE)?.value;
+    if (gate !== "admin" && gate !== "user") {
+      const login = new URL("/auth/login", request.url);
+      login.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(login);
+    }
   }
 
   return response;

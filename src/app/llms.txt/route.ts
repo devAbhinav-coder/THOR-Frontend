@@ -32,6 +32,7 @@ Free delivery on orders over ₹1,099. 5-day returns. Pan-India shipping.
 - Shipping: ${siteUrl}/shipping
 - Returns: ${siteUrl}/returns
 - Blog: ${siteUrl}/blog
+- Blog RSS: ${siteUrl}/api/feed/blog
 
 ## Product feed
 - Google Merchant RSS: ${siteUrl}/api/feed

@@ -36,12 +36,19 @@ import {
   Quote,
   Activity,
   Inbox,
+  MessageCircle,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import NotificationBell from "@/components/layout/NotificationBell";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /** If persist never calls onRehydrateStorage (edge case), unblock admin shell */
 function useAuthHydrationFallback() {
@@ -110,6 +117,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Customer stories", href: "/admin/testimonials", icon: Quote },
       { label: "Email campaigns", href: "/admin/emails", icon: Megaphone },
+      { label: "WhatsApp", href: "/admin/whatsapp", icon: MessageCircle },
       { label: "Journal subscribers", href: "/admin/newsletter", icon: Mail },
       { label: "Blogs", href: "/admin/blogs", icon: FileText },
       { label: "Blog calendar", href: "/admin/blogs/calendar", icon: FileText },
@@ -156,7 +164,7 @@ function AdminSidebarNavLink({
   icon: LucideIcon;
 }) {
   const active = navLinkActive(pathname, href);
-  return (
+  const link = (
     <Link
       href={href}
       prefetch
@@ -188,6 +196,13 @@ function AdminSidebarNavLink({
         {label}
       </span>
     </Link>
+  );
+  if (!sidebarCollapsed) return link;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -297,6 +312,7 @@ export default function AdminLayout({
   if (!isAuthenticated || user?.role !== "admin") return null;
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className='flex flex-col h-dvh max-h-dvh bg-[#FAF9F6] overflow-hidden overscroll-none'>
       <BrowserNotificationPrompt />
       {/* Mobile top bar */}
@@ -627,5 +643,6 @@ export default function AdminLayout({
         </main>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFinePointerHover } from "@/hooks/useFinePointerHover";
 
 export type LightboxImage = { url: string; alt?: string };
 
@@ -34,6 +35,7 @@ export default function ProductImageLightbox({
   const [idx, setIdx] = useState(initialIndex);
   const [mounted, setMounted] = useState(false);
   const [coarsePointer, setCoarsePointer] = useState(true);
+  const hoverZoomEnabled = useFinePointerHover();
   const [hoveringZoom, setHoveringZoom] = useState(false);
   const [focal, setFocal] = useState({ x: 50, y: 50 });
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -171,7 +173,7 @@ export default function ProductImageLightbox({
   );
 
   const onMainMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (coarsePointer) return;
+    if (!hoverZoomEnabled) return;
     updateFocalFromClient(e.clientX, e.clientY);
   };
 
@@ -283,21 +285,21 @@ export default function ProductImageLightbox({
 
       <div className='flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center px-2 pb-6 pt-2 sm:px-4 sm:pb-4 sm:pt-4'>
         <p className='mb-2 hidden text-center text-xs text-white/70 sm:block'>
-          {!coarsePointer ?
+          {hoverZoomEnabled ?
             "Hover the image to zoom"
           : "Swipe left or right on the image for more photos"}
         </p>
 
-        <div className='flex w-full max-w-6xl flex-1 flex-col items-center gap-3 min-[1100px]:flex-row min-[1100px]:items-stretch min-[1100px]:justify-center min-[1100px]:gap-5'>
+        <div className='flex w-full max-w-6xl flex-1 flex-col items-center gap-3 min-[768px]:flex-row min-[768px]:items-stretch min-[768px]:justify-center min-[768px]:gap-5'>
           <div
             ref={mainRef}
             className={cn(
               "relative w-full max-w-2xl overflow-hidden border-2 border-[#c5a059]/40 bg-gray-100 sm:bg-white/5",
               aspectClass,
-              "max-h-[min(78vh,900px)] min-[1100px]:max-h-[85vh] min-[1100px]:min-w-0 min-[1100px]:flex-1",
-              !coarsePointer ? "cursor-crosshair" : "cursor-default",
+              "max-h-[min(78vh,900px)] min-[768px]:max-h-[85vh] min-[768px]:min-w-0 min-[768px]:flex-1",
+              hoverZoomEnabled ? "cursor-crosshair" : "cursor-default",
             )}
-            onMouseEnter={() => !coarsePointer && setHoveringZoom(true)}
+            onMouseEnter={() => hoverZoomEnabled && setHoveringZoom(true)}
             onMouseMove={onMainMouseMove}
             onMouseLeave={() => {
               setHoveringZoom(false);
@@ -327,7 +329,7 @@ export default function ProductImageLightbox({
               }
             />
 
-            {!coarsePointer && (
+            {hoverZoomEnabled && (
               <div
                 className={cn(
                   "pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition-opacity",
@@ -344,12 +346,12 @@ export default function ProductImageLightbox({
             )}
           </div>
 
-          {!coarsePointer && (
+          {hoverZoomEnabled && (
             <div
               className={cn(
                 "relative w-full max-w-lg overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-black/5",
                 aspectClass,
-                "mx-auto max-h-[min(42vh,420px)] min-[1100px]:mx-0 min-[1100px]:max-h-[85vh] min-[1100px]:max-w-xl min-[1100px]:flex-1",
+                "mx-auto max-h-[min(42vh,420px)] min-[768px]:mx-0 min-[768px]:max-h-[85vh] min-[768px]:max-w-xl min-[768px]:flex-1",
                 hoveringZoom ? "opacity-100" : "opacity-40",
               )}
               aria-hidden

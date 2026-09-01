@@ -37,11 +37,21 @@ import NotificationBell from "@/components/layout/NotificationBell";
 import dynamic from "next/dynamic";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
 
-const NavProfileDropdown = dynamic(() => import("@/components/layout/NavProfileDropdown"), { ssr: false });
+const NavProfileDropdown = dynamic(
+  () => import("@/components/layout/NavProfileDropdown"),
+  { ssr: false },
+);
 const MegaMenu = dynamic(() => import("@/components/layout/MegaMenu"));
-const MobileMegaMenu = dynamic(() => import("@/components/layout/MobileMegaMenu"));
-const StoreSearchAutocomplete = dynamic(() => import("@/components/search/StoreSearchAutocomplete"));
-const VoiceSearchOverlay = dynamic(() => import("@/components/search/VoiceSearchOverlay"), { ssr: false });
+const MobileMegaMenu = dynamic(
+  () => import("@/components/layout/MobileMegaMenu"),
+);
+const StoreSearchAutocomplete = dynamic(
+  () => import("@/components/search/StoreSearchAutocomplete"),
+);
+const VoiceSearchOverlay = dynamic(
+  () => import("@/components/search/VoiceSearchOverlay"),
+  { ssr: false },
+);
 import {
   useStoreNavActive,
   type StoreNavActive,
@@ -66,6 +76,7 @@ import {
   navMobileFlowSpacerClass,
   navShellClass,
   navStickyShellClass,
+  navCommerceIconClass,
   navUserMenuShellClass,
 } from "@/lib/navbarStyles";
 
@@ -83,9 +94,7 @@ type NavbarProps = {
   initialNavCategories?: MegaMenuCategory[];
 };
 
-export default function Navbar({
-  initialNavCategories = [],
-}: NavbarProps) {
+export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -231,9 +240,7 @@ export default function Navbar({
   // Keep showing logged-in UI while cookie session revalidates (rotate/reload
   // used to flash guest chrome because hasSessionChecked resets to false).
   const isAuthedStable =
-    _hasHydrated &&
-    isAuthenticated &&
-    (!hasSessionChecked || !isLoading);
+    _hasHydrated && isAuthenticated && (!hasSessionChecked || !isLoading);
   const authModal = useAuthModal();
   const { href: authHref, open: openAuth } = authModal;
 
@@ -256,9 +263,10 @@ export default function Navbar({
     !isCheckoutFlow &&
     !isMenuOpen &&
     !isSearchOpen &&
-    !showCommerceMobileShell;
+    (isProductDetailPage || !showCommerceMobileShell);
   const navChromeVisible = useMobileNavAutoHide({
     enabled: navAutoHideEnabled,
+    allBreakpoints: isProductDetailPage,
   });
   const showMobileBottomNav =
     !isCheckoutFlow && !isProductDetailPage && !isShopListingPage;
@@ -318,11 +326,18 @@ export default function Navbar({
     <>
       <BrowserNotificationPrompt />
       <div
-        className={navMobileFlowSpacerClass(navAutoHideEnabled)}
+        className={navMobileFlowSpacerClass(
+          navAutoHideEnabled,
+          isProductDetailPage,
+        )}
         aria-hidden='true'
       />
       <div
-        className={navStickyShellClass(navChromeVisible, navAutoHideEnabled)}
+        className={navStickyShellClass(
+          navChromeVisible,
+          navAutoHideEnabled,
+          isProductDetailPage,
+        )}
         data-store-sticky-nav
       >
         <header className={navShellClass(isScrolled)}>
@@ -536,8 +551,17 @@ export default function Navbar({
                     aria-controls='mobile-search-panel'
                   >
                     {isSearchOpen ?
-                      <X className='h-5 w-5' aria-hidden='true' />
-                    : <Search className='h-5 w-5' aria-hidden='true' />}
+                      <X
+                        className={navCommerceIconClass}
+                        strokeWidth={1.35}
+                        aria-hidden='true'
+                      />
+                    : <Search
+                        className={navCommerceIconClass}
+                        strokeWidth={1.35}
+                        aria-hidden='true'
+                      />
+                    }
                   </button>
                 )}
 
@@ -807,7 +831,10 @@ export default function Navbar({
                       href='/cart'
                       className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <ShoppingBag className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
+                      <ShoppingBag
+                        className='w-4 h-4 shrink-0 text-[#c5a059]/70'
+                        strokeWidth={1.5}
+                      />{" "}
                       Cart
                     </Link>
                     <Link
@@ -960,7 +987,10 @@ export default function Navbar({
                 onClick={() => {
                   setShowExitConfirm(false);
                   clearBuyNowSession();
-                  if (typeof window !== "undefined" && window.history.length > 1) {
+                  if (
+                    typeof window !== "undefined" &&
+                    window.history.length > 1
+                  ) {
                     router.back();
                   } else {
                     router.push("/shop");

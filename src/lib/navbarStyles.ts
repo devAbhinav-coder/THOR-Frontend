@@ -11,9 +11,24 @@ export function navShellClass(scrolled: boolean) {
 /**
  * Sticky/fixed shell for header.
  * Auto-hide mobile routes use fixed + translateY so hide/show never changes document height (no scrollY feedback loop).
+ * `autoHideAllBreakpoints` — PDP desktop: same hide-on-scroll as mobile.
  */
-export function navStickyShellClass(visible: boolean, autoHide = false) {
+export function navStickyShellClass(
+  visible: boolean,
+  autoHide = false,
+  autoHideAllBreakpoints = false,
+) {
   if (autoHide) {
+    if (autoHideAllBreakpoints) {
+      return cn(
+        "fixed inset-x-0 top-0 z-50",
+        "transition-transform duration-300 ease-out motion-reduce:transition-none",
+        visible ?
+          "translate-y-0"
+        : "-translate-y-full pointer-events-none",
+      );
+    }
+
     return cn(
       "fixed inset-x-0 top-0 z-50 lg:sticky",
       "transition-transform duration-300 ease-out motion-reduce:transition-none",
@@ -28,8 +43,14 @@ export function navStickyShellClass(visible: boolean, autoHide = false) {
 }
 
 /** Reserves header height in flow when the bar is fixed (auto-hide mobile routes). */
-export function navMobileFlowSpacerClass(autoHide: boolean) {
-  return autoHide ? "h-[4.25rem] shrink-0 lg:hidden" : "hidden";
+export function navMobileFlowSpacerClass(
+  autoHide: boolean,
+  allBreakpoints = false,
+) {
+  if (!autoHide) return "hidden";
+  return allBreakpoints ?
+      "h-[4.25rem] shrink-0"
+    : "h-[4.25rem] shrink-0 lg:hidden";
 }
 
 export function navLinkClass(active: boolean) {
@@ -42,7 +63,11 @@ export function navLinkClass(active: boolean) {
 }
 
 export const navIconButton =
-  "inline-flex h-10 w-10 items-center justify-center text-white/85 transition-colors duration-200 hover:bg-navy-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/40";
+  "group inline-flex h-10 w-10 items-center justify-center text-white/85 transition-colors duration-200 hover:bg-navy-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/40";
+
+/** Shared SVG look for navbar commerce / utility icons */
+export const navCommerceIconClass =
+  "h-[1.3125rem] w-[1.3125rem] shrink-0 transition-colors duration-200 group-hover:text-[#e4c27a]";
 
 export const navSearchInputClass =
   "rounded-none border-navy-700 bg-navy-900/60 py-2 text-[13px] tracking-wide placeholder:text-white/45 placeholder:tracking-wide focus:border-[#c5a059]/60 focus:ring-[#c5a059]/20";

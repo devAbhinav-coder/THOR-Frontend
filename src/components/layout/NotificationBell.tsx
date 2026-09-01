@@ -9,11 +9,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  Bell,
+  BellRing,
   Check,
   Loader2,
   MoreHorizontal,
   Trash2,
+  Bell,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationApi } from "@/lib/api";
@@ -35,6 +36,7 @@ import {
 import type { NotificationsListResponse } from "@/types/notifications";
 import {
   navBadgeCount,
+  navCommerceIconClass,
   navDropdownAccent,
   navIconButton,
 } from "@/lib/navbarStyles";
@@ -542,14 +544,14 @@ export default function NotificationBell({
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        <Bell
+        <BellRing
           className={cn(
-            variant === "navbar" ? "h-5 w-5" 
+            variant === "navbar" ? navCommerceIconClass
             : variant === "admin-sidebar" ? "h-3.5 w-3.5"
             : variant === "admin-mobile" ? "h-4 w-4"
             : "h-[1.125rem] w-[1.125rem]",
           )}
-          strokeWidth={variant === "navbar" ? 1.75 : 2.25}
+          strokeWidth={variant === "navbar" ? 1.35 : 2.25}
         />
         {unreadCount > 0 && (
           <span className={badgeClass}>

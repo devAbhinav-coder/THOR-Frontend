@@ -9,6 +9,37 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import PromotionFormModal from '@/components/admin/PromotionFormModal';
 import toast from 'react-hot-toast';
+import {
+  getPromotionLifecycle,
+  promotionShowsOnPdp,
+} from '@/lib/promotionLifecycle';
+
+function lifecycleBadge(p: Promotion) {
+  const lifecycle = getPromotionLifecycle(p);
+  if (lifecycle === 'live') {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant="success">Live</Badge>
+        {promotionShowsOnPdp(p) ?
+          <Badge variant="outline" className="border-emerald-200 text-emerald-700">
+            On PDP
+          </Badge>
+        : null}
+      </div>
+    );
+  }
+  if (lifecycle === 'expired') {
+    return (
+      <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200">
+        Expired
+      </Badge>
+    );
+  }
+  if (lifecycle === 'scheduled') {
+    return <Badge variant="secondary">Scheduled</Badge>;
+  }
+  return <Badge variant="secondary">Inactive</Badge>;
+}
 
 function offerSummary(p: Promotion): string {
   if (p.promotionType === 'bogo') {
@@ -79,7 +110,15 @@ export default function AdminPromotionsPage() {
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-gray-500 text-sm">{promotions.length} active offers</p>
+        <p className="text-gray-500 text-sm">
+          {promotions.length} offer{promotions.length === 1 ? '' : 's'}
+          {promotions.some((p) => getPromotionLifecycle(p) === 'expired') ?
+            <span className="text-red-600">
+              {' '}
+              · expired offers won&apos;t show on PDP — extend the end date
+            </span>
+          : null}
+        </p>
         <Button
           variant="brand"
           onClick={() => {
@@ -126,9 +165,7 @@ export default function AdminPromotionsPage() {
                       {formatDate(p.startDate)} → {formatDate(p.endDate)}
                     </td>
                     <td className="px-5 py-3.5">
-                      <Badge variant={p.isActive ? 'success' : 'secondary'}>
-                        {p.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                      {lifecycleBadge(p)}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="inline-flex gap-1">

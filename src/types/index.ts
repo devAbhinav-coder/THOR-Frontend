@@ -74,6 +74,9 @@ export interface Product {
   saleBadge?: string | null;
   saleCampaignId?: string | null;
   activePromotions?: ProductPromotion[];
+  nearEligiblePromotions?: ProductNearEligiblePromotion[];
+  activeCoupons?: ProductCoupon[];
+  nearEligibleCoupons?: ProductNearEligibleCoupon[];
   effectivePrice?: number;
   /** Catalog list base before sale enrichment (default SKU list price). */
   catalogBasePrice?: number;
@@ -84,6 +87,10 @@ export interface Product {
   category: string;
   subcategory?: string;
   fabric?: string;
+  careInstructions?: string;
+  motionVideoUrl?: string;
+  motionVideoPublicId?: string;
+  motionReelUrl?: string;
   images: ProductImage[];
   variants: ProductVariant[];
   totalStock: number;
@@ -104,6 +111,16 @@ export interface Product {
     isRequired: boolean;
   }[];
   productDetails?: { key: string; value: string }[];
+  /** PDP "Why You'll Love It" bullets */
+  highlights?: string[];
+  /** Admin-controlled PDP size guide */
+  sizeGuide?: {
+    enabled?: boolean;
+    title?: string;
+    intro?: string;
+    rows?: { size: string; detail: string }[];
+    tips?: string[];
+  };
   ratings: { average: number; count: number };
   /** PDP views (server-incremented) */
   viewCount?: number;
@@ -166,6 +183,24 @@ export interface ProductPromotion {
   promotionType: string;
   description?: string;
   termsAndConditions?: string;
+  /** PDP nudge when offer applies to this product but qty/min not met yet */
+  progressHint?: string;
+}
+
+export interface ProductNearEligiblePromotion extends ProductPromotion {
+  hintMessage: string;
+}
+
+export interface ProductCoupon {
+  code: string;
+  displayTitle: string;
+  label: string;
+  savingsLabel?: string;
+  description?: string;
+}
+
+export interface ProductNearEligibleCoupon extends ProductCoupon {
+  hintMessage: string;
 }
 
 export interface OrderItem {
@@ -523,6 +558,11 @@ export interface Coupon {
   applicableProductIds?: string[];
   applicableCategories?: string[];
 }
+
+export type NearEligibleCoupon = {
+  coupon: Coupon;
+  hintMessage: string;
+};
 
 export interface PublicCoupon {
   code: string;
@@ -1149,6 +1189,7 @@ export interface Blog {
   keywords?: string[];
   tags?: string[];
   category?: string;
+  articleTemplate?: "classic" | "magazine" | "minimal" | "lookbook";
   relatedProductIds?: BlogRelatedProduct[] | string[];
   readingTimeMin?: number;
   aiGenerated?: boolean;

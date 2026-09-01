@@ -25,7 +25,7 @@ export default function BlogRelatedPosts({ slug }: Props) {
 
   return (
     <section className="max-w-account-container mx-auto px-account-margin-mobile md:px-account-margin-desktop mt-account-stack-lg pt-account-stack-lg border-t border-account-outline-variant/30">
-      <h2 className="font-serif text-3xl md:text-4xl text-account-primary mb-account-stack-lg text-center">
+      <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-account-primary mb-account-stack-lg text-center">
         Continue the Journey
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-account-gutter">
@@ -49,7 +49,7 @@ export default function BlogRelatedPosts({ slug }: Props) {
             <p className="text-xs font-semibold text-account-secondary uppercase mb-2">
               {categoryLabel(post.category)}
             </p>
-            <h3 className="font-serif text-2xl mb-2 group-hover:text-account-secondary transition-colors text-account-primary">
+            <h3 className="font-serif text-xl sm:text-2xl mb-2 group-hover:text-account-secondary transition-colors text-account-primary leading-snug">
               {post.title}
             </h3>
             <p className="text-sm text-account-on-surface-variant/70 leading-relaxed">

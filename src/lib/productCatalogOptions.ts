@@ -38,6 +38,12 @@ export function isPresetProductSize(size: string): boolean {
   return PRODUCT_SIZES.some((s) => s.toLowerCase() === key);
 }
 
+/** True when size is the generic one-size label (no real size choice on PDP). */
+export function isFreeProductSize(size: string): boolean {
+  const key = size.trim().toLowerCase().replace(/\s+/g, " ");
+  return key === "free size" || key === "freesize";
+}
+
 export function nextUnusedProductSize(existing: string[]): string {
   const used = new Set(existing.map((s) => s.trim().toLowerCase()).filter(Boolean));
   for (const preset of PRODUCT_SIZES) {

@@ -29,6 +29,11 @@ export default function MetaPixel() {
   }, [storefront]);
 
   useEffect(() => {
+    if (!META_PIXEL_ID || !storefront) return;
+    initPixel();
+  }, [storefront]);
+
+  useEffect(() => {
     if (!META_PIXEL_ID || !user || !storefront) return;
     refreshMetaAdvancedMatching();
   }, [storefront, user?._id, user?.email, user?.phone]);

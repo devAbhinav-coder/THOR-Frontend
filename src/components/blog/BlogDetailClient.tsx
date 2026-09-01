@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Heart,
-  MessageCircle,
   ChevronLeft,
   Send,
   Trash2,
@@ -29,6 +28,7 @@ import {
 import BlogRelatedPosts from "@/components/blog/BlogRelatedPosts";
 import BlogProductLinks from "@/components/blog/BlogProductLinks";
 import BlogArticleContent from "@/components/blog/BlogArticleContent";
+import { templateContentWidth } from "@/lib/blogTemplates";
 import BlogNewsletter from "@/components/blog/BlogNewsletter";
 import { getCoverImage } from "@/lib/blogArticleCompose";
 
@@ -119,29 +119,6 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
 
   const heroImage = blog ? getCoverImage(blog.images || []) : undefined;
 
-  const breadcrumbLd = useMemo(() => {
-    const appUrl = getSiteUrl();
-    return {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: `${appUrl}/` },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: "Journal",
-          item: `${appUrl}/blog`,
-        },
-        {
-          "@type": "ListItem",
-          position: 3,
-          name: blog?.title || "Journal Story",
-          item: `${appUrl}/blog/${encodeURIComponent(slug)}`,
-        },
-      ],
-    };
-  }, [blog?.title, slug]);
-
   if (isLoading && !initialData) {
     return (
       <div className='min-h-screen bg-[#fcfbf7] pt-5 pb-16'>
@@ -215,10 +192,6 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
 
   return (
     <div className='bg-[#fcfbf7] min-h-screen overflow-x-hidden antialiased'>
-      <script
-        type='application/ld+json'
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
 
       <div className='px-account-margin-mobile md:px-account-margin-desktop pt-4 max-w-account-container mx-auto'>
         <Link
@@ -230,7 +203,7 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
         </Link>
       </div>
 
-      <header className='relative w-full h-[870px] max-h-[85vh] overflow-hidden mt-4'>
+      <header className='relative w-full min-h-[280px] h-[45vh] sm:h-[55vh] md:h-[65vh] max-h-[720px] overflow-hidden mt-4'>
         {heroImage?.url ?
           <Image
             src={heroImage.url}
@@ -247,7 +220,7 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
             <p className='text-xs font-semibold text-[#ffdea5] uppercase tracking-widest mb-4'>
               {categoryLabel(blog.category)}
             </p>
-            <h1 className='font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-white max-w-4xl leading-tight'>
+            <h1 className='font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white max-w-4xl leading-tight'>
               {blog.title}
             </h1>
           </div>
@@ -255,7 +228,7 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
       </header>
 
       <main className='relative pt-account-stack-lg pb-account-stack-lg'>
-        <div className='max-w-3xl mx-auto px-account-margin-mobile md:px-0'>
+        <div className={`${templateContentWidth(blog.articleTemplate)} mx-auto px-4 sm:px-6 md:px-8 w-full min-w-0`}>
           <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-account-outline-variant/30 pb-account-stack-md mb-account-stack-lg'>
             <div className='flex items-center gap-4'>
               <div className='w-12 h-12 rounded-full overflow-hidden bg-account-surface-container relative shrink-0'>
@@ -294,10 +267,17 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
             </div>
           </div>
 
+          {blog.excerpt ? (
+            <p className='journal-article-excerpt text-account-on-surface-variant italic border-l-2 border-brand-400 pl-4 mb-account-stack-lg max-w-3xl'>
+              {blog.excerpt}
+            </p>
+          ) : null}
+
           <BlogArticleContent
             content={blog.content}
             images={blog.images || []}
             title={blog.title}
+            template={blog.articleTemplate}
           />
 
           <BlogProductLinks products={relatedProducts} blogSlug={slug} />
@@ -343,9 +323,9 @@ export default function BlogDetailClient({ slug, initialData }: Props) {
 
         <section
           id='comments'
-          className='max-w-3xl mx-auto px-account-margin-mobile md:px-0 mt-account-stack-lg pt-account-stack-lg border-t border-account-outline-variant/30'
+          className='max-w-3xl mx-auto px-4 sm:px-6 md:px-8 lg:px-0 mt-account-stack-lg pt-account-stack-lg border-t border-account-outline-variant/30'
         >
-          <h2 className='font-serif text-3xl text-account-primary mb-8'>
+          <h2 className='font-serif text-2xl sm:text-3xl text-account-primary mb-8'>
             Responses
             <span className='text-xl text-account-on-surface-variant/40 font-normal ml-2'>
               ({comments.length})

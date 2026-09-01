@@ -8,14 +8,13 @@ import { GripVertical, Trash2 } from "lucide-react";
 
 import type { BlogImage, BlogImageLayout, BlogImagePlacement } from "@/types";
 
-import { BLOG_IMAGE_LAYOUTS, defaultLayoutForIndex, layoutLabel } from "@/lib/blogGridLayouts";
+import { defaultLayoutForIndex, layoutLabel } from "@/lib/blogGridLayouts";
 
 import {
   buildIndexRemap,
   contentHasImageMarker,
   remapImageMarkersInContent,
 } from "@/lib/blogImageMarkers";
-import { imageRowPartner } from "@/lib/blogStoryPlanner";
 
 
 
@@ -129,6 +128,10 @@ type Props = {
 
   onRemoveExisting?: (publicId: string) => void;
 
+  onInsertInStory?: (index: number) => void;
+
+  onSetCover?: (index: number) => void;
+
   maxImages?: number;
 
 };
@@ -146,6 +149,10 @@ export default function BlogImageGalleryEditor({
   onContentChange,
 
   onRemoveExisting,
+
+  onInsertInStory,
+
+  onSetCover,
 
   maxImages = 10,
 
@@ -245,12 +252,10 @@ export default function BlogImageGalleryEditor({
 
       <div>
 
-        <h4 className="text-sm font-bold text-gray-800">Photo details</h4>
+        <h4 className="text-sm font-bold text-gray-800">Photo gallery</h4>
 
         <p className="text-xs text-gray-500 mt-0.5">
-
-          Reorder numbers · pick shape · add captions. Placement is done in Story layout above.
-
+          Drag to reorder · captions · set cover or end gallery
         </p>
 
       </div>
@@ -274,50 +279,36 @@ export default function BlogImageGalleryEditor({
           return (
 
             <div
-
               key={row.kind === "existing" ? row.publicId : row.preview}
-
               draggable
-
-              onDragStart={() => setDragIndex(index)}
-
-              onDragEnd={() => setDragIndex(null)}
-
-              onDragOver={(e) => e.preventDefault()}
-
-              onDrop={(e) => {
-
-                e.preventDefault();
-
-                const from = dragIndex ?? Number(e.dataTransfer.getData("text/plain"));
-
-                if (!Number.isNaN(from)) reorder(from, index);
-
-                setDragIndex(null);
-
+              onDragStart={(e) => {
+                e.dataTransfer.setData("application/x-gallery-index", String(index));
+                e.dataTransfer.effectAllowed = "move";
+                setDragIndex(index);
               }}
-
+              onDragEnd={() => setDragIndex(null)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const from = Number(
+                  e.dataTransfer.getData("application/x-gallery-index"),
+                );
+                if (!Number.isNaN(from) && from !== index) reorder(from, index);
+                setDragIndex(null);
+              }}
               className={`flex gap-3 p-3 rounded-xl border bg-white transition-all ${
-
-                isDragging ? "opacity-50 border-brand-300" : "border-gray-200"
-
-              }`}
-
+                isDragging ? "opacity-50 border-brand-400 scale-[0.98]" : "border-gray-200"
+              } ${dragIndex !== null && dragIndex !== index ? "border-dashed border-brand-200" : ""}`}
             >
-
-              <button
-
-                type="button"
-
-                className="self-center p-1 text-gray-400 cursor-grab active:cursor-grabbing"
-
-                onMouseDown={() => setDragIndex(index)}
-
+              <div
+                className="self-center p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none"
+                title="Drag to reorder"
               >
-
                 <GripVertical className="w-4 h-4" />
-
-              </button>
+              </div>
 
 
 
@@ -355,64 +346,55 @@ export default function BlogImageGalleryEditor({
 
 
 
-                <div className="flex flex-wrap gap-1">
-
-                  {BLOG_IMAGE_LAYOUTS.map((l) => (
-
+                <div className="flex flex-wrap gap-1.5">
+                  {onSetCover && row.placement !== "cover" && (
                     <button
-
-                      key={l.value}
-
                       type="button"
-
-                      onClick={() => updateRow(index, { layout: l.value })}
-
-                      title={l.hint}
-
-                      className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-colors ${
-
-                        row.layout === l.value ?
-
-                          "bg-brand-600 border-brand-600 text-white"
-
-                        : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"
-
-                      }`}
-
+                      onClick={() => onSetCover(index)}
+                      className="px-2 py-1 text-[10px] font-bold rounded-md border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
                     >
-
-                      {l.label.split(" ")[0]}
-
+                      Set cover
                     </button>
-
-                  ))}
-
+                  )}
+                  {onInsertInStory && row.placement !== "cover" && (
+                    <button
+                      type="button"
+                      onClick={() => onInsertInStory(index)}
+                      className="px-2 py-1 text-[10px] font-bold rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                    >
+                      {inContent ? "In story ✓" : "Insert in story"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateRow(index, {
+                        placement: row.placement === "gallery" ? "article" : "gallery",
+                      })
+                    }
+                    className={`px-2 py-1 text-[10px] font-bold rounded-md border transition-colors ${
+                      row.placement === "gallery" ?
+                        "border-sky-400 bg-sky-100 text-sky-900"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-sky-300"
+                    }`}
+                  >
+                    {row.placement === "gallery" ? "End gallery ✓" : "End gallery"}
+                  </button>
                 </div>
 
-
-
                 <input
-
                   type="text"
-
                   value={row.caption}
-
                   onChange={(e) => updateRow(index, { caption: e.target.value })}
-
-                  placeholder="Caption (optional)"
-
+                  placeholder="Caption (optional — used for split text side)"
                   className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg"
-
                 />
-
+                {row.layout === "split" && (
+                  <p className="text-[10px] text-violet-700 leading-snug">
+                    Split: add caption here for text panel, or pair with another image in the Media panel above.
+                  </p>
+                )}
                 <p className="text-[10px] text-gray-400">{layoutLabel(row.layout)}</p>
-                {row.layout === "split" &&
-                  inContent &&
-                  imageRowPartner(content, index) === null && (
-                    <p className="text-[10px] font-semibold text-violet-700">
-                      Add 2nd photo — use the purple slot in Story layout above.
-                    </p>
-                  )}
 
               </div>
 

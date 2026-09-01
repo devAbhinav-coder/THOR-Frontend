@@ -273,7 +273,7 @@ export const productApi = {
   ) =>
     unwrapAxios(
       "products.create",
-      api.post("/products", data, {
+      api.post("/admin/writes/products", data, {
         headers: { "Content-Type": "multipart/form-data" },
         timeout: 120_000,
         onUploadProgress: (e) => {
@@ -291,7 +291,7 @@ export const productApi = {
   ) =>
     unwrapAxios(
       "products.update",
-      api.patch(`/products/${id}`, data, {
+      api.patch(`/admin/writes/products/${id}`, data, {
         headers: { "Content-Type": "multipart/form-data" },
         timeout: 120_000,
         onUploadProgress: (e) => {
@@ -302,11 +302,11 @@ export const productApi = {
       }),
       schemas.productSingle,
     ),
-  delete: (id: string) => del204("products.delete", api.delete(`/products/${id}`)),
+  delete: (id: string) => del204("products.delete", api.delete(`/admin/writes/products/${id}`)),
   deleteImage: (id: string, publicId: string) =>
     unwrapAxios(
       "products.deleteImage",
-      api.delete(`/products/${id}/images/${encodeURIComponent(publicId)}`),
+      api.delete(`/admin/writes/products/${id}/images/${encodeURIComponent(publicId)}`),
       schemas.productSingle
     ),
 };
@@ -479,7 +479,7 @@ export const testimonialApi = {
   create: (data: FormData) =>
     unwrapAxios(
       "testimonials.create",
-      api.post("/testimonials", data, {
+      api.post("/admin/writes/testimonials", data, {
         headers: { "Content-Type": "multipart/form-data" },
         timeout: 120_000,
       }),
@@ -488,17 +488,17 @@ export const testimonialApi = {
   update: (id: string, data: FormData) =>
     unwrapAxios(
       "testimonials.update",
-      api.patch(`/testimonials/${id}`, data, {
+      api.patch(`/admin/writes/testimonials/${id}`, data, {
         headers: { "Content-Type": "multipart/form-data" },
         timeout: 120_000,
       }),
       schemas.successData,
     ),
   approve: (id: string) =>
-    unwrapAxios("testimonials.approve", api.patch(`/testimonials/${id}/approve`), schemas.successData),
+    unwrapAxios("testimonials.approve", api.patch(`/admin/writes/testimonials/${id}/approve`), schemas.successData),
   reject: (id: string) =>
-    unwrapAxios("testimonials.reject", api.patch(`/testimonials/${id}/reject`), schemas.successData),
-  delete: (id: string) => del204("testimonials.delete", api.delete(`/testimonials/${id}`)),
+    unwrapAxios("testimonials.reject", api.patch(`/admin/writes/testimonials/${id}/reject`), schemas.successData),
+  delete: (id: string) => del204("testimonials.delete", api.delete(`/admin/writes/testimonials/${id}`)),
 };
 
 export const wishlistApi = {
@@ -530,8 +530,8 @@ export const couponApi = {
     unwrapAxios(
       "coupons.create",
       data instanceof FormData
-        ? api.post("/coupons", data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.post("/coupons", data),
+        ? api.post("/admin/writes/coupons", data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.post("/admin/writes/coupons", data),
       schemas.successData,
     ),
   getAll: () => unwrapAxios("coupons.getAll", api.get("/coupons"), schemas.couponsAdminList),
@@ -539,13 +539,13 @@ export const couponApi = {
     unwrapAxios(
       "coupons.update",
       data instanceof FormData
-        ? api.patch(`/coupons/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.patch(`/coupons/${id}`, data),
+        ? api.patch(`/admin/writes/coupons/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.patch(`/admin/writes/coupons/${id}`, data),
       schemas.successData,
     ),
   archive: (id: string) =>
-    unwrapAxios("coupons.archive", api.patch(`/coupons/${id}/archive`), schemas.successData),
-  delete: (id: string) => del204("coupons.delete", api.delete(`/coupons/${id}`)),
+    unwrapAxios("coupons.archive", api.patch(`/admin/writes/coupons/${id}/archive`), schemas.successData),
+  delete: (id: string) => del204("coupons.delete", api.delete(`/admin/writes/coupons/${id}`)),
 };
 
 export const saleCampaignApi = {
@@ -557,21 +557,21 @@ export const saleCampaignApi = {
     unwrapAxios(
       "sales.create",
       data instanceof FormData
-        ? api.post("/sales", data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.post("/sales", data),
+        ? api.post("/admin/writes/sales", data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.post("/admin/writes/sales", data),
       schemas.successData,
     ),
   update: (id: string, data: object | FormData) =>
     unwrapAxios(
       "sales.update",
       data instanceof FormData
-        ? api.patch(`/sales/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.patch(`/sales/${id}`, data),
+        ? api.patch(`/admin/writes/sales/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.patch(`/admin/writes/sales/${id}`, data),
       schemas.successData,
     ),
   archive: (id: string) =>
-    unwrapAxios("sales.archive", api.patch(`/sales/${id}/archive`), schemas.successData),
-  delete: (id: string) => del204("sales.delete", api.delete(`/sales/${id}`)),
+    unwrapAxios("sales.archive", api.patch(`/admin/writes/sales/${id}/archive`), schemas.successData),
+  delete: (id: string) => del204("sales.delete", api.delete(`/admin/writes/sales/${id}`)),
   preview: (data: object) =>
     unwrapAxios("sales.preview", api.post("/sales/preview", data), schemas.successData),
 };
@@ -587,21 +587,21 @@ export const promotionApi = {
     unwrapAxios(
       "promotions.create",
       data instanceof FormData
-        ? api.post("/promotions", data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.post("/promotions", data),
+        ? api.post("/admin/writes/promotions", data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.post("/admin/writes/promotions", data),
       schemas.successData,
     ),
   update: (id: string, data: object | FormData) =>
     unwrapAxios(
       "promotions.update",
       data instanceof FormData
-        ? api.patch(`/promotions/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.patch(`/promotions/${id}`, data),
+        ? api.patch(`/admin/writes/promotions/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
+        : api.patch(`/admin/writes/promotions/${id}`, data),
       schemas.successData,
     ),
   archive: (id: string) =>
-    unwrapAxios("promotions.archive", api.patch(`/promotions/${id}/archive`), schemas.successData),
-  delete: (id: string) => del204("promotions.delete", api.delete(`/promotions/${id}`)),
+    unwrapAxios("promotions.archive", api.patch(`/admin/writes/promotions/${id}/archive`), schemas.successData),
+  delete: (id: string) => del204("promotions.delete", api.delete(`/admin/writes/promotions/${id}`)),
   preview: (data: object) =>
     unwrapAxios("promotions.preview", api.post("/promotions/preview", data), schemas.successData),
 };
@@ -707,6 +707,12 @@ export const adminApi = {
       api.get(`/admin/products/${id}`),
       schemas.productSingle,
     ),
+  getMotionVideoUploadSignature: () =>
+    unwrapAxios(
+      "admin.motionVideoSignature",
+      api.get("/admin/writes/products/motion-video/signature"),
+      schemas.successData,
+    ),
   searchProducts: (params?: Record<string, string | number | boolean | undefined>) =>
     unwrapAxios("admin.products.search", api.get("/admin/products/search", { params }), schemas.productsPaginated),
   getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
@@ -733,6 +739,12 @@ export const adminApi = {
     unwrapAxios(
       "admin.reviewInvite.email",
       api.post(`/admin/orders/${orderId}/review-invite/email`),
+      schemas.successData,
+    ),
+  whatsAppReviewInvite: (orderId: string) =>
+    unwrapAxios(
+      "admin.reviewInvite.whatsapp",
+      api.post(`/admin/orders/${orderId}/review-invite/whatsapp`),
       schemas.successData,
     ),
   deleteOrder: (id: string) =>
@@ -872,9 +884,23 @@ export const adminApi = {
     userIds?: string[];
     ctaText?: string;
     ctaLink?: string;
-    channels?: Array<"email" | "in_app" | "push">;
+    channels?: Array<"email" | "in_app" | "push" | "whatsapp">;
     includeOfflineLeads?: boolean;
   }) => unwrapAxios("admin.email", api.post("/admin/emails/send", data), schemas.successMessageData),
+  getWhatsAppStatus: () =>
+    unwrapAxios("admin.whatsapp.status", api.get("/admin/whatsapp/status"), schemas.successData),
+  getWhatsAppLogs: (params?: { limit?: number; status?: string; category?: string }) =>
+    unwrapAxios(
+      "admin.whatsapp.logs",
+      api.get("/admin/whatsapp/logs", { params }),
+      schemas.successData,
+    ),
+  sendWhatsAppTest: (data: { phone: string; templateKey?: string }) =>
+    unwrapAxios(
+      "admin.whatsapp.test",
+      api.post("/admin/whatsapp/test", data),
+      schemas.successMessageData,
+    ),
   getStorefrontSettings: () =>
     unwrapAxios("admin.storefront.get", api.get("/admin/storefront/settings"), schemas.adminStorefront),
   updateStorefrontSettings: (data: object | FormData) =>
@@ -1114,7 +1140,7 @@ export const blogApi = {
   ) =>
     unwrapAxios(
       "blogs.create",
-      api.post("/blogs", data, {
+      api.post("/admin/writes/blogs", data, {
         timeout: 120_000,
         onUploadProgress: (e) => {
           if (e.total && opts?.onUploadProgress) {
@@ -1131,7 +1157,7 @@ export const blogApi = {
   ) =>
     unwrapAxios(
       "blogs.update",
-      api.patch(`/blogs/${id}`, data, {
+      api.patch(`/admin/writes/blogs/${id}`, data, {
         timeout: 120_000,
         onUploadProgress: (e) => {
           if (e.total && opts?.onUploadProgress) {
@@ -1141,11 +1167,11 @@ export const blogApi = {
       }),
       schemas.blogSingle,
     ),
-  delete: (id: string) => del204("blogs.delete", api.delete(`/blogs/${id}`)),
+  delete: (id: string) => del204("blogs.delete", api.delete(`/admin/writes/blogs/${id}`)),
   deleteImage: (id: string, publicId: string) => 
     unwrapAxios(
       "blogs.deleteImage",
-      api.delete(`/blogs/${id}/images/${encodeURIComponent(publicId)}`),
+      api.delete(`/admin/writes/blogs/${id}/images/${encodeURIComponent(publicId)}`),
       schemas.successData,
     ),
   deleteComment: (id: string, commentId: string) => 

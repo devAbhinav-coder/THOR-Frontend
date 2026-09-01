@@ -31,7 +31,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: ["Googlebot", "Googlebot-News", "Googlebot-Image"],
-        allow: [...ALLOW_PUBLIC, "/api/feed"],
+        allow: [...ALLOW_PUBLIC, "/api/feed", "/api/feed/blog"],
         disallow: DISALLOW,
       },
       {

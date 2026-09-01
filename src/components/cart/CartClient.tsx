@@ -21,9 +21,9 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { formatPrice, cn } from "@/lib/utils";
 import { couponApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { CartItem, Coupon } from "@/types";
+import { CartItem, Coupon, type NearEligibleCoupon } from "@/types";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
-import { CouponOfferPreview } from "@/components/coupons/CouponOfferPreview";
+import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import { clearBuyNowSession } from "@/lib/buyNowCheckoutSession";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
@@ -88,6 +88,7 @@ export default function CartClient() {
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
+  const [nearEligibleCoupons, setNearEligibleCoupons] = useState<NearEligibleCoupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
 
@@ -104,8 +105,16 @@ export default function CartClient() {
       try {
         const res = await couponApi.getEligible(cart.subtotal);
         setEligibleCoupons(res.data.coupons || []);
+        setNearEligibleCoupons(
+          (res.data.nearEligible ?? []).flatMap((entry) =>
+            entry.coupon ?
+              [{ coupon: entry.coupon as Coupon, hintMessage: entry.hintMessage }]
+            : [],
+          ),
+        );
       } catch {
         setEligibleCoupons([]);
+        setNearEligibleCoupons([]);
       } finally {
         setIsLoadingCoupons(false);
       }
@@ -596,54 +605,35 @@ export default function CartClient() {
                     </div>
                   )}
 
-                  {eligibleCoupons.length > 0 && (
+                  {(eligibleCoupons.length > 0 || nearEligibleCoupons.length > 0) && (
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ffdea5]/80">
-                      {eligibleCoupons.length} offer
-                      {eligibleCoupons.length === 1 ? "" : "s"} available
+                      {eligibleCoupons.length > 0
+                        ? `${eligibleCoupons.length} ready to apply`
+                        : `${nearEligibleCoupons.length} offer${nearEligibleCoupons.length === 1 ? "" : "s"} to unlock`}
                     </p>
                   )}
 
                   <div className="max-h-72 space-y-2 overflow-y-auto pr-0.5">
-                    {isLoadingCoupons ? (
-                      <p className="text-xs text-white/50">
-                        Loading available offers…
-                      </p>
-                    ) : eligibleCoupons.length === 0 ? (
-                      <p className="text-xs text-white/50">
-                        No coupons are available for this cart.
-                      </p>
-                    ) : (
-                      eligibleCoupons.map((c) => (
-                        <button
-                          key={c._id}
-                          type="button"
-                          title={
-                            hasCouponApplied
-                              ? "Remove your current coupon to use another"
-                              : undefined
-                          }
-                          onClick={async () => {
-                            try {
-                              setCouponLoading(true);
-                              await applyCoupon(c.code);
-                            } catch {
-                              // store handles toast
-                            } finally {
-                              setCouponLoading(false);
-                            }
-                          }}
-                          className={cn(
-                            "w-full min-w-0 border border-[#c5a059]/25 bg-white p-3 text-left transition-all",
-                            hasCouponApplied || couponLoading
-                              ? "cursor-not-allowed opacity-50"
-                              : "hover:border-[#c5a059]/60 hover:bg-[#fff8eb]/80 hover:shadow-sm",
-                          )}
-                          disabled={couponLoading || hasCouponApplied}
-                        >
-                          <CouponOfferPreview coupon={c} />
-                        </button>
-                      ))
-                    )}
+                    <CouponEligibleOffersList
+                      variant="heritage"
+                      eligibleCoupons={eligibleCoupons}
+                      nearEligibleCoupons={nearEligibleCoupons}
+                      isLoading={isLoadingCoupons}
+                      hasCouponApplied={hasCouponApplied}
+                      couponLoading={couponLoading}
+                      onApply={async (code) => {
+                        try {
+                          setCouponLoading(true);
+                          await applyCoupon(code);
+                        } catch {
+                          // store handles toast
+                        } finally {
+                          setCouponLoading(false);
+                        }
+                      }}
+                      emptyText="No coupons are available for this cart."
+                      loadingText="Loading available offers…"
+                    />
                   </div>
                 </div>
 
