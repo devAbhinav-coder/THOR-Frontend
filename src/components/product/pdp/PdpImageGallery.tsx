@@ -257,23 +257,28 @@ export function PdpImageGallery({
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             >
-              {images[selectedImage]?.url ?
-                <div className='absolute inset-0 z-0'>
-                  <Image
-                    src={images[selectedImage].url}
-                    alt={images[selectedImage].alt || name}
-                    fill
-                    sizes='(max-width: 1024px) 100vw, (max-width: 1536px) 50vw, 720px'
-                    quality={92}
-                    className={cn(
-                      "select-none transition-opacity duration-200",
-                      isGiftMarketingContext ? "object-cover" : (
-                        "object-contain"
-                      ),
-                    )}
-                    priority
-                    draggable={false}
-                  />
+              {images.length > 0 ?
+                <div 
+                  className='absolute inset-0 z-0 flex transition-transform duration-300 ease-out will-change-transform'
+                  style={{ transform: `translateX(-${selectedImage * 100}%)` }}
+                >
+                  {images.map((img, i) => (
+                    <div key={img.url || i} className='relative h-full w-full shrink-0'>
+                      <Image
+                        src={img.url}
+                        alt={img.alt || `${name} ${i + 1}`}
+                        fill
+                        sizes='(max-width: 1024px) 100vw, (max-width: 1536px) 50vw, 720px'
+                        quality={92}
+                        className={cn(
+                          "select-none transition-opacity duration-200",
+                          isGiftMarketingContext ? "object-cover" : "object-contain"
+                        )}
+                        priority={i === 0 || i === selectedImage}
+                        draggable={false}
+                      />
+                    </div>
+                  ))}
                 </div>
               : <div className='absolute inset-0 flex items-center justify-center text-gray-300'>
                   <Package className='h-20 w-20' />

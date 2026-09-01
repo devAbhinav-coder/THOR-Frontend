@@ -22,7 +22,7 @@ export function navStickyShellClass(
     if (autoHideAllBreakpoints) {
       return cn(
         "fixed inset-x-0 top-0 z-50",
-        "transition-transform duration-300 ease-out motion-reduce:transition-none",
+        "transition-transform duration-200 ease-out motion-reduce:transition-none",
         visible ?
           "translate-y-0"
         : "-translate-y-full pointer-events-none",
@@ -31,7 +31,7 @@ export function navStickyShellClass(
 
     return cn(
       "fixed inset-x-0 top-0 z-50 lg:sticky",
-      "transition-transform duration-300 ease-out motion-reduce:transition-none",
+      "transition-transform duration-200 ease-out motion-reduce:transition-none",
       "lg:translate-y-0",
       visible ?
         "translate-y-0"

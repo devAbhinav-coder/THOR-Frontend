@@ -266,7 +266,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
     (isProductDetailPage || !showCommerceMobileShell);
   const navChromeVisible = useMobileNavAutoHide({
     enabled: navAutoHideEnabled,
-    allBreakpoints: isProductDetailPage,
+    allBreakpoints: true,
   });
   const showMobileBottomNav =
     !isCheckoutFlow && !isProductDetailPage && !isShopListingPage;
@@ -328,7 +328,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
       <div
         className={navMobileFlowSpacerClass(
           navAutoHideEnabled,
-          isProductDetailPage,
+          true, /* autoHideAllBreakpoints */
         )}
         aria-hidden='true'
       />
@@ -336,7 +336,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
         className={navStickyShellClass(
           navChromeVisible,
           navAutoHideEnabled,
-          isProductDetailPage,
+          true, /* autoHideAllBreakpoints */
         )}
         data-store-sticky-nav
       >
