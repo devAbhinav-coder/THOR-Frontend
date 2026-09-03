@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import {
   ChevronDown,
@@ -20,6 +20,7 @@ import { resolvePdpMotionMedia } from "@/lib/instagramReel";
 import { PdpInlineMotionPlayer } from "./PdpInlineMotionPlayer";
 import { PdpMotionVideoModal } from "./PdpMotionVideoModal";
 import { PdpMotionReelModal } from "./PdpMotionReelModal";
+import { cn } from "@/lib/utils";
 
 type AccordionId = "fabric" | "shipping" | "details" | "disclaimer";
 
@@ -55,6 +56,7 @@ export function PdpStorySection({
   const [openId, setOpenId] = useState<AccordionId | null>("fabric");
   const [motionVideoOpen, setMotionVideoOpen] = useState(false);
   const [motionReelOpen, setMotionReelOpen] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
   const highlights = getPdpHighlights(product);
   const careText = product.careInstructions?.trim() || DEFAULT_CARE;
 
@@ -67,6 +69,14 @@ export function PdpStorySection({
       }),
     [motionVideoUrl, motionReelUrl, motionPosterUrl],
   );
+
+  useEffect(() => {
+    if (motion.kind !== "poster" || !product.images || product.images.length <= 1) return;
+    const interval = setInterval(() => {
+      setSlideIdx((prev) => (prev + 1) % product.images.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [motion.kind, product.images]);
 
   const specRows = useMemo(
     () =>
@@ -241,7 +251,25 @@ export function PdpStorySection({
             className="relative min-h-[260px] overflow-hidden border border-gray-200 bg-gray-100 sm:min-h-[280px] lg:col-span-4"
             aria-label="Product photo preview"
           >
-            {posterSrc ?
+            {product.images && product.images.length > 0 ? (
+              product.images.map((img, i) => (
+                <div 
+                  key={img.url || i}
+                  className={cn(
+                    "absolute inset-0 transition-opacity duration-1000 ease-in-out",
+                    i === slideIdx ? "opacity-100 z-10" : "opacity-0 z-0"
+                  )}
+                >
+                  <Image
+                    src={img.url}
+                    alt={img.alt || `${product.name} detail preview`}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 33vw"
+                    className="object-cover"
+                  />
+                </div>
+              ))
+            ) : posterSrc ? (
               <Image
                 src={posterSrc}
                 alt={`${product.name} detail preview`}
@@ -249,9 +277,9 @@ export function PdpStorySection({
                 sizes="(max-width: 1024px) 100vw, 33vw"
                 className="object-cover"
               />
-            : null}
-            <div className="absolute inset-0 bg-gradient-to-t from-navy-900/70 via-navy-900/15 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 px-4 pb-4 pt-10">
+            ) : null}
+
+            <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-navy-900/70 via-navy-900/15 to-transparent px-4 pb-4 pt-12 pointer-events-none">
               <div className="flex items-start gap-2.5">
                 <ImageIcon
                   className="mt-0.5 h-4 w-4 shrink-0 text-white/90"
@@ -260,10 +288,6 @@ export function PdpStorySection({
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90">
                     Gallery preview
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-white/80">
-                    Swipe photos above for every angle. Add a motion video or
-                    Instagram reel in admin to show movement here.
                   </p>
                 </div>
               </div>

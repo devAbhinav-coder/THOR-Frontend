@@ -191,6 +191,8 @@ export function PdpImageGallery({
       return;
     }
 
+    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) return;
+
     const rect = pdpMainImageRef.current?.getBoundingClientRect();
     if (rect) {
       const tapX = endX - rect.left;

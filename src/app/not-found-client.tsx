@@ -81,7 +81,7 @@ const DEFAULT_CATEGORY_CARDS = [
 const SEARCH_SHORTCUTS = [
   { label: "Sarees", href: "/shop?search=saree" },
   { label: "Salwar Suits", href: "/shop?search=salwar%20suit" },
-  { label: "Corsets", href: "/shop?search=corset" },
+  { label: "Corsets", href: "/shop?search=corsets" },
   { label: "New Arrivals", href: "/shop?sort=newest" },
   { label: "All Collections", href: "/shop" },
 ];
