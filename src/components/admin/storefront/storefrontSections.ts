@@ -6,8 +6,6 @@ import {
   Percent,
   BookOpen,
   ShoppingBag,
-  Gift,
-  Star,
   Settings2,
 } from 'lucide-react';
 
@@ -19,9 +17,8 @@ export type StorefrontSectionId =
   | 'blog'
   | 'shopBanner'
   | 'middleBanner'
-  | 'homeGift'
-  | 'gifting1'
-  | 'gifting2'
+  | 'homePremium'
+  | 'premiumBanners'
   | 'footer';
 
 export type StorefrontSectionMeta = {
@@ -58,7 +55,7 @@ export const STOREFRONT_SECTIONS: StorefrontSectionMeta[] = [
     id: 'exploreHouse',
     label: 'Explore our house',
     group: 'Homepage',
-    description: 'Sale and gifting card images on the homepage',
+    description: 'Sale and Premium Edit card images on the homepage',
     icon: LayoutGrid,
   },
   {
@@ -76,11 +73,12 @@ export const STOREFRONT_SECTIONS: StorefrontSectionMeta[] = [
     icon: ImageIcon,
   },
   {
-    id: 'homeGift',
-    label: 'Gift showcase',
+    id: 'homePremium',
+    label: 'Premium showcase',
     group: 'Homepage',
-    description: 'Gift cards and occasion links on the homepage',
-    icon: Gift,
+    description:
+      'Premium Edit block above the blog — image, copy, and CTA (same upload flow as other homepage images)',
+    icon: ImageIcon,
   },
   {
     id: 'shopBanner',
@@ -97,18 +95,12 @@ export const STOREFRONT_SECTIONS: StorefrontSectionMeta[] = [
     icon: BookOpen,
   },
   {
-    id: 'gifting1',
-    label: 'Gifting hero',
-    group: 'Gifting',
-    description: 'Hero slides on the gifting landing page',
-    icon: Gift,
-  },
-  {
-    id: 'gifting2',
-    label: 'Gifting highlights',
-    group: 'Gifting',
-    description: 'Secondary showcase cards on the gifting page',
-    icon: Star,
+    id: 'premiumBanners',
+    label: 'Premium audience banners',
+    group: 'Premium',
+    description:
+      '21:9 hero banners for /premium (All, Women, Men, Kids, Couples). Crop here = what shoppers see.',
+    icon: ImageIcon,
   },
 ];
 

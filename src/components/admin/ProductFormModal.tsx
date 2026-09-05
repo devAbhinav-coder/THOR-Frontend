@@ -25,7 +25,7 @@ import {
 import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
 import { ProductMotionVideoUploader } from "@/components/admin/ProductMotionVideoUploader";
 import { ProductMotionReelField } from "@/components/admin/ProductMotionReelField";
-import { PRODUCT_FABRICS, PRODUCT_OCCASIONS } from "@/lib/productCatalogOptions";
+import { PRODUCT_FABRICS, PRODUCT_OCCASIONS, PREMIUM_PRODUCT_CATEGORY, isPresetProductFabric } from "@/lib/productCatalogOptions";
 import {
   PDP_SIZE_GUIDE_PRESETS,
   sizeGuideRowsFromText,
@@ -51,10 +51,15 @@ import ProductColorVariantEditor, {
   type ColorVariantGroup,
 } from "@/components/admin/ProductColorVariantEditor";
 import {
+  uploadPremiumHeroImage,
+  uploadProductGalleryImages,
+} from "@/lib/productImageUpload";
+import {
   isValidInstagramReelUrl,
   normalizeInstagramReelUrl,
 } from "@/lib/instagramReel";
 import { fetchAdminCatalogCategories } from "@/lib/adminCatalog";
+import type { PremiumEditorialPanel } from "@/lib/premiumCollectionData";
 import {
   AdminOfferModal,
   AdminOfferSection,
@@ -68,13 +73,42 @@ import {
 const MAX_PRODUCT_IMAGES = 20;
 const PRODUCT_FORM_ID = "admin-product-form";
 
+function defaultPremiumEditorialOpen(): PremiumEditorialPanel {
+  return {
+    title: "",
+    fields: [
+      { label: "Body", value: "" },
+      { label: "Weave", value: "" },
+    ],
+    note: "",
+  };
+}
+
+function defaultPremiumEditorialClose(): PremiumEditorialPanel {
+  return {
+    title: "",
+    fields: [
+      { label: "Detail", value: "" },
+      { label: "Finish", value: "" },
+    ],
+    note: "",
+  };
+}
+
 interface Props {
   product: Product | null;
   onClose: () => void;
   onSave: (savedProduct?: Product) => void;
+  /** When creating a new product from Premium admin, start with Premium Edit on. */
+  defaultIsPremium?: boolean;
 }
 
-export default function ProductFormModal({ product, onClose, onSave }: Props) {
+export default function ProductFormModal({
+  product,
+  onClose,
+  onSave,
+  defaultIsPremium = false,
+}: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [loadingProduct, setLoadingProduct] = useState(!!product?._id);
@@ -128,10 +162,28 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     tags: "",
     isFeatured: false,
     isActive: true,
+    isPremium: false,
+    audience: "women",
+    premiumSlug: "",
+    premiumSubtitle: "",
+    craftNote: "",
+    weaveHours: "",
+    sortOrderPremium: "0",
     seoTitle: "",
     seoDescription: "",
     hsnCode: "",
   });
+
+  const [editorialOpen, setEditorialOpen] = useState<PremiumEditorialPanel>(
+    defaultPremiumEditorialOpen,
+  );
+  const [editorialClose, setEditorialClose] = useState<PremiumEditorialPanel>(
+    defaultPremiumEditorialClose,
+  );
+  const [premiumHeroFile, setPremiumHeroFile] = useState<File | null>(null);
+  const [premiumHeroPreview, setPremiumHeroPreview] = useState<string | null>(
+    null,
+  );
 
   const toggleOccasion = (occasion: string) => {
     setForm((prev) => {
@@ -176,7 +228,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         shortDescription: "",
         price: "",
         comparePrice: "",
-        category: "",
+        category: defaultIsPremium ? PREMIUM_PRODUCT_CATEGORY : "",
         subcategory: "",
         fabric: "",
         careInstructions: "",
@@ -184,6 +236,13 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         tags: "",
         isFeatured: false,
         isActive: true,
+        isPremium: defaultIsPremium,
+        audience: "women",
+        premiumSlug: "",
+        premiumSubtitle: "",
+        craftNote: "",
+        weaveHours: "",
+        sortOrderPremium: "0",
         seoTitle: "",
         seoDescription: "",
         hsnCode: "",
@@ -203,6 +262,10 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       setSizeGuideIntro("");
       setSizeGuideRowsText("");
       setSizeGuideTipsText("");
+      setEditorialOpen(defaultPremiumEditorialOpen());
+      setEditorialClose(defaultPremiumEditorialClose());
+      setPremiumHeroFile(null);
+      setPremiumHeroPreview(null);
       return;
     }
     setForm({
@@ -211,14 +274,22 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       shortDescription: p.shortDescription || "",
       price: p.price != null ? String(p.price) : "",
       comparePrice: p.comparePrice != null ? String(p.comparePrice) : "",
-      category: p.category || "",
-      subcategory: p.subcategory || "",
+      category: p.isPremium ? PREMIUM_PRODUCT_CATEGORY : p.category || "",
+      subcategory: p.isPremium ? "" : p.subcategory || "",
       fabric: p.fabric || "",
       careInstructions: p.careInstructions || "",
       occasions: [...(p.occasions || [])],
       tags: (p.tags || []).join(", "),
       isFeatured: p.isFeatured ?? false,
       isActive: p.isActive !== undefined ? p.isActive : true,
+      isPremium: p.isPremium ?? false,
+      audience: p.audience || "women",
+      premiumSlug: p.premiumSlug || "",
+      premiumSubtitle: p.premiumSubtitle || "",
+      craftNote: p.craftNote || "",
+      weaveHours: p.weaveHours != null ? String(p.weaveHours) : "",
+      sortOrderPremium:
+        p.sortOrderPremium != null ? String(p.sortOrderPremium) : "0",
       seoTitle: p.seoTitle || "",
       seoDescription: p.seoDescription || "",
       hsnCode: p.hsnCode || "",
@@ -240,7 +311,33 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     setSizeGuideIntro(sg?.intro || "");
     setSizeGuideRowsText(sizeGuideRowsToText(sg?.rows || []));
     setSizeGuideTipsText((sg?.tips || []).join("\n"));
-  }, []);
+    setEditorialOpen(
+      p.premiumEditorialOpen ?
+        {
+          title: p.premiumEditorialOpen.title ?? "",
+          fields:
+            p.premiumEditorialOpen.fields?.length ?
+              p.premiumEditorialOpen.fields
+            : defaultPremiumEditorialOpen().fields,
+          note: p.premiumEditorialOpen.note ?? "",
+        }
+      : defaultPremiumEditorialOpen(),
+    );
+    setEditorialClose(
+      p.premiumEditorialClose ?
+        {
+          title: p.premiumEditorialClose.title ?? "",
+          fields:
+            p.premiumEditorialClose.fields?.length ?
+              p.premiumEditorialClose.fields
+            : defaultPremiumEditorialClose().fields,
+          note: p.premiumEditorialClose.note ?? "",
+        }
+      : defaultPremiumEditorialClose(),
+    );
+    setPremiumHeroFile(null);
+    setPremiumHeroPreview(p.premiumHeroImage?.url ?? null);
+  }, [defaultIsPremium]);
 
   useEffect(() => {
     fetchAdminCatalogCategories()
@@ -278,6 +375,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       seoDescription: form.seoDescription,
       fabric: form.fabric,
       category: form.category,
+      isPremium: form.isPremium,
     });
     if (audit.score < 100) setShowSeo(true);
   }, [
@@ -286,6 +384,9 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     form.shortDescription,
     form.seoTitle,
     form.seoDescription,
+    form.fabric,
+    form.category,
+    form.isPremium,
     form.fabric,
     form.category,
   ]);
@@ -399,8 +500,8 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     setColorGroups(normalizedGroups);
 
     const newFiles = collectNewImageFiles(normalizedGroups);
-    const imagesMeta = buildImagesMetaFromGroups(normalizedGroups);
-    const variantsToSave = flattenColorGroups(normalizedGroups);
+    const draftMeta = buildImagesMetaFromGroups(normalizedGroups);
+    const draftVariants = flattenColorGroups(normalizedGroups);
     const imageCount = normalizedGroups.reduce(
       (n, g) => n + g.existingImages.length + g.newFiles.length,
       0,
@@ -414,15 +515,17 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
         `Maximum ${MAX_PRODUCT_IMAGES} images per product across all colors.`,
       );
     }
-    if (!form.category) return toast.error("Please select a category");
-    if (!variantsToSave.length) {
+    if (!form.isPremium && !form.category) {
+      return toast.error("Please select a category");
+    }
+    if (!draftVariants.length) {
       return toast.error("Add at least one size with a SKU");
     }
-    if (variantsToSave.some((v) => !v.sku.trim())) {
+    if (draftVariants.some((v) => !v.sku.trim())) {
       return toast.error("Every variant needs a SKU");
     }
 
-    const expectedNewUploads = imagesMeta.filter((m) => !m.publicId).length;
+    const expectedNewUploads = draftMeta.filter((m) => !m.publicId).length;
     if (expectedNewUploads !== newFiles.length) {
       return toast.error(
         "Photo upload sync error — refresh the page, re-add photos per color, and save again.",
@@ -442,16 +545,60 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
     }
 
     setIsSaving(true);
-    setUploadProgress(newFiles.length > 0 ? 0 : null);
+    setUploadProgress(newFiles.length > 0 || premiumHeroFile ? 0 : null);
     try {
+      // Signed direct-to-Cloudinary — keep large binaries off the API request path.
+      let groupsForSave: ColorVariantGroup[] = normalizedGroups;
+      if (newFiles.length > 0) {
+        const uploaded = await uploadProductGalleryImages(
+          newFiles,
+          (p) => setUploadProgress(Math.min(90, p.percent)),
+        );
+        let uploadIdx = 0;
+        groupsForSave = normalizedGroups.map((g) => {
+          if (!g.newFiles.length) return { ...g, newFiles: [] };
+          const added = g.newFiles.map(() => {
+            const u = uploaded[uploadIdx++]!;
+            return {
+              url: u.url,
+              publicId: u.publicId,
+              alt: form.name || "Product",
+              color: g.color.trim() || undefined,
+            };
+          });
+          return {
+            ...g,
+            existingImages: [...g.existingImages, ...added],
+            newFiles: [],
+          };
+        });
+        setColorGroups(groupsForSave);
+      }
+
+      let signedPremiumHero: { url: string; publicId: string } | null = null;
+      if (premiumHeroFile) {
+        signedPremiumHero = await uploadPremiumHeroImage(
+          premiumHeroFile,
+          (p) => setUploadProgress(Math.min(95, 90 + Math.round(p.percent / 20))),
+        );
+        setPremiumHeroPreview(signedPremiumHero.url);
+        setPremiumHeroFile(null);
+      }
+
+      const imagesMeta = buildImagesMetaFromGroups(groupsForSave);
+      const variantsToSave = flattenColorGroups(groupsForSave);
+
       const fd = new FormData();
       fd.append("name", form.name);
       fd.append("description", form.description);
       fd.append("shortDescription", form.shortDescription);
       fd.append("price", form.price);
       fd.append("comparePrice", form.comparePrice);
-      fd.append("category", form.category);
-      fd.append("subcategory", form.subcategory);
+      fd.append(
+        "category",
+        form.isPremium ? PREMIUM_PRODUCT_CATEGORY : form.category,
+      );
+      fd.append("subcategory", form.isPremium ? "" : form.subcategory);
       fd.append("fabric", form.fabric);
       fd.append("careInstructions", form.careInstructions);
       fd.append("clearMotionVideo", String(clearMotionVideo));
@@ -466,6 +613,45 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
       );
       fd.append("isFeatured", String(form.isFeatured));
       fd.append("isActive", String(form.isActive));
+      fd.append("isPremium", String(form.isPremium));
+      
+      if (form.isPremium && form.audience) {
+        fd.append("audience", form.audience);
+      }
+
+      if (form.premiumSlug.trim()) fd.append("premiumSlug", form.premiumSlug.trim());
+      if (form.premiumSubtitle.trim()) {
+        fd.append("premiumSubtitle", form.premiumSubtitle.trim());
+      }
+      if (form.craftNote.trim()) fd.append("craftNote", form.craftNote.trim());
+      if (form.weaveHours.trim()) fd.append("weaveHours", form.weaveHours.trim());
+      fd.append("sortOrderPremium", form.sortOrderPremium || "0");
+      if (form.isPremium) {
+        fd.append(
+          "premiumEditorialOpen",
+          JSON.stringify({
+            title: editorialOpen.title?.trim() || undefined,
+            fields: editorialOpen.fields.filter(
+              (f) => f.label.trim() || f.value.trim(),
+            ),
+            note: editorialOpen.note.trim(),
+          }),
+        );
+        fd.append(
+          "premiumEditorialClose",
+          JSON.stringify({
+            title: editorialClose.title?.trim() || undefined,
+            fields: editorialClose.fields.filter(
+              (f) => f.label.trim() || f.value.trim(),
+            ),
+            note: editorialClose.note.trim(),
+          }),
+        );
+      }
+      if (signedPremiumHero) {
+        fd.append("premiumHeroUrl", signedPremiumHero.url);
+        fd.append("premiumHeroPublicId", signedPremiumHero.publicId);
+      }
       fd.append("seoTitle", form.seoTitle);
       fd.append("seoDescription", form.seoDescription);
       fd.append("hsnCode", form.hsnCode);
@@ -529,7 +715,6 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             .slice(0, 6),
         }),
       );
-      newFiles.forEach((f) => fd.append("images", f));
 
       let saved: Product | undefined;
       if (editingProduct?._id) {
@@ -732,54 +917,85 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
 
         <AdminOfferSection title="Category & tags" icon={FolderTree}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <AdminOfferField label="Category" required>
-              <select
-                className={adminOfferSelectCls}
-                value={form.category}
-                onChange={(e) => setCategory(e.target.value)}
+            {form.isPremium ?
+              <AdminOfferField
+                label="Category"
+                hint="Premium products always use category Premium and stay off the shop page."
                 required
               >
-                <option value="">Select category</option>
-                {categories
-                  .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== "gifting")
-                  .map((c) => (
-                    <option key={c._id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-              {categories.length === 0 && (
-                <p className="text-xs text-amber-600 mt-1">Create categories in Admin → Categories first.</p>
-              )}
-            </AdminOfferField>
-            <AdminOfferField label="Subcategory">
-              <select
-                className={adminOfferSelectCls}
-                value={form.subcategory}
-                onChange={(e) => set("subcategory", e.target.value)}
-                disabled={!form.category || subcategories.length === 0}
-              >
-                <option value="">None</option>
-                {subcategories.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </AdminOfferField>
-            <AdminOfferField label="Fabric">
-              <select
-                className={adminOfferSelectCls}
+                <input
+                  className={adminOfferInputCls}
+                  value={PREMIUM_PRODUCT_CATEGORY}
+                  readOnly
+                  disabled
+                />
+              </AdminOfferField>
+            : <>
+                <AdminOfferField label="Category" required>
+                  <select
+                    className={adminOfferSelectCls}
+                    value={form.category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    required
+                  >
+                    <option value="">Select category</option>
+                    {categories
+                      .filter(
+                        (c) =>
+                          !c.isGiftCategory &&
+                          c.name.toLowerCase() !== "gifting" &&
+                          c.name.toLowerCase() !== "premium",
+                      )
+                      .map((c) => (
+                        <option key={c._id} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                  {categories.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Create categories in Admin → Categories first.
+                    </p>
+                  )}
+                </AdminOfferField>
+                <AdminOfferField label="Subcategory">
+                  <select
+                    className={adminOfferSelectCls}
+                    value={form.subcategory}
+                    onChange={(e) => set("subcategory", e.target.value)}
+                    disabled={!form.category || subcategories.length === 0}
+                  >
+                    <option value="">None</option>
+                    {subcategories.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </AdminOfferField>
+              </>
+            }
+            <AdminOfferField
+              label="Fabric"
+              hint="Pick a preset or type your own fabric name."
+            >
+              <input
+                className={adminOfferInputCls}
+                list="admin-product-fabric-presets"
                 value={form.fabric}
                 onChange={(e) => set("fabric", e.target.value)}
-              >
-                <option value="">Select fabric</option>
+                placeholder="e.g. Handwoven mulberry silk"
+                autoComplete="off"
+              />
+              <datalist id="admin-product-fabric-presets">
                 {PRODUCT_FABRICS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
+                  <option key={f} value={f} />
                 ))}
-              </select>
+                {form.fabric.trim() &&
+                !isPresetProductFabric(form.fabric) ?
+                  <option value={form.fabric.trim()} />
+                : null}
+              </datalist>
             </AdminOfferField>
             <AdminOfferField
               label="Care instructions"
@@ -865,7 +1081,236 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
               label="Active / visible"
               description="Product appears on shop when on"
             />
+            <AdminOfferSwitch
+              checked={form.isPremium}
+              onChange={(v) => {
+                setForm((prev) => ({
+                  ...prev,
+                  isPremium: v,
+                  ...(v ?
+                    {
+                      category: PREMIUM_PRODUCT_CATEGORY,
+                      subcategory: "",
+                    }
+                  : prev.category === PREMIUM_PRODUCT_CATEGORY ?
+                    { category: "", subcategory: "" }
+                  : {}),
+                }));
+              }}
+              label="Premium collection"
+              description="Shows on /premium only — not on the shop page. Category is set to Premium."
+            />
           </div>
+
+          {form.isPremium && (
+            <div className="grid gap-4 rounded-xl border border-amber-100 bg-amber-50/40 p-4 sm:grid-cols-2">
+              <AdminOfferField label="Target Audience">
+                <select
+                  className={adminOfferSelectCls}
+                  value={form.audience}
+                  onChange={(e) => set("audience", e.target.value)}
+                >
+                  <option value="women">Women</option>
+                  <option value="men">Men</option>
+                  <option value="kids">Kids</option>
+                  <option value="couple">Couple</option>
+                </select>
+              </AdminOfferField>
+              <AdminOfferField label="Premium URL slug">
+                <input
+                  className={adminOfferInputCls}
+                  value={form.premiumSlug}
+                  onChange={(e) => set("premiumSlug", e.target.value)}
+                  placeholder="rani-silk-rose-gold"
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Sort order">
+                <input
+                  className={adminOfferInputCls}
+                  type="number"
+                  min={0}
+                  value={form.sortOrderPremium}
+                  onChange={(e) => set("sortOrderPremium", e.target.value)}
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Premium subtitle">
+                <input
+                  className={adminOfferInputCls}
+                  value={form.premiumSubtitle}
+                  onChange={(e) => set("premiumSubtitle", e.target.value)}
+                  placeholder="Handwoven Silk"
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Weave hours (Atelier headline)">
+                <input
+                  className={adminOfferInputCls}
+                  type="number"
+                  min={0}
+                  value={form.weaveHours}
+                  onChange={(e) => set("weaveHours", e.target.value)}
+                />
+              </AdminOfferField>
+              <AdminOfferField label="Atelier craft note" className="sm:col-span-2">
+                <textarea
+                  className={adminOfferTextareaCls}
+                  rows={3}
+                  value={form.craftNote}
+                  onChange={(e) => set("craftNote", e.target.value)}
+                  placeholder="Shown in the Atelier note section below the editorial gallery…"
+                />
+              </AdminOfferField>
+
+              <AdminOfferField label="Premium hero image" className="sm:col-span-2">
+                <p className="mb-2 text-xs text-gray-500">
+                  Full-screen hero on the product page. Separate from gallery images — used in the carousel with the first gallery shot.
+                </p>
+                {premiumHeroPreview ?
+                  <div className="relative mb-3 aspect-[3/4] max-w-[200px] overflow-hidden rounded-lg border border-amber-200/80 bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={premiumHeroPreview}
+                      alt="Premium hero preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                : null}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-amber-900"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setPremiumHeroFile(file);
+                    setPremiumHeroPreview(URL.createObjectURL(file));
+                  }}
+                />
+              </AdminOfferField>
+
+              <div className="sm:col-span-2 space-y-6 border-t border-amber-200/60 pt-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
+                    First editorial row (beside 1st gallery image)
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Body, Weave labels + note — shown next to the first image after hero.
+                  </p>
+                </div>
+                <AdminOfferField label="Section title (optional)">
+                  <input
+                    className={adminOfferInputCls}
+                    value={editorialOpen.title ?? ""}
+                    onChange={(e) =>
+                      setEditorialOpen((p) => ({ ...p, title: e.target.value }))
+                    }
+                  />
+                </AdminOfferField>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {editorialOpen.fields.map((field, i) => (
+                    <div key={i} className="grid gap-2 sm:col-span-1">
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Label (e.g. Body)"
+                        value={field.label}
+                        onChange={(e) =>
+                          setEditorialOpen((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, label: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Value"
+                        value={field.value}
+                        onChange={(e) =>
+                          setEditorialOpen((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, value: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <AdminOfferField label="Editorial note">
+                  <textarea
+                    className={adminOfferTextareaCls}
+                    rows={3}
+                    value={editorialOpen.note}
+                    onChange={(e) =>
+                      setEditorialOpen((p) => ({ ...p, note: e.target.value }))
+                    }
+                  />
+                </AdminOfferField>
+
+                <div className="border-t border-amber-200/60 pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
+                    Last editorial row (beside final image)
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Same layout as the first row — title, labels + values, and editorial note beside the last gallery image.
+                  </p>
+                </div>
+                <AdminOfferField label="Section title (optional)">
+                  <input
+                    className={adminOfferInputCls}
+                    value={editorialClose.title ?? ""}
+                    onChange={(e) =>
+                      setEditorialClose((p) => ({ ...p, title: e.target.value }))
+                    }
+                    placeholder="e.g. The pallu"
+                  />
+                </AdminOfferField>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {editorialClose.fields.map((field, i) => (
+                    <div key={i} className="grid gap-2 sm:col-span-1">
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Label (e.g. Pallu)"
+                        value={field.label}
+                        onChange={(e) =>
+                          setEditorialClose((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, label: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                      <input
+                        className={adminOfferInputCls}
+                        placeholder="Value"
+                        value={field.value}
+                        onChange={(e) =>
+                          setEditorialClose((p) => ({
+                            ...p,
+                            fields: p.fields.map((f, j) =>
+                              j === i ? { ...f, value: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <AdminOfferField label="Editorial note">
+                  <textarea
+                    className={adminOfferTextareaCls}
+                    rows={3}
+                    value={editorialClose.note}
+                    onChange={(e) =>
+                      setEditorialClose((p) => ({ ...p, note: e.target.value }))
+                    }
+                  />
+                </AdminOfferField>
+              </div>
+            </div>
+          )}
         </AdminOfferSection>
 
         <AdminOfferSection
@@ -1058,6 +1503,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
             seoDescription: form.seoDescription,
             fabric: form.fabric,
             category: form.category,
+            isPremium: form.isPremium,
           }).score < 100 && (
             <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
               SEO needs work — expand to fix
@@ -1072,6 +1518,7 @@ export default function ProductFormModal({ product, onClose, onSave }: Props) {
                 seoDescription={form.seoDescription}
                 fabric={form.fabric}
                 category={form.category}
+                isPremium={form.isPremium}
                 onApplySuggestion={(patch) => {
                   if (patch.seoTitle) set("seoTitle", patch.seoTitle);
                   if (patch.seoDescription) set("seoDescription", patch.seoDescription);

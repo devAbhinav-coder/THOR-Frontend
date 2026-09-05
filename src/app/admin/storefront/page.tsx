@@ -8,13 +8,11 @@ import {
   getStorefrontSection,
   type StorefrontSectionId,
 } from '@/components/admin/storefront/storefrontSections';
-import { adminApi, categoryApi, giftingApi } from '@/lib/api';
+import { adminApi, categoryApi } from '@/lib/api';
 import {
   Category,
   HeroSlide,
   HomeEditorialGalleryTile,
-  HomeGiftShowcaseCard,
-  HomeGiftShopLinkMode,
   StorefrontSettings,
 } from '@/types';
 import ImageUploader from '@/components/ui/ImageUploader';
@@ -191,10 +189,6 @@ type ShopBannerFields = NonNullable<StorefrontSettings['shopBanner']>;
 type PromoBannerFields = StorefrontSettings['promoBanner'];
 type FooterFields = StorefrontSettings['footer'];
 type MiddleBannerFields = NonNullable<StorefrontSettings['homeMiddleBanner']>;
-type GiftingHeroBannerItem = NonNullable<StorefrontSettings['giftingHeroBanners']>[number];
-type GiftingSecondaryBannerItem = NonNullable<
-  StorefrontSettings['giftingSecondaryBanners']
->[number];
 
 const emptySlide: HeroSlide = {
   title: '',
@@ -215,31 +209,6 @@ function padHomeEditorialTiles(
   const base = [...(tiles || [])];
   while (base.length < 3) {
     base.push({ image: '', link: '', alt: '' });
-  }
-  return base.slice(0, 3);
-}
-
-function padHomeGiftCards(
-  cards: HomeGiftShowcaseCard[] | undefined,
-): HomeGiftShowcaseCard[] {
-  const accents: ('rose' | 'amber' | 'sage')[] = ['rose', 'amber', 'sage'];
-  const base = [...(cards || [])];
-  while (base.length < 3) {
-    base.push({
-      title: '',
-      description: '',
-      image: '',
-      shopButtonText: 'Browse gifts',
-      shopLinkMode: 'gifting',
-      shopButtonLink: '/gifting',
-      giftingOccasion: '',
-      giftingProductCategory: '',
-      giftingSearch: '',
-      directProductPath: '',
-      giftButtonText: 'Gifting',
-      giftButtonLink: '/gifting',
-      accent: accents[base.length],
-    });
   }
   return base.slice(0, 3);
 }
@@ -266,7 +235,6 @@ function remapFilesAfterRemoval(
 export default function AdminStorefrontPage() {
   const [settings, setSettings] = useState<StorefrontSettings | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [giftOccasionCategories, setGiftOccasionCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -279,12 +247,13 @@ export default function AdminStorefrontPage() {
   const [shopBannerCenterFile, setShopBannerCenterFile] = useState<File | null>(null);
   const [shopBannerRightFile, setShopBannerRightFile] = useState<File | null>(null);
   const [homeMiddleBannerFile, setHomeMiddleBannerFile] = useState<File | null>(null);
+  const [homePremiumShowcaseFile, setHomePremiumShowcaseFile] = useState<File | null>(null);
   const [homeExploreHouseSaleFile, setHomeExploreHouseSaleFile] = useState<File | null>(null);
   const [homeExploreHouseGiftingFile, setHomeExploreHouseGiftingFile] = useState<File | null>(null);
-  const [giftingHeroFiles, setGiftingHeroFiles] = useState<Record<number, File | null>>({});
-  const [giftingSecondaryFiles, setGiftingSecondaryFiles] = useState<Record<number, File | null>>({});
-  const [homeGiftCardFiles, setHomeGiftCardFiles] = useState<Record<number, File | null>>({});
   const [homeEditorialTileFiles, setHomeEditorialTileFiles] = useState<Record<number, File | null>>({});
+  const [premiumAudienceBannerFiles, setPremiumAudienceBannerFiles] = useState<Record<number, File | null>>({});
+  const [premiumEditorialFile, setPremiumEditorialFile] = useState<File | null>(null);
+  const [premiumStoryFile, setPremiumStoryFile] = useState<File | null>(null);
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<StorefrontSectionId>('announcement');
@@ -380,12 +349,10 @@ export default function AdminStorefrontPage() {
     Promise.all([
       adminApi.getStorefrontSettings(),
       categoryApi.getAll({ active: false }),
-      giftingApi.getCategories().catch(() => ({ data: { categories: [] as Category[] } })),
     ])
-      .then(([settingsRes, categoriesRes, giftCatsRes]) => {
+      .then(([settingsRes, categoriesRes]) => {
         setSettings(settingsRes.data?.settings || null);
         setCategories(categoriesRes.data?.categories || []);
-        setGiftOccasionCategories(giftCatsRes.data?.categories || []);
       })
       .catch(() => toast.error('Failed to load storefront settings'))
       .finally(() => setIsLoading(false));
@@ -418,6 +385,14 @@ export default function AdminStorefrontPage() {
       homeMiddleBanner: { ...s.homeMiddleBanner, ...patch },
     }));
 
+  const patchHomePremiumShowcase = (
+    patch: Partial<NonNullable<StorefrontSettings['homePremiumShowcase']>>,
+  ) =>
+    mutate((s) => ({
+      ...s,
+      homePremiumShowcase: { ...s.homePremiumShowcase, ...patch },
+    }));
+
   const ensureShopBanner = (p: StorefrontSettings): ShopBannerFields => ({
     title: p.shopBanner?.title || '',
     subtitle: p.shopBanner?.subtitle || '',
@@ -441,25 +416,6 @@ export default function AdminStorefrontPage() {
       homeExploreHouse: { ...s.homeExploreHouse, ...patch },
     }));
 
-  const patchShowcase = (
-    patch: Partial<NonNullable<StorefrontSettings['homeGiftShowcase']>>,
-  ) =>
-    mutate((s) => ({
-      ...s,
-      homeGiftShowcase: {
-        ...s.homeGiftShowcase,
-        ...patch,
-        cards: patch.cards ?? padHomeGiftCards(s.homeGiftShowcase?.cards),
-      },
-    }));
-
-  const patchGiftCard = (index: number, patch: Partial<HomeGiftShowcaseCard>) =>
-    mutate((s) => {
-      const cards = padHomeGiftCards(s.homeGiftShowcase?.cards);
-      cards[index] = { ...cards[index], ...patch };
-      return { ...s, homeGiftShowcase: { ...s.homeGiftShowcase, cards } };
-    });
-
   const patchEditorial = (
     patch: Partial<NonNullable<StorefrontSettings['homeEditorialGallery']>>,
   ) =>
@@ -479,24 +435,23 @@ export default function AdminStorefrontPage() {
       return { ...s, homeEditorialGallery: { ...s.homeEditorialGallery, tiles } };
     });
 
-  const patchGiftingHero = (index: number, patch: Partial<GiftingHeroBannerItem>) =>
+  const patchPremiumAudienceBanner = (
+    index: number,
+    patch: Partial<NonNullable<StorefrontSettings['premiumAudienceBanners']>[0]>,
+  ) =>
     mutate((s) => ({
       ...s,
-      giftingHeroBanners: (s.giftingHeroBanners || []).map((b, i) =>
+      premiumAudienceBanners: (s.premiumAudienceBanners || []).map((b, i) =>
         i === index ? { ...b, ...patch } : b,
       ),
     }));
 
-  const patchGiftingSecondary = (
-    index: number,
-    patch: Partial<GiftingSecondaryBannerItem>,
-  ) =>
-    mutate((s) => ({
-      ...s,
-      giftingSecondaryBanners: (s.giftingSecondaryBanners || []).map((b, i) =>
-        i === index ? { ...b, ...patch } : b,
-      ),
-    }));
+  const patchPremiumEditorial = (patch: Partial<NonNullable<StorefrontSettings['premiumEditorial']>>) => 
+    mutate((s) => ({ ...s, premiumEditorial: { ...s.premiumEditorial, ...patch } }));
+  const patchPremiumStory = (patch: Partial<NonNullable<StorefrontSettings['premiumStory']>>) => 
+    mutate((s) => ({ ...s, premiumStory: { ...s.premiumStory, ...patch } }));
+  const patchPremiumFinalCta = (patch: Partial<NonNullable<StorefrontSettings['premiumFinalCta']>>) => 
+    mutate((s) => ({ ...s, premiumFinalCta: { ...s.premiumFinalCta, ...patch } }));
 
   /* ── Save ── */
 
@@ -548,24 +503,24 @@ export default function AdminStorefrontPage() {
       if (shopBannerCenterFile) fd.append('shopBannerCenterImage', shopBannerCenterFile);
       if (shopBannerRightFile) fd.append('shopBannerRightImage', shopBannerRightFile);
       if (homeMiddleBannerFile) fd.append('homeMiddleBanner', homeMiddleBannerFile);
+      if (homePremiumShowcaseFile) {
+        fd.append('homePremiumShowcaseImage', homePremiumShowcaseFile);
+      }
       if (homeExploreHouseSaleFile) {
         fd.append('homeExploreHouseSaleImage', homeExploreHouseSaleFile);
       }
       if (homeExploreHouseGiftingFile) {
         fd.append('homeExploreHouseGiftingImage', homeExploreHouseGiftingFile);
       }
-      Object.entries(giftingHeroFiles).forEach(([index, file]) => {
-        if (file) fd.append(`giftingHeroImage_${index}`, file);
-      });
-      Object.entries(giftingSecondaryFiles).forEach(([index, file]) => {
-        if (file) fd.append(`giftingSecondaryImage_${index}`, file);
-      });
-      Object.entries(homeGiftCardFiles).forEach(([index, file]) => {
-        if (file) fd.append(`homeGiftCardImage_${index}`, file);
-      });
       Object.entries(homeEditorialTileFiles).forEach(([index, file]) => {
         if (file) fd.append(`homeEditorialTileImage_${index}`, file);
       });
+      Object.entries(premiumAudienceBannerFiles).forEach(([index, file]) => {
+        if (file) fd.append(`premiumAudienceImage_${index}`, file);
+      });
+      if (premiumEditorialFile) fd.append('premiumEditorialImage', premiumEditorialFile);
+      if (premiumStoryFile) fd.append('premiumStoryImage', premiumStoryFile);
+      
       const saved = await adminApi.updateStorefrontSettings(fd);
       if (saved.data?.settings) {
         setSettings(saved.data.settings as StorefrontSettings);
@@ -579,12 +534,13 @@ export default function AdminStorefrontPage() {
       setShopBannerCenterFile(null);
       setShopBannerRightFile(null);
       setHomeMiddleBannerFile(null);
+      setHomePremiumShowcaseFile(null);
       setHomeExploreHouseSaleFile(null);
       setHomeExploreHouseGiftingFile(null);
-      setGiftingHeroFiles({});
-      setGiftingSecondaryFiles({});
-      setHomeGiftCardFiles({});
       setHomeEditorialTileFiles({});
+      setPremiumAudienceBannerFiles({});
+      setPremiumEditorialFile(null);
+      setPremiumStoryFile(null);
       setIsDirty(false);
       toast.success('Storefront settings updated');
     } catch (err: unknown) {
@@ -612,10 +568,6 @@ export default function AdminStorefrontPage() {
     }));
     setAnnouncementDraft('');
   };
-
-  const productCategoriesForGiftCard = categories.filter((c) => !c.isGiftCategory);
-  const productCategoryOptions =
-    productCategoriesForGiftCard.length > 0 ? productCategoriesForGiftCard : categories;
 
   const sectionMeta = getStorefrontSection(activeSection);
 
@@ -899,8 +851,8 @@ export default function AdminStorefrontPage() {
         >
           <div className="space-y-5">
             <p className="text-xs text-gray-500">
-              Upload portrait images (3:4) and edit card labels. Sale appears first; Gifting last.
-              Links are fixed — Sale → shop offers, Gifting → gifting page.
+              Upload portrait images (3:4) and edit card labels. Sale appears first; Premium last.
+              Links are fixed — Sale → shop offers, Premium → premium page.
             </p>
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -950,16 +902,16 @@ export default function AdminStorefrontPage() {
                 />
               </ItemCard>
 
-              <ItemCard title="Gifting card">
+              <ItemCard title="Premium card">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Title">
                     <input
                       className={inputCls}
-                      value={settings.homeExploreHouse?.giftingName ?? 'Gifting'}
+                      value={settings.homeExploreHouse?.giftingName ?? 'Premium'}
                       onChange={(e) =>
                         patchHomeExploreHouse({ giftingName: e.target.value })
                       }
-                      placeholder="Gifting"
+                      placeholder="Premium"
                       maxLength={48}
                     />
                   </Field>
@@ -996,8 +948,8 @@ export default function AdminStorefrontPage() {
                     setHomeExploreHouseGiftingFile(files[0] || null);
                     markDirty();
                   }}
-                  label="Gifting image (last card)"
-                  hint="Links to /gifting on homepage & shop."
+                  label="Premium image (last card)"
+                  hint="Links to /premium on homepage & shop."
                 />
               </ItemCard>
             </div>
@@ -1583,8 +1535,8 @@ export default function AdminStorefrontPage() {
         </StorefrontSectionPanel>
       )}
 
-      {/* ══ Gift showcase (home) ══ */}
-      {activeSection === 'homeGift' && (
+      {/* ══ Home Premium showcase ══ */}
+      {activeSection === 'homePremium' && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
@@ -1592,264 +1544,92 @@ export default function AdminStorefrontPage() {
         >
           <div className="space-y-4">
             <Toggle
-              checked={settings.homeGiftShowcase?.isActive !== false}
-              onChange={(checked) => patchShowcase({ isActive: checked })}
-              label="Show gift showcase on homepage"
+              checked={settings.homePremiumShowcase?.isActive !== false}
+              onChange={(checked) => patchHomePremiumShowcase({ isActive: checked })}
+              label="Show Premium showcase on homepage (above blog)"
+            />
+
+            <ImageUploader
+              maxFiles={1}
+              aspectRatio="4:5"
+              maxSizeMB={5}
+              existingImages={
+                homePremiumShowcaseFile ? []
+                : settings.homePremiumShowcase?.image ?
+                  [settings.homePremiumShowcase.image]
+                : []
+              }
+              onRemoveExisting={() => {
+                patchHomePremiumShowcase({ image: '', imagePublicId: undefined });
+                setHomePremiumShowcaseFile(null);
+              }}
+              onChange={(files) => {
+                setHomePremiumShowcaseFile(files[0] || null);
+                markDirty();
+              }}
+              label="Premium showcase image (portrait 4:5)"
+              hint="Same Cloudinary upload flow as other storefront images. Shown left of the copy on desktop."
             />
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Headline line 1">
+              <Field label="Pre-heading (eyebrow)">
                 <input
                   className={inputCls}
-                  value={settings.homeGiftShowcase?.headlineLine1 || ''}
-                  onChange={(e) => patchShowcase({ headlineLine1: e.target.value })}
-                  placeholder="e.g. Our Gifting"
+                  value={settings.homePremiumShowcase?.preHeading || ''}
+                  onChange={(e) =>
+                    patchHomePremiumShowcase({ preHeading: e.target.value })
+                  }
+                  placeholder="e.g. The Rani Edit"
                 />
               </Field>
-              <Field label="Headline line 2">
+              <Field label="Heading">
                 <input
                   className={inputCls}
-                  value={settings.homeGiftShowcase?.headlineLine2 || ''}
-                  onChange={(e) => patchShowcase({ headlineLine2: e.target.value })}
-                  placeholder="e.g. Collections"
+                  value={settings.homePremiumShowcase?.heading || ''}
+                  onChange={(e) =>
+                    patchHomePremiumShowcase({ heading: e.target.value })
+                  }
+                  placeholder="e.g. The Premium Collection"
                 />
               </Field>
             </div>
-
-            <Field
-              label="Description"
-              hint="Keep under 160 characters. Sarees lead homepage SEO — avoid opening with “corporate gifting”."
-            >
+            <Field label="Body text">
               <textarea
                 className={inputCls}
-                rows={3}
-                value={settings.homeGiftShowcase?.description || ''}
-                onChange={(e) => patchShowcase({ description: e.target.value })}
-                placeholder="Short gifting blurb"
+                rows={4}
+                value={settings.homePremiumShowcase?.text || ''}
+                onChange={(e) => patchHomePremiumShowcase({ text: e.target.value })}
+                placeholder="Handwoven sarees, rare silks, loom hours…"
               />
             </Field>
-
-            <Field
-              label="Social handle"
-              hint="Shown near the section — social icons use the Footer social URLs."
-            >
-              <input
-                className={inputCls}
-                value={settings.homeGiftShowcase?.socialHandle || ''}
-                onChange={(e) => patchShowcase({ socialHandle: e.target.value })}
-                placeholder="e.g. @thehouseofraniofficial"
-              />
-            </Field>
-
-            {padHomeGiftCards(settings.homeGiftShowcase?.cards).map((card, index) => (
-              <ItemCard key={index} title={card.title?.trim() || `Card ${index + 1}`}>
-                <ImageUploader
-                  maxFiles={1}
-                  aspectRatio="1:1"
-                  maxSizeMB={5}
-                  existingImages={
-                    homeGiftCardFiles[index] ? []
-                    : card.image ? [card.image]
-                    : []
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Field label="Button text">
+                <input
+                  className={inputCls}
+                  value={settings.homePremiumShowcase?.linkText || ''}
+                  onChange={(e) =>
+                    patchHomePremiumShowcase({ linkText: e.target.value })
                   }
-                  onRemoveExisting={() => {
-                    patchGiftCard(index, { image: '', imagePublicId: undefined });
-                    setHomeGiftCardFiles((prev) => ({ ...prev, [index]: null }));
-                  }}
-                  onChange={(files) => {
-                    setHomeGiftCardFiles((prev) => ({
-                      ...prev,
-                      [index]: files[0] || null,
-                    }));
-                    markDirty();
-                  }}
-                  label="Card image (1:1 — shown as a circle on the homepage)"
-                  hint="Saving removes the old file from Cloudinary when replaced or cleared."
+                  placeholder="e.g. Explore Premium"
                 />
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field label="Title">
-                    <input
-                      className={inputCls}
-                      value={card.title || ''}
-                      onChange={(e) => patchGiftCard(index, { title: e.target.value })}
-                      placeholder="e.g. Handmade Gifts"
-                    />
-                  </Field>
-                  <Field label="Pastel background">
-                    <select
-                      className={inputCls}
-                      value={card.accent || 'rose'}
-                      onChange={(e) =>
-                        patchGiftCard(index, {
-                          accent: e.target.value as HomeGiftShowcaseCard['accent'],
-                        })
-                      }
-                    >
-                      <option value="rose">Pink / rose</option>
-                      <option value="amber">Peach / amber</option>
-                      <option value="sage">Mint / sage</option>
-                    </select>
-                  </Field>
-                </div>
-
-                <Field label="Card description">
-                  <textarea
-                    className={inputCls}
-                    rows={2}
-                    value={card.description || ''}
-                    onChange={(e) => patchGiftCard(index, { description: e.target.value })}
-                    placeholder="Short card description"
-                  />
-                </Field>
-
-                <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Primary button
-                  </p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field label="Button label">
-                      <input
-                        className={inputCls}
-                        value={card.shopButtonText || ''}
-                        onChange={(e) =>
-                          patchGiftCard(index, { shopButtonText: e.target.value })
-                        }
-                        placeholder="e.g. Browse gifts / Coming soon"
-                      />
-                    </Field>
-                    <Field label="Button target">
-                      <select
-                        className={inputCls}
-                        value={(card.shopLinkMode || 'custom') as HomeGiftShopLinkMode}
-                        onChange={(e) => {
-                          const mode = e.target.value as HomeGiftShopLinkMode;
-                          patchGiftCard(index, {
-                            shopLinkMode: mode,
-                            ...(mode === 'coming_soon' && {
-                              shopButtonText: card.shopButtonText || 'Coming soon',
-                            }),
-                          });
-                        }}
-                      >
-                        <option value="gifting">Gifting page (occasion / category / search)</option>
-                        <option value="product">Product page (path)</option>
-                        <option value="coming_soon">Coming soon (no link)</option>
-                        <option value="custom">Custom URL</option>
-                      </select>
-                    </Field>
-
-                    {(card.shopLinkMode || 'custom') === 'gifting' && (
-                      <>
-                        <Field label="Gift occasion (optional)" hint="Same as gifting page chips.">
-                          <select
-                            className={inputCls}
-                            value={card.giftingOccasion || ''}
-                            onChange={(e) =>
-                              patchGiftCard(index, { giftingOccasion: e.target.value })
-                            }
-                          >
-                            <option value="">Any occasion</option>
-                            {giftOccasionCategories.map((c) => (
-                              <option key={String(c._id)} value={c.name}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="Product category filter (optional)">
-                          <select
-                            className={inputCls}
-                            value={card.giftingProductCategory || ''}
-                            onChange={(e) =>
-                              patchGiftCard(index, {
-                                giftingProductCategory: e.target.value,
-                              })
-                            }
-                          >
-                            <option value="">Any category</option>
-                            {productCategoryOptions.map((c) => (
-                              <option key={String(c._id)} value={c.name}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="Search term (optional)" className="sm:col-span-2">
-                          <input
-                            className={inputCls}
-                            value={card.giftingSearch || ''}
-                            onChange={(e) =>
-                              patchGiftCard(index, { giftingSearch: e.target.value })
-                            }
-                            placeholder="e.g. hamper"
-                          />
-                        </Field>
-                      </>
-                    )}
-                    {(card.shopLinkMode || 'custom') === 'product' && (
-                      <Field label="Product path" className="sm:col-span-2">
-                        <input
-                          className={inputCls}
-                          value={card.directProductPath || ''}
-                          onChange={(e) =>
-                            patchGiftCard(index, { directProductPath: e.target.value })
-                          }
-                          placeholder="e.g. /shop/your-product-slug"
-                        />
-                      </Field>
-                    )}
-                    {(card.shopLinkMode || 'custom') === 'custom' && (
-                      <Field label="Custom URL" className="sm:col-span-2">
-                        <input
-                          className={inputCls}
-                          value={card.shopButtonLink || ''}
-                          onChange={(e) =>
-                            patchGiftCard(index, { shopButtonLink: e.target.value })
-                          }
-                          placeholder="Any path, e.g. /shop or https://…"
-                        />
-                      </Field>
-                    )}
-                    {(card.shopLinkMode || 'custom') === 'coming_soon' && (
-                      <p className="text-xs text-gray-500 sm:col-span-2">
-                        The primary button shows your label only (no navigation). Use the second
-                        button for Gifting or another link.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field label="Gifting button label">
-                    <input
-                      className={inputCls}
-                      value={card.giftButtonText || ''}
-                      onChange={(e) =>
-                        patchGiftCard(index, { giftButtonText: e.target.value })
-                      }
-                      placeholder="e.g. Gifting"
-                    />
-                  </Field>
-                  <Field label="Gifting button URL">
-                    <input
-                      className={inputCls}
-                      value={card.giftButtonLink || ''}
-                      onChange={(e) =>
-                        patchGiftCard(index, { giftButtonLink: e.target.value })
-                      }
-                      placeholder="e.g. /gifting"
-                    />
-                  </Field>
-                </div>
-              </ItemCard>
-            ))}
+              </Field>
+              <Field label="Button link URL">
+                <input
+                  className={inputCls}
+                  value={settings.homePremiumShowcase?.linkUrl || ''}
+                  onChange={(e) =>
+                    patchHomePremiumShowcase({ linkUrl: e.target.value })
+                  }
+                  placeholder="/premium"
+                />
+              </Field>
+            </div>
           </div>
         </StorefrontSectionPanel>
       )}
 
-      {/* ══ Gifting hero banners ══ */}
-      {activeSection === 'gifting1' && (
+      {/* ══ Premium audience banners ══ */}
+      {activeSection === 'premiumBanners' && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
@@ -1858,52 +1638,37 @@ export default function AdminStorefrontPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs text-gray-500">
-                Top rotating banner on the gifting page — 4-5 banners work best.
+                Storefront shows this image at <strong>21:9</strong> with side
+                margins (not full screen). Crop the photo to 21:9 here — that
+                exact frame is what appears on the premium page for the selected
+                audience tab.
               </p>
               <AddButton
-                label="Add banner"
+                label="Add premium banner"
                 onClick={() =>
                   mutate((s) => ({
                     ...s,
-                    giftingHeroBanners: [
-                      ...(s.giftingHeroBanners || []),
-                      {
-                        title: '',
-                        description: '',
-                        backgroundImage: '',
-                        ctaText: 'Explore gifts',
-                        ctaLink: '/gifting',
-                        isActive: true,
-                      },
+                    premiumAudienceBanners: [
+                      ...(s.premiumAudienceBanners || []),
+                      { audience: 'all', title: '' },
                     ],
                   }))
                 }
               />
             </div>
 
-            {(settings.giftingHeroBanners || []).length === 0 && (
-              <EmptyListHint>
-                No banners yet — click “Add banner” to create the first gifting hero banner.
-              </EmptyListHint>
-            )}
-
-            {(settings.giftingHeroBanners || []).map((banner, index) => (
+            {(settings.premiumAudienceBanners || []).map((banner, index) => (
               <ItemCard
-                key={index}
-                title={banner.title?.trim() || `Banner ${index + 1}`}
-                badge={
-                  banner.isActive === false ? (
-                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
-                      Hidden
-                    </span>
-                  ) : undefined
-                }
+                key={`premium-${index}`}
+                title={`Audience Banner ${index + 1}`}
                 deleteLabel="Delete banner"
                 onDelete={() => {
-                  setGiftingHeroFiles((prev) => remapFilesAfterRemoval(prev, index));
+                  setPremiumAudienceBannerFiles((prev) =>
+                    remapFilesAfterRemoval(prev, index),
+                  );
                   mutate((s) => ({
                     ...s,
-                    giftingHeroBanners: (s.giftingHeroBanners || []).filter(
+                    premiumAudienceBanners: (s.premiumAudienceBanners || []).filter(
                       (_, i) => i !== index,
                     ),
                   }));
@@ -1911,204 +1676,156 @@ export default function AdminStorefrontPage() {
               >
                 <Toggle
                   checked={banner.isActive !== false}
-                  onChange={(checked) => patchGiftingHero(index, { isActive: checked })}
-                  label="Show this banner on the gifting page"
+                  onChange={(checked) =>
+                    patchPremiumAudienceBanner(index, { isActive: checked })
+                  }
+                  label="Show this banner"
                 />
 
                 <ImageUploader
                   maxFiles={1}
-                  aspectRatio="16:9"
+                  aspectRatio="21:9"
                   maxSizeMB={5}
                   existingImages={
-                    giftingHeroFiles[index] ? []
-                    : banner.backgroundImage ? [banner.backgroundImage]
-                    : []
+                    premiumAudienceBannerFiles[index]
+                      ? []
+                      : banner.image
+                        ? [banner.image]
+                        : []
                   }
                   onRemoveExisting={() => {
-                    patchGiftingHero(index, {
-                      backgroundImage: '',
-                      backgroundImagePublicId: undefined,
+                    patchPremiumAudienceBanner(index, {
+                      image: '',
+                      imagePublicId: undefined,
                     });
-                    setGiftingHeroFiles((prev) => ({ ...prev, [index]: null }));
+                    setPremiumAudienceBannerFiles((prev) => ({ ...prev, [index]: null }));
                   }}
                   onChange={(files) => {
-                    setGiftingHeroFiles((prev) => ({
+                    setPremiumAudienceBannerFiles((prev) => ({
                       ...prev,
                       [index]: files[0] || null,
                     }));
                     markDirty();
                   }}
-                  label="Gifting hero image"
+                  label="Hero image (21:9 — same crop as storefront)"
                 />
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <Field label="Title">
-                    <input
-                      className={inputCls}
-                      value={banner.title || ''}
-                      onChange={(e) => patchGiftingHero(index, { title: e.target.value })}
-                      placeholder="e.g. Smart gifting made easy"
-                    />
-                  </Field>
-                  <Field label="Button text">
-                    <input
-                      className={inputCls}
-                      value={banner.ctaText || ''}
-                      onChange={(e) => patchGiftingHero(index, { ctaText: e.target.value })}
-                      placeholder="e.g. Explore gifts"
-                    />
-                  </Field>
-                  <Field label="Button link">
-                    <input
-                      className={inputCls}
-                      value={banner.ctaLink || ''}
-                      onChange={(e) => patchGiftingHero(index, { ctaLink: e.target.value })}
-                      placeholder="e.g. /gifting"
-                    />
-                  </Field>
-                </div>
-
-                <Field label="Description">
-                  <textarea
+                <p className="text-[11px] leading-snug text-gray-500">
+                  Preview above matches the live banner frame. Avoid faces or
+                  logos near the very bottom — title/subtitle overlay sits there.
+                </p>
+                
+                <Field label="Target Audience">
+                  <select
                     className={inputCls}
-                    rows={2}
-                    value={banner.description || ''}
+                    value={banner.audience || 'all'}
+                    onChange={(e) => patchPremiumAudienceBanner(index, { audience: e.target.value as any })}
+                  >
+                    <option value="all">All (/premium)</option>
+                    <option value="women">Women</option>
+                    <option value="men">Men</option>
+                    <option value="kids">Kids</option>
+                    <option value="couple">Couple</option>
+                  </select>
+                </Field>
+
+                <Field label="Hero Title">
+                  <input
+                    className={inputCls}
+                    value={banner.title || ''}
                     onChange={(e) =>
-                      patchGiftingHero(index, { description: e.target.value })
+                      patchPremiumAudienceBanner(index, { title: e.target.value })
                     }
-                    placeholder="Short supporting text"
+                    placeholder="e.g. The Menswear Edit"
+                  />
+                </Field>
+
+                <Field label="Hero Subtitle">
+                  <input
+                    className={inputCls}
+                    value={banner.subtitle || ''}
+                    onChange={(e) =>
+                      patchPremiumAudienceBanner(index, { subtitle: e.target.value })
+                    }
+                    placeholder="e.g. Timeless kurtas for modern gentlemen."
                   />
                 </Field>
               </ItemCard>
             ))}
           </div>
-        </StorefrontSectionPanel>
-      )}
 
-      {/* ══ Gifting secondary banners ══ */}
-      {activeSection === 'gifting2' && (
-        <StorefrontSectionPanel
-          title={sectionMeta.label}
-          description={sectionMeta.description}
-          icon={sectionMeta.icon}
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-500">
-                Second showcase section on the gifting page — 1-2 cards work best.
-              </p>
-              <AddButton
-                label="Add card"
-                onClick={() =>
-                  mutate((s) => ({
-                    ...s,
-                    giftingSecondaryBanners: [
-                      ...(s.giftingSecondaryBanners || []),
-                      {
-                        eyebrow: '',
-                        title: '',
-                        image: '',
-                        ctaText: 'Shop now',
-                        ctaLink: '/gifting',
-                        isActive: true,
-                      },
-                    ],
-                  }))
-                }
-              />
-            </div>
+          <div className="mt-12 space-y-6 border-t border-gray-100 pt-10">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-900">Premium Editorial Sections</h3>
 
-            {(settings.giftingSecondaryBanners || []).length === 0 && (
-              <EmptyListHint>
-                No cards yet — click “Add card” to create a gifting highlight card.
-              </EmptyListHint>
-            )}
-
-            {(settings.giftingSecondaryBanners || []).map((banner, index) => (
-              <ItemCard
-                key={index}
-                title={banner.title?.trim() || `Card ${index + 1}`}
-                deleteLabel="Delete card"
-                onDelete={() => {
-                  setGiftingSecondaryFiles((prev) => remapFilesAfterRemoval(prev, index));
-                  mutate((s) => ({
-                    ...s,
-                    giftingSecondaryBanners: (s.giftingSecondaryBanners || []).filter(
-                      (_, i) => i !== index,
-                    ),
-                  }));
+            <ItemCard title="Editorial Feature Block">
+              <ImageUploader
+                maxFiles={1}
+                aspectRatio="21:9"
+                maxSizeMB={5}
+                existingImages={premiumEditorialFile ? [] : settings.premiumEditorial?.image ? [settings.premiumEditorial.image] : []}
+                onRemoveExisting={() => {
+                  patchPremiumEditorial({ image: '', imagePublicId: undefined });
+                  setPremiumEditorialFile(null);
                 }}
-              >
-                <ImageUploader
-                  maxFiles={1}
-                  aspectRatio="16:9"
-                  maxSizeMB={5}
-                  existingImages={
-                    giftingSecondaryFiles[index] ? []
-                    : banner.image ? [banner.image]
-                    : []
-                  }
-                  onRemoveExisting={() => {
-                    patchGiftingSecondary(index, { image: '', imagePublicId: undefined });
-                    setGiftingSecondaryFiles((prev) => ({ ...prev, [index]: null }));
-                  }}
-                  onChange={(files) => {
-                    setGiftingSecondaryFiles((prev) => ({
-                      ...prev,
-                      [index]: files[0] || null,
-                    }));
-                    markDirty();
-                  }}
-                  label="Card image"
-                />
+                onChange={(files) => {
+                  setPremiumEditorialFile(files[0] || null);
+                  markDirty();
+                }}
+                label="Editorial Lifestyle Image"
+              />
+              <Field label="Pre-Heading (Eyebrow)">
+                <input className={inputCls} value={settings.premiumEditorial?.preHeading || ''} onChange={(e) => patchPremiumEditorial({ preHeading: e.target.value })} placeholder="e.g. The Rani Edit" />
+              </Field>
+              <Field label="Heading">
+                <input className={inputCls} value={settings.premiumEditorial?.heading || ''} onChange={(e) => patchPremiumEditorial({ heading: e.target.value })} placeholder="e.g. CRAFTED FOR THE EXTRAORDINARY" />
+              </Field>
+              <Field label="Paragraph Description">
+                <textarea className={inputCls} rows={4} value={settings.premiumEditorial?.text || ''} onChange={(e) => patchPremiumEditorial({ text: e.target.value })} placeholder="Write about the legacy and artisanship..." />
+              </Field>
+              <Field label="CTA Link Text">
+                <input className={inputCls} value={settings.premiumEditorial?.linkText || ''} onChange={(e) => patchPremiumEditorial({ linkText: e.target.value })} placeholder="e.g. View Collection" />
+              </Field>
+            </ItemCard>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <Field label="Eyebrow text">
-                    <input
-                      className={inputCls}
-                      value={banner.eyebrow || ''}
-                      onChange={(e) =>
-                        patchGiftingSecondary(index, { eyebrow: e.target.value })
-                      }
-                      placeholder="e.g. Gifting made premium"
-                    />
-                  </Field>
-                  <Field label="Title">
-                    <input
-                      className={inputCls}
-                      value={banner.title || ''}
-                      onChange={(e) =>
-                        patchGiftingSecondary(index, { title: e.target.value })
-                      }
-                      placeholder="e.g. Curated picks for every celebration"
-                    />
-                  </Field>
-                  <Field label="Button text">
-                    <input
-                      className={inputCls}
-                      value={banner.ctaText || ''}
-                      onChange={(e) =>
-                        patchGiftingSecondary(index, { ctaText: e.target.value })
-                      }
-                      placeholder="e.g. Shop now"
-                    />
-                  </Field>
-                  <Field label="Button link">
-                    <input
-                      className={inputCls}
-                      value={banner.ctaLink || ''}
-                      onChange={(e) =>
-                        patchGiftingSecondary(index, { ctaLink: e.target.value })
-                      }
-                      placeholder="e.g. /gifting"
-                    />
-                  </Field>
-                </div>
-              </ItemCard>
-            ))}
+            <ItemCard title="Story Discovery Block">
+              <ImageUploader
+                maxFiles={1}
+                aspectRatio="21:9"
+                maxSizeMB={5}
+                existingImages={premiumStoryFile ? [] : settings.premiumStory?.image ? [settings.premiumStory.image] : []}
+                onRemoveExisting={() => {
+                  patchPremiumStory({ image: '', imagePublicId: undefined });
+                  setPremiumStoryFile(null);
+                }}
+                onChange={(files) => {
+                  setPremiumStoryFile(files[0] || null);
+                  markDirty();
+                }}
+                label="Story Craft Image"
+              />
+              <Field label="Heading">
+                <input className={inputCls} value={settings.premiumStory?.heading || ''} onChange={(e) => patchPremiumStory({ heading: e.target.value })} placeholder="e.g. MORE THAN A SAREE" />
+              </Field>
+              <Field label="Story Description">
+                <textarea className={inputCls} rows={3} value={settings.premiumStory?.text || ''} onChange={(e) => patchPremiumStory({ text: e.target.value })} placeholder="Write the secondary brand messaging..." />
+              </Field>
+            </ItemCard>
+
+            <ItemCard title="Final Journey CTA">
+              <Field label="Heading">
+                <input className={inputCls} value={settings.premiumFinalCta?.heading || ''} onChange={(e) => patchPremiumFinalCta({ heading: e.target.value })} placeholder="e.g. DISCOVER THE RANI PREMIUM EDIT" />
+              </Field>
+              <Field label="Subtext">
+                <input className={inputCls} value={settings.premiumFinalCta?.text || ''} onChange={(e) => patchPremiumFinalCta({ text: e.target.value })} placeholder="e.g. Exceptional pieces, thoughtfully curated for your legacy." />
+              </Field>
+              <Field label="Primary button text">
+                <input className={inputCls} value={settings.premiumFinalCta?.linkText || ''} onChange={(e) => patchPremiumFinalCta({ linkText: e.target.value })} placeholder="e.g. Explore Collection" />
+              </Field>
+            </ItemCard>
           </div>
         </StorefrontSectionPanel>
       )}
+
+
 
       {/* ══ Footer & contact ══ */}
       {activeSection === 'footer' && (

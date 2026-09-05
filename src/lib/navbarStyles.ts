@@ -11,18 +11,18 @@ export function navShellClass(scrolled: boolean) {
 /**
  * Sticky/fixed shell for header.
  * Auto-hide mobile routes use fixed + translateY so hide/show never changes document height (no scrollY feedback loop).
- * `autoHideAllBreakpoints` — PDP desktop: same hide-on-scroll as mobile.
+ * `autoHideAllViewports` — PDP / premium desktop: same hide-on-scroll as mobile.
  */
 export function navStickyShellClass(
   visible: boolean,
   autoHide = false,
-  autoHideAllBreakpoints = false,
+  autoHideAllViewports = false,
 ) {
   if (autoHide) {
-    if (autoHideAllBreakpoints) {
+    if (autoHideAllViewports) {
       return cn(
         "fixed inset-x-0 top-0 z-50",
-        "transition-transform duration-200 ease-out motion-reduce:transition-none",
+        "transition-transform duration-300 ease-out motion-reduce:transition-none",
         visible ?
           "translate-y-0"
         : "-translate-y-full pointer-events-none",
@@ -42,13 +42,13 @@ export function navStickyShellClass(
   return cn("sticky top-0 z-50 lg:overflow-visible");
 }
 
-/** Reserves header height in flow when the bar is fixed (auto-hide mobile routes). */
+/** Reserves header height in flow when the bar is fixed (auto-hide routes). */
 export function navMobileFlowSpacerClass(
   autoHide: boolean,
-  allBreakpoints = false,
+  allViewports = false,
 ) {
   if (!autoHide) return "hidden";
-  return allBreakpoints ?
+  return allViewports ?
       "h-[4.25rem] shrink-0"
     : "h-[4.25rem] shrink-0 lg:hidden";
 }

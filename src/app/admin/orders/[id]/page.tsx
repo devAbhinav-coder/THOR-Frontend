@@ -146,7 +146,7 @@ function CustomGiftAccordion({ order }: { order: any }) {
             <Gift className="h-5 w-5 text-gold-600" />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-sm">Bespoke Custom Gift</p>
+            <p className="font-bold text-gray-900 text-sm">Custom order details</p>
             <p className="text-xs text-gold-700">Customer-submitted specifications</p>
           </div>
         </div>
@@ -155,14 +155,13 @@ function CustomGiftAccordion({ order }: { order: any }) {
 
       {open && (
         <div className="border-t border-gold-100 p-5 space-y-4">
-          {/* Link to request */}
           {order.customRequestId && (
-            <a
-              href={`/admin/gifting?req=${encodeURIComponent(order.customRequestId)}&tab=requests`}
-              className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 bg-white px-3 py-1.5 rounded-lg border border-brand-100"
-            >
-              <Sparkles className="h-3 w-3" /> View Original Request <ExternalLink className="h-3 w-3" />
-            </a>
+            <p className="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gold-100">
+              Request ID:{" "}
+              <span className="font-mono font-semibold text-gray-900">
+                {order.customRequestId}
+              </span>
+            </p>
           )}
 
           {/* Items with custom field answers */}

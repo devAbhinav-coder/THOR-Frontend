@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye, Crown } from 'lucide-react';
 import { adminApi, productApi } from '@/lib/api';
 import { fetchAdminCatalogCategories } from '@/lib/adminCatalog';
 import { Category, Product } from '@/types';
@@ -15,11 +15,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SearchField } from '@/components/ui/SearchField';
 import ProductFormModal from '@/components/admin/ProductFormModal';
+import AdminPremiumBadge, { isAdminPremiumProduct } from '@/components/admin/AdminPremiumBadge';
 import toast from 'react-hot-toast';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminErrorState from '@/components/admin/AdminErrorState';
+
+type QuickFilter = 'all' | 'featured' | 'active' | 'inactive' | 'premium';
 
 export default function AdminProductsPage() {
   const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
@@ -27,7 +30,7 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 420);
-  const [quickFilter, setQuickFilter] = useState<'all' | 'featured' | 'active' | 'inactive'>('all');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [catalogCategories, setCatalogCategories] = useState<Category[]>([]);
   const [sortBy, setSortBy] = useState<'-createdAt' | '-viewCount' | 'viewCount' | '-soldCount' | 'soldCount'>('-createdAt');
@@ -42,6 +45,17 @@ export default function AdminProductsPage() {
   const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    try {
+      const f = new URLSearchParams(window.location.search).get('filter');
+      if (f === 'premium' || f === 'featured' || f === 'active' || f === 'inactive') {
+        setQuickFilter(f);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt', limit = 20, filter = quickFilter, append = false) => {
     if (append) setIsFetchingNextPage(true);
     else setIsLoading(true);
@@ -55,6 +69,7 @@ export default function AdminProductsPage() {
       if (filter === 'featured') params.isFeatured = 'true';
       if (filter === 'active') params.isActive = 'true';
       if (filter === 'inactive') params.isActive = 'false';
+      if (filter === 'premium') params.isPremium = 'true';
       if (query) {
         if (categoryFilter) params.category = categoryFilter;
         const searchRes = await adminApi.searchProducts({
@@ -115,6 +130,7 @@ export default function AdminProductsPage() {
         if (filter === 'featured') params.isFeatured = 'true';
         if (filter === 'active') params.isActive = 'true';
         if (filter === 'inactive') params.isActive = 'false';
+        if (filter === 'premium') params.isPremium = 'true';
         const res = await adminApi.getProducts(params);
         if (append) {
           setProducts(prev => {
@@ -204,20 +220,27 @@ export default function AdminProductsPage() {
     setIsModalOpen(false);
     setEditProduct(null);
     if (savedProduct?._id) {
+      const exists = products.some((p) => p._id === savedProduct._id);
       setProducts((prev) => {
         const idx = prev.findIndex((p) => p._id === savedProduct._id);
         if (idx >= 0) {
           const next = [...prev];
-          next[idx] = savedProduct;
+          // Keep list order & scroll — merge in place (full refetch was
+          // resetting infinite-scroll pages and reshuffling the table).
+          next[idx] = { ...prev[idx], ...savedProduct };
           return next;
         }
         return [savedProduct, ...prev];
       });
-      if (!products.some((p) => p._id === savedProduct._id)) {
-        setPagination((prev) => ({ ...prev, totalProducts: prev.totalProducts + 1 }));
+      if (!exists) {
+        setPagination((p) => ({
+          ...p,
+          totalProducts: p.totalProducts + 1,
+        }));
       }
+      return;
     }
-    fetchProducts(pagination.currentPage, debouncedSearch, sortBy);
+    fetchProducts(1, debouncedSearch, sortBy);
   };
 
   const stockMeta = (p: Product) => {
@@ -357,6 +380,7 @@ export default function AdminProductsPage() {
               </div>
               {[
                 { id: 'all', label: 'All' },
+                { id: 'premium', label: 'Premium', icon: Crown },
                 { id: 'featured', label: 'Featured', icon: Sparkles },
                 { id: 'active', label: 'Active', icon: CheckCircle2 },
                 { id: 'inactive', label: 'Inactive', icon: EyeOff },
@@ -424,6 +448,7 @@ export default function AdminProductsPage() {
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-gray-900 truncate max-w-[200px] group-hover:text-brand-700 transition-colors">{product.name}</p>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {isAdminPremiumProduct(product) && <AdminPremiumBadge compact />}
                           {product.isFeatured && <Badge variant="brand" className="text-[10px] px-1.5 py-0">Featured</Badge>}
                           {product.fabric && <span className="text-xs font-semibold text-gray-500">{product.fabric}</span>}
                         </div>
@@ -576,6 +601,7 @@ export default function AdminProductsPage() {
                       <div className="mt-2 space-y-0.5">
                         {renderPrice(product)}
                         <div className="flex items-center gap-2 flex-wrap pt-1">
+                        {isAdminPremiumProduct(product) && <AdminPremiumBadge compact />}
                         {product.isFeatured && <Badge variant="brand" className="text-[11px]">Featured</Badge>}
                         <Badge variant={product.isActive ? 'success' : 'error'} className="text-[11px]">
                           {product.isActive ? 'Active' : 'Inactive'}

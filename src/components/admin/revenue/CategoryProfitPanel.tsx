@@ -2,6 +2,7 @@
 
 import { formatPrice } from '@/lib/utils';
 import type { CategoryProfitRow } from '@/types';
+import AdminPremiumBadge from '@/components/admin/AdminPremiumBadge';
 
 export default function CategoryProfitPanel({ rows }: { rows: CategoryProfitRow[] }) {
   if (!rows.length) return null;
@@ -13,10 +14,14 @@ export default function CategoryProfitPanel({ rows }: { rows: CategoryProfitRow[
       {rows.map((cat) => {
         const pct = (Math.abs(cat.profit) / maxProfit) * 100;
         const negative = cat.profit < 0;
+        const isPremium = String(cat._id || '').toLowerCase() === 'premium';
         return (
           <div key={cat._id} className="space-y-1 p-2.5 rounded-xl hover:bg-[#FAF9F6] transition-all duration-300 group">
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-semibold text-gray-800 truncate">{cat._id}</span>
+              <span className="font-semibold text-gray-800 truncate inline-flex items-center gap-1.5 min-w-0">
+                <span className="truncate">{isPremium ? 'Premium Edit' : cat._id}</span>
+                {isPremium ? <AdminPremiumBadge compact /> : null}
+              </span>
               <span className="text-gray-500 tabular-nums shrink-0">{cat.units} u</span>
             </div>
             <div className="flex items-center justify-between gap-2 text-[11px] mb-1">

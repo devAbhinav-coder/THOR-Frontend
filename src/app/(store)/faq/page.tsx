@@ -11,7 +11,7 @@ export const metadata: Metadata = buildInfoPageMetadata({
   path: "/faq",
   title: FAQ_H1,
   description:
-    "FAQs on sarees, salwar suits & corsets — orders, India shipping, 5-day returns, sizing, and handmade or corporate gifting.",
+    "FAQs on sarees, salwar suits & corsets — orders, India shipping, 5-day returns, sizing, and The Rani Premium Edit.",
   priority: "support",
 });
 
@@ -25,8 +25,8 @@ const faqItems = [
     a: "Yes. We curate premium sarees, salwar suits, and corsets — including bridal-ready and festive options for weddings and celebrations.",
   },
   {
-    q: "Can I place a custom gifting request?",
-    a: "Yes. Visit the gifting section for handmade gifts, corporate gifting, and hampers. For customizable products, a quote/request flow is used before finalization.",
+    q: "What is The Rani Premium Edit?",
+    a: "The Rani Premium Edit is our curated collection of hand painted sarees, pure silk sarees, Banarasi and Madhubani pieces, and couple hand painted sets — available at /premium.",
   },
   {
     q: "What are your shipping timelines?",
@@ -99,7 +99,7 @@ export default function FaqPage() {
       />
       <LegalPageLayout
         title={FAQ_H1}
-        description='Quick answers about buying sarees, salwar suits, and corsets online — orders, shipping across India, returns, sizing, and handmade or corporate gifting at The House of Rani.'
+        description='Quick answers about buying sarees, salwar suits, and corsets online — orders, shipping across India, returns, sizing, and The Rani Premium Edit at The House of Rani.'
         lastUpdated='31 March 2026'
       >
         <h2>Common questions</h2>
@@ -128,8 +128,8 @@ export default function FaqPage() {
             Returns
           </Link>
           {" · "}
-          <Link href='/gifting' className='text-brand-600 hover:underline'>
-            Gifting
+          <Link href='/premium' className='text-brand-600 hover:underline'>
+            Premium Edit
           </Link>
           {" · "}
           <Link href='/blog' className='text-brand-600 hover:underline'>

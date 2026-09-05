@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ArrowUpRight, Star } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import type { DashboardAnalytics } from '@/types';
+import AdminPremiumBadge, { isAdminPremiumProduct } from '@/components/admin/AdminPremiumBadge';
 
 type Row = DashboardAnalytics['topViewedProducts'][number];
 
@@ -23,6 +24,11 @@ export default function TopViewedTable({ rows, compact = false }: { rows: Row[];
     <div className="divide-y divide-gray-50 max-h-[320px] overflow-y-auto [scrollbar-width:thin]">
       {rows.map((p, i) => {
         const viewPct = (p.views / maxViews) * 100;
+        const premium = isAdminPremiumProduct(p);
+        const href =
+          premium ?
+            `/premium/${encodeURIComponent(p.slug)}`
+          : `/shop/${encodeURIComponent(p.slug)}`;
         return (
           <div
             key={String(p._id)}
@@ -37,7 +43,10 @@ export default function TopViewedTable({ rows, compact = false }: { rows: Row[];
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className={`font-medium text-gray-900 truncate ${compact ? 'text-xs' : 'text-sm'}`}>{p.name}</p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className={`font-medium text-gray-900 truncate ${compact ? 'text-xs' : 'text-sm'}`}>{p.name}</p>
+                    {premium ? <AdminPremiumBadge compact /> : null}
+                  </div>
                   <p className="text-[10px] text-gray-400 truncate">
                     {p.category} · {formatPrice(p.price)}
                     {p.ratingAvg > 0 ?
@@ -65,7 +74,7 @@ export default function TopViewedTable({ rows, compact = false }: { rows: Row[];
               </div>
             </div>
             <Link
-              href={`/shop/${encodeURIComponent(p.slug)}`}
+              href={href}
               target="_blank"
               className="shrink-0 p-1 rounded text-gray-400 hover:text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity"
               aria-label="View on store"

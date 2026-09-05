@@ -34,6 +34,8 @@ export type ColorSizeRow = {
   stock: number;
   price?: number;
   costPrice?: number;
+  /** True when admin typed SKU by hand — size/color changes won't overwrite it. */
+  skuManual?: boolean;
 };
 
 export type ColorVariantGroup = {
@@ -53,12 +55,42 @@ function newGroupId() {
   return `cg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function generateSku(colorName = "", size = "Free Size"): string {
+function skuParts(colorName = "", size = "Free Size") {
   const colorPart =
     colorName.trim().replace(/\s+/g, "-").slice(0, 12).toUpperCase() || "PRD";
   const sizePart =
     size.trim().replace(/\s+/g, "-").slice(0, 8).toUpperCase() || "FREE";
+  return { colorPart, sizePart };
+}
+
+function generateSku(colorName = "", size = "Free Size"): string {
+  const { colorPart, sizePart } = skuParts(colorName, size);
   return `SKU-${colorPart}-${sizePart}-${Date.now().toString(36).slice(-5)}`;
+}
+
+/** Auto SKUs look like SKU-COLOR-SIZE-xxxxx (from generateSku). */
+function isLikelyAutoSku(sku: string, colorName: string, size: string): boolean {
+  const s = sku.trim();
+  if (!s) return true;
+  const { colorPart, sizePart } = skuParts(colorName, size);
+  if (s.startsWith(`SKU-${colorPart}-${sizePart}-`)) return true;
+  // Same color, any size segment — still treat as auto so size edits refresh SKU.
+  return new RegExp(
+    `^SKU-${colorPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-[^-]+-[a-z0-9]+$`,
+    "i",
+  ).test(s);
+}
+
+function skuForSizeOrColorChange(
+  row: ColorSizeRow,
+  colorName: string,
+  nextSize: string,
+): string {
+  if (row.skuManual) return row.sku;
+  if (!row.sku.trim() || isLikelyAutoSku(row.sku, colorName, row.size)) {
+    return generateSku(colorName, nextSize.trim() || "Free Size");
+  }
+  return row.sku;
 }
 
 function emptySizeRow(colorName = "", size = "Free Size"): ColorSizeRow {
@@ -189,14 +221,20 @@ export function flattenColorGroups(groups: ColorVariantGroup[]): ProductVariant[
 
 export function buildImagesMetaFromGroups(
   groups: ColorVariantGroup[],
-): Array<{ publicId?: string; color?: string; alt?: string }> {
-  const meta: Array<{ publicId?: string; color?: string; alt?: string }> = [];
+): Array<{ publicId?: string; url?: string; color?: string; alt?: string }> {
+  const meta: Array<{
+    publicId?: string;
+    url?: string;
+    color?: string;
+    alt?: string;
+  }> = [];
   const multiColor = groups.length > 1;
   for (const g of groups) {
     const colorTag = g.color.trim();
     for (const img of g.existingImages) {
       meta.push({
         publicId: img.publicId,
+        url: img.url,
         color: colorTag || (multiColor ? undefined : img.color),
         alt: img.alt,
       });
@@ -272,7 +310,8 @@ function patchFromColorName(
     })),
     sizes: group.sizes.map((row) => ({
       ...row,
-      sku: row.sku.trim() ? row.sku : generateSku(color, row.size),
+      sku: skuForSizeOrColorChange(row, color, row.size),
+      ...(row.skuManual ? {} : { skuManual: false }),
     })),
   };
 }
@@ -521,10 +560,7 @@ export default function ProductColorVariantEditor({
                     })),
                     sizes: group.sizes.map((row) => ({
                       ...row,
-                      sku:
-                        row.sku.trim() ?
-                          row.sku
-                        : generateSku(color, row.size),
+                      sku: skuForSizeOrColorChange(row, color, row.size),
                     })),
                   });
                 }}
@@ -673,10 +709,7 @@ export default function ProductColorVariantEditor({
                         sizes[rowIndex] = {
                           ...row,
                           size: val,
-                          sku:
-                            row.sku.trim() ?
-                              row.sku
-                            : generateSku(group.color, val),
+                          sku: skuForSizeOrColorChange(row, group.color, val),
                         };
                       }
                       updateGroup(group.id, { sizes });
@@ -700,10 +733,7 @@ export default function ProductColorVariantEditor({
                         sizes[rowIndex] = {
                           ...row,
                           size,
-                          sku:
-                            row.sku.trim() ?
-                              row.sku
-                            : generateSku(group.color, size),
+                          sku: skuForSizeOrColorChange(row, group.color, size),
                         };
                         updateGroup(group.id, { sizes });
                       }}
@@ -716,7 +746,11 @@ export default function ProductColorVariantEditor({
                   value={row.sku}
                   onChange={(e) => {
                     const sizes = [...group.sizes];
-                    sizes[rowIndex] = { ...row, sku: e.target.value };
+                    sizes[rowIndex] = {
+                      ...row,
+                      sku: e.target.value,
+                      skuManual: true,
+                    };
                     updateGroup(group.id, { sizes });
                   }}
                 />

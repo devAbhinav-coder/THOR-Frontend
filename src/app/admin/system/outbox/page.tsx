@@ -14,7 +14,6 @@ const OUTBOX_TYPES = [
   'cart',
   'inventory',
   'coupon',
-  'gifting',
   'push',
   'blog_publish',
 ] as const;

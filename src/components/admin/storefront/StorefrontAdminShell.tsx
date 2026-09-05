@@ -46,7 +46,7 @@ export default function StorefrontAdminShell({
                 Website appearance
               </h1>
               <p className="text-xs sm:text-sm text-navy-200/90 mt-1 max-w-lg">
-                Edit banners, homepage sections, gifting page, and site-wide content — pick a section below, edit, then press Save.
+                Edit banners, homepage sections, Premium Edit, and site-wide content — pick a section below, edit, then press Save.
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">

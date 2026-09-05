@@ -19,10 +19,12 @@ export const SEO_CRAWL_DISALLOW = [
   "/wishlist/",
   "/dashboard",
   "/dashboard/",
+  "/gifting",
+  "/gifting/",
   "/api/",
 ] as const;
 
-/** Public storefront pages — sitemap + explicit robots Allow (includes /about). */
+/** Public storefront pages — sitemap + explicit robots Allow. */
 export const SEO_SITEMAP_STATIC: Array<{
   path: string;
   changeFrequency: NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
@@ -30,13 +32,12 @@ export const SEO_SITEMAP_STATIC: Array<{
 }> = [
   { path: "/", changeFrequency: "daily", priority: 1 },
   { path: "/shop/collections", changeFrequency: "daily", priority: 0.95 },
+  { path: "/premium", changeFrequency: "daily", priority: 0.93 },
+  { path: "/premium/women", changeFrequency: "daily", priority: 0.91 },
+  { path: "/premium/couple", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/premium/men", changeFrequency: "weekly", priority: 0.88 },
+  { path: "/premium/kids", changeFrequency: "weekly", priority: 0.86 },
   // Category/subcategory URLs come from mega-menu at sitemap generation time.
-  { path: "/gifting", changeFrequency: "daily", priority: 0.9 },
-  { path: "/gifting/handmade-gifts", changeFrequency: "weekly", priority: 0.89 },
-  { path: "/gifting/corporate-gifts", changeFrequency: "weekly", priority: 0.88 },
-  { path: "/gifting/wedding-gifts", changeFrequency: "weekly", priority: 0.86 },
-  { path: "/gifting/festival-gifts", changeFrequency: "weekly", priority: 0.84 },
-  { path: "/gifting/birthday-gifts", changeFrequency: "weekly", priority: 0.82 },
   { path: "/about", changeFrequency: "monthly", priority: 0.84 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.78 },
   { path: "/faq", changeFrequency: "weekly", priority: 0.72 },
@@ -46,17 +47,16 @@ export const SEO_SITEMAP_STATIC: Array<{
   { path: "/privacy", changeFrequency: "yearly", priority: 0.55 },
 ];
 
-/** Highlighted in robots.txt so crawlers clearly index trust & brand pages. */
+/** Highlighted in robots.txt so crawlers clearly index trust, shop & Premium Edit. */
 export const SEO_CRAWL_ALLOW_PUBLIC = [
   "/",
   "/shop",
   "/shop/collections",
-  "/gifting",
-  "/gifting/handmade-gifts",
-  "/gifting/corporate-gifts",
-  "/gifting/wedding-gifts",
-  "/gifting/festival-gifts",
-  "/gifting/birthday-gifts",
+  "/premium",
+  "/premium/women",
+  "/premium/men",
+  "/premium/kids",
+  "/premium/couple",
   "/about",
   "/blog",
   "/faq",
@@ -64,6 +64,40 @@ export const SEO_CRAWL_ALLOW_PUBLIC = [
   "/returns",
   "/terms",
   "/privacy",
+  "/llms.txt",
+  "/ai.txt",
+] as const;
+
+/** Image SEO allow list (Googlebot-Image) — keep in sync with public storefront media. */
+export const SEO_CRAWL_ALLOW_IMAGES = [
+  "/",
+  "/shop",
+  "/shop/collections",
+  "/premium",
+  "/premium/women",
+  "/premium/men",
+  "/premium/kids",
+  "/premium/couple",
+  "/about",
+  "/blog",
+] as const;
+
+/**
+ * Answer-engine / AEO crawlers — allow public pages + llms.txt.
+ * Training-only bots stay blocked in robots.ts.
+ */
+export const SEO_AI_ANSWER_BOTS = [
+  "GPTBot",
+  "OAI-SearchBot",
+  "ChatGPT-User",
+  "anthropic-ai",
+  "Claude-Web",
+  "ClaudeBot",
+  "PerplexityBot",
+  "Applebot-Extended",
+  "Amazonbot",
+  "meta-externalagent",
+  "YouBot",
 ] as const;
 
 export function isAuthModalSearchParam(

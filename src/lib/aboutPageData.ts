@@ -250,9 +250,9 @@ function buildStaticInternalLinks(): AboutInternalLink[] {
       group: "shop",
     },
     {
-      href: "/gifting",
-      label: "Handmade & corporate gifting",
-      description: "Handmade gifts, corporate sets, and curated hampers.",
+      href: "/premium",
+      label: "Premium saree edit",
+      description: "Handwoven silks and heritage weaves curated for the discerning few.",
       group: "shop",
     },
     {
@@ -315,6 +315,17 @@ function buildCategoryLinks(
     }));
 }
 
+/** Prefer first occurrence (static curated copy over mega-menu duplicates). */
+function dedupeInternalLinks(links: AboutInternalLink[]): AboutInternalLink[] {
+  const seen = new Set<string>();
+  return links.filter((l) => {
+    const key = `${l.group}:${l.href}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export type AboutPageData = {
   visuals: AboutPageVisuals;
   schemaImages: AboutImage[];
@@ -332,10 +343,10 @@ export async function resolveAboutPageData(): Promise<AboutPageData> {
   const categories = (categoryStats || []).filter(isShopCatalogCategory).slice(0, 8);
   const visuals = await resolveAboutVisualsAsync(featured);
   const products = toProductTeasers(featured);
-  const internalLinks = [
+  const internalLinks = dedupeInternalLinks([
     ...buildStaticInternalLinks(),
     ...buildCategoryLinks(categories as Category[]),
-  ];
+  ]);
 
   return {
     visuals,

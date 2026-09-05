@@ -7,13 +7,13 @@ import {
   ArrowRight,
   ArrowUpRight,
   ChevronRight,
-  Gift,
   Sparkles,
   ShoppingBag,
 } from "lucide-react";
 import AboutChapterFeatures from "@/components/about/AboutChapterFeatures";
 import AboutExploreHub from "@/components/about/AboutExploreHub";
 import AboutConnectSection from "@/components/about/AboutConnectSection";
+import AboutFounderSection from "@/components/about/AboutFounderSection";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { BRAND_NAME } from "@/lib/brandSeo";
 import { cn } from "@/lib/utils";
@@ -299,6 +299,8 @@ export default function AboutPageClient({
           </div>
         </section>
 
+        <AboutFounderSection />
+
         <AboutChapterFeatures />
 
         {/* ── Bento gallery ── */}
@@ -490,9 +492,9 @@ export default function AboutPageClient({
                 <ShoppingBag className="h-4 w-4" aria-hidden />
                 Explore the collection
               </Link>
-              <Link href="/gifting" className={cn(aboutPageStyles.ctaOutlineOnDark, "min-w-[220px]")}>
-                <Gift className="h-4 w-4" aria-hidden />
-                Shop gifting
+              <Link href="/premium" className={cn(aboutPageStyles.ctaOutlineOnDark, "min-w-[220px]")}>
+                <Sparkles className="h-4 w-4" aria-hidden />
+                Premium edit
               </Link>
             </div>
           </div>

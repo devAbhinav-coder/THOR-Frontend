@@ -8,12 +8,27 @@ const RESERVED_DETAIL_LABELS = new Set([
   "tags",
 ]);
 
+/** Admin "Product specs table" key/value pairs — shown as-is on PDP. */
+export function buildPdpFormSpecPairs(
+  productDetails?: { key: string; value: string }[],
+): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = [];
+  for (const d of productDetails ?? []) {
+    const label = String(d.key ?? "").trim();
+    const value = String(d.value ?? "").trim();
+    if (!label || !value) continue;
+    rows.push({ label, value });
+  }
+  return rows;
+}
+
 export function buildPdpSpecRows(input: {
   category: string;
   subcategory?: string;
   fabric?: string;
   sku: string;
   tags: string[];
+  occasions?: string[];
   productDetails?: { key: string; value: string }[];
 }): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
@@ -33,12 +48,16 @@ export function buildPdpSpecRows(input: {
   add("Fabric", input.fabric);
   add("SKU", input.sku);
   if (input.tags.length > 0) add("Tags", input.tags.join(", "));
+  if ((input.occasions?.length ?? 0) > 0) {
+    add("Occasions", (input.occasions ?? []).join(", "));
+  }
 
   for (const d of input.productDetails ?? []) {
     if (!d.key?.trim() || !d.value?.trim()) continue;
     const detailKey = d.key.toLowerCase().trim();
     if (/care|wash|iron|dry|maintain/i.test(detailKey)) continue;
     if (RESERVED_DETAIL_LABELS.has(detailKey)) continue;
+    if (detailKey === "occasions" || detailKey === "occasion") continue;
     add(d.key.trim(), d.value.trim());
   }
 
@@ -54,6 +73,7 @@ export function usePdpSpecRows(
     input.fabric,
     input.sku,
     input.tags,
+    input.occasions,
     input.productDetails,
   ]);
 }

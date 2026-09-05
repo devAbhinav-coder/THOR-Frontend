@@ -5,12 +5,14 @@ import { PackageX, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 import { cn } from '@/lib/utils';
 import type { DashboardAnalytics } from '@/types';
+import AdminPremiumBadge, { isAdminPremiumProduct } from '@/components/admin/AdminPremiumBadge';
 
 type StockProduct = {
   _id: string;
   name: string;
   totalStock: number;
   category: string;
+  isPremium?: boolean;
 };
 
 type StockAlertsPanelProps = {
@@ -26,7 +28,10 @@ function ProductRow({ product, variant }: { product: StockProduct; variant: 'out
   return (
     <div className="flex items-center justify-between gap-3 py-2.5 border-b border-gray-50 last:border-0">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+          {isAdminPremiumProduct(product) ? <AdminPremiumBadge compact /> : null}
+        </div>
         <p className="text-xs text-gray-500 truncate">{product.category}</p>
       </div>
       <span

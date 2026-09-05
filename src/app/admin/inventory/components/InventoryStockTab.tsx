@@ -12,6 +12,7 @@ import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import AdminPremiumBadge, { isAdminPremiumProduct } from '@/components/admin/AdminPremiumBadge';
 import InventoryBusinessSummary, {
   type InventoryBusinessSummaryData,
   type OperatingCostsSnapshot,
@@ -55,6 +56,7 @@ interface InventoryProduct {
   name: string;
   category: string;
   fabric?: string;
+  isPremium?: boolean;
   images: { url: string }[];
   variants: Variant[];
   totalStock: number;
@@ -410,7 +412,10 @@ function ProductRow({
               />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate max-w-[220px]">{product.name}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold text-gray-900 truncate max-w-[220px]">{product.name}</p>
+                {isAdminPremiumProduct(product) ? <AdminPremiumBadge compact /> : null}
+              </div>
               <p className="text-xs text-gray-400">
                 {product.category}
                 {product.fabric ? ` · ${product.fabric}` : ''}
@@ -764,6 +769,7 @@ export default function InventoryStockTab() {
           <div className="flex items-center gap-2 flex-wrap">
             {([
               { id: 'all', label: 'All' },
+              { id: 'premium', label: 'Premium' },
               { id: 'sold', label: 'With sales' },
               { id: 'low', label: 'Low stock' },
               { id: 'out', label: 'Out of stock' },

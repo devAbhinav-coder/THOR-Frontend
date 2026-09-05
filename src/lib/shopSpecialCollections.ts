@@ -1,7 +1,14 @@
 import type { Category, HomeExploreHouse } from "@/types";
+import {
+  PREMIUM_COLLECTION_CARD,
+  PREMIUM_COLLECTION_HREF,
+  PREMIUM_HERO_IMAGE,
+} from "@/lib/premiumCollectionData";
 
 export const SHOP_SALE_HREF = "/shop/collections?onSale=true";
-export const GIFTING_HREF = "/gifting";
+export const PREMIUM_HREF = PREMIUM_COLLECTION_HREF;
+/** @deprecated Use PREMIUM_HREF — gifting removed from storefront nav */
+export const GIFTING_HREF = PREMIUM_COLLECTION_HREF;
 
 export const SHOP_SALE_CARD = {
   id: "shop-sale",
@@ -12,14 +19,10 @@ export const SHOP_SALE_CARD = {
     "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=85",
 } as const;
 
-export const SHOP_GIFTING_CARD = {
-  id: "shop-gifting",
-  name: "Gifting",
-  subtitle: "THE COLLECTION",
-  href: GIFTING_HREF,
-  image:
-    "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=600&q=85",
-} as const;
+export const SHOP_PREMIUM_CARD = PREMIUM_COLLECTION_CARD;
+
+/** @deprecated Use SHOP_PREMIUM_CARD */
+export const SHOP_GIFTING_CARD = SHOP_PREMIUM_CARD;
 
 export function resolveSaleCardImage(
   exploreHouse?: Pick<HomeExploreHouse, "saleImage"> | null,
@@ -42,36 +45,45 @@ export function resolveSaleCard(
   };
 }
 
-export function resolveGiftingCardImage(
-  categories?: Array<Pick<Category, "image" | "name" | "slug" | "isGiftCategory">>,
+export function resolvePremiumCardImage(
   exploreHouse?: Pick<HomeExploreHouse, "giftingImage"> | null,
 ): string {
   const admin = String(exploreHouse?.giftingImage || "").trim();
-  if (admin) return admin;
-  const gifting = categories?.find(
-    (c) =>
-      c.isGiftCategory ||
-      String(c.name || "").toLowerCase().includes("gift") ||
-      String(c.slug || "").toLowerCase().includes("gift"),
-  );
-  return gifting?.image || SHOP_GIFTING_CARD.image;
+  return admin || PREMIUM_HERO_IMAGE;
 }
 
-export function resolveGiftingCard(
-  categories?: Array<Pick<Category, "image" | "name" | "slug" | "isGiftCategory">>,
+export function resolvePremiumCard(
   exploreHouse?: Pick<
     HomeExploreHouse,
     "giftingImage" | "giftingName" | "giftingSubtitle"
   > | null,
 ) {
   const name =
-    String(exploreHouse?.giftingName || "").trim() || SHOP_GIFTING_CARD.name;
+    String(exploreHouse?.giftingName || "").trim() || SHOP_PREMIUM_CARD.name;
   const subtitle =
-    String(exploreHouse?.giftingSubtitle || "").trim() || SHOP_GIFTING_CARD.subtitle;
+    String(exploreHouse?.giftingSubtitle || "").trim() ||
+    SHOP_PREMIUM_CARD.subtitle;
   return {
-    ...SHOP_GIFTING_CARD,
-    name,
-    subtitle,
-    image: resolveGiftingCardImage(categories, exploreHouse),
+    ...SHOP_PREMIUM_CARD,
+    name: /gift/i.test(name) ? SHOP_PREMIUM_CARD.name : name,
+    subtitle: /gift/i.test(subtitle) ? SHOP_PREMIUM_CARD.subtitle : subtitle,
+    image: resolvePremiumCardImage(exploreHouse),
   };
 }
+
+/** @deprecated Use resolvePremiumCard */
+export function resolveGiftingCard(
+  _categories?: Array<Pick<Category, "image" | "name" | "slug" | "isGiftCategory">>,
+  exploreHouse?: Pick<
+    HomeExploreHouse,
+    "giftingImage" | "giftingName" | "giftingSubtitle"
+  > | null,
+) {
+  return resolvePremiumCard(exploreHouse);
+}
+
+/** @deprecated Use resolvePremiumCardImage */
+export const resolveGiftingCardImage = (
+  _categories?: Array<Pick<Category, "image" | "name" | "slug" | "isGiftCategory">>,
+  exploreHouse?: Pick<HomeExploreHouse, "giftingImage"> | null,
+) => resolvePremiumCardImage(exploreHouse);

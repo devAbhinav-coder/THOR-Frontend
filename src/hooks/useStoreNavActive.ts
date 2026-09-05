@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 export type StoreNavActive = {
   home: boolean;
   shop: boolean;
-  gifting: boolean;
+  premium: boolean;
   cart: boolean;
   orders: boolean;
   userHub: boolean;
@@ -18,7 +18,7 @@ export function getStoreNavActive(
   return {
     home: pathname === "/",
     shop: pathname.startsWith("/shop"),
-    gifting: pathname.startsWith("/gifting"),
+    premium: pathname.startsWith("/premium"),
     cart: pathname.startsWith("/cart"),
     orders: pathname.startsWith("/dashboard/orders"),
     userHub:

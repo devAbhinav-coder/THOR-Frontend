@@ -4,7 +4,7 @@ import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 import {
   fetchAllSitemapBlogs,
-  fetchAllSitemapGiftingProducts,
+  fetchAllSitemapPremiumProducts,
   fetchAllSitemapProducts,
 } from "@/lib/sitemapData";
 import { SEO_SITEMAP_STATIC } from "@/lib/seoCrawl";
@@ -23,7 +23,9 @@ function isShopCatalogCategoryLite(c: CategoryLite): boolean {
   return !(
     name.includes("gift") ||
     name.includes("gifting") ||
-    slug.includes("gift")
+    name === "premium" ||
+    slug.includes("gift") ||
+    slug === "premium"
   );
 }
 
@@ -55,10 +57,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!apiUrl) return baseRoutes;
 
   try {
-    const [products, blogs, giftingProducts, megaMenuRes] = await Promise.all([
+    const [products, blogs, premiumProducts, megaMenuRes] = await Promise.all([
       fetchAllSitemapProducts(),
       fetchAllSitemapBlogs(),
-      fetchAllSitemapGiftingProducts(),
+      fetchAllSitemapPremiumProducts(),
       fetch(`${apiUrl}/navigation/mega-menu`, {
         next: { revalidate: 3600 },
       }),
@@ -67,7 +69,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const megaMenuJson = megaMenuRes.ok ? await megaMenuRes.json() : null;
     const categories: MegaMenuCategory[] = megaMenuJson?.data?.categories || [];
 
-    // Track product slugs already emitted to avoid apparel/gifting PDP duplicates.
     const emittedSlugs = new Set<string>();
 
     const productUrls: MetadataRoute.Sitemap = products.flatMap((p) => {
@@ -88,28 +89,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
       ];
     });
-
-    // Gifting-only PDPs that are not already in the main catalog.
-    const giftingProductUrls: MetadataRoute.Sitemap = giftingProducts.flatMap(
-      (p) => {
-        if (!p?.slug || emittedSlugs.has(p.slug)) return [];
-        emittedSlugs.add(p.slug);
-        const giftImages = (p.images || [])
-          .filter((img) => img?.url)
-          .slice(0, 5)
-          .map((img) => img.url as string);
-
-        return [
-          {
-            url: `${appUrl}/shop/${encodeURIComponent(p.slug)}`,
-            lastModified: p.updatedAt ? new Date(p.updatedAt) : undefined,
-            changeFrequency: "daily" as const,
-            priority: 0.85,
-            ...(giftImages.length > 0 ? { images: giftImages } : {}),
-          },
-        ];
-      },
-    );
 
     const blogUrls: MetadataRoute.Sitemap = blogs.flatMap((b) => {
       if (!b?.slug) return [];
@@ -168,11 +147,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         return [catRoute, ...subRoutes];
       });
 
+    const premiumProductUrls: MetadataRoute.Sitemap = premiumProducts.flatMap(
+      (p) => {
+        const routeSlug = String(p.premiumSlug || p.slug || "").trim();
+        if (!routeSlug) return [];
+        const premiumImages = [
+          p.premiumHeroImage?.url,
+          ...(p.images || []).map((img) => img?.url),
+        ]
+          .filter((url): url is string => Boolean(url))
+          .slice(0, 5);
+
+        return [
+          {
+            url: `${appUrl}/premium/${encodeURIComponent(routeSlug)}`,
+            lastModified: p.updatedAt ? new Date(p.updatedAt) : undefined,
+            changeFrequency: "daily" as const,
+            priority: 0.9,
+            ...(premiumImages.length > 0 ? { images: premiumImages } : {}),
+          },
+        ];
+      },
+    );
+
     return dedupeSitemap([
       ...baseRoutes,
       ...categoryUrls,
       ...productUrls,
-      ...giftingProductUrls,
+      ...premiumProductUrls,
       ...blogUrls,
     ]);
   } catch {

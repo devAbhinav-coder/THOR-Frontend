@@ -6,6 +6,13 @@ export function isStoreProductDetailPath(pathname: string): boolean {
   return true;
 }
 
+/** `/premium/[slug]` premium product detail — not the collection landing. */
+export function isPremiumProductDetailPath(pathname: string): boolean {
+  if (!pathname.startsWith("/premium/")) return false;
+  const slug = pathname.slice("/premium/".length).split("/")[0]?.trim();
+  return slug.length > 0;
+}
+
 /** Main shop grid — `/shop`, `/shop/collections`, and legacy `/shop/category/...`. */
 export function isStoreShopListingPath(pathname: string): boolean {
   if (pathname === "/shop") return true;

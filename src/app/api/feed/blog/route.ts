@@ -34,7 +34,7 @@ export async function GET() {
   <channel>
     <title>The House of Rani Journal</title>
     <link>${siteUrl}/blog</link>
-    <description>Saree styling, bridal inspiration, gifting ideas, and stories from The House of Rani.</description>
+    <description>Saree styling, bridal inspiration, and stories from The House of Rani.</description>
     <language>en-in</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${siteUrl}/api/feed/blog" rel="self" type="application/rss+xml" />`;

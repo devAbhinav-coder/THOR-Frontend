@@ -58,9 +58,12 @@ export function fetchAllSitemapBlogs() {
   }>("/blogs", "blogs");
 }
 
-export function fetchAllSitemapGiftingProducts() {
-  return fetchPaginatedList<{ slug?: string; updatedAt?: string; images?: { url?: string }[] }>(
-    "/gifting/products",
-    "products",
-  );
+export function fetchAllSitemapPremiumProducts() {
+  return fetchPaginatedList<{
+    slug?: string;
+    premiumSlug?: string;
+    updatedAt?: string;
+    images?: { url?: string }[];
+    premiumHeroImage?: { url?: string };
+  }>("/premium/products", "products");
 }

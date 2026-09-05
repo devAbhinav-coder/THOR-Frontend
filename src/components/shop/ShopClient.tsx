@@ -48,7 +48,7 @@ import { ProductInfiniteGrid } from "@/components/product/ProductInfiniteGrid";
 import { useShopFilterPanel } from "@/components/shop/ShopFilterPanelContext";
 import { expandProductsForShopListing } from "@/lib/shopProductListing";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
-import { GIFTING_HREF, SHOP_SALE_HREF } from "@/lib/shopSpecialCollections";
+import { PREMIUM_HREF, SHOP_SALE_HREF } from "@/lib/shopSpecialCollections";
 import {
   SHOP_PRODUCT_GRID_CLASS,
   SHOP_LOAD_MORE_SKELETON_COUNT,
@@ -366,8 +366,8 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
         },
         ...catalogPills,
         {
-          name: "Gifting",
-          href: GIFTING_HREF,
+          name: "Premium",
+          href: PREMIUM_HREF,
           isActive: false,
         },
       ];

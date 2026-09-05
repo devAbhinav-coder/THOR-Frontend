@@ -8,7 +8,7 @@ import { Upload, X, AlertCircle, CheckCircle2, ZoomIn, ZoomOut, Crop, Loader2 } 
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────────── */
-export type AspectRatio = '1:1' | '3:4' | '4:3' | '16:9' | '4:5' | '5:1';
+export type AspectRatio = '1:1' | '3:4' | '4:3' | '16:9' | '4:5' | '5:1' | '21:9';
 
 interface PreviewFile {
   id: string;
@@ -41,6 +41,7 @@ const RATIO_NUM: Record<AspectRatio, number> = {
   '16:9': 16 / 9,
   '4:5': 4 / 5,
   '5:1': 5 / 1,
+  '21:9': 21 / 9,
 };
 
 const RATIO_CSS: Record<AspectRatio, string> = {
@@ -50,6 +51,7 @@ const RATIO_CSS: Record<AspectRatio, string> = {
   '16:9': '16/9',
   '4:5': '4/5',
   '5:1': '5/1',
+  '21:9': '21/9',
 };
 
 const RATIO_LABEL: Record<AspectRatio, string> = {
@@ -59,6 +61,7 @@ const RATIO_LABEL: Record<AspectRatio, string> = {
   '16:9': '16:9 wide',
   '4:5': '4:5 portrait',
   '5:1': '5:1 banner',
+  '21:9': '21:9 panoramic',
 };
 
 function formatBytes(bytes: number) {

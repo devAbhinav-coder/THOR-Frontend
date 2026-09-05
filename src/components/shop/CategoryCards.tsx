@@ -5,10 +5,10 @@ import Link from "next/link";
 import { Category, HomeExploreHouse } from "@/types";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import {
-  GIFTING_HREF,
-  SHOP_GIFTING_CARD,
+  PREMIUM_HREF,
+  SHOP_PREMIUM_CARD,
   SHOP_SALE_CARD,
-  resolveGiftingCardImage,
+  resolvePremiumCardImage,
   resolveSaleCardImage,
 } from "@/lib/shopSpecialCollections";
 import ScrollRowWithArrows from "@/components/ui/ScrollRowWithArrows";
@@ -28,7 +28,7 @@ export default function CategoryCards({
     .filter(isShopCatalogCategory)
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
-  const giftingImage = resolveGiftingCardImage(categories, exploreHouseImages);
+  const premiumImage = resolvePremiumCardImage(exploreHouseImages);
   const saleImage = resolveSaleCardImage(exploreHouseImages);
 
   const cards = [
@@ -39,7 +39,7 @@ export default function CategoryCards({
       href: `/shop/collections/${encodeURIComponent(cat.slug)}`,
       image: cat.image || "/placeholder-collection.png",
     })),
-    { ...SHOP_GIFTING_CARD, image: giftingImage, href: GIFTING_HREF },
+    { ...SHOP_PREMIUM_CARD, image: premiumImage, href: PREMIUM_HREF },
   ];
 
   return (

@@ -65,15 +65,12 @@ async function fetchPaginatedProducts(basePath: string): Promise<FeedProduct[]> 
   return all;
 }
 
-/** All catalog + gifting-only products for Google Merchant / Meta feeds. */
+/** Shop catalog products for Google Merchant / Meta feeds (no gifting). */
 export async function fetchAllMerchantFeedProducts(): Promise<FeedProduct[]> {
-  const [catalog, gifting] = await Promise.all([
-    fetchPaginatedProducts("/products"),
-    fetchPaginatedProducts("/gifting/products"),
-  ]);
+  const catalog = await fetchPaginatedProducts("/products");
 
   const bySlug = new Map<string, FeedProduct>();
-  for (const product of [...catalog, ...gifting]) {
+  for (const product of catalog) {
     const slug = String(product?.slug || "").trim();
     if (!slug) continue;
     if (!bySlug.has(slug)) bySlug.set(slug, product);

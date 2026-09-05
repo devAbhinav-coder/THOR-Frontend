@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronDown, ChevronRight, ExternalLink, AlertTriangle } from 'lucide-react';
 import { formatPrice, cn } from '@/lib/utils';
 import type { ProductProfitRow } from '@/types';
+import AdminPremiumBadge, { isAdminPremiumProduct } from '@/components/admin/AdminPremiumBadge';
 
 function marginTone(pct: number) {
   if (pct >= 40) return 'text-emerald-700 bg-emerald-50';
@@ -116,8 +117,13 @@ export default function ProductProfitTable({ products }: { products: ProductProf
                   : null}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
-                  <p className="text-[11px] text-gray-500 truncate">{p.category}</p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
+                    {isAdminPremiumProduct(p) ? <AdminPremiumBadge compact /> : null}
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate">
+                    {String(p.category || '').toLowerCase() === 'premium' ? 'Premium Edit' : p.category}
+                  </p>
                 </div>
                 <div className="hidden sm:grid sm:grid-cols-4 gap-3 text-right shrink-0">
                   <div>

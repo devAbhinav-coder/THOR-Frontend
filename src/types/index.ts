@@ -102,6 +102,25 @@ export interface Product {
   isCustomizable?: boolean;
   minOrderQty?: number;
   occasions?: string[];
+  // Premium collection
+  isPremium?: boolean;
+  audience?: "women" | "men" | "kids" | "couple";
+  premiumSlug?: string;
+  premiumSubtitle?: string;
+  craftNote?: string;
+  weaveHours?: number;
+  premiumEditorialOpen?: {
+    title?: string;
+    fields: Array<{ label: string; value: string }>;
+    note: string;
+  };
+  premiumEditorialClose?: {
+    title?: string;
+    fields: Array<{ label: string; value: string }>;
+    note: string;
+  };
+  premiumHeroImage?: ProductImage;
+  sortOrderPremium?: number;
   customFields?: {
     _id: string;
     label: string;
@@ -1107,6 +1126,17 @@ export interface StorefrontSettings {
     textColor?: "light" | "dark";
     isActive?: boolean;
   };
+  /** Home — Premium Edit showcase (above blog) */
+  homePremiumShowcase?: {
+    image?: string;
+    imagePublicId?: string;
+    preHeading?: string;
+    heading?: string;
+    text?: string;
+    linkText?: string;
+    linkUrl?: string;
+    isActive?: boolean;
+  };
   /** Home — “Explore Our House” Sale & Gifting category cards */
   homeExploreHouse?: HomeExploreHouse;
   giftingHeroBanners?: Array<{
@@ -1142,6 +1172,33 @@ export interface StorefrontSettings {
     youtubeUrl?: string;
     quickLinks?: StorefrontLink[];
     categoryLimit?: number;
+  };
+  premiumAudienceBanners?: Array<{
+    audience: 'all' | 'women' | 'men' | 'kids' | 'couple';
+    image?: string;
+    imagePublicId?: string;
+    title?: string;
+    subtitle?: string;
+    isActive?: boolean;
+  }>;
+  premiumEditorial?: {
+    image?: string;
+    imagePublicId?: string;
+    preHeading?: string;
+    heading?: string;
+    text?: string;
+    linkText?: string;
+  };
+  premiumStory?: {
+    image?: string;
+    imagePublicId?: string;
+    heading?: string;
+    text?: string;
+  };
+  premiumFinalCta?: {
+    heading?: string;
+    text?: string;
+    linkText?: string;
   };
 }
 

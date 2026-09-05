@@ -102,7 +102,7 @@ export function blogListingJsonLd(siteUrl = getSiteUrl()) {
     "@id": `${siteUrl}/blog#blog`,
     name: "The House of Rani Journal",
     description:
-      "Saree styling tips, bridal inspiration, gifting ideas, and behind-the-scenes stories from The House of Rani.",
+      "Saree styling tips, bridal inspiration, and behind-the-scenes stories from The House of Rani.",
     url: `${siteUrl}/blog`,
     publisher: {
       "@type": "Organization",

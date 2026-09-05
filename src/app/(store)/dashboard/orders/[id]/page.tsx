@@ -97,7 +97,7 @@ function CustomGiftDetails({
           </div>
           <div>
             <p className='font-bold text-gray-900 text-sm'>
-              Your Bespoke Gift Order
+              Your custom order
             </p>
             <p className='text-xs text-gold-700 mt-0.5'>
               Custom specifications & personalization details
@@ -177,15 +177,6 @@ function CustomGiftDetails({
             ))}
           </div>
 
-          {/* Link to original request */}
-          {order.customRequestId && (
-            <a
-              href={`/dashboard/gifting/${encodeURIComponent(order.customRequestId)}`}
-              className='inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 bg-white px-4 py-2 rounded-xl border border-brand-100 hover:border-brand-300 transition-colors'
-            >
-              <Gift className='h-3.5 w-3.5' /> View full request details →
-            </a>
-          )}
         </div>
       )}
     </div>

@@ -3,10 +3,10 @@ import { plainBlogExcerpt } from "@/lib/blogServer";
 export const BLOG_CATEGORIES = [
   { value: "saree-styling", label: "Saree Styling" },
   { value: "bridal", label: "Bridal" },
-  { value: "gifting", label: "Gifting" },
   { value: "fabric-care", label: "Fabric Care" },
   { value: "festive", label: "Festive" },
   { value: "trends", label: "Trends" },
+  { value: "premium-edit", label: "Premium Edit" },
 ] as const;
 
 export function blogExcerpt(

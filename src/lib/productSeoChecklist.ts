@@ -14,6 +14,7 @@ export type ProductSeoFormFields = {
   seoDescription: string;
   fabric?: string;
   category?: string;
+  isPremium?: boolean;
 };
 
 const MIN_META_DESC = 120;
@@ -38,17 +39,28 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
   const effectiveDesc = seoDescription || shortDescription;
   const fabricBit = fields.fabric ? `${fields.fabric} ` : "";
   const categoryBit = fields.category ? `${fields.category} ` : "";
+  const isPremium =
+    fields.isPremium === true ||
+    fields.category?.trim().toLowerCase() === "premium";
 
   const suggestedTitle =
     name ?
-      seoTitle || `Buy ${fabricBit}${name} Online in India`.replace(/\s+/g, " ").trim()
+      seoTitle ||
+      (isPremium ?
+        `Buy ${fabricBit}${name} Hand Painted Pure Silk Saree Online`
+          .replace(/\s+/g, " ")
+          .trim()
+      : `Buy ${fabricBit}${name} Online in India`.replace(/\s+/g, " ").trim())
     : "Add product name first";
   const suggestedDescription =
     name ?
-      `Shop ${fabricBit}${categoryBit}${name} at The House of Rani. Premium Indian ethnic wear, free delivery over ₹1,099, easy 5-day returns across India.`.slice(
-        0,
-        MAX_META_DESC,
+      (isPremium ?
+        `Shop ${name} — ${fabricBit || ""}hand painted / pure silk saree with Banarasi or Madhubani craft. Couple sets in The Rani Premium Edit. Free delivery over ₹1,099.`
+      : `Shop ${fabricBit}${categoryBit}${name} at The House of Rani. Premium Indian ethnic wear, free delivery over ₹1,099, easy 5-day returns across India.`
       )
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, MAX_META_DESC)
     : "";
 
   const items: SeoCheckItem[] = [];
@@ -71,7 +83,9 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
           `Short (${seoTitle.length} chars) — add fabric, occasion, or “saree”.`
         : "Custom title set for search results."
       : name ?
-        `Empty — Google will use: “Buy ${name} Online in India”. Add a custom title to target keywords.`
+        isPremium ?
+          `Empty — Google will use a Premium Edit title (hand painted / pure silk). Add a custom title for Banarasi, Madhubani, or couple-set keywords.`
+        : `Empty — Google will use: “Buy ${name} Online in India”. Add a custom title to target keywords.`
       : "Set after product name.",
     status:
       !name ? "fail"

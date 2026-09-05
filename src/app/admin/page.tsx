@@ -256,8 +256,8 @@ export default function AdminDashboardPage() {
                   value={overview.totalProducts.toLocaleString()}
                   sub={
                     stockAlertCount > 0 ?
-                      `${stockAlertCount} stock alert${stockAlertCount === 1 ? '' : 's'}`
-                    : 'All SKUs stocked'
+                      `${stockAlertCount} stock alert${stockAlertCount === 1 ? '' : 's'} · shop + Premium Edit`
+                    : 'Shop + Premium Edit SKUs'
                   }
                   icon={Package}
                   variant={stockAlertCount > 0 ? 'danger' : 'success'}

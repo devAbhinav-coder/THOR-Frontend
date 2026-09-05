@@ -27,8 +27,17 @@ type Props = {
   helpLinks: AboutInternalLink[];
 };
 
-function linkKey(link: AboutInternalLink) {
-  return `${link.group}-${link.href}-${link.label}`;
+function linkKey(link: AboutInternalLink, index?: number) {
+  return `${link.group}-${link.href}-${link.label}${index != null ? `-${index}` : ""}`;
+}
+
+function dedupeByHref(links: AboutInternalLink[]) {
+  const seen = new Set<string>();
+  return links.filter((l) => {
+    if (seen.has(l.href)) return false;
+    seen.add(l.href);
+    return true;
+  });
 }
 
 export default function AboutExploreHub({
@@ -50,8 +59,20 @@ export default function AboutExploreHub({
       href !== "/shop/collections" &&
       !href.endsWith("/shop/collections"));
 
-  const staticShop = shopLinks.filter((l) => !isLegacyOrCollectionCategory(l.href));
-  const categoryShop = shopLinks.filter((l) => isLegacyOrCollectionCategory(l.href));
+  const staticShop = useMemo(
+    () =>
+      dedupeByHref(
+        shopLinks.filter((l) => !isLegacyOrCollectionCategory(l.href)),
+      ),
+    [shopLinks],
+  );
+  const categoryShop = useMemo(
+    () =>
+      dedupeByHref(
+        shopLinks.filter((l) => isLegacyOrCollectionCategory(l.href)),
+      ),
+    [shopLinks],
+  );
 
   return (
     <section
@@ -132,7 +153,7 @@ export default function AboutExploreHub({
               <div className="space-y-8">
                 <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                   {staticShop.map((link, i) => (
-                    <li key={linkKey(link)}>
+                    <li key={linkKey(link, i)}>
                       <ExploreLinkCard link={link} index={i} featured={i === 0} />
                     </li>
                   ))}
@@ -143,8 +164,8 @@ export default function AboutExploreHub({
                       Collections
                     </p>
                     <ul className="flex flex-wrap gap-2 sm:gap-3">
-                      {categoryShop.map((link) => (
-                        <li key={linkKey(link)}>
+                      {categoryShop.map((link, i) => (
+                        <li key={linkKey(link, i)}>
                           <Link
                             href={link.href}
                             className="group inline-flex items-center gap-2 border border-gray-200/70 bg-white px-4 py-2.5 text-sm font-medium text-navy-900 transition-colors hover:border-[#c5a059]/50 hover:text-[#c5a059]"
@@ -154,7 +175,7 @@ export default function AboutExploreHub({
                           </Link>
                         </li>
                       ))}
-                      <li>
+                      <li key="shop-all-collections-cta">
                         <Link
                           href="/shop"
                           className={cn(aboutPageStyles.ctaNavy, "px-4 py-2.5 text-[11px]")}
@@ -170,7 +191,7 @@ export default function AboutExploreHub({
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {activeLinks.map((link, i) => (
-                  <li key={linkKey(link)}>
+                  <li key={linkKey(link, i)}>
                     <ExploreLinkCard link={link} index={i} />
                   </li>
                 ))}

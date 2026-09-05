@@ -7,7 +7,7 @@ import NotFoundClient from "./not-found-client";
 export const metadata: Metadata = {
   title: "404 - Page Not Found | The House of Rani",
   description:
-    "The page you are looking for could not be found on The House of Rani. Explore our royal collections of silk sarees, designer salwar suits, corsets, and luxury gifting.",
+    "The page you are looking for could not be found on The House of Rani. Explore our royal collections of silk sarees, designer salwar suits, corsets, and The Rani Premium Edit.",
   robots: { index: false, follow: true },
 };
 

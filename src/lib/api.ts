@@ -713,6 +713,18 @@ export const adminApi = {
       api.get("/admin/writes/products/motion-video/signature"),
       schemas.successData,
     ),
+  getProductImageUploadSignature: () =>
+    unwrapAxios(
+      "admin.productImageSignature",
+      api.get("/admin/writes/products/images/signature"),
+      schemas.successData,
+    ),
+  getPremiumHeroUploadSignature: () =>
+    unwrapAxios(
+      "admin.premiumHeroSignature",
+      api.get("/admin/writes/products/premium-hero/signature"),
+      schemas.successData,
+    ),
   searchProducts: (params?: Record<string, string | number | boolean | undefined>) =>
     unwrapAxios("admin.products.search", api.get("/admin/products/search", { params }), schemas.productsPaginated),
   getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
@@ -1259,6 +1271,21 @@ export const giftingApi = {
     unwrapAxios("gifting.getRequests", api.get("/gifting/requests", { params }), schemas.giftingRequestsList),
   updateRequest: (id: string, data: Record<string, unknown>) => 
     unwrapAxios("gifting.updateRequest", api.patch(`/gifting/requests/${id}`, data), schemas.giftingRequestSingle),
+};
+
+export const premiumApi = {
+  getProducts: (params?: Record<string, string | number>) =>
+    unwrapAxios(
+      "premium.getProducts",
+      api.get("/premium/products", { params }),
+      schemas.premiumProductsList,
+    ),
+  getBySlug: (slug: string) =>
+    unwrapAxios(
+      "premium.getBySlug",
+      api.get(`/premium/products/${encodeURIComponent(slug)}`),
+      schemas.premiumProductSingle,
+    ),
 };
 
 export const raniCareApi = {

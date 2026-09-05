@@ -45,6 +45,7 @@ export async function uploadProductMotionVideo(
     timestamp: number;
     signature: string;
     folder: string;
+    allowed_formats?: string;
   };
 
   if (
@@ -63,6 +64,9 @@ export async function uploadProductMotionVideo(
     fd.append("timestamp", String(payload.timestamp));
     fd.append("signature", payload.signature);
     fd.append("folder", payload.folder);
+    if (payload.allowed_formats) {
+      fd.append("allowed_formats", payload.allowed_formats);
+    }
 
     const xhr = new XMLHttpRequest();
     xhr.upload.addEventListener("progress", (event) => {

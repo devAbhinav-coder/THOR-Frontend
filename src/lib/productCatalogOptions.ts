@@ -68,6 +68,14 @@ export const PRODUCT_FABRICS = [
   "Other",
 ] as const;
 
+/** Catalog category forced for Premium Edit products (not listed on /shop). */
+export const PREMIUM_PRODUCT_CATEGORY = "Premium";
+
+export function isPresetProductFabric(fabric: string): boolean {
+  const key = fabric.trim().toLowerCase();
+  return PRODUCT_FABRICS.some((f) => f.toLowerCase() === key);
+}
+
 export function mergeOccasionOptions(
   fromProducts: string[] = [],
   custom: string[] = [],

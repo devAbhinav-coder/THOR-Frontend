@@ -6,8 +6,8 @@ import { subscribeWindowScroll } from "@/lib/windowScrollBus";
 
 type Options = {
   enabled?: boolean;
-  /** Apply hide-on-scroll on desktop too (PDP). */
-  allBreakpoints?: boolean;
+  /** When true, auto-hide applies on desktop/laptop too (e.g. PDP / premium PP). */
+  allViewports?: boolean;
   /** Always show nav when scrollY is below this (px). */
   topReveal?: number;
   /** Cumulative scroll-down (px) before hiding. */
@@ -24,7 +24,7 @@ type Options = {
  */
 export function useMobileNavAutoHide({
   enabled = true,
-  allBreakpoints = false,
+  allViewports = false,
   topReveal = 80,
   hideThreshold = 24,
   revealThreshold = 24,
@@ -66,7 +66,7 @@ export function useMobileNavAutoHide({
     };
 
     return subscribeWindowScroll(({ y }) => {
-      if (!allBreakpoints && !mq.matches) {
+      if (!allViewports && !mq.matches) {
         setChromeVisible(true);
         return;
       }
@@ -102,7 +102,7 @@ export function useMobileNavAutoHide({
         setChromeVisible(true);
       }
     });
-  }, [enabled, allBreakpoints, topReveal, hideThreshold, revealThreshold, cooldownMs, pathname]);
+  }, [enabled, allViewports, topReveal, hideThreshold, revealThreshold, cooldownMs, pathname]);
 
   return visible;
 }

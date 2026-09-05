@@ -1,7 +1,6 @@
 /**
  * Central brand + SERP copy for The House of Rani.
- * Primary positioning: premium Indian ethnic wear (sarees, salwar suits, corsets).
- * Gifting is secondary — keep on /gifting, not homepage snippets.
+ * Positioning: premium Indian ethnic wear + The Rani Premium Edit.
  */
 export const BRAND_NAME = "The House of Rani";
 export const BRAND_SHORT = "House of Rani";
@@ -20,16 +19,12 @@ export const ROOT_DEFAULT_TITLE =
 export const ROOT_DEFAULT_DESCRIPTION = HOME_META_DESCRIPTION;
 
 export const ORG_SCHEMA_DESCRIPTION =
-  "Premium sarees, salwar suits & corsets for weddings and everyday elegance, plus handmade and corporate gifting. Pan-India delivery from The House of Rani.";
+  "Premium sarees, salwar suits & corsets for weddings and everyday elegance, plus The Rani Premium Edit of hand painted and pure silk sarees. Pan-India delivery from The House of Rani.";
 
 export const HOME_OG_TITLE = HOME_TITLE;
 
 export const HOME_OG_DESCRIPTION =
   "Discover exquisite sarees, salwar suits & corsets — heritage craftsmanship with modern elegance. Free delivery over ₹1,099.";
-
-/** Visible copy for home gifting block — secondary; wrap with data-nosnippet in UI when possible. */
-export const HOME_GIFT_SHOWCASE_DESCRIPTION =
-  "Explore handmade gifts, corporate gifting, and curated hampers designed to complement our ethnic wear collections.";
 
 export const FOOTER_DEFAULT_DESCRIPTION =
   "Discover premium Indian ethnic wear including sarees, salwar suits, and corsets — crafted with elegance, tradition, and timeless design.";
@@ -60,7 +55,7 @@ export const BRAND_SAME_AS = [
   "https://www.facebook.com/people/HouseofRani/61580570102572/",
 ] as const;
 
-/** Primary homepage keywords — gifting terms live on /gifting metadata only. */
+/** Primary homepage keywords. */
 export const HOME_KEYWORDS = [
   "sarees online India",
   "buy sarees online",
@@ -105,7 +100,7 @@ export const HOME_KEYWORDS = [
 export const ROOT_KEYWORDS = [
   ...HOME_KEYWORDS,
   "handloom sarees",
-  "corporate gifting India",
-  "handmade gifts India",
-  "wedding saree gifts",
+  "hand painted saree",
+  "pure silk saree",
+  "Banarasi saree",
 ] as const;

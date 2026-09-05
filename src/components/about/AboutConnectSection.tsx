@@ -115,7 +115,7 @@ export default function AboutConnectSection({ galleryImage }: Props) {
                 We&apos;re here for you
               </p>
               <p className='mt-2 text-sm text-stone-600 leading-relaxed'>
-                Questions about orders, drapes, or gifting? Reach out — our team
+                Questions about orders, drapes, or Premium Edit? Reach out — our team
                 at {BRAND_NAME} is happy to help.
               </p>
             </div>

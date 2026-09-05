@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "The House of Rani — Premium Sarees & Ethnic Wear",
     short_name: "House of Rani",
     description:
-      "Shop premium sarees, salwar suits, corsets, and handmade gift sets online in India.",
+      "Shop premium sarees, salwar suits, corsets, and The Rani Premium Edit online in India.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

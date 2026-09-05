@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
-  Gift,
   Heart,
   User,
   MapPin,
@@ -18,7 +17,6 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { label: "Overview", href: "/dashboard?view=overview", icon: LayoutDashboard },
   { label: "My Orders", href: "/dashboard/orders", icon: Package },
-  { label: "Custom Gifts", href: "/dashboard/gifting", icon: Gift },
   { label: "Wishlist", href: "/wishlist", icon: Heart },
 ];
 

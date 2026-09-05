@@ -79,18 +79,6 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
       "buy corsets online India",
     ],
   },
-  gifts: {
-    title: "Handmade Gifts, Corporate Gifting & Hampers India",
-    description:
-      "Handmade gifts, corporate gifting & curated hampers for weddings and festivals. India-wide shipping from The House of Rani.",
-    keywords: [
-      "handmade gifts India",
-      "corporate gifting India",
-      "gift hampers India",
-      "handmade pen gifts",
-      "ethnic gift sets",
-    ],
-  },
 };
 
 function matchPresetSlug(categoryName: string, slug: string): string {
@@ -107,7 +95,6 @@ function matchPresetSlug(categoryName: string, slug: string): string {
   if (name.includes("festive") || name.includes("party")) return "festive";
   if (name.includes("salwar")) return "salwar-suits";
   if (name.includes("corset")) return "corsets";
-  if (name.includes("gift")) return "gifts";
   return normalized;
 }
 

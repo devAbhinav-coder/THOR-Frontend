@@ -104,7 +104,7 @@ openGraph: {
   siteName: "The House of Rani",
   title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
   description:
-    "Shop premium sarees, salwar suits, corsets, and handmade gift sets online in India. Designer weaves, festive & bridal styles, free delivery over ₹1,099.",
+    "Shop premium sarees, salwar suits, corsets, and The Rani Premium Edit online in India. Designer weaves, festive & bridal styles, free delivery over ₹1,099.",
   images: [
     {
       url: `${SITE_URL}/ogimage.png`,
@@ -119,7 +119,7 @@ openGraph: {
   card: "summary_large_image",
   title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
   description:
-    "Shop premium sarees, salwar suits, corsets, and handmade gift sets — designed for weddings, festivals, and everyday elegance.",
+    "Shop premium sarees, salwar suits, corsets, and hand painted pure silk — designed for weddings, festivals, and everyday elegance.",
   images: [`${SITE_URL}/ogimage.png`],
 },
   verification: {

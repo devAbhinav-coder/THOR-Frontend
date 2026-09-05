@@ -8,7 +8,7 @@ export const DEFAULT_FOOTER_CURATORIAL_LINKS: FooterQuickLink[] = [
   { label: "Our Story", href: "/about" },
   { label: "Blog", href: "/blog" },
   { label: "Shop", href: "/shop" },
-  { label: "Gifting", href: "/gifting" },
+  { label: "Premium", href: "/premium" },
 ];
 
 const OUR_STORY_LINK: FooterQuickLink = {
@@ -18,7 +18,7 @@ const OUR_STORY_LINK: FooterQuickLink = {
 
 const BLOG_LINK: FooterQuickLink = { label: "Blog", href: "/blog" };
 
-const CURATORIAL_ORDER = ["/about", "/blog", "/shop", "/gifting"];
+const CURATORIAL_ORDER = ["/about", "/blog", "/shop", "/premium"];
 
 /** Paths reserved for Concierge — not shown in Curatorial. */
 const CONCIERGE_PATHS = new Set([
