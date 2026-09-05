@@ -202,14 +202,24 @@ export default function PremiumCollectionClient({ products: initialProducts, act
               Curating Soon
             </h3>
             <p className="text-sm md:text-base text-account-on-surface-variant font-light max-w-md mb-8 leading-relaxed">
-              We are currently preparing our exclusive {activeAudience !== "all" ? activeAudience : "premium"} collection. Check back soon for masterfully crafted heirlooms.
+              We are currently preparing our exclusive{" "}
+              {activeAudience !== "all" ? activeAudience : "premium"} collection.
+              Check back soon for masterfully crafted heirlooms.
             </p>
-            <Link
-              href="/premium#collection"
-              className="inline-block border border-account-primary px-8 py-3.5 text-[12px] font-semibold uppercase tracking-[0.2em] text-account-primary transition-all duration-300 hover:bg-account-primary hover:text-white"
-            >
-              Explore Others
-            </Link>
+            {activeAudience !== "all" ?
+              <Link
+                href="/premium#collection"
+                className="inline-block border border-account-primary px-8 py-3.5 text-[12px] font-semibold uppercase tracking-[0.2em] text-account-primary transition-all duration-300 hover:bg-account-primary hover:text-white"
+              >
+                Explore All Premium
+              </Link>
+            : <Link
+                href="/shop"
+                className="inline-block border border-account-primary px-8 py-3.5 text-[12px] font-semibold uppercase tracking-[0.2em] text-account-primary transition-all duration-300 hover:bg-account-primary hover:text-white"
+              >
+                Browse Shop
+              </Link>
+            }
           </div>
         ) : (
           <div className='grid grid-cols-1 gap-y-6 md:grid-cols-2 md:gap-x-10'>

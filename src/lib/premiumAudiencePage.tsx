@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import PremiumCollectionClient from "@/components/premium/PremiumCollectionClient";
 import { mapApiProductsToPremiumViews } from "@/lib/premiumProductMapper";
-import { PREMIUM_PRODUCTS } from "@/lib/premiumCollectionData";
 import {
   buildPremiumCollectionJsonLd,
   buildPremiumCollectionMetadata,
@@ -20,16 +19,8 @@ async function PremiumAudiencePage({
     fetchStorefrontSettingsHome(),
   ]);
 
-  const products =
-    apiProducts && apiProducts.length > 0 ?
-      mapApiProductsToPremiumViews(apiProducts)
-    : PREMIUM_PRODUCTS.map((p) => ({
-        ...p,
-        _id: p.slug,
-        variants: [{ sku: p.slug, stock: 5 }],
-        totalStock: 5,
-        isActive: true,
-      }));
+  // API-only — never seed static mock products.
+  const products = mapApiProductsToPremiumViews(apiProducts ?? []);
 
   const jsonLd = buildPremiumCollectionJsonLd(
     audience,
@@ -43,7 +34,7 @@ async function PremiumAudiencePage({
   return (
     <>
       <script
-        type='application/ld+json'
+        type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PremiumCollectionClient
