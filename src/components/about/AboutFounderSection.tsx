@@ -44,10 +44,10 @@ export default function AboutFounderSection() {
                 />
               </div>
               <figcaption className="mt-3 sm:mt-3.5 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 px-0.5">
-                <span className="font-serif text-lg sm:text-xl text-white">
+                <span className="font-serif text-lg sm:text-xl text-navy-900">
                   {FOUNDER_NAME}
                 </span>
-                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.22em] text-brand-300">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.22em] text-[#c5a059]">
                   Founder · Est. vision
                 </span>
               </figcaption>
