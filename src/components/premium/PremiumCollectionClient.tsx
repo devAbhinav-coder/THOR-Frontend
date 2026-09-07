@@ -86,8 +86,8 @@ export default function PremiumCollectionClient({ products: initialProducts, act
 
   return (
     <div className='bg-[#fcf9f8] text-[#1a1a1a]'>
-      {/* Hero — Full Width (~50vh height) Carousel or Static */}
-      <header className='relative w-full h-[45vh] md:h-[60vh] min-h-[400px] max-h-[700px] overflow-hidden bg-black'>
+      {/* Hero — 21:9 Aspect Ratio on Laptop/Desktop, Comfortable Height on Mobile/Tablet */}
+      <header className='relative w-full h-[400px] sm:h-[460px] md:h-[500px] min-h-[380px] lg:h-auto lg:max-h-none lg:aspect-[21/9] xl:aspect-[21/9] overflow-hidden bg-black'>
         {activeBanners.length > 0 ? (
           activeBanners.map((banner: any, idx: number) => (
             <div
