@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Package,
   CheckCircle2,
@@ -187,18 +188,12 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const orderId = String(params.id || "");
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelLocked, setCancelLocked] = useState(false);
 
   // Review state
-  const [reviewEligibility, setReviewEligibility] = useState<
-    Record<
-      string,
-      { canReview: boolean; hasReviewed: boolean; orderId: string | null }
-    >
-  >({});
   const [openReviewFor, setOpenReviewFor] = useState<string | null>(null);
   const [reviewForms, setReviewForms] = useState<
     Record<string, ReviewFormState>
@@ -229,62 +224,76 @@ export default function OrderDetailPage() {
   const [returnBankName, setReturnBankName] = useState("");
   const [isReturning, setIsReturning] = useState(false);
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const body = await orderApi.getById(params.id as string);
-        const o: Order = body.data.order;
-        setOrder(o);
+  const { data: order = null, isLoading } = useQuery({
+    queryKey: ["order", orderId],
+    queryFn: async () => {
+      const body = await orderApi.getById(orderId);
+      return body.data.order as Order;
+    },
+    enabled: Boolean(orderId),
+    staleTime: 30_000,
+  });
 
-        if (o.status === "delivered") {
-          const productIds = o.items.map((item: OrderItem) =>
-            typeof item.product === "string" ?
-              item.product
-            : (item.product as { _id: string })._id,
-          );
-          const results = await Promise.allSettled(
-            productIds.map((pid) => reviewApi.canReview(pid)),
-          );
-          const map: Record<
-            string,
-            { canReview: boolean; hasReviewed: boolean; orderId: string | null }
-          > = {};
-          productIds.forEach((pid, i) => {
-            if (results[i].status === "fulfilled") {
-              map[pid] = (
-                results[i] as PromiseFulfilledResult<{
-                  data: {
-                    canReview: boolean;
-                    hasReviewed: boolean;
-                    orderId: string | null;
-                  };
-                }>
-              ).value.data;
-            }
-          });
-          setReviewEligibility(map);
+  const setOrder = (next: Order | null) => {
+    queryClient.setQueryData(["order", orderId], next);
+  };
 
-          if (
-            typeof window !== "undefined" &&
-            window.location.hash === "#review"
-          ) {
-            setTimeout(
-              () =>
-                document
-                  .getElementById("review-section")
-                  ?.scrollIntoView({ behavior: "smooth" }),
-              300,
-            );
-          }
+  const invalidateOrderCaches = () => {
+    void queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+    void queryClient.invalidateQueries({ queryKey: ["my-orders"] });
+    void queryClient.invalidateQueries({ queryKey: ["dashboard-recent-orders"] });
+    void queryClient.invalidateQueries({ queryKey: ["dashboard-orders-summary"] });
+  };
+
+  const { data: reviewEligibility = {} } = useQuery({
+    queryKey: ["order-review-eligibility", orderId, order?.status],
+    queryFn: async () => {
+      if (!order || order.status !== "delivered") return {};
+      const productIds = order.items.map((item: OrderItem) =>
+        typeof item.product === "string" ?
+          item.product
+        : (item.product as { _id: string })._id,
+      );
+      const results = await Promise.allSettled(
+        productIds.map((pid) => reviewApi.canReview(pid)),
+      );
+      const map: Record<
+        string,
+        { canReview: boolean; hasReviewed: boolean; orderId: string | null }
+      > = {};
+      productIds.forEach((pid, i) => {
+        if (results[i].status === "fulfilled") {
+          map[pid] = (
+            results[i] as PromiseFulfilledResult<{
+              data: {
+                canReview: boolean;
+                hasReviewed: boolean;
+                orderId: string | null;
+              };
+            }>
+          ).value.data;
         }
-      } catch {
-        /* not found */
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchOrder();
-  }, [params.id]);
+      });
+      return map;
+    },
+    enabled: Boolean(order && order.status === "delivered"),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!order || order.status !== "delivered") return;
+    if (typeof window === "undefined" || window.location.hash !== "#review") {
+      return;
+    }
+    const t = window.setTimeout(
+      () =>
+        document
+          .getElementById("review-section")
+          ?.scrollIntoView({ behavior: "smooth" }),
+      300,
+    );
+    return () => window.clearTimeout(t);
+  }, [order?._id, order?.status]);
 
   /** Support chat / email deep-link: ?return=0..4 opens step 2 with refund details (COD). */
   useEffect(() => {
@@ -333,6 +342,7 @@ export default function OrderDetailPage() {
       const body = await orderApi.cancel(order._id);
       setOrder(body.data.order as Order);
       await useAuthStore.getState().fetchUser();
+      invalidateOrderCaches();
       const msg = body.message || "";
       if (msg.toLowerCase().includes("already cancelled")) {
         toast.success("This order was already cancelled");
@@ -398,6 +408,7 @@ export default function OrderDetailPage() {
         userBankDetails,
       );
       setOrder(body.data.order);
+      invalidateOrderCaches();
       closeReturnModal();
       toast.success("Return request submitted successfully");
     } catch (err: unknown) {

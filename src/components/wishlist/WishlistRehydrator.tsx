@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { rehydrateWishlistStore } from "@/store/useWishlistStore";
-
-/** Loads wishlist from localStorage after mount — keeps SSR HTML stable. */
+/**
+ * Wishlist now lives in React Query + an in-memory Zustand set
+ * (see useWishlistQuery / AuthProvider). Persist rehydrate is a no-op.
+ */
 export default function WishlistRehydrator() {
-  useEffect(() => {
-    rehydrateWishlistStore();
-  }, []);
   return null;
 }

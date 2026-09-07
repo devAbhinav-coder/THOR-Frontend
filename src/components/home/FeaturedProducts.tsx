@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { productApi } from "@/lib/api";
 import { Product } from "@/types";
@@ -22,31 +23,13 @@ type FeaturedProductsProps = {
 export default function FeaturedProducts({
   initialProducts,
 }: FeaturedProductsProps = {}) {
-  const [products, setProducts] = useState<Product[]>(() =>
-    Array.isArray(initialProducts) ? initialProducts : [],
-  );
-  const [isLoading, setIsLoading] = useState(
-    () => !Array.isArray(initialProducts),
-  );
-
-  useEffect(() => {
-    if (Array.isArray(initialProducts)) {
-      setProducts(initialProducts);
-      setIsLoading(false);
-      return;
-    }
-    const fetchFeatured = async () => {
-      try {
-        const res = await productApi.getFeatured();
-        setProducts(res.data.products);
-      } catch {
-        // silent fail
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchFeatured();
-  }, [initialProducts]);
+  const { data: products = [], isLoading } = useQuery<Product[]>({
+    queryKey: ["featured-products"],
+    queryFn: () => productApi.getFeatured().then((r) => r.data.products),
+    // Skip client fetch if SSR already provided data
+    initialData: Array.isArray(initialProducts) ? initialProducts : undefined,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
   const listingEntries = useMemo(
     () => expandProductsForShopListing(products),

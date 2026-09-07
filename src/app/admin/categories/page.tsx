@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { adminApi } from '@/lib/api';
 import { Category } from '@/types';
@@ -15,8 +16,7 @@ const inputCls =
 
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -34,16 +34,16 @@ export default function AdminCategoriesPage() {
   const set = (k: keyof typeof emptyForm, v: string | boolean) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
+  const { data: categories = [], isLoading: loading } = useQuery({
+    queryKey: ['admin-categories'],
+    queryFn: async () => {
       const res = await adminApi.getCategories({ active: false });
-      setCategories(res.data.categories);
-    } catch { toast.error('Failed to load categories'); }
-    finally { setLoading(false); }
-  };
+      return res.data.categories as Category[];
+    },
+  });
 
-  useEffect(() => { fetchCategories(); }, []);
+  const refreshCategories = () =>
+    queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -81,44 +81,36 @@ export default function AdminCategoriesPage() {
       if (form.metaDescription) fd.append('metaDescription', form.metaDescription);
       if (newImageFile) fd.append('avatar', newImageFile);
 
-      let savedCategory: Category | undefined;
       if (editingId) {
-        const res = await adminApi.updateCategory(editingId, fd);
-        savedCategory = res.data?.category as Category | undefined;
+        await adminApi.updateCategory(editingId, fd);
         toast.success('Category updated');
       } else {
-        const res = await adminApi.createCategory(fd);
-        savedCategory = res.data?.category as Category | undefined;
+        await adminApi.createCategory(fd);
         toast.success('Category created');
       }
-      if (savedCategory?._id) {
-        setCategories((prev) => {
-          const idx = prev.findIndex((c) => c._id === savedCategory!._id);
-          if (idx >= 0) {
-            const next = [...prev];
-            next[idx] = savedCategory!;
-            return next;
-          }
-          return [savedCategory!, ...prev];
-        });
-      }
       setShowForm(false);
-      fetchCategories();
+      void refreshCategories();
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
     } catch (err: unknown) {
       toast.error((err as { message?: string }).message || 'Failed to save');
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? Products using this category must be reassigned first.`)) return;
-    try {
-      await adminApi.deleteCategory(id);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteCategory(id),
+    onSuccess: () => {
       toast.success('Deleted');
-      setCategories((prev) => prev.filter((c) => c._id !== id));
-      fetchCategories();
-    } catch (err: unknown) {
+      void refreshCategories();
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+    onError: (err: unknown) => {
       toast.error((err as { message?: string }).message || 'Cannot delete');
-    }
+    },
+  });
+
+  const handleDelete = (id: string, name: string) => {
+    if (!confirm(`Delete "${name}"? Products using this category must be reassigned first.`)) return;
+    deleteMutation.mutate(id);
   };
 
   const editingCat = categories.find((c) => c._id === editingId);

@@ -399,6 +399,12 @@ export const orderApi = {
     unwrapAxios("orders.verifyPayment", api.post("/orders/verify-payment", data), schemas.orderSingle),
   getMyOrders: (params?: object) =>
     unwrapAxios("orders.myOrders", api.get("/orders/my-orders", { params }), schemas.ordersMyList),
+  getMyOrdersSummary: () =>
+    unwrapAxios(
+      "orders.myOrdersSummary",
+      api.get("/orders/my-orders/summary"),
+      schemas.ordersMySummary,
+    ),
   getById: (id: string) => unwrapAxios("orders.getById", api.get(`/orders/${id}`), schemas.orderSingle),
   preparePayment: (orderId: string) =>
     unwrapAxios(

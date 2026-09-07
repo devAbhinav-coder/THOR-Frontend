@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingBag, ArrowRight, Pencil } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useWishlistStore } from '@/store/useWishlistStore';
+import { useWishlistQuery } from '@/hooks/useWishlistQuery';
 import { orderApi } from '@/lib/api';
 import { Order } from '@/types';
 import { formatPrice, formatDate, cn } from '@/lib/utils';
@@ -31,46 +32,33 @@ function defaultAddress(user: ReturnType<typeof useAuthStore.getState>['user']):
 }
 
 export default function DashboardPage() {
-  const { user, fetchUser } = useAuthStore();
-  const { products: wishlistProducts } = useWishlistStore();
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-  const [stats, setStats] = useState({ total: 0, delivered: 0, inProgress: 0 });
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuthStore();
+  const { data: wishlistProducts = [] } = useWishlistQuery();
 
-  useEffect(() => {
-    void fetchUser();
-  }, [fetchUser]);
+  const { data: recentOrders = [], isLoading } = useQuery<Order[]>({
+    queryKey: ['dashboard-recent-orders'],
+    queryFn: () => orderApi.getMyOrders({ limit: 5 }).then((r) => r.data.orders),
+    staleTime: 1000 * 60,
+  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [recentRes, allRes, deliveredRes, activeRes] = await Promise.all([
-          orderApi.getMyOrders({ limit: 5 }),
-          orderApi.getMyOrders({ limit: 1 }),
-          orderApi.getMyOrders({ limit: 1, status: 'delivered' }),
-          orderApi.getMyOrders({ limit: 1, status: 'pending,confirmed,processing,shipped' }),
-        ]);
-        setRecentOrders(recentRes.data.orders);
-        setStats({
-          total: allRes.pagination?.total ?? recentRes.data.orders.length,
-          delivered: deliveredRes.pagination?.total ?? 0,
-          inProgress: activeRes.pagination?.total ?? 0,
-        });
-      } catch {
-        // silent fail
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const { data: summary } = useQuery({
+    queryKey: ['dashboard-orders-summary'],
+    queryFn: () =>
+      orderApi.getMyOrdersSummary().then((r) => r.data.summary),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const totalCount = summary?.total ?? 0;
+  const deliveredCount = summary?.delivered ?? 0;
+  const inProgressCount = summary?.inProgress ?? 0;
 
   const statCards = [
-    { label: 'Total Orders', value: stats.total, href: '/dashboard/orders' },
-    { label: 'Delivered', value: stats.delivered, href: '/dashboard/orders?filter=delivered' },
-    { label: 'In Progress', value: stats.inProgress, href: '/dashboard/orders?filter=active' },
+    { label: 'Total Orders', value: totalCount, href: '/dashboard/orders' },
+    { label: 'Delivered', value: deliveredCount, href: '/dashboard/orders?filter=delivered' },
+    { label: 'In Progress', value: inProgressCount, href: '/dashboard/orders?filter=active' },
     { label: 'Wishlist', value: wishlistProducts.length, href: '/wishlist' },
   ];
+
 
   return (
     <div className="flex flex-col gap-account-stack-lg">

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Sparkles, Archive } from 'lucide-react';
 import { promotionApi } from '@/lib/api';
 import { Promotion } from '@/types';
@@ -54,48 +55,45 @@ function offerSummary(p: Promotion): string {
 }
 
 export default function AdminPromotionsPage() {
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editPromotion, setEditPromotion] = useState<Promotion | null>(null);
 
-  const fetchPromotions = async () => {
-    setIsLoading(true);
-    try {
+  const { data: promotions = [], isLoading } = useQuery({
+    queryKey: ['admin-promotions'],
+    queryFn: async () => {
       const res = await promotionApi.getAll();
       const list = res.data?.promotions;
-      setPromotions(Array.isArray(list) ? (list as Promotion[]) : []);
-    } catch {
-      toast.error('Failed to load auto offers');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return Array.isArray(list) ? (list as Promotion[]) : [];
+    },
+  });
 
-  useEffect(() => {
-    fetchPromotions();
-  }, []);
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this auto offer?')) return;
-    try {
-      await promotionApi.delete(id);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => promotionApi.delete(id),
+    onSuccess: () => {
       toast.success('Offer deleted');
-      fetchPromotions();
-    } catch {
-      toast.error('Failed to delete');
-    }
+      void queryClient.invalidateQueries({ queryKey: ['admin-promotions'] });
+    },
+    onError: () => toast.error('Failed to delete'),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => promotionApi.archive(id),
+    onSuccess: () => {
+      toast.success('Offer archived');
+      void queryClient.invalidateQueries({ queryKey: ['admin-promotions'] });
+    },
+    onError: () => toast.error('Failed to archive'),
+  });
+
+  const handleDelete = (id: string) => {
+    if (!confirm('Delete this auto offer?')) return;
+    deleteMutation.mutate(id);
   };
 
-  const handleArchive = async (id: string, name: string) => {
+  const handleArchive = (id: string, name: string) => {
     if (!confirm(`Archive "${name}"?`)) return;
-    try {
-      await promotionApi.archive(id);
-      toast.success('Offer archived');
-      fetchPromotions();
-    } catch {
-      toast.error('Failed to archive');
-    }
+    archiveMutation.mutate(id);
   };
 
   return (
@@ -210,7 +208,7 @@ export default function AdminPromotionsPage() {
           onSave={() => {
             setIsModalOpen(false);
             setEditPromotion(null);
-            fetchPromotions();
+            void queryClient.invalidateQueries({ queryKey: ['admin-promotions'] });
           }}
         />
       ) : null}

@@ -171,31 +171,33 @@ function FeaturedProductCardInner({
         </div>
       )}
 
-      <Link
-        href={productHref}
-        className='flex h-full min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/50 focus-visible:ring-offset-2'
-        aria-label={`View ${product.name}`}
-      >
+      <div className='flex h-full min-h-0 flex-1 flex-col'>
         <div className='relative aspect-[3/4] w-full shrink-0 overflow-hidden bg-gray-50'>
-          {showPrimaryImage ?
-            <Image
-              src={primaryUrl}
-              alt={primaryAlt}
-              fill
-              loader={cloudinaryLoader}
-              sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
-              loading='lazy'
-              quality={75}
-              className='object-cover transition-transform duration-500 group-hover:scale-[1.02]'
-              onError={() => setPrimaryImageError(true)}
-            />
-          : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center'>
-              <ShoppingBag className='h-10 w-10 text-gray-300' aria-hidden />
-              <span className='text-[11px] font-medium leading-snug text-gray-400'>
-                Photo updating soon
-              </span>
-            </div>
-          }
+          <Link
+            href={productHref}
+            className='absolute inset-0 z-0 block outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/50 focus-visible:ring-offset-2'
+            aria-label={`View ${product.name}`}
+          >
+            {showPrimaryImage ?
+              <Image
+                src={primaryUrl}
+                alt={primaryAlt}
+                fill
+                loader={cloudinaryLoader}
+                sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
+                loading='lazy'
+                quality={75}
+                className='object-cover transition-transform duration-500 group-hover:scale-[1.02]'
+                onError={() => setPrimaryImageError(true)}
+              />
+            : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center'>
+                <ShoppingBag className='h-10 w-10 text-gray-300' aria-hidden />
+                <span className='text-[11px] font-medium leading-snug text-gray-400'>
+                  Photo updating soon
+                </span>
+              </div>
+            }
+          </Link>
 
           <WishlistHeartButton
             productId={product._id}
@@ -205,12 +207,14 @@ function FeaturedProductCardInner({
         </div>
 
         <div className='flex min-h-[3rem] flex-1 flex-col px-3 py-2 text-left sm:min-h-[3.25rem] sm:px-4 sm:py-3'>
-          <h3
-            className='line-clamp-1 min-h-[1.20rem] font-serif text-sm font-medium leading-snug text-navy-900 sm:min-h-[1.175rem] sm:text-base'
-            itemProp='name'
-          >
-            {product.name}
-          </h3>
+          <Link href={productHref} className='block group-hover:text-[#c5a059] transition-colors'>
+            <h3
+              className='line-clamp-1 min-h-[1.20rem] font-serif text-sm font-medium leading-snug text-navy-900 sm:min-h-[1.175rem] sm:text-base'
+              itemProp='name'
+            >
+              {product.name}
+            </h3>
+          </Link>
 
           <p
             className={cn(
@@ -223,7 +227,7 @@ function FeaturedProductCardInner({
           </p>
 
           <div
-            className=' flex min-h-[1rem] shrink-0 items-center gap-0.5  sm:min-h-[1.125rem]'
+            className='flex min-h-[1rem] shrink-0 items-center gap-0.5 sm:min-h-[1.125rem]'
             aria-label={
               hasReviews ?
                 `Rated ${product.ratings.average.toFixed(1)} out of 5 from ${product.ratings.count} reviews`
@@ -264,7 +268,7 @@ function FeaturedProductCardInner({
             <meta itemProp='priceCurrency' content='INR' />
           </div>
         </div>
-      </Link>
+      </div>
     </article>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Tag, Archive } from 'lucide-react';
 import { couponApi } from '@/lib/api';
 import { Coupon } from '@/types';
@@ -11,48 +12,45 @@ import CouponFormModal from '@/components/admin/CouponFormModal';
 import toast from 'react-hot-toast';
 
 export default function AdminCouponsPage() {
-  const [coupons, setCoupons] = useState<Coupon[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editCoupon, setEditCoupon] = useState<Coupon | null>(null);
 
-  const fetchCoupons = async () => {
-    setIsLoading(true);
-    try {
+  const { data: coupons = [], isLoading } = useQuery({
+    queryKey: ['admin-coupons'],
+    queryFn: async () => {
       const res = await couponApi.getAll();
       const list = res.data?.coupons;
-      setCoupons(Array.isArray(list) ? list : []);
-    } catch {
-      toast.error('Failed to load coupons');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return Array.isArray(list) ? list : [];
+    },
+  });
 
-  useEffect(() => {
-    fetchCoupons();
-  }, []);
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this coupon?')) return;
-    try {
-      await couponApi.delete(id);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => couponApi.delete(id),
+    onSuccess: () => {
       toast.success('Coupon deleted');
-      fetchCoupons();
-    } catch {
-      toast.error('Failed to delete coupon');
-    }
+      void queryClient.invalidateQueries({ queryKey: ['admin-coupons'] });
+    },
+    onError: () => toast.error('Failed to delete coupon'),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => couponApi.archive(id),
+    onSuccess: () => {
+      toast.success('Coupon archived');
+      void queryClient.invalidateQueries({ queryKey: ['admin-coupons'] });
+    },
+    onError: () => toast.error('Failed to archive'),
+  });
+
+  const handleDelete = (id: string) => {
+    if (!confirm('Delete this coupon?')) return;
+    deleteMutation.mutate(id);
   };
 
-  const handleArchive = async (id: string, code: string) => {
+  const handleArchive = (id: string, code: string) => {
     if (!confirm(`Archive ${code}?`)) return;
-    try {
-      await couponApi.archive(id);
-      toast.success('Coupon archived');
-      fetchCoupons();
-    } catch {
-      toast.error('Failed to archive');
-    }
+    archiveMutation.mutate(id);
   };
 
   return (
@@ -214,7 +212,7 @@ export default function AdminCouponsPage() {
           onSave={() => {
             setIsModalOpen(false);
             setEditCoupon(null);
-            fetchCoupons();
+            void queryClient.invalidateQueries({ queryKey: ['admin-coupons'] });
           }}
         />
       )}

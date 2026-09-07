@@ -208,6 +208,11 @@ export const useAuthStore = create<AuthState>()(
               hasSessionChecked: true,
               admin2faPending: null,
             });
+            // Drop previous user's cart/wishlist so guest UI never shows stale badges
+            const { clearSessionCommerceCaches } = await import(
+              '@/lib/sessionCommerceClear'
+            );
+            clearSessionCommerceCaches();
           }
         },
 
@@ -237,6 +242,10 @@ export const useAuthStore = create<AuthState>()(
                 isAuthenticated: false,
                 hasSessionChecked: true,
               });
+              const { clearSessionCommerceCaches } = await import(
+                '@/lib/sessionCommerceClear'
+              );
+              clearSessionCommerceCaches();
               return;
             }
             try {
@@ -249,6 +258,10 @@ export const useAuthStore = create<AuthState>()(
                 isAuthenticated: false,
                 hasSessionChecked: true,
               });
+              const { clearSessionCommerceCaches } = await import(
+                '@/lib/sessionCommerceClear'
+              );
+              clearSessionCommerceCaches();
             }
           } finally {
             set({ isLoading: false, hasSessionChecked: true });

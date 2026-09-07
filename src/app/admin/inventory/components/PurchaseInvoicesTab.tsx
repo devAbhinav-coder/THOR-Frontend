@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Trash2, RefreshCw, FileText, CheckCircle, Clock, AlertCircle, X as XIcon,
   Eye, Pencil, Search, Printer, IndianRupee, Receipt,
@@ -359,23 +360,20 @@ function ViewModal({
   onClose: () => void;
   onEdit: (inv: PurchaseInvoice) => void;
 }) {
-  const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: invoice = null, isLoading: loading } = useQuery({
+    queryKey: ['admin-purchase-invoice', invoiceId],
+    queryFn: async () => {
+      const res = await inventoryApi.getPurchaseInvoice(invoiceId);
+      return (res.data as { invoice: PurchaseInvoice }).invoice;
+    },
+  });
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await inventoryApi.getPurchaseInvoice(invoiceId);
-        setInvoice((res.data as { invoice: PurchaseInvoice }).invoice);
-      } catch {
-        toast.error('Could not load invoice');
-        onClose();
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [invoiceId, onClose]);
+    if (!loading && !invoice) {
+      toast.error('Could not load invoice');
+      onClose();
+    }
+  }, [loading, invoice, onClose]);
 
   const print = () => {
     const el = document.getElementById('purchase-invoice-print');
@@ -621,13 +619,10 @@ function ModalFooter({
 }
 
 export default function PurchaseInvoicesTab() {
-  const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
-  const [summary, setSummary] = useState<PurchaseInvoiceSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -635,40 +630,52 @@ export default function PurchaseInvoicesTab() {
   const [viewId, setViewId] = useState<string | null>(null);
   const [editInvoice, setEditInvoice] = useState<PurchaseInvoice | null>(null);
 
-  const load = useCallback(async (p = 1) => {
-    setLoading(true);
-    try {
-      const params: Record<string, string | number> = { page: p, limit: 20 };
-      if (search.trim()) params.search = search.trim();
+  const applyFilters = () => {
+    setAppliedSearch(search.trim());
+    setPage(1);
+  };
+
+  const { data, isLoading: loading, isFetching, refetch } = useQuery({
+    queryKey: ['admin-purchase-invoices', page, appliedSearch, paymentFilter, from, to],
+    queryFn: async () => {
+      const params: Record<string, string | number> = { page, limit: 20 };
+      if (appliedSearch) params.search = appliedSearch;
       if (paymentFilter) params.paymentStatus = paymentFilter;
       if (from) params.from = from;
       if (to) params.to = to;
       const res = await inventoryApi.listPurchaseInvoices(params);
-      const data = res.data as { invoices?: PurchaseInvoice[]; summary?: PurchaseInvoiceSummary };
-      setInvoices(data.invoices ?? []);
-      setSummary(data.summary ?? null);
+      const payload = res.data as { invoices?: PurchaseInvoice[]; summary?: PurchaseInvoiceSummary };
       const pag = res.pagination as { totalPages?: number; total?: number } | undefined;
-      setTotalPages(pag?.totalPages ?? 1);
-      setTotal(pag?.total ?? 0);
-      setPage(p);
-    } catch {
-      toast.error('Failed to load invoices');
-    } finally {
-      setLoading(false);
-    }
-  }, [search, paymentFilter, from, to]);
+      return {
+        invoices: payload.invoices ?? [],
+        summary: payload.summary ?? null,
+        totalPages: pag?.totalPages ?? 1,
+        total: pag?.total ?? 0,
+      };
+    },
+  });
 
-  useEffect(() => { load(1); }, []);
+  const invoices = data?.invoices ?? [];
+  const summary = data?.summary ?? null;
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
 
-  const handleVoid = async (inv: PurchaseInvoice) => {
-    if (!confirm(`Void invoice ${inv.invoiceNumber}? This cannot be undone. Stock is NOT reversed automatically.`)) return;
-    try {
-      await inventoryApi.deletePurchaseInvoice(inv._id);
+  const refreshList = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin-purchase-invoices'] });
+  };
+
+  const voidMutation = useMutation({
+    mutationFn: (id: string) => inventoryApi.deletePurchaseInvoice(id),
+    onSuccess: () => {
       toast.success('Invoice voided');
-      load(page);
-    } catch {
-      toast.error('Failed to void invoice');
-    }
+      refreshList();
+    },
+    onError: () => toast.error('Failed to void invoice'),
+  });
+
+  const handleVoid = (inv: PurchaseInvoice) => {
+    if (!confirm(`Void invoice ${inv.invoiceNumber}? This cannot be undone. Stock is NOT reversed automatically.`)) return;
+    voidMutation.mutate(inv._id);
   };
 
   return (
@@ -704,14 +711,14 @@ export default function PurchaseInvoicesTab() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && load(1)}
+              onKeyDown={e => e.key === 'Enter' && applyFilters()}
               placeholder="Search supplier, invoice no., GSTIN…"
               className="w-full h-10 pl-9 pr-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
             />
           </div>
           <select
             value={paymentFilter}
-            onChange={e => setPaymentFilter(e.target.value)}
+            onChange={e => { setPaymentFilter(e.target.value); setPage(1); }}
             className="h-10 px-3 rounded-xl border border-gray-200 text-sm min-w-[130px]"
           >
             <option value="">All payments</option>
@@ -719,13 +726,13 @@ export default function PurchaseInvoicesTab() {
             <option value="partial">Partial</option>
             <option value="paid">Paid</option>
           </select>
-          <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+          <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }}
             className="h-10 px-3 rounded-xl border border-gray-200 text-sm" title="From date" />
-          <input type="date" value={to} onChange={e => setTo(e.target.value)}
+          <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }}
             className="h-10 px-3 rounded-xl border border-gray-200 text-sm" title="To date" />
-          <Button variant="brand" size="sm" className="rounded-xl h-10" onClick={() => load(1)}>Apply</Button>
-          <button onClick={() => load(page)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 h-10">
-            <RefreshCw className={`h-4 w-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="brand" size="sm" className="rounded-xl h-10" onClick={applyFilters}>Apply</Button>
+          <button onClick={() => void refetch()} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 h-10">
+            <RefreshCw className={`h-4 w-4 text-gray-500 ${loading || isFetching ? 'animate-spin' : ''}`} />
           </button>
           <Button variant="brand" size="sm" className="rounded-xl h-10 ml-auto" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4 mr-1" /> New Invoice
@@ -817,14 +824,14 @@ export default function PurchaseInvoicesTab() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">{total} invoice{total !== 1 ? 's' : ''} · Page {page}/{totalPages}</p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => load(page - 1)}>Prev</Button>
-              <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => load(page + 1)}>Next</Button>
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           </div>
         )}
       </div>
 
-      {showCreate && <CreateModal onClose={() => setShowCreate(false)} onSaved={() => load(1)} />}
+      {showCreate && <CreateModal onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); setPage(1); refreshList(); }} />}
       {viewId && (
         <ViewModal
           invoiceId={viewId}
@@ -836,7 +843,7 @@ export default function PurchaseInvoicesTab() {
         <EditModal
           invoice={editInvoice}
           onClose={() => setEditInvoice(null)}
-          onSaved={() => load(page)}
+          onSaved={() => { setEditInvoice(null); refreshList(); }}
         />
       )}
     </div>

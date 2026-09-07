@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar,
   ChevronDown,
@@ -106,25 +107,25 @@ const STATUS_META: Record<
   },
 };
 
+type OrdersPageData = {
+  orders: Order[];
+  pagination: { currentPage: number; totalPages: number; total: number };
+};
+
+type SortBy = "newest" | "oldest" | "value_high" | "value_low";
+
 export default function AdminOrdersPage() {
   const getNextStatuses = (status: OrderStatus) =>
     NEXT_STATUS_MAP[status] || [];
 
   const router = useRouter();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const [statusFilter, setStatusFilter] = useState("");
   const [channelFilter, setChannelFilter] = useState<OrderChannelFilter>("all");
   const [missingManualCostFilter, setMissingManualCostFilter] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    total: 0,
-  });
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [trackingOpenFor, setTrackingOpenFor] = useState<string | null>(null);
   const [trackingForm, setTrackingForm] = useState<{
@@ -143,94 +144,153 @@ export default function AdminOrdersPage() {
     trackingNumber?: string;
     trackingUrl?: string;
   }>({});
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [sortBy, setSortBy] = useState<
-    "newest" | "oldest" | "value_high" | "value_low"
-  >("newest");
-  const [hasMore, setHasMore] = useState(true);
+  const [sortBy, setSortBy] = useState<SortBy>("newest");
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const [ordersLoadError, setOrdersLoadError] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
-  const handleDeleteOrder = async (orderId: string) => {
-    if (confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
-      try {
-        await adminApi.deleteOrder(orderId);
-        toast.success("Order deleted successfully");
-        setOrders(prev => prev.filter(o => o._id !== orderId));
-        setPagination(prev => ({ ...prev, total: prev.total - 1 }));
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        toast.error(error.message || "Failed to delete order");
+  const ordersQueryKey = [
+    "admin-orders",
+    statusFilter,
+    debouncedSearch,
+    sortBy,
+    missingManualCostFilter,
+    channelFilter,
+  ] as const;
+
+  const {
+    data: ordersData,
+    isLoading,
+    isFetchingNextPage: isLoadingMore,
+    hasNextPage: hasMore,
+    fetchNextPage,
+    refetch: refetchOrders,
+    isError: ordersLoadError,
+    isRefetching,
+  } = useInfiniteQuery({
+    queryKey: ordersQueryKey,
+    queryFn: async ({ pageParam = 1 }) => {
+      const params: Record<string, string | number | boolean> = {
+        page: pageParam,
+        limit: 20,
+        sort: sortBy,
+      };
+      if (statusFilter) params.status = statusFilter;
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (missingManualCostFilter) params.missingManualCost = true;
+      if (channelFilter !== "all") params.channel = channelFilter;
+      const res = await adminApi.getOrders(params);
+      return {
+        orders: res.data.orders as Order[],
+        pagination: res.pagination as OrdersPageData["pagination"],
+      } satisfies OrdersPageData;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (last) => {
+      const { currentPage, totalPages } = last.pagination;
+      return currentPage < totalPages ? currentPage + 1 : undefined;
+    },
+  });
+
+  const orders = ordersData?.pages.flatMap((p) => p.orders) ?? [];
+  const pagination = ordersData?.pages.at(-1)?.pagination ?? {
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+  };
+
+  const {
+    data: analytics = null,
+    refetch: refetchAnalytics,
+    isFetching: isFetchingAnalytics,
+  } = useQuery({
+    queryKey: ["admin-orders-analytics"],
+    queryFn: async () => {
+      const res = await adminApi.getAnalytics();
+      return res.data as DashboardAnalytics;
+    },
+  });
+
+  const isRefreshing = (isRefetching && !isLoadingMore) || isFetchingAnalytics;
+
+  const deleteMutation = useMutation({
+    mutationFn: (orderId: string) => adminApi.deleteOrder(orderId),
+    onSuccess: (_res, orderId) => {
+      toast.success("Order deleted successfully");
+      queryClient.setQueriesData(
+        { queryKey: ["admin-orders"] },
+        (old: unknown) => {
+          if (!old || typeof old !== "object" || !("pages" in old)) return old;
+          const typed = old as {
+            pages: OrdersPageData[];
+            pageParams: unknown[];
+          };
+          return {
+            ...typed,
+            pages: typed.pages.map((page) => ({
+              ...page,
+              orders: page.orders.filter((o) => o._id !== orderId),
+              pagination: {
+                ...page.pagination,
+                total: Math.max(0, page.pagination.total - 1),
+              },
+            })),
+          };
+        },
+      );
+      void queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-orders-analytics"] });
+    },
+    onError: (err: unknown) => {
+      const error = err as { message?: string };
+      toast.error(error.message || "Failed to delete order");
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({
+      orderId,
+      payload,
+    }: {
+      orderId: string;
+      payload: {
+        status: OrderStatus;
+        note?: string;
+        shippingCarrier?: string;
+        trackingNumber?: string;
+        trackingUrl?: string;
+      };
+    }) => adminApi.updateOrderStatus(orderId, payload),
+    onSuccess: (_res, vars) => {
+      if (vars.payload.status === "shipped") {
+        toast.success("Marked as shipped");
+        setTrackingOpenFor(null);
+      } else {
+        toast.success(`Status updated to ${vars.payload.status}`);
       }
+      void queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-orders-analytics"] });
+    },
+    onError: (err: unknown) => {
+      toast.error(
+        (err as { message?: string })?.message || "Failed to update status",
+      );
+    },
+    onSettled: () => setUpdatingOrder(null),
+  });
+
+  const handleDeleteOrder = (orderId: string) => {
+    if (
+      confirm(
+        "Are you sure you want to delete this order? This action cannot be undone.",
+      )
+    ) {
+      deleteMutation.mutate(orderId);
     }
   };
 
-  const fetchOrders = useCallback(
-    async (page = 1, append = false) => {
-      if (append) setIsLoadingMore(true);
-      else {
-        setIsLoading(true);
-        setOrdersLoadError(false);
-      }
-      try {
-        const params: Record<string, string | number | boolean> = { page, limit: 20, sort: sortBy };
-        if (statusFilter) params.status = statusFilter;
-        if (debouncedSearch) params.search = debouncedSearch;
-        if (missingManualCostFilter) params.missingManualCost = true;
-        if (channelFilter !== "all") params.channel = channelFilter;
-        const res = await adminApi.getOrders(params);
-        const incoming = res.data.orders as Order[];
-        const nextPagination = res.pagination;
-        setPagination(nextPagination);
-        setHasMore(nextPagination.currentPage < nextPagination.totalPages);
-        setOrders((prev) => {
-          if (!append) return incoming;
-          const map = new Map(prev.map((o) => [o._id, o]));
-          for (const o of incoming) map.set(o._id, o);
-          return Array.from(map.values());
-        });
-        setOrdersLoadError(false);
-      } catch {
-        if (!append) {
-          setOrders([]);
-          setOrdersLoadError(true);
-          setHasMore(false);
-        } else {
-          toast.error("Could not load more orders.");
-        }
-      } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
-      }
-    },
-    [statusFilter, debouncedSearch, sortBy, missingManualCostFilter, channelFilter],
-  );
-
-  const handleRefreshList = useCallback(() => {
-    setIsRefreshing(true);
-    void Promise.all([
-      fetchOrders(1, false),
-      adminApi
-        .getAnalytics()
-        .then((res) => setAnalytics(res.data))
-        .catch(() => {}),
-    ]).finally(() => setIsRefreshing(false));
-  }, [fetchOrders]);
-
-  useEffect(() => {
-    adminApi
-      .getAnalytics()
-      .then((res) => setAnalytics(res.data))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    setOrders([]);
-    setHasMore(true);
-    fetchOrders(1, false);
-  }, [statusFilter, debouncedSearch, sortBy, fetchOrders]);
+  const handleRefreshList = () => {
+    void Promise.all([refetchOrders(), refetchAnalytics()]);
+  };
 
   useEffect(() => {
     if (!hasMore || isLoading || isLoadingMore || !loadMoreRef.current) return;
@@ -238,16 +298,16 @@ export default function AdminOrdersPage() {
       (entries) => {
         const first = entries[0];
         if (first.isIntersecting && hasMore && !isLoadingMore) {
-          fetchOrders(pagination.currentPage + 1, true);
+          void fetchNextPage();
         }
       },
       { rootMargin: "240px" },
     );
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, isLoadingMore, pagination.currentPage, fetchOrders]);
+  }, [hasMore, isLoading, isLoadingMore, fetchNextPage]);
 
-  const updateStatus = async (orderId: string, status: OrderStatus) => {
+  const updateStatus = (orderId: string, status: OrderStatus) => {
     if (status === "shipped") {
       const existing = orders.find((o) => o._id === orderId);
       setTrackingForm({
@@ -260,19 +320,10 @@ export default function AdminOrdersPage() {
       return;
     }
     setUpdatingOrder(orderId);
-    try {
-      await adminApi.updateOrderStatus(orderId, { status });
-      toast.success(`Status updated to ${status}`);
-      fetchOrders(pagination.currentPage);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to update status");
-    } finally {
-      setUpdatingOrder(null);
-    }
+    statusMutation.mutate({ orderId, payload: { status } });
   };
 
-  const submitShipped = async () => {
+  const submitShipped = () => {
     if (!trackingOpenFor) return;
     const errs: typeof trackingErrors = {};
     if (!trackingForm.shippingCarrier.trim())
@@ -288,24 +339,16 @@ export default function AdminOrdersPage() {
     setTrackingErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setUpdatingOrder(trackingOpenFor);
-    try {
-      await adminApi.updateOrderStatus(trackingOpenFor, {
+    statusMutation.mutate({
+      orderId: trackingOpenFor,
+      payload: {
         status: "shipped",
         note: trackingForm.note || undefined,
         shippingCarrier: trackingForm.shippingCarrier || undefined,
         trackingNumber: trackingForm.trackingNumber || undefined,
         trackingUrl: trackingForm.trackingUrl || undefined,
-      });
-      toast.success("Marked as shipped");
-      setTrackingOpenFor(null);
-      fetchOrders(pagination.currentPage);
-    } catch (err: unknown) {
-      toast.error(
-        (err as { message?: string })?.message || "Failed to update status",
-      );
-    } finally {
-      setUpdatingOrder(null);
-    }
+      },
+    });
   };
 
   const statusCounts: Record<string, number> = {};
@@ -455,7 +498,7 @@ export default function AdminOrdersPage() {
         <AdminErrorState
           title='Couldn’t load orders'
           message='Check your API connection and permissions, then try again.'
-          onRetry={() => fetchOrders(1, false)}
+          onRetry={() => void refetchOrders()}
         />
       )}
 

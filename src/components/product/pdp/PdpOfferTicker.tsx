@@ -9,7 +9,7 @@ import type {
   ProductNearEligiblePromotion,
   ProductPromotion,
 } from "@/types";
-import { couponApi } from "@/lib/api";
+import { useEligibleCouponsQuery } from "@/hooks/useEligibleCouponsQuery";
 import { couponDiscountShort, couponPrimaryLine } from "@/lib/couponDisplay";
 import {
   mergeProductPromotionsForTicker,
@@ -111,62 +111,36 @@ export function PdpOfferTicker({
   className,
   intervalMs = 4000,
 }: PdpOfferTickerProps) {
-  const [authCoupons, setAuthCoupons] = useState<ProductCoupon[] | null>(null);
-  const [authNearEligible, setAuthNearEligible] = useState<
-    ProductNearEligibleCoupon[] | null
-  >(null);
-  const [authOffersReady, setAuthOffersReady] = useState(!isAuthenticated);
+  const qty = Math.max(1, quantity);
+  const amount = unitPrice * qty;
+  const itemsKey =
+    productId && unitPrice > 0 ?
+      `pdp:${productId}:${qty}:${unitPrice}`
+    : "";
+  const lines =
+    productId && unitPrice > 0 ?
+      [{ productId, price: unitPrice, quantity: qty }]
+    : undefined;
 
-  useEffect(() => {
-    if (!isAuthenticated || !productId || unitPrice <= 0) {
-      setAuthCoupons(null);
-      setAuthNearEligible(null);
-      setAuthOffersReady(true);
-      return;
-    }
+  const { data: authCouponData, isFetched: authOffersReady } =
+    useEligibleCouponsQuery(
+      amount,
+      itemsKey,
+      Boolean(isAuthenticated && productId && unitPrice > 0),
+      lines,
+    );
 
-    setAuthOffersReady(false);
-    let cancelled = false;
-
-    couponApi
-      .getEligible(unitPrice * Math.max(1, quantity), [
-        {
-          productId,
-          price: unitPrice,
-          quantity: Math.max(1, quantity),
-        },
-      ])
-      .then((res) => {
-        if (cancelled) return;
-        const eligibleList = res.data?.coupons;
-        const nearList = res.data?.nearEligible;
-        setAuthCoupons(
-          Array.isArray(eligibleList) ?
-            (eligibleList as Coupon[]).map(mapEligibleCoupon)
-          : [],
-        );
-        setAuthNearEligible(
-          Array.isArray(nearList) ?
-            nearList.map((entry) => ({
-              ...mapEligibleCoupon(entry.coupon as Coupon),
-              hintMessage: entry.hintMessage,
-            }))
-          : [],
-        );
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setAuthCoupons([]);
-        setAuthNearEligible([]);
-      })
-      .finally(() => {
-        if (!cancelled) setAuthOffersReady(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, productId, unitPrice, quantity]);
+  const authCoupons =
+    isAuthenticated && authOffersReady && authCouponData ?
+      (authCouponData.coupons as Coupon[]).map(mapEligibleCoupon)
+    : null;
+  const authNearEligible =
+    isAuthenticated && authOffersReady && authCouponData ?
+      authCouponData.nearEligible.map((entry) => ({
+        ...mapEligibleCoupon(entry.coupon as Coupon),
+        hintMessage: entry.hintMessage,
+      }))
+    : null;
 
   const displayCoupons =
     isAuthenticated && authOffersReady && authCoupons !== null ?
@@ -211,7 +185,8 @@ export function PdpOfferTicker({
     return () => window.clearInterval(id);
   }, [slides.length, intervalMs]);
 
-  if (!authOffersReady && slides.length === 0) return null;
+  const offersReady = !isAuthenticated || authOffersReady;
+  if (!offersReady && slides.length === 0) return null;
   if (slides.length === 0) return null;
 
   const slide = slides[index]!;

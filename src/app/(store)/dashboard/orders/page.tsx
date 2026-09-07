@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, ShoppingBag, ArrowRight, Filter } from 'lucide-react';
 import { orderApi } from '@/lib/api';
 import { Order } from '@/types';
@@ -19,73 +20,119 @@ const FILTER_TABS: { label: string; value: string }[] = [
   { label: 'Cancelled', value: 'cancelled' },
 ];
 
+const PAGE_LIMIT = 10;
+
+function statusParamForFilter(filter: string): string | undefined {
+  if (filter === 'delivered') return 'delivered';
+  if (filter === 'cancelled') return 'cancelled';
+  if (filter === 'active') return 'pending,confirmed,processing,shipped';
+  return undefined;
+}
+
 export default function OrdersPage() {
   const searchParams = useSearchParams();
   const initialFilter = searchParams.get('filter') ?? '';
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, total: 0 });
   const [activeFilter, setActiveFilter] = useState(initialFilter);
-  const [hasMore, setHasMore] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const fetchOrders = async (page = 1, filter = activeFilter, append = false) => {
-    if (append) setIsLoadingMore(true);
-    else setIsLoading(true);
-    try {
-      const params: Record<string, string | number> = { page, limit: 10 };
-      if (filter === 'delivered') params.status = 'delivered';
-      else if (filter === 'cancelled') params.status = 'cancelled';
-      else if (filter === 'active') params.status = 'pending,confirmed,processing,shipped';
+  useEffect(() => {
+    setActiveFilter(searchParams.get('filter') ?? '');
+  }, [searchParams]);
 
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['my-orders', activeFilter],
+    queryFn: async ({ pageParam = 1 }) => {
+      const params: Record<string, string | number> = {
+        page: pageParam,
+        limit: PAGE_LIMIT,
+      };
+      const status = statusParamForFilter(activeFilter);
+      if (status) params.status = status;
       const res = await orderApi.getMyOrders(params);
-      const incoming = res.data.orders as Order[];
-      const nextPagination =
-        res.pagination || { currentPage: page, totalPages: 1, total: incoming.length };
-      setPagination(nextPagination);
-      setHasMore(nextPagination.currentPage < nextPagination.totalPages);
-      setOrders((prev) => {
-        if (!append) return incoming;
-        const map = new Map(prev.map((o) => [o._id, o]));
-        for (const o of incoming) map.set(o._id, o);
-        return Array.from(map.values());
-      });
-    } catch {
-      // silent fail
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
+      const orders = res.data.orders as Order[];
+      const pagination =
+        res.pagination || {
+          currentPage: pageParam,
+          totalPages: 1,
+          total: orders.length,
+        };
+      return { orders, pagination };
+    },
+    initialPageParam: 1,
+    getNextPageParam: (last) => {
+      const { currentPage, totalPages } = last.pagination;
+      return currentPage < totalPages ? currentPage + 1 : undefined;
+    },
+  });
+
+  const orders = data?.pages.flatMap((p) => p.orders) ?? [];
+  const pagination = data?.pages.at(-1)?.pagination ?? {
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
   };
 
   useEffect(() => {
-    const filter = searchParams.get('filter') ?? '';
-    setActiveFilter(filter);
-  }, [searchParams]);
-
-  useEffect(() => {
-    setOrders([]);
-    setHasMore(true);
-    fetchOrders(1, activeFilter, false);
-  }, [activeFilter]);
-
-  useEffect(() => {
-    if (!hasMore || isLoading || isLoadingMore || !loadMoreRef.current) return;
+    if (!hasNextPage || isLoading || isFetchingNextPage || !loadMoreRef.current) {
+      return;
+    }
     const observer = new IntersectionObserver(
       (entries) => {
-        const first = entries[0];
-        if (first.isIntersecting && hasMore && !isLoadingMore) {
-          fetchOrders(pagination.currentPage + 1, activeFilter, true);
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
         }
       },
       { rootMargin: '220px' },
     );
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, isLoadingMore, pagination.currentPage, activeFilter]);
+  }, [hasNextPage, isLoading, isFetchingNextPage, fetchNextPage]);
+
+  const cancelMutation = useMutation({
+    mutationFn: (orderId: string) =>
+      orderApi.cancel(orderId, 'Cancelled by customer'),
+    onSuccess: async (_res, orderId) => {
+      await useAuthStore.getState().fetchUser();
+      toast.success('Order cancelled successfully');
+      queryClient.setQueriesData(
+        { queryKey: ['my-orders'] },
+        (old: unknown) => {
+          if (!old || typeof old !== 'object' || !('pages' in old)) return old;
+          const typed = old as {
+            pages: Array<{
+              orders: Order[];
+              pagination: { currentPage: number; totalPages: number; total: number };
+            }>;
+            pageParams: unknown[];
+          };
+          return {
+            ...typed,
+            pages: typed.pages.map((page) => ({
+              ...page,
+              orders: page.orders.map((o) =>
+                o._id === orderId ? { ...o, status: 'cancelled' as const } : o,
+              ),
+            })),
+          };
+        },
+      );
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-recent-orders'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-orders-summary'] });
+    },
+    onError: () => {
+      toast.error('Could not cancel order. Please try from order details.');
+    },
+    onSettled: () => setCancellingId(null),
+  });
 
   const handleFilterChange = (value: string) => {
     setActiveFilter(value);
@@ -93,21 +140,10 @@ export default function OrdersPage() {
     router.replace(url, { scroll: false });
   };
 
-  const handleCancelOrder = async (orderId: string) => {
+  const handleCancelOrder = (orderId: string) => {
     if (!window.confirm('Are you sure you want to cancel this order?')) return;
     setCancellingId(orderId);
-    try {
-      await orderApi.cancel(orderId, 'Cancelled by customer');
-      await useAuthStore.getState().fetchUser();
-      toast.success('Order cancelled successfully');
-      setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, status: 'cancelled' } : o)),
-      );
-    } catch {
-      toast.error('Could not cancel order. Please try from order details.');
-    } finally {
-      setCancellingId(null);
-    }
+    cancelMutation.mutate(orderId);
   };
 
   if (!isLoading && orders.length === 0 && activeFilter === '') {
@@ -115,7 +151,6 @@ export default function OrdersPage() {
       <div>
         <header className="mb-account-stack-md">
           <h1 className="font-serif text-4xl md:text-5xl text-account-primary mb-4">Order History</h1>
-          ...
         </header>
         <div className="bg-account-surface-container-lowest border border-account-outline-variant/20 shadow-account-paper p-12 text-center">
           <Package className="h-12 w-12 text-account-outline-variant mx-auto mb-4" />
@@ -144,7 +179,6 @@ export default function OrdersPage() {
         </div>
       </header>
 
-      {/* Filter tabs */}
       <div className="flex items-center overflow-x-auto scrollbar-hide pb-6 gap-4">
         <div className="flex items-center gap-1.5 p-1.5 bg-account-surface-container border border-account-outline-variant/30 flex-shrink-0">
           <div className="px-2 flex items-center">
@@ -192,13 +226,13 @@ export default function OrdersPage() {
       </section>
 
       <div ref={loadMoreRef} className="h-8" />
-      {isLoadingMore && (
+      {isFetchingNextPage && (
         <div className="flex items-center justify-center py-2">
           <span className="h-5 w-5 rounded-full border-2 border-account-outline-variant border-t-account-secondary animate-spin" />
         </div>
       )}
 
-      {!isLoading && !hasMore && orders.length > 0 && (
+      {!isLoading && !hasNextPage && orders.length > 0 && (
         <div className="text-center pt-4 pb-2">
           <p className="text-sm text-account-on-surface-variant mb-3">Looking for more styles?</p>
           <Link

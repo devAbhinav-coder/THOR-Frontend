@@ -6,6 +6,8 @@ import {
   fetchHomeFeaturedProducts,
   fetchHomeLatestBlogs,
   fetchHomeSareeSubcategories,
+  fetchHomeTestimonials,
+  fetchHomeExploreProducts,
 } from "@/lib/storePrefetch";
 import {
   fetchStorefrontHomeBundle,
@@ -85,12 +87,16 @@ export default async function HomePage() {
     featuredProducts,
     latestBlogs,
     sareeSubcategories,
+    homeTestimonials,
+    exploreProducts,
   ] = await Promise.all([
     fetchStorefrontHomeBundle(),
     fetchHomeCategoryStats(),
     fetchHomeFeaturedProducts(),
     fetchHomeLatestBlogs(3),
     fetchHomeSareeSubcategories(),
+    fetchHomeTestimonials(),
+    fetchHomeExploreProducts(12),
   ]);
   const { heroSlides, settings: storefrontSettings } = storefrontBundle;
 
@@ -299,13 +305,16 @@ export default async function HomePage() {
       <SareeCollections subcategories={sareeSubcategories} />
       <FeaturedProducts initialProducts={featuredProducts} />
       <HomeBanner initialSettings={storefrontSettings} />
-      <ExploreCollection />
+      <ExploreCollection initialProducts={exploreProducts} />
       <HomePremiumShowcase
         showcase={storefrontSettings?.homePremiumShowcase}
       />
       <WhyChooseUs />
       <BlogBanner initialBlogs={latestBlogs} />
-      <Testimonials />
+      <Testimonials
+        initialTestimonials={homeTestimonials}
+        initialInstagramUrl={storefrontSettings?.footer?.instagramUrl}
+      />
     </>
   );
 }

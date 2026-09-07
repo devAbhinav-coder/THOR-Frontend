@@ -40,6 +40,7 @@ import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
 import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Input } from "@/components/ui/input";
 import { Coupon, Order, type CartPromotion, type NearEligibleCoupon } from "@/types";
+import { useEligibleCouponsQuery } from "@/hooks/useEligibleCouponsQuery";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
 import type { CheckoutDisplayItem } from "@/types/checkoutDisplay";
@@ -122,9 +123,6 @@ export default function CheckoutClient() {
   const [showItems, setShowItems] = useState(true);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [couponCode, setCouponCode] = useState("");
-  const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
-  const [nearEligibleCoupons, setNearEligibleCoupons] = useState<NearEligibleCoupon[]>([]);
-  const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
   const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(() =>
     readBuyNowFromSession(),
@@ -423,50 +421,34 @@ export default function CheckoutClient() {
     }
   }, [cart?.couponDiscount, appliedCouponCode, buyNowItem, existingOrder]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const amountForEligibility =
-      buyNowItem ? buyNowItem.price * buyNowItem.quantity : cart?.subtotal || 0;
-    if (amountForEligibility <= 0) return;
-    const fetchEligibleCoupons = async () => {
-      setIsLoadingCoupons(true);
-      try {
-        const items =
-          buyNowItem ?
-            [
-              {
-                productId: String(buyNowItem.productId),
-                price: buyNowItem.price,
-                quantity: buyNowItem.quantity,
-              },
-            ]
-          : undefined;
-        const res = await couponApi.getEligible(amountForEligibility, items);
-        setEligibleCoupons(res.data.coupons || []);
-        setNearEligibleCoupons(
-          (res.data.nearEligible ?? []).flatMap((entry) =>
-            entry.coupon ?
-              [{ coupon: entry.coupon as Coupon, hintMessage: entry.hintMessage }]
-            : [],
-          ),
-        );
-      } catch {
-        setEligibleCoupons([]);
-        setNearEligibleCoupons([]);
-      } finally {
-        setIsLoadingCoupons(false);
-      }
-    };
-    fetchEligibleCoupons();
-  }, [
-    cart?.subtotal,
-    cart?.items?.map((i) => `${i.product}:${i.quantity}:${i.price}`).join("|"),
-    isAuthenticated,
-    buyNowItem?.productId,
-    buyNowItem?.quantity,
-    buyNowPromotionDiscount,
-    buyNowCouponDiscount,
-  ]);
+  const eligibilityAmount =
+    buyNowItem ? buyNowItem.price * buyNowItem.quantity : cart?.subtotal || 0;
+  const eligibilityItemsKey =
+    buyNowItem ?
+      `bn:${buyNowItem.productId}:${buyNowItem.quantity}:${buyNowItem.price}`
+    : cart?.items
+        ?.map((i) => `${i.product}:${i.quantity}:${i.price}`)
+        .join("|") ?? "";
+  const eligibilityLines =
+    buyNowItem ?
+      [
+        {
+          productId: String(buyNowItem.productId),
+          price: buyNowItem.price,
+          quantity: buyNowItem.quantity,
+        },
+      ]
+    : undefined;
+  const { data: couponsData, isLoading: isLoadingCoupons } =
+    useEligibleCouponsQuery(
+      eligibilityAmount,
+      eligibilityItemsKey,
+      Boolean(isAuthenticated && eligibilityAmount > 0),
+      eligibilityLines,
+    );
+  const eligibleCoupons = couponsData?.coupons ?? [];
+  const nearEligibleCoupons: NearEligibleCoupon[] =
+    couponsData?.nearEligible ?? [];
 
   const paymentMethodForApi =
     existingOrder ? "razorpay" : checkoutPaymentMethod;

@@ -85,6 +85,51 @@ export async function fetchHomeFeaturedProducts(): Promise<Product[] | null> {
   }
 }
 
+/** Public testimonials for home — same as `testimonialApi.getPublic()`. */
+export async function fetchHomeTestimonials(): Promise<
+  import("@/types").Testimonial[] | null
+> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  try {
+    const res = await serverFetch(`${base}/testimonials`, {
+      next: { revalidate: 300 },
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      data?: { testimonials?: import("@/types").Testimonial[] };
+    };
+    const list = json?.data?.testimonials;
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
+/** First explore page for home infinite scroll seed. */
+export async function fetchHomeExploreProducts(
+  limit = 12,
+): Promise<Product[] | null> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  try {
+    const res = await serverFetch(
+      `${base}/products?limit=${limit}&isRandom=true`,
+      {
+        next: { revalidate: 120 },
+        headers: { Accept: "application/json" },
+      },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { products?: Product[] } };
+    const list = json?.data?.products;
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Single product for PDP — matches `productApi.getBySlug` payload. */
 export async function fetchProductBySlugServer(
   slug: string,

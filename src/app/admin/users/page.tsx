@@ -202,254 +202,174 @@ function PaginationBar({
   );
 }
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [admins, setAdmins] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingAdmins, setIsLoadingAdmins] = useState(true);
-  const [listError, setListError] = useState(false);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [adminSearch, setAdminSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const debouncedAdminSearch = useDebouncedValue(adminSearch.trim(), 300);
   const [userPage, setUserPage] = useState(1);
   const [adminPage, setAdminPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    total: 0,
-  });
-  const [adminPagination, setAdminPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    total: 0,
-  });
+  const [offlinePage, setOfflinePage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [insight, setInsight] = useState<UserInsight | null>(null);
-  const [loadingInsight, setLoadingInsight] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-  const [directoryStats, setDirectoryStats] = useState<{
-    users: { total: number; active: number; inactive: number };
-    admins: { total: number; active: number; inactive: number };
-  } | null>(null);
   const [statusTogglingId, setStatusTogglingId] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const currentUserId = useAuthStore((s) => s.user?._id);
 
-  const [offlineCustomers, setOfflineCustomers] = useState<
-    OfflineCustomerLead[]
-  >([]);
-  const [offlinePage, setOfflinePage] = useState(1);
-  const [offlinePagination, setOfflinePagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    total: 0,
+  // 1. Users (Customers) Query
+  const { data: usersRes, isLoading, isError: listError } = useQuery({
+    queryKey: ["admin-users", userPage],
+    queryFn: async () => {
+      const res = await adminApi.getUsers({ page: userPage, limit: 20, role: "user" });
+      return res;
+    },
   });
-  const [loadingOffline, setLoadingOffline] = useState(true);
+  const users: User[] = usersRes?.data?.users || [];
+  const pagination = usersRes?.pagination || { currentPage: 1, totalPages: 1, total: 0 };
 
-  const loadUsers = useCallback(async (page: number) => {
-    setIsLoading(true);
-    setListError(false);
-    try {
-      const res = await adminApi.getUsers({ page, limit: 20, role: "user" });
-      setUsers(res.data.users);
-      setPagination(res.pagination);
-    } catch {
-      setListError(true);
-      toast.error("Could not load customers.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // 2. Admins Query
+  const { data: adminsRes, isLoading: isLoadingAdmins } = useQuery({
+    queryKey: ["admin-admins", adminPage],
+    queryFn: async () => {
+      const res = await adminApi.getUsers({ page: adminPage, limit: 20, role: "admin" });
+      return res;
+    },
+  });
+  const admins: User[] = adminsRes?.data?.users || [];
+  const adminPagination = adminsRes?.pagination || { currentPage: 1, totalPages: 1, total: 0 };
 
-  const loadAdmins = useCallback(async (page: number) => {
-    setIsLoadingAdmins(true);
-    try {
-      const res = await adminApi.getUsers({ page, limit: 20, role: "admin" });
-      setAdmins(res.data.users);
-      setAdminPagination(res.pagination);
-    } catch {
-      toast.error("Could not load team accounts.");
-    } finally {
-      setIsLoadingAdmins(false);
-    }
-  }, []);
+  // 3. Offline Customers Query
+  const { data: offlineRes, isLoading: loadingOffline } = useQuery({
+    queryKey: ["admin-offline-customers", offlinePage],
+    queryFn: async () => {
+      const res = await adminApi.getOfflineCustomers({ page: offlinePage, limit: 20 });
+      return res;
+    },
+  });
+  const offlineCustomers: OfflineCustomerLead[] = (offlineRes?.data?.offlineCustomers as OfflineCustomerLead[]) || [];
+  const offlinePagination = offlineRes?.pagination || { currentPage: 1, totalPages: 1, total: 0 };
 
-  const loadOfflineCustomers = useCallback(async (page: number) => {
-    setLoadingOffline(true);
-    try {
-      const res = await adminApi.getOfflineCustomers({ page, limit: 20 });
-      setOfflineCustomers(res.data.offlineCustomers as OfflineCustomerLead[]);
-      setOfflinePagination(res.pagination);
-    } catch {
-      toast.error("Could not load offline customers.");
-    } finally {
-      setLoadingOffline(false);
+  // 4. Directory Stats Query
+  const { data: directoryStats = null } = useQuery({
+    queryKey: ["admin-directory-stats"],
+    queryFn: async () => {
+      const res = await adminApi.getUserDirectoryStats();
+      return res.data;
+    },
+  });
+
+  // 5. User Insights Query
+  const { data: insight = null, isLoading: loadingInsight } = useQuery({
+    queryKey: ["admin-user-insights", selectedUser?._id],
+    queryFn: async () => {
+      if (!selectedUser) return null;
+      const res = await adminApi.getUserInsights(selectedUser._id);
+      return res.data as UserInsight;
+    },
+    enabled: !!selectedUser,
+  });
+
+  useEffect(() => {
+    if (insight?.user?.adminNote !== undefined) {
+      setNoteDraft(String(insight.user.adminNote || ""));
     }
-  }, []);
+  }, [insight]);
 
   const refreshDirectory = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        loadUsers(userPage),
-        loadAdmins(adminPage),
-        loadOfflineCustomers(offlinePage),
-      ]);
-      const r = await adminApi.getUserDirectoryStats();
-      setDirectoryStats(r.data);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [
-    userPage,
-    adminPage,
-    offlinePage,
-    loadUsers,
-    loadAdmins,
-    loadOfflineCustomers,
-  ]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-admins"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-offline-customers"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-directory-stats"] }),
+    ]);
+  }, [queryClient]);
 
-  useEffect(() => {
-    void loadUsers(userPage);
-  }, [userPage, loadUsers]);
-
-  useEffect(() => {
-    void loadAdmins(adminPage);
-  }, [adminPage, loadAdmins]);
-
-  useEffect(() => {
-    adminApi
-      .getUserDirectoryStats()
-      .then((r) => setDirectoryStats(r.data))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    void loadOfflineCustomers(offlinePage);
-  }, [offlinePage, loadOfflineCustomers]);
+  const isRefreshing = false;
 
   useEffect(() => {
     if (!selectedUser) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSelectedUser(null);
-        setInsight(null);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedUser]);
 
-  const toggleStatus = async (
-    userId: string,
-    role: "user" | "admin" = "user",
-  ) => {
-    setStatusTogglingId(userId);
-    try {
-      const res = await adminApi.toggleUserStatus(userId);
+  const toggleStatusMutation = useMutation({
+    mutationFn: (userId: string) => adminApi.toggleUserStatus(userId),
+    onSuccess: (res) => {
       const { isActive } = res.data;
-      if (role === "admin") {
-        setAdmins((prev) =>
-          prev.map((u) => (u._id === userId ? { ...u, isActive } : u)),
-        );
-      } else {
-        setUsers((prev) =>
-          prev.map((u) => (u._id === userId ? { ...u, isActive } : u)),
-        );
-      }
-      toast.success(
-        isActive ? "Account activated" : "Account blocked / deactivated",
-      );
-      adminApi
-        .getUserDirectoryStats()
-        .then((r) => setDirectoryStats(r.data))
-        .catch(() => {});
-    } catch {
-      toast.error("Failed to update account status");
-    } finally {
-      setStatusTogglingId(null);
-    }
-  };
+      toast.success(isActive ? "Account activated" : "Account blocked / deactivated");
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-directory-stats"] });
+    },
+    onError: () => toast.error("Failed to update account status"),
+    onSettled: () => setStatusTogglingId(null),
+  });
 
-  const promoteToAdmin = async (userId: string) => {
-    if (
-      !confirm(
-        "Grant this customer admin access? They will be able to access this panel.",
-      )
-    )
-      return;
-    try {
-      await adminApi.updateUserRole(userId, "admin");
+  const promoteMutation = useMutation({
+    mutationFn: (userId: string) => adminApi.updateUserRole(userId, "admin"),
+    onSuccess: () => {
       toast.success("User promoted to admin");
-      await Promise.all([loadUsers(userPage), loadAdmins(adminPage)]);
-      adminApi
-        .getUserDirectoryStats()
-        .then((r) => setDirectoryStats(r.data))
-        .catch(() => {});
-    } catch {
-      toast.error("Failed to update user role");
-    }
-  };
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-directory-stats"] });
+    },
+    onError: () => toast.error("Failed to update user role"),
+  });
 
-  const demoteToUser = async (userId: string) => {
-    if (!confirm("Remove admin role? They will become a regular customer."))
-      return;
-    try {
-      await adminApi.updateUserRole(userId, "user");
+  const demoteMutation = useMutation({
+    mutationFn: (userId: string) => adminApi.updateUserRole(userId, "user"),
+    onSuccess: () => {
       toast.success("Admin demoted to user");
-      await Promise.all([loadUsers(userPage), loadAdmins(adminPage)]);
-      adminApi
-        .getUserDirectoryStats()
-        .then((r) => setDirectoryStats(r.data))
-        .catch(() => {});
-    } catch {
-      toast.error("Failed to update user role");
-    }
-  };
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-directory-stats"] });
+    },
+    onError: () => toast.error("Failed to update user role"),
+  });
 
-  const openUserInsights = async (user: User) => {
-    setSelectedUser(user);
-    setLoadingInsight(true);
-    setInsight(null);
-    try {
-      const res = await adminApi.getUserInsights(user._id);
-      const inner = res.data as UserInsight;
-      setInsight(inner);
-      setNoteDraft(String(inner.user?.adminNote || ""));
-    } catch {
-      toast.error("Failed to load user activity");
-    } finally {
-      setLoadingInsight(false);
-    }
-  };
-
-  const saveUserNote = async () => {
-    if (!selectedUser) return;
-    setSavingNote(true);
-    try {
-      await adminApi.updateUserNote(selectedUser._id, noteDraft);
-      setInsight((prev) =>
-        prev ? { ...prev, user: { ...prev.user, adminNote: noteDraft } } : prev,
-      );
-      setUsers((prev) =>
-        prev.map((u) =>
-          u._id === selectedUser._id ? { ...u, adminNote: noteDraft } : u,
-        ),
-      );
-      setAdmins((prev) =>
-        prev.map((u) =>
-          u._id === selectedUser._id ? { ...u, adminNote: noteDraft } : u,
-        ),
-      );
+  const saveNoteMutation = useMutation({
+    mutationFn: ({ userId, note }: { userId: string; note: string }) =>
+      adminApi.updateUserNote(userId, note),
+    onSuccess: () => {
       toast.success("Admin note saved");
-    } catch {
-      toast.error("Failed to save note");
-    } finally {
-      setSavingNote(false);
-    }
+      void queryClient.invalidateQueries({ queryKey: ["admin-user-insights"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
+    },
+    onError: () => toast.error("Failed to save note"),
+  });
+
+  const toggleStatus = (userId: string) => {
+    setStatusTogglingId(userId);
+    toggleStatusMutation.mutate(userId);
   };
+
+  const promoteToAdmin = (userId: string) => {
+    if (!confirm("Grant this customer admin access? They will be able to access this panel.")) return;
+    promoteMutation.mutate(userId);
+  };
+
+  const demoteToUser = (userId: string) => {
+    if (!confirm("Remove admin role? They will become a regular customer.")) return;
+    demoteMutation.mutate(userId);
+  };
+
+  const openUserInsights = (user: User) => {
+    setSelectedUser(user);
+  };
+
+  const saveUserNote = () => {
+    if (!selectedUser) return;
+    saveNoteMutation.mutate({ userId: selectedUser._id, note: noteDraft });
+  };
+  const savingNote = saveNoteMutation.isPending;
 
   const filtered = useMemo(() => {
     const q = debouncedSearch.toLowerCase();
@@ -603,7 +523,7 @@ export default function AdminUsersPage() {
         </div>
 
         {listError && !isLoading && users.length === 0 ?
-          <AdminErrorState onRetry={() => loadUsers(userPage)} />
+          <AdminErrorState onRetry={() => void queryClient.invalidateQueries({ queryKey: ["admin-users"] })} />
         : null}
 
         {/* Offline / POS leads — one row per email until they sign up or link Google */}
@@ -829,7 +749,7 @@ export default function AdminUsersPage() {
                     </button>
                     <button
                       type='button'
-                      onClick={() => toggleStatus(user._id, "admin")}
+                      onClick={() => toggleStatus(user._id)}
                       disabled={
                         statusTogglingId === user._id ||
                         user._id === currentUserId
@@ -951,7 +871,7 @@ export default function AdminUsersPage() {
                           </button>
                           <button
                             type='button'
-                            onClick={() => toggleStatus(user._id, "admin")}
+                            onClick={() => toggleStatus(user._id)}
                             disabled={
                               statusTogglingId === user._id ||
                               user._id === currentUserId
@@ -1076,7 +996,7 @@ export default function AdminUsersPage() {
                     </button>
                     <button
                       type='button'
-                      onClick={() => toggleStatus(user._id, "user")}
+                      onClick={() => toggleStatus(user._id)}
                       disabled={
                         statusTogglingId === user._id ||
                         user._id === currentUserId
@@ -1185,7 +1105,7 @@ export default function AdminUsersPage() {
                           </button>
                           <button
                             type='button'
-                            onClick={() => toggleStatus(user._id, "user")}
+                            onClick={() => toggleStatus(user._id)}
                             disabled={
                               statusTogglingId === user._id ||
                               user._id === currentUserId
@@ -1240,7 +1160,6 @@ export default function AdminUsersPage() {
             aria-label='Close'
             onClick={() => {
               setSelectedUser(null);
-              setInsight(null);
             }}
           />
           <div className='relative w-full sm:max-w-lg md:max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-hidden flex flex-col border border-gray-100'>
@@ -1279,7 +1198,6 @@ export default function AdminUsersPage() {
                   type='button'
                   onClick={() => {
                     setSelectedUser(null);
-                    setInsight(null);
                   }}
                   className='h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors'
                   aria-label='Close'

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Download, FileSpreadsheet } from 'lucide-react';
 import { inventoryApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -58,29 +59,33 @@ function exportCsv(bySupplier: SupplierRow[], year: number) {
 }
 
 export default function GstSummaryTab() {
-  const [bySupplier, setBySupplier] = useState<SupplierRow[]>([]);
-  const [monthly, setMonthly] = useState<MonthlyRow[]>([]);
-  const [totals, setTotals] = useState<Totals | null>(null);
-  const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState('all');
   const [quarter, setQuarter] = useState('all');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: { year: number; month?: string; quarter?: string } = { year };
-      if (month !== 'all') { params.month = month; }
-      else if (quarter !== 'all') { params.quarter = quarter; }
-      const res = await inventoryApi.getGstSummary(params);
-      setBySupplier((res.data as any).bySupplier ?? []);
-      setMonthly((res.data as any).monthly ?? []);
-      setTotals((res.data as any).totals ?? null);
-    } catch { toast.error('Failed to load GST summary'); }
-    finally { setLoading(false); }
-  }, [year, month, quarter]);
+  const { data, isLoading: loading, isFetching, refetch } = useQuery({
+    queryKey: ['admin-inventory-gst', year, month, quarter],
+    queryFn: async () => {
+      try {
+        const params: { year: number; month?: string; quarter?: string } = { year };
+        if (month !== 'all') { params.month = month; }
+        else if (quarter !== 'all') { params.quarter = quarter; }
+        const res = await inventoryApi.getGstSummary(params);
+        return {
+          bySupplier: ((res.data as { bySupplier?: SupplierRow[] }).bySupplier ?? []) as SupplierRow[],
+          monthly: ((res.data as { monthly?: MonthlyRow[] }).monthly ?? []) as MonthlyRow[],
+          totals: ((res.data as { totals?: Totals }).totals ?? null) as Totals | null,
+        };
+      } catch (err) {
+        toast.error('Failed to load GST summary');
+        throw err;
+      }
+    },
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const bySupplier = data?.bySupplier ?? [];
+  const monthly = data?.monthly ?? [];
+  const totals = data?.totals ?? null;
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
@@ -124,8 +129,8 @@ export default function GstSummaryTab() {
               <option value="4">Q4 (Jan–Mar)</option>
             </select>
           </div>
-          <button onClick={load} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
-            <RefreshCw className={`h-4 w-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+          <button onClick={() => void refetch()} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
+            <RefreshCw className={`h-4 w-4 text-gray-500 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
           <Button
             variant="outline"

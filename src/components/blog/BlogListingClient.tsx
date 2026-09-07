@@ -1,7 +1,8 @@
 "use client";
 
 import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import Image from "next/image";
@@ -155,159 +156,108 @@ function GridSkeleton() {
   );
 }
 
-function resolveHasMore(
-  pagination: BlogsPagination | null | undefined,
-  pageParam: number,
-  batchSize: number,
-): boolean {
-  if (pagination) {
-    if (typeof pagination.hasNextPage === "boolean") {
-      return pagination.hasNextPage;
-    }
-    const cur = pagination.currentPage ?? pageParam;
-    const tp = Math.max(1, pagination.totalPages ?? 1);
-    return cur < tp;
-  }
-  return batchSize >= PAGE_LIMIT;
-}
-
 export default function BlogListingClient({
   initialBlogs = [],
   initialPagination = null,
 }: Props) {
-  const [blogs, setBlogs] = useState<Blog[]>(initialBlogs);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(
     searchInput.trim().slice(0, SEARCH_MAX_LEN),
     SEARCH_DEBOUNCE_MS,
   );
-  const [totalResults, setTotalResults] = useState<number | null>(null);
-  const [hasMore, setHasMore] = useState(() =>
-    resolveHasMore(initialPagination, 1, initialBlogs.length),
-  );
-  const [isLoading, setIsLoading] = useState(initialBlogs.length === 0);
-  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
-  const nextPageRef = useRef(initialBlogs.length > 0 ? 2 : 1);
-  const hasInteractedRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  /** Site-wide latest — stays in the hero banner even when category filters change. */
-  const [featuredBlog] = useState<Blog | null>(() => initialBlogs[0] ?? null);
+  const hasInteractedRef = useRef(false);
 
   const isSearching = searchInput.trim() !== debouncedSearch;
-  const hasActiveFilters =
-    activeCategory !== "all" || debouncedSearch.length > 0;
+  const hasActiveFilters = activeCategory !== "all" || debouncedSearch.length > 0;
 
-  const showFeaturedBanner = Boolean(featuredBlog) && !debouncedSearch;
-
-  const gridBlogs =
-    showFeaturedBanner && featuredBlog ?
-      blogs.filter((b) => b._id !== featuredBlog._id)
-    : blogs;
-
-  const fetchBlogs = useCallback(
-    async (pageParam: number, reset = false) => {
-      try {
-        if (reset || pageParam === 1) {
-          setIsLoading(true);
-        } else {
-          setIsFetchingNextPage(true);
-        }
-        const params: Record<string, string | number> = {
-          page: pageParam,
-          limit: PAGE_LIMIT,
-          sort: "-createdAt",
-        };
-        if (activeCategory !== "all") params.category = activeCategory;
-        if (debouncedSearch) params.search = debouncedSearch;
-
-        const res = await blogApi.getAll(params);
-
-        if (res.data?.blogs) {
-          const batch = res.data.blogs;
-          if (reset || pageParam === 1) {
-            setBlogs(batch);
-            nextPageRef.current = 2;
-          } else {
-            setBlogs((prev) => [...prev, ...batch]);
-            nextPageRef.current = pageParam + 1;
-          }
-          setTotalResults(
-            typeof res.pagination?.total === "number" ?
-              res.pagination.total
-            : null,
-          );
-          setHasMore(resolveHasMore(res.pagination, pageParam, batch.length));
-        } else {
-          if (reset || pageParam === 1) {
-            setBlogs([]);
-            setTotalResults(0);
-          }
-          setHasMore(false);
-        }
-      } catch {
-        if (reset || pageParam === 1) {
-          setBlogs([]);
-          setTotalResults(null);
-        }
-        setHasMore(false);
-      } finally {
-        setIsLoading(false);
-        setIsFetchingNextPage(false);
-      }
+  // useInfiniteQuery — query key changes when filter/search changes → auto-refetch
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery<{
+    blogs: Blog[];
+    total: number | null;
+    hasNextPage: boolean;
+  }>({
+    queryKey: ["blogs", activeCategory, debouncedSearch],
+    queryFn: async ({ pageParam = 1 }: { pageParam: unknown }) => {
+      const page = pageParam as number;
+      const params: Record<string, string | number> = {
+        page,
+        limit: PAGE_LIMIT,
+        sort: "-createdAt",
+      };
+      if (activeCategory !== "all") params.category = activeCategory;
+      if (debouncedSearch) params.search = debouncedSearch;
+      const res = await blogApi.getAll(params);
+      return {
+        blogs: (res.data?.blogs ?? []) as Blog[],
+        total: (res.pagination?.total ?? null) as number | null,
+        hasNextPage: resolveHasNextPage(res.pagination, page),
+      };
     },
-    [activeCategory, debouncedSearch],
-  );
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasNextPage ? allPages.length + 1 : undefined,
+    // Seed with SSR data when no filter active — avoids first network round-trip
+    initialData: !hasActiveFilters && initialBlogs.length > 0 ? {
+      pages: [{
+        blogs: initialBlogs,
+        total: initialPagination?.total ?? null,
+        hasNextPage: resolveHasNextPage(initialPagination, 1),
+      }],
+      pageParams: [1],
+    } : undefined,
+    staleTime: 1000 * 60 * 2,
+  });
 
-  useEffect(() => {
-    const skipInitialFetch =
-      !hasInteractedRef.current &&
-      initialBlogs.length > 0 &&
-      activeCategory === "all" &&
-      !debouncedSearch;
+  const blogs = data?.pages.flatMap((p) => p.blogs) ?? [];
+  const totalResults = data?.pages.at(-1)?.total ?? null;
 
-    if (skipInitialFetch) return;
-    fetchBlogs(1, true);
-  }, [activeCategory, debouncedSearch, fetchBlogs, initialBlogs.length]);
+  /** Site-wide latest — stays in hero even when filters change */
+  const featuredBlog = initialBlogs[0] ?? null;
+  const showFeaturedBanner = Boolean(featuredBlog) && !debouncedSearch;
+  const gridBlogs =
+    showFeaturedBanner && featuredBlog
+      ? blogs.filter((b) => b._id !== featuredBlog._id)
+      : blogs;
 
   const handleCategory = (cat: string) => {
     if (cat === activeCategory) return;
     hasInteractedRef.current = true;
     setActiveCategory(cat);
-    setHasMore(true);
-    nextPageRef.current = 1;
   };
-
   const handleSearchChange = (value: string) => {
     hasInteractedRef.current = true;
     setSearchInput(value.slice(0, SEARCH_MAX_LEN));
   };
-
   const clearSearch = () => {
     hasInteractedRef.current = true;
     setSearchInput("");
     searchInputRef.current?.focus();
   };
-
   const clearAllFilters = () => {
     hasInteractedRef.current = true;
     setSearchInput("");
     setActiveCategory("all");
-    setHasMore(true);
-    nextPageRef.current = 1;
   };
 
-  const loadMore = useCallback(() => {
-    if (!hasMore || isLoading || isFetchingNextPage) return Promise.resolve();
-    return fetchBlogs(nextPageRef.current, false);
-  }, [hasMore, isLoading, isFetchingNextPage, fetchBlogs]);
+  const loadMore = () => {
+    if (!hasNextPage || isLoading || isFetchingNextPage) return Promise.resolve();
+    return fetchNextPage();
+  };
 
   const { sentinelRef } = useInfiniteScrollTrigger({
-    hasNextPage: hasMore,
+    hasNextPage: hasNextPage ?? false,
     isFetchingNextPage,
     isPending: isLoading && blogs.length === 0,
     fetchNextPage: loadMore,
-    enabled: blogs.length > 0 && hasMore,
+    enabled: blogs.length > 0 && (hasNextPage ?? false),
   });
 
   const filterOptions = [
@@ -320,7 +270,7 @@ export default function BlogListingClient({
     if (isSearching || (isLoading && blogs.length > 0)) return "Updating results…";
     if (debouncedSearch) {
       const count = totalResults ?? blogs.length;
-      return `${count} ${count === 1 ? "story" : "stories"} for “${debouncedSearch}”`;
+      return `${count} ${count === 1 ? "story" : "stories"} for "${debouncedSearch}"`;
     }
     if (activeCategory !== "all") {
       const label = categoryLabel(activeCategory);
@@ -455,7 +405,7 @@ export default function BlogListingClient({
           <div className="text-center py-24 border border-dashed border-account-outline-variant/40">
             <p className="text-account-on-surface-variant text-lg mb-4">
               {debouncedSearch ?
-                `No stories match “${debouncedSearch}”.`
+                `No stories match "${debouncedSearch}".`
               : activeCategory !== "all" ?
                 `No stories in ${categoryLabel(activeCategory)} yet.`
               : "No stories published yet."}
@@ -487,7 +437,7 @@ export default function BlogListingClient({
               {gridBlogs.length} {gridBlogs.length === 1 ? "story" : "stories"} in archives
               {showFeaturedBanner ? " · 1 featured" : ""}
             </p>
-            {hasMore && (
+            {hasNextPage && (
               <>
                 <div ref={sentinelRef} className="h-1 w-full" aria-hidden />
                 <button
@@ -507,4 +457,17 @@ export default function BlogListingClient({
       <BlogNewsletter />
     </div>
   );
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function resolveHasNextPage(
+  pagination: BlogsPagination | null | undefined,
+  pageParam: number,
+): boolean {
+  if (!pagination) return false;
+  if (typeof pagination.hasNextPage === "boolean") return pagination.hasNextPage;
+  const cur = pagination.currentPage ?? pageParam;
+  const tp = Math.max(1, pagination.totalPages ?? 1);
+  return cur < tp;
 }

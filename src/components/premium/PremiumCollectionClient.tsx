@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useRef, useEffect } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import PremiumFadeIn from "@/components/premium/PremiumFadeIn";
@@ -14,6 +15,7 @@ import { mapApiProductsToPremiumViews, type PremiumProductView } from "@/lib/pre
 import { PREMIUM_PAGE_COPY } from "@/lib/premiumSeo";
 import { formatPrice } from "@/lib/utils";
 import { premiumApi } from "@/lib/api";
+import { useState } from "react";
 
 type Props = {
   products: PremiumProductView[];
@@ -22,10 +24,13 @@ type Props = {
   settings?: any;
 };
 
+const PREMIUM_LIMIT = 24;
+
 export default function PremiumCollectionClient({ products: initialProducts, activeAudience = "all", banners = [], settings }: Props) {
   const activeBanners = banners.filter((b: any) => b.audience === activeAudience && b.isActive !== false);
   const { premiumEditorial, premiumStory, premiumFinalCta } = settings || {};
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCurrentSlideIndex(0);
@@ -41,52 +46,43 @@ export default function PremiumCollectionClient({ products: initialProducts, act
 
   const activeBanner = activeBanners.length > 0 ? activeBanners[currentSlideIndex] : null;
 
-  const [products, setProducts] = useState(initialProducts);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(initialProducts.length >= 24);
-  const observerTarget = useRef<HTMLDivElement>(null);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["premium-products", activeAudience],
+    queryFn: ({ pageParam = 2 }: { pageParam: number }) =>
+      premiumApi
+        .getProducts({ audience: activeAudience, page: pageParam, limit: PREMIUM_LIMIT })
+        .then((r) => ({
+          products: mapApiProductsToPremiumViews(r.data?.products ?? []),
+          hasNextPage: r.pagination?.hasNextPage ?? (r.data?.products?.length ?? 0) >= PREMIUM_LIMIT,
+        })),
+    initialPageParam: 2,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasNextPage ? allPages.length + 2 : undefined,
+  });
 
-  const fetchMore = useCallback(async () => {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    try {
-      const nextPage = page + 1;
-      const res = await premiumApi.getProducts({ 
-        audience: activeAudience, 
-        page: nextPage,
-        limit: 24 
-      });
-      const newProds = res.data?.products || [];
-      if (newProds.length > 0) {
-        setProducts((prev) => [...prev, ...mapApiProductsToPremiumViews(newProds)]);
-        setPage(nextPage);
-        setHasMore(Boolean(res.pagination?.hasNextPage ?? (newProds.length >= 24)));
-      } else {
-        setHasMore(false);
-      }
-    } catch {
-      // Failed to load more gracefully stops
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, hasMore, page, activeAudience]);
+  // Merge SSR initial products with React Query fetched pages
+  const extraProducts = data?.pages.flatMap((p) => p.products) ?? [];
+  const products = [...initialProducts, ...extraProducts];
+  const loading = isFetchingNextPage;
 
+  // IntersectionObserver for infinite scroll trigger
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          fetchMore();
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
         }
       },
-      { threshold: 0.1, rootMargin: "200px" }
+      { threshold: 0.1, rootMargin: "200px" },
     );
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
+    if (observerTarget.current) observer.observe(observerTarget.current);
     return () => observer.disconnect();
-  }, [fetchMore]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   return (
     <div className='bg-[#fcf9f8] text-[#1a1a1a]'>
@@ -171,29 +167,36 @@ export default function PremiumCollectionClient({ products: initialProducts, act
       {/* Product grid */}
       <section
         id='collection'
-        className='mx-auto max-w-[1280px] px-5 py-6 md:px-16 md:pt-8'
+        className='mx-auto max-w-[1280px] scroll-mt-[calc(var(--store-sticky-nav-offset,4.25rem)+3.25rem)] px-5 py-6 md:px-16 md:pt-8'
       >
-        {/* Audience Navigation Tabs */}
-        <div className="mb-10 flex flex-wrap items-center justify-center gap-5 border-b border-account-primary/10 pb-4 sm:mb-12 sm:gap-6">
-          {[
-            { id: "all", label: "All" },
-            { id: "women", label: "Women" },
-            { id: "men", label: "Men" },
-            { id: "kids", label: "Kids" },
-            { id: "couple", label: "Couples" },
-          ].map((tab) => (
-            <Link
-              key={tab.id}
-              href={tab.id === "all" ? "/premium#collection" : `/premium/${tab.id}#collection`}
-              className={`text-[13px] font-semibold uppercase tracking-[0.15em] transition-all ${
-                activeAudience === tab.id
-                  ? "text-account-primary border-b-2 border-account-primary pb-1"
-                  : "text-account-on-surface-variant hover:text-account-primary"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          ))}
+        {/* Audience tabs — sticky under navbar (follows auto-hide offset on mobile too) */}
+        <div
+          className='sticky top-[var(--store-sticky-nav-offset,4.25rem)] z-30 -mx-5 mb-8 border-b border-account-primary/10 bg-[#fcf9f8]/95 backdrop-blur-md transition-[top] duration-300 ease-out motion-reduce:transition-none sm:mb-10 md:-mx-16 supports-[backdrop-filter]:bg-[#fcf9f8]/90'
+        >
+          <nav
+            aria-label='Premium audience'
+            className='flex items-center gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide px-3 py-2.5 sm:justify-center sm:gap-2 sm:px-6 md:px-16'
+          >
+            {[
+              { id: "all", label: "All" },
+              { id: "women", label: "Women" },
+              { id: "men", label: "Men" },
+              { id: "kids", label: "Kids" },
+              { id: "couple", label: "Couples" },
+            ].map((tab) => (
+              <Link
+                key={tab.id}
+                href={tab.id === "all" ? "/premium#collection" : `/premium/${tab.id}#collection`}
+                className={`shrink-0 whitespace-nowrap px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.15em] transition-colors sm:px-4 sm:text-[13px] ${
+                  activeAudience === tab.id
+                    ? "border-b-2 border-account-primary text-account-primary"
+                    : "border-b-2 border-transparent text-account-on-surface-variant hover:text-account-primary"
+                }`}
+              >
+                {tab.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
         {products.length === 0 && !loading ? (
@@ -274,12 +277,12 @@ export default function PremiumCollectionClient({ products: initialProducts, act
       <section className='bg-white px-5 py-12 md:px-16 md:py-16'>
         <div className='mx-auto flex max-w-[1280px] flex-col items-center gap-6 md:flex-row md:gap-12'>
           <PremiumFadeIn className='w-full md:w-7/12'>
-            <div className='relative aspect-[4/5] overflow-hidden'>
+            <div className='relative aspect-[4/5] w-full overflow-hidden bg-account-surface-container'>
               <Image
                 src={premiumEditorial?.image || PREMIUM_EDITORIAL_IMAGE}
                 alt='Lifestyle Editorial'
                 fill
-                className='object-cover'
+                className='object-cover object-center'
                 sizes='(max-width: 768px) 100vw, 58vw'
               />
             </div>

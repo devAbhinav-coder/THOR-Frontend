@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,9 +19,9 @@ import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { formatPrice, cn } from "@/lib/utils";
-import { couponApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { CartItem, Coupon, type NearEligibleCoupon } from "@/types";
+import { CartItem, type NearEligibleCoupon } from "@/types";
+import { useEligibleCouponsQuery } from "@/hooks/useEligibleCouponsQuery";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
@@ -73,7 +73,6 @@ export default function CartClient() {
   const {
     cart,
     isLoading,
-    fetchCart,
     updateItem,
     removeItem,
     applyCoupon,
@@ -87,46 +86,19 @@ export default function CartClient() {
   const [isCheckoutLaunching, setIsCheckoutLaunching] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
-  const [eligibleCoupons, setEligibleCoupons] = useState<Coupon[]>([]);
-  const [nearEligibleCoupons, setNearEligibleCoupons] = useState<NearEligibleCoupon[]>([]);
-  const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    void fetchCart();
-  }, [isAuthenticated, fetchCart]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (!cart || cart.items.length === 0) return;
-    const run = async () => {
-      setIsLoadingCoupons(true);
-      try {
-        const res = await couponApi.getEligible(cart.subtotal);
-        setEligibleCoupons(res.data.coupons || []);
-        setNearEligibleCoupons(
-          (res.data.nearEligible ?? []).flatMap((entry) =>
-            entry.coupon ?
-              [{ coupon: entry.coupon as Coupon, hintMessage: entry.hintMessage }]
-            : [],
-          ),
-        );
-      } catch {
-        setEligibleCoupons([]);
-        setNearEligibleCoupons([]);
-      } finally {
-        setIsLoadingCoupons(false);
-      }
-    };
-    run();
-  }, [
-    isAuthenticated,
+  const cartItemsKey =
+    cart?.items?.map((i) => `${i.product}:${i.quantity}:${i.price}`).join("|") ??
+    "";
+  const { data: couponsData, isLoading: isLoadingCoupons } = useEligibleCouponsQuery(
     cart?.subtotal,
-    cart?.items
-      ?.map((i) => `${i.product}:${i.quantity}:${i.price}`)
-      .join("|"),
-  ]);
+    cartItemsKey,
+    Boolean(isAuthenticated && cart && cart.items.length > 0),
+  );
+  const eligibleCoupons = couponsData?.coupons ?? [];
+  const nearEligibleCoupons: NearEligibleCoupon[] =
+    couponsData?.nearEligible ?? [];
 
   const goToCheckout = useCallback(async () => {
     if (isCheckoutLaunching) return;

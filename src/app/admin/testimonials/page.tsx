@@ -20,9 +20,10 @@ type ProductHit = {
   images?: { url: string }[];
 };
 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 export default function AdminTestimonialsPage() {
-  const [items, setItems] = useState<Testimonial[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -62,22 +63,14 @@ export default function AdminTestimonialsPage() {
       )}`
     : null;
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
+  const { data: items = [], isLoading: loading } = useQuery({
+    queryKey: ['admin-testimonials'],
+    queryFn: async () => {
       const res = await testimonialApi.getAdminAll();
       const list = res.data?.testimonials;
-      setItems(Array.isArray(list) ? (list as Testimonial[]) : []);
-    } catch {
-      toast.error('Failed to load stories');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAll();
-  }, []);
+      return Array.isArray(list) ? (list as Testimonial[]) : [];
+    },
+  });
 
   useEffect(() => {
     if (productQuery.trim().length < 1) {
@@ -151,42 +144,49 @@ export default function AdminTestimonialsPage() {
     }
   };
 
-  const approve = async (id: string) => {
-    const item = items.find((t) => t._id === id);
-    setBusyId(id);
-    try {
-      await testimonialApi.approve(id);
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => testimonialApi.approve(id),
+    onSuccess: (_, id) => {
+      const item = items.find((t) => t._id === id);
       toast.success(item?.product ? 'Approved — live on product & homepage' : 'Approved — live on homepage');
-      fetchAll();
-    } catch {
-      toast.error('Approve failed');
-    } finally {
-      setBusyId(null);
-    }
-  };
+      void queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] });
+    },
+    onError: () => toast.error('Approve failed'),
+    onSettled: () => setBusyId(null),
+  });
 
-  const reject = async (id: string) => {
-    setBusyId(id);
-    try {
-      await testimonialApi.reject(id);
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => testimonialApi.reject(id),
+    onSuccess: () => {
       toast.success('Rejected');
-      fetchAll();
-    } catch {
-      toast.error('Reject failed');
-    } finally {
-      setBusyId(null);
-    }
+      void queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] });
+    },
+    onError: () => toast.error('Reject failed'),
+    onSettled: () => setBusyId(null),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => testimonialApi.delete(id),
+    onSuccess: () => {
+      toast.success('Deleted');
+      void queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] });
+    },
+    onError: () => toast.error('Delete failed'),
+  });
+
+  const approve = (id: string) => {
+    setBusyId(id);
+    approveMutation.mutate(id);
   };
 
-  const handleDelete = async (id: string) => {
+  const reject = (id: string) => {
+    setBusyId(id);
+    rejectMutation.mutate(id);
+  };
+
+  const handleDelete = (id: string) => {
     if (!confirm('Delete this story permanently?')) return;
-    try {
-      await testimonialApi.delete(id);
-      toast.success('Deleted');
-      fetchAll();
-    } catch {
-      toast.error('Delete failed');
-    }
+    deleteMutation.mutate(id);
   };
 
   return (

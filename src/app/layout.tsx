@@ -288,18 +288,18 @@ n.queue=[]}(window,document,'script',
             title='Google Tag Manager'
           />
         </noscript>
-        <AuthProvider>
-          <Suspense fallback={null}>
-            <NavigationProgress />
-          </Suspense>
-          <QueryProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
             <SmoothScroll>{children}</SmoothScroll>
-          </QueryProvider>
-          <AppToaster />
-          <GoogleAnalytics />
-          <MetaPixel />
-          <CookieConsentBanner />
-        </AuthProvider>
+            <AppToaster />
+            <GoogleAnalytics />
+            <MetaPixel />
+            <CookieConsentBanner />
+          </AuthProvider>
+        </QueryProvider>
 
         {/*
          * 3rd-party analytics moved out of <head> and deferred so they don't

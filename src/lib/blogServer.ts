@@ -5,6 +5,8 @@ export type BlogsPagination = {
   currentPage?: number;
   totalPages?: number;
   hasNextPage?: boolean;
+  total?: number;
+  hasPrevPage?: boolean;
 };
 
 export type BlogsListServerResult = {

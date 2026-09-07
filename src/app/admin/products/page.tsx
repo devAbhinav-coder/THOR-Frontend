@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, AlertTriangle, Sparkles, CheckCircle2, EyeOff, LayoutGrid, List, RefreshCw, Eye, Crown } from 'lucide-react';
 import { adminApi, productApi } from '@/lib/api';
 import { fetchAdminCatalogCategories } from '@/lib/adminCatalog';
-import { Category, Product } from '@/types';
-import { formatPrice } from '@/lib/utils';
+import { Product } from '@/types';
 import { sumVariantStock, variantStockSummary } from '@/lib/productStock';
 import { adminProductListThumbnail } from '@/lib/adminProductDisplay';
 import OrderLineThumbnail from '@/components/orders/OrderLineThumbnail';
@@ -24,25 +24,97 @@ import AdminErrorState from '@/components/admin/AdminErrorState';
 
 type QuickFilter = 'all' | 'featured' | 'active' | 'inactive' | 'premium';
 
+const PAGE_LIMIT = 20;
+
+type ProductsPageData = {
+  products: Product[];
+  pagination: { currentPage: number; totalPages: number; totalProducts: number };
+};
+
+async function fetchAdminProductsPage(args: {
+  page: number;
+  query: string;
+  sort: string;
+  filter: QuickFilter;
+  categoryFilter: string;
+}): Promise<ProductsPageData> {
+  const { page, query, sort, filter, categoryFilter } = args;
+  const params: Record<string, string | number> = {
+    page,
+    limit: PAGE_LIMIT,
+    sort,
+  };
+  if (filter === 'featured') params.isFeatured = 'true';
+  if (filter === 'active') params.isActive = 'true';
+  if (filter === 'inactive') params.isActive = 'false';
+  if (filter === 'premium') params.isPremium = 'true';
+  if (categoryFilter) params.category = categoryFilter;
+
+  try {
+    if (query) {
+      const searchRes = await adminApi.searchProducts({
+        q: query,
+        page,
+        limit: PAGE_LIMIT,
+        sortBy: sort,
+        ...params,
+      });
+      const p = searchRes.pagination;
+      return {
+        products: searchRes.data.products,
+        pagination: {
+          currentPage: p?.currentPage ?? 1,
+          totalPages: p?.totalPages ?? 1,
+          totalProducts: p?.totalProducts ?? p?.total ?? 0,
+        },
+      };
+    }
+    const res = await adminApi.getProducts(params);
+    const p = res.pagination;
+    return {
+      products: res.data.products,
+      pagination: {
+        currentPage: p?.currentPage ?? 1,
+        totalPages: p?.totalPages ?? 1,
+        totalProducts: p?.totalProducts ?? p?.total ?? 0,
+      },
+    };
+  } catch {
+    const fallback: Record<string, string | number> = {
+      page,
+      limit: PAGE_LIMIT,
+      sort,
+    };
+    if (query) fallback.search = query;
+    if (categoryFilter) fallback.category = categoryFilter;
+    if (filter === 'featured') fallback.isFeatured = 'true';
+    if (filter === 'active') fallback.isActive = 'true';
+    if (filter === 'inactive') fallback.isActive = 'false';
+    if (filter === 'premium') fallback.isPremium = 'true';
+    const res = await adminApi.getProducts(fallback);
+    const p = res.pagination;
+    return {
+      products: res.data.products,
+      pagination: {
+        currentPage: p?.currentPage ?? 1,
+        totalPages: p?.totalPages ?? 1,
+        totalProducts: p?.totalProducts ?? p?.total ?? 0,
+      },
+    };
+  }
+}
+
 export default function AdminProductsPage() {
-  const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 420);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [catalogCategories, setCatalogCategories] = useState<Category[]>([]);
   const [sortBy, setSortBy] = useState<'-createdAt' | '-viewCount' | 'viewCount' | '-soldCount' | 'soldCount'>('-createdAt');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalProducts: 0 });
-  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -56,141 +128,67 @@ export default function AdminProductsPage() {
     }
   }, []);
 
-  const fetchProducts = useCallback(async (page = 1, query = '', sort = '-createdAt', limit = 20, filter = quickFilter, append = false) => {
-    if (append) setIsFetchingNextPage(true);
-    else setIsLoading(true);
-    setLoadError(false);
-    try {
-      const params: Record<string, string | number> = {
-        page,
-        limit,
-        sort,
-      };
-      if (filter === 'featured') params.isFeatured = 'true';
-      if (filter === 'active') params.isActive = 'true';
-      if (filter === 'inactive') params.isActive = 'false';
-      if (filter === 'premium') params.isPremium = 'true';
-      if (query) {
-        if (categoryFilter) params.category = categoryFilter;
-        const searchRes = await adminApi.searchProducts({
-          q: query,
-          page,
-          limit,
-          sortBy: sort,
-          ...params,
-        });
-        if (append) {
-          setProducts(prev => {
-            const map = new Map(prev.map((p) => [p._id, p]));
-            for (const p of searchRes.data.products) map.set(p._id, p);
-            return Array.from(map.values());
-          });
-        } else {
-          setProducts(searchRes.data.products);
-        }
-        const p = searchRes.pagination;
-        setPagination({
-          currentPage: p?.currentPage ?? 1,
-          totalPages: p?.totalPages ?? 1,
-          totalProducts: p?.totalProducts ?? p?.total ?? 0,
-        });
-        setHasMore((p?.currentPage ?? 1) < (p?.totalPages ?? 1));
-      } else {
-        // Use regular getAll for non-search queries
-        if (categoryFilter) params.category = categoryFilter;
-        const res = await adminApi.getProducts(params);
-        if (append) {
-          setProducts(prev => {
-            const map = new Map(prev.map((p) => [p._id, p]));
-            for (const p of res.data.products) map.set(p._id, p);
-            return Array.from(map.values());
-          });
-        } else {
-          setProducts(res.data.products);
-        }
-        const p = res.pagination;
-        setPagination({
-          currentPage: p?.currentPage ?? 1,
-          totalPages: p?.totalPages ?? 1,
-          totalProducts: p?.totalProducts ?? p?.total ?? 0,
-        });
-        setHasMore((p?.currentPage ?? 1) < (p?.totalPages ?? 1));
-      }
-      setLoadError(false);
-    } catch {
-      // Fallback to basic search if advanced search fails
-      try {
-        const params: Record<string, string | number> = {
-          page,
-          limit,
-          sort,
-        };
-        if (query) params.search = query;
-        if (categoryFilter) params.category = categoryFilter;
-        if (filter === 'featured') params.isFeatured = 'true';
-        if (filter === 'active') params.isActive = 'true';
-        if (filter === 'inactive') params.isActive = 'false';
-        if (filter === 'premium') params.isPremium = 'true';
-        const res = await adminApi.getProducts(params);
-        if (append) {
-          setProducts(prev => {
-            const map = new Map(prev.map((p) => [p._id, p]));
-            for (const p of res.data.products) map.set(p._id, p);
-            return Array.from(map.values());
-          });
-        } else {
-          setProducts(res.data.products);
-        }
-        const p = res.pagination;
-        setPagination({
-          currentPage: p?.currentPage ?? 1,
-          totalPages: p?.totalPages ?? 1,
-          totalProducts: p?.totalProducts ?? p?.total ?? 0,
-        });
-        setHasMore((p?.currentPage ?? 1) < (p?.totalPages ?? 1));
-        setLoadError(false);
-      } catch {
-        if (!append) {
-          setProducts([]);
-          setLoadError(true);
-          setHasMore(false);
-        } else {
-          toast.error("Could not load more products.");
-        }
-      }
-    } finally {
-      setIsLoading(false);
-      setIsFetchingNextPage(false);
-      setIsRefreshing(false);
-    }
-  }, [categoryFilter, quickFilter]);
+  const productsQueryKey = ['admin-products', debouncedSearch, sortBy, categoryFilter, quickFilter] as const;
+
+  const {
+    data,
+    isLoading,
+    isError: loadError,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    isRefetching,
+  } = useInfiniteQuery({
+    queryKey: productsQueryKey,
+    queryFn: ({ pageParam = 1 }) =>
+      fetchAdminProductsPage({
+        page: pageParam,
+        query: debouncedSearch,
+        sort: sortBy,
+        filter: quickFilter,
+        categoryFilter,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => {
+      const { currentPage, totalPages } = last.pagination;
+      return currentPage < totalPages ? currentPage + 1 : undefined;
+    },
+  });
+
+  const products = data?.pages.flatMap((p) => p.products) ?? [];
+  const pagination = data?.pages.at(-1)?.pagination ?? {
+    currentPage: 1,
+    totalPages: 1,
+    totalProducts: 0,
+  };
+  const isRefreshing = isRefetching && !isFetchingNextPage;
 
   useEffect(() => {
-    setProducts([]);
-    setHasMore(true);
-    fetchProducts(1, debouncedSearch, sortBy);
-  }, [debouncedSearch, sortBy, categoryFilter, quickFilter, fetchProducts]);
-
-  useEffect(() => {
-    if (!hasMore || isLoading || isFetchingNextPage || !loadMoreRef.current) return;
+    if (!hasNextPage || isLoading || isFetchingNextPage || !loadMoreRef.current) return;
     const observer = new IntersectionObserver(
       (entries) => {
         const first = entries[0];
-        if (first.isIntersecting && hasMore && !isFetchingNextPage) {
-          void fetchProducts(pagination.currentPage + 1, debouncedSearch, sortBy, 20, quickFilter, true);
+        if (first.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
         }
       },
-      { rootMargin: "240px" }
+      { rootMargin: '240px' },
     );
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, isFetchingNextPage, pagination.currentPage, fetchProducts, debouncedSearch, sortBy, quickFilter]);
+  }, [hasNextPage, isLoading, isFetchingNextPage, fetchNextPage]);
 
-  useEffect(() => {
-    fetchAdminCatalogCategories()
-      .then(setCatalogCategories)
-      .catch(() => setCatalogCategories([]));
-  }, []);
+  const { data: catalogCategories = [] } = useQuery({
+    queryKey: ['admin-catalog-categories'],
+    queryFn: async () => {
+      try {
+        return await fetchAdminCatalogCategories();
+      } catch {
+        return [];
+      }
+    },
+  });
 
   const productCategoryOptions = catalogCategories
     .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== 'gifting')
@@ -199,48 +197,76 @@ export default function AdminProductsPage() {
 
   const filtered = products;
 
-  const handleDelete = async (id: string) => {
-    try {
-      await productApi.delete(id);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => productApi.delete(id),
+    onSuccess: () => {
       toast.success('Product deleted');
       setDeleteConfirm(null);
-      setProducts((prev) => prev.filter((p) => p._id !== id));
-      setPagination((prev) => ({
-        ...prev,
-        totalProducts: Math.max(0, prev.totalProducts - 1),
-      }));
-      fetchProducts(1, debouncedSearch, sortBy);
-    } catch (err: unknown) {
+      void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    },
+    onError: (err: unknown) => {
       const error = err as { message?: string };
       toast.error(error.message || 'Failed to delete product');
-    }
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
   };
 
   const handleSave = (savedProduct?: Product) => {
     setIsModalOpen(false);
     setEditProduct(null);
     if (savedProduct?._id) {
-      const exists = products.some((p) => p._id === savedProduct._id);
-      setProducts((prev) => {
-        const idx = prev.findIndex((p) => p._id === savedProduct._id);
-        if (idx >= 0) {
-          const next = [...prev];
-          // Keep list order & scroll — merge in place (full refetch was
-          // resetting infinite-scroll pages and reshuffling the table).
-          next[idx] = { ...prev[idx], ...savedProduct };
-          return next;
-        }
-        return [savedProduct, ...prev];
-      });
-      if (!exists) {
-        setPagination((p) => ({
-          ...p,
-          totalProducts: p.totalProducts + 1,
-        }));
-      }
+      queryClient.setQueriesData(
+        { queryKey: ['admin-products'] },
+        (old: unknown) => {
+          if (!old || typeof old !== 'object' || !('pages' in old)) return old;
+          const typed = old as {
+            pages: ProductsPageData[];
+            pageParams: unknown[];
+          };
+          let found = false;
+          const pages = typed.pages.map((page) => {
+            const idx = page.products.findIndex((p) => p._id === savedProduct._id);
+            if (idx < 0) return page;
+            found = true;
+            const next = [...page.products];
+            next[idx] = { ...page.products[idx], ...savedProduct };
+            return { ...page, products: next };
+          });
+          if (found) return { ...typed, pages };
+          const [first, ...rest] = typed.pages;
+          if (!first) {
+            return {
+              ...typed,
+              pages: [
+                {
+                  products: [savedProduct],
+                  pagination: { currentPage: 1, totalPages: 1, totalProducts: 1 },
+                },
+              ],
+            };
+          }
+          return {
+            ...typed,
+            pages: [
+              {
+                ...first,
+                products: [savedProduct, ...first.products],
+                pagination: {
+                  ...first.pagination,
+                  totalProducts: first.pagination.totalProducts + 1,
+                },
+              },
+              ...rest,
+            ],
+          };
+        },
+      );
       return;
     }
-    fetchProducts(1, debouncedSearch, sortBy);
+    void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
   };
 
   const stockMeta = (p: Product) => {
@@ -273,8 +299,7 @@ export default function AdminProductsPage() {
   };
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    void fetchProducts(pagination.currentPage, debouncedSearch, sortBy);
+    void refetch();
   };
 
   return (
@@ -315,7 +340,7 @@ export default function AdminProductsPage() {
         <AdminErrorState
           title="Couldn’t load products"
           message="Verify the API is reachable and you are signed in as admin."
-          onRetry={() => fetchProducts(pagination.currentPage, debouncedSearch, sortBy)}
+          onRetry={() => void refetch()}
         />
       )}
 

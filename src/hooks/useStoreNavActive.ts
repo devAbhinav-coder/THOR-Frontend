@@ -22,7 +22,7 @@ export function getStoreNavActive(
     cart: pathname.startsWith("/cart"),
     orders: pathname.startsWith("/dashboard/orders"),
     userHub:
-      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard") ||
       pathname === "/auth/login" ||
       authModalView === "login",
   };

@@ -69,7 +69,7 @@ function ShopCollectionCardInner({
 
   const metaLine = useMemo(
     () => buildProductMetaLine(product),
-    [product.category, product.fabric, product.subcategory],
+    [product],
   );
 
   const priceDisplay = useMemo(
@@ -80,7 +80,6 @@ function ShopCollectionCardInner({
     () => storefrontPriceMeta(product, displayColor),
     [product, displayColor],
   );
-  const hasDiscount = priceDisplay.showDiscount;
   const discountPercent = priceDisplay.discountPercent;
 
   const schemaAvailability =
@@ -162,40 +161,42 @@ function ShopCollectionCardInner({
         </div>
       )}
 
-      <Link
-        href={productHref}
-        className='flex h-full min-h-0 flex-col outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/40 focus-visible:ring-offset-2'
-        aria-label={`View ${product.name}${isOutOfStock ? " (Sold Out)" : ""}`}
-      >
+      <div className='flex h-full min-h-0 flex-col'>
         <div className='relative mb-3 aspect-[3/4] shrink-0 overflow-hidden bg-gray-100 sm:mb-4'>
-          {showPrimaryImage ?
-            <Image
-              src={primaryUrl}
-              alt={product.name}
-              fill
-              loader={cloudinaryLoader}
-              sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
-              loading='lazy'
-              quality={72}
-              className='card-hover-zoom object-cover transition-transform duration-500 group-hover:scale-[1.02]'
-              onError={() => setPrimaryImageError(true)}
-            />
-          : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center'>
-              <ShoppingBag className='h-8 w-8 text-gray-300' aria-hidden />
-              <span className='text-[10px] font-medium text-gray-400'>
-                Photo updating soon
-              </span>
-            </div>
-          }
+          <Link
+            href={productHref}
+            className='absolute inset-0 z-0 block outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/40 focus-visible:ring-offset-2'
+            aria-label={`View ${product.name}${isOutOfStock ? " (Sold Out)" : ""}`}
+          >
+            {showPrimaryImage ?
+              <Image
+                src={primaryUrl}
+                alt={product.name}
+                fill
+                loader={cloudinaryLoader}
+                sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
+                loading='lazy'
+                quality={72}
+                className='card-hover-zoom object-cover transition-transform duration-500 group-hover:scale-[1.02]'
+                onError={() => setPrimaryImageError(true)}
+              />
+            : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center'>
+                <ShoppingBag className='h-8 w-8 text-gray-300' aria-hidden />
+                <span className='text-[10px] font-medium text-gray-400'>
+                  Photo updating soon
+                </span>
+              </div>
+            }
+          </Link>
 
           {product.saleCampaignId && discountPercent >= 1 && !isOutOfStock && (
-            <span className='absolute left-0 top-0 z-10 bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white sm:px-2.5 sm:py-1 sm:text-[10px]'>
+            <span className='pointer-events-none absolute left-0 top-0 z-10 bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white sm:px-2.5 sm:py-1 sm:text-[10px]'>
               {product.saleBadge ? `${product.saleBadge} · ${discountPercent}% off` : `${discountPercent}% off`}
             </span>
           )}
 
           {isOutOfStock && (
-            <span className='absolute bottom-3 left-3 z-10 text-[9px] font-semibold uppercase tracking-widest text-navy-900/50 sm:text-[10px]'>
+            <span className='pointer-events-none absolute bottom-3 left-3 z-10 text-[9px] font-semibold uppercase tracking-widest text-navy-900/50 sm:text-[10px]'>
               Sold Out
             </span>
           )}
@@ -226,12 +227,14 @@ function ShopCollectionCardInner({
         </div>
 
         <div className='flex flex-1 flex-col'>
-          <h3
-            className='line-clamp-1 min-h-[1.25rem] font-serif text-sm font-medium leading-snug text-navy-900 sm:min-h-[1.5625rem] sm:text-lg'
-            itemProp='name'
-          >
-            {product.name}
-          </h3>
+          <Link href={productHref} className='block group-hover:text-[#c5a059] transition-colors'>
+            <h3
+              className='line-clamp-1 min-h-[1.25rem] font-serif text-sm font-medium leading-snug text-navy-900 sm:min-h-[1.5625rem] sm:text-lg'
+              itemProp='name'
+            >
+              {product.name}
+            </h3>
+          </Link>
 
           {metaLine ?
             <p className='mt-0.5 line-clamp-1 text-[10px] font-medium uppercase tracking-[0.12em] text-gray-500 sm:text-[11px]'>
@@ -281,7 +284,7 @@ function ShopCollectionCardInner({
             showBadge={false}
           />
         </div>
-      </Link>
+      </div>
     </article>
   );
 }

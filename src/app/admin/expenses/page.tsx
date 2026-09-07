@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   RefreshCw,
@@ -84,15 +85,9 @@ function ExpenseFormModal({
       new Date().toISOString().slice(0, 10),
     notes: initial?.notes ?? "",
   });
-  const [saving, setSaving] = useState(false);
 
-  const save = async () => {
-    if (!form.title.trim() || !form.amount) {
-      toast.error("Title and amount required");
-      return;
-    }
-    setSaving(true);
-    try {
+  const saveMutation = useMutation({
+    mutationFn: async () => {
       const payload = {
         category: form.category,
         title: form.title.trim(),
@@ -102,18 +97,26 @@ function ExpenseFormModal({
       };
       if (initial) {
         await operatingExpensesApi.update(initial._id, payload);
-        toast.success("Expense updated");
       } else {
         await operatingExpensesApi.create(payload);
-        toast.success("Expense recorded");
       }
+    },
+    onSuccess: () => {
+      toast.success(initial ? "Expense updated" : "Expense recorded");
       onSaved();
       onClose();
-    } catch (e: unknown) {
+    },
+    onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "Failed to save");
-    } finally {
-      setSaving(false);
+    },
+  });
+
+  const save = () => {
+    if (!form.title.trim() || !form.amount) {
+      toast.error("Title and amount required");
+      return;
     }
+    saveMutation.mutate();
   };
 
   return (
@@ -226,9 +229,9 @@ function ExpenseFormModal({
             variant='brand'
             className='flex-1 rounded-xl'
             onClick={save}
-            disabled={saving}
+            disabled={saveMutation.isPending}
           >
-            {saving ?
+            {saveMutation.isPending ?
               "Saving…"
             : initial ?
               "Update"
@@ -241,56 +244,78 @@ function ExpenseFormModal({
 }
 
 export default function AdminExpensesPage() {
+  const queryClient = useQueryClient();
   const [year, setYear] = useState(new Date().getFullYear());
-  const [summary, setSummary] = useState<ExpenseSummary | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
 
-  const load = useCallback(
-    async (p = 1) => {
-      setLoading(true);
+  const {
+    data: summary,
+    isFetching: summaryFetching,
+    refetch: refetchSummary,
+  } = useQuery({
+    queryKey: ["admin-expenses-summary", year],
+    queryFn: async () => {
+      const sumRes = await operatingExpensesApi.getSummary({ year });
+      return (sumRes.data as { summary: ExpenseSummary }).summary;
+    },
+  });
+
+  const {
+    data: listData,
+    isLoading: loading,
+    isFetching: listFetching,
+    refetch: refetchList,
+  } = useQuery({
+    queryKey: ["admin-expenses", page, categoryFilter],
+    queryFn: async () => {
       try {
-        const [sumRes, listRes] = await Promise.all([
-          operatingExpensesApi.getSummary({ year }),
-          operatingExpensesApi.list({
-            page: p,
-            limit: 25,
-            ...(categoryFilter ? { category: categoryFilter } : {}),
-          }),
-        ]);
-        setSummary((sumRes.data as { summary: ExpenseSummary }).summary);
-        setExpenses((listRes.data as { expenses: Expense[] }).expenses ?? []);
+        const listRes = await operatingExpensesApi.list({
+          page,
+          limit: 25,
+          ...(categoryFilter ? { category: categoryFilter } : {}),
+        });
         const pag = listRes.pagination as { totalPages?: number } | undefined;
-        setTotalPages(pag?.totalPages ?? 1);
-        setPage(p);
-      } catch {
+        return {
+          expenses: (listRes.data as { expenses: Expense[] }).expenses ?? [],
+          totalPages: pag?.totalPages ?? 1,
+        };
+      } catch (err) {
         toast.error("Failed to load expenses");
-      } finally {
-        setLoading(false);
+        throw err;
       }
     },
-    [year, categoryFilter],
-  );
+  });
 
-  useEffect(() => {
-    load(1);
-  }, [load]);
+  const expenses = listData?.expenses ?? [];
+  const totalPages = listData?.totalPages ?? 1;
+  const isRefreshing = summaryFetching || listFetching;
 
-  const handleVoid = async (e: Expense) => {
+  const invalidateExpenses = () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin-expenses"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin-expenses-summary"] });
+  };
+
+  const voidMutation = useMutation({
+    mutationFn: (id: string) => operatingExpensesApi.void(id),
+    onSuccess: () => {
+      toast.success("Expense voided");
+      invalidateExpenses();
+    },
+    onError: () => toast.error("Failed to void"),
+  });
+
+  const handleVoid = (e: Expense) => {
     if (!confirm(`Remove "${e.title}" (${formatPrice(e.amount)}) from books?`))
       return;
-    try {
-      await operatingExpensesApi.void(e._id);
-      toast.success("Expense voided");
-      load(page);
-    } catch {
-      toast.error("Failed to void");
-    }
+    voidMutation.mutate(e._id);
+  };
+
+  const handleRefresh = () => {
+    void refetchSummary();
+    void refetchList();
   };
 
   const years = Array.from(
@@ -310,11 +335,11 @@ export default function AdminExpensesPage() {
               variant='outline'
               size='sm'
               className='rounded-xl'
-              onClick={() => load(page)}
+              onClick={handleRefresh}
               disabled={loading}
             >
               <RefreshCw
-                className={cn("h-4 w-4 mr-1", loading && "animate-spin")}
+                className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")}
               />{" "}
               Refresh
             </Button>
@@ -452,6 +477,7 @@ export default function AdminExpensesPage() {
             value={categoryFilter}
             onChange={(e) => {
               setCategoryFilter(e.target.value);
+              setPage(1);
             }}
             className='h-9 px-3 rounded-xl border border-gray-200 text-xs ml-auto'
           >
@@ -466,7 +492,10 @@ export default function AdminExpensesPage() {
             variant='brand'
             size='sm'
             className='rounded-xl h-9'
-            onClick={() => load(1)}
+            onClick={() => {
+              setPage(1);
+              void refetchList();
+            }}
           >
             Apply
           </Button>
@@ -559,7 +588,7 @@ export default function AdminExpensesPage() {
                 variant='outline'
                 size='sm'
                 disabled={page <= 1}
-                onClick={() => load(page - 1)}
+                onClick={() => setPage((p) => p - 1)}
               >
                 Prev
               </Button>
@@ -567,7 +596,7 @@ export default function AdminExpensesPage() {
                 variant='outline'
                 size='sm'
                 disabled={page >= totalPages}
-                onClick={() => load(page + 1)}
+                onClick={() => setPage((p) => p + 1)}
               >
                 Next
               </Button>
@@ -590,14 +619,17 @@ export default function AdminExpensesPage() {
       {showForm && (
         <ExpenseFormModal
           onClose={() => setShowForm(false)}
-          onSaved={() => load(1)}
+          onSaved={() => {
+            setPage(1);
+            invalidateExpenses();
+          }}
         />
       )}
       {editExpense && (
         <ExpenseFormModal
           initial={editExpense}
           onClose={() => setEditExpense(null)}
-          onSaved={() => load(page)}
+          onSaved={invalidateExpenses}
         />
       )}
     </div>

@@ -1759,7 +1759,7 @@ export default function AdminStorefrontPage() {
             <ItemCard title="Editorial Feature Block">
               <ImageUploader
                 maxFiles={1}
-                aspectRatio="21:9"
+                aspectRatio="4:5"
                 maxSizeMB={5}
                 existingImages={premiumEditorialFile ? [] : settings.premiumEditorial?.image ? [settings.premiumEditorial.image] : []}
                 onRemoveExisting={() => {
@@ -1771,6 +1771,7 @@ export default function AdminStorefrontPage() {
                   markDirty();
                 }}
                 label="Editorial Lifestyle Image"
+                hint="Portrait 4:5 crop — matches the Premium page editorial block."
               />
               <Field label="Pre-Heading (Eyebrow)">
                 <input className={inputCls} value={settings.premiumEditorial?.preHeading || ''} onChange={(e) => patchPremiumEditorial({ preHeading: e.target.value })} placeholder="e.g. The Rani Edit" />

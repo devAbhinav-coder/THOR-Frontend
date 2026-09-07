@@ -519,6 +519,18 @@ export const ordersMyList = z.object({
   data: z.object({ orders: z.array(doc) }),
 });
 
+export const ordersMySummary = z.object({
+  status: z.string(),
+  message: z.string().optional(),
+  data: z.object({
+    summary: z.object({
+      total: z.number(),
+      delivered: z.number(),
+      inProgress: z.number(),
+    }),
+  }),
+});
+
 export const couponValidate = z.object({
   status: z.string(),
   data: z.object({

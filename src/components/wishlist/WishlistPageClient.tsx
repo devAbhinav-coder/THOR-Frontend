@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { Heart, PenLine } from "lucide-react";
-import { useWishlistStore } from "@/store/useWishlistStore";
+import { useWishlistQuery } from "@/hooks/useWishlistQuery";
 import { useAuthStore } from "@/store/useAuthStore";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import WishlistCard from "@/components/wishlist/WishlistCard";
@@ -11,15 +10,10 @@ import { Skeleton } from "@/components/ui/SkeletonLoader";
 import { Button } from "@/components/ui/button";
 
 export default function WishlistPageClient() {
-  const { products, isLoading, fetchWishlist } = useWishlistStore();
+  const { data: products = [], isLoading } = useWishlistQuery();
   const { isAuthenticated, isLoading: authLoading, _hasHydrated, hasSessionChecked } =
     useAuthStore();
   const count = products.length;
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    void fetchWishlist();
-  }, [fetchWishlist, isAuthenticated]);
 
   if (!_hasHydrated || !hasSessionChecked || authLoading) {
     return (

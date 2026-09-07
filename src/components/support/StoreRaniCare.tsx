@@ -17,6 +17,7 @@ function hideRaniCareOnPath(pathname: string | null): boolean {
     "/wishlist",
     "/shop",
     "/shop/collections",
+    "/premium",
   ];
 
   return hiddenPaths.some(

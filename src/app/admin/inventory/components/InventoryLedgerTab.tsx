@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, History, ArrowUp, ArrowDown } from 'lucide-react';
 import { inventoryApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -30,32 +31,43 @@ const REASON_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function InventoryLedgerTab() {
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const [reason, setReason] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [applied, setApplied] = useState({ reason: '', from: '', to: '' });
 
-  const load = useCallback(async (p = 1) => {
-    setLoading(true);
-    try {
-      const params: Record<string, string | number> = { page: p, limit: 30 };
-      if (reason) params.reason = reason;
-      if (from) params.from = from;
-      if (to) params.to = to;
-      const res = await inventoryApi.getLedger(params);
-      setEntries((res.data as any).entries ?? []);
-      setTotalPages((res as any).pagination?.totalPages ?? 1);
-      setTotal((res as any).pagination?.total ?? 0);
-      setPage(p);
-    } catch { toast.error('Failed to load ledger'); }
-    finally { setLoading(false); }
-  }, [reason, from, to]);
+  const { data, isLoading: loading, isFetching, refetch } = useQuery({
+    queryKey: ['admin-inventory-ledger', page, applied],
+    queryFn: async () => {
+      try {
+        const params: Record<string, string | number> = { page, limit: 30 };
+        if (applied.reason) params.reason = applied.reason;
+        if (applied.from) params.from = applied.from;
+        if (applied.to) params.to = applied.to;
+        const res = await inventoryApi.getLedger(params);
+        return {
+          entries: ((res.data as { entries?: LedgerEntry[] }).entries ?? []) as LedgerEntry[],
+          totalPages: res.pagination?.totalPages ?? 1,
+          total: res.pagination?.total ?? 0,
+        };
+      } catch (err) {
+        toast.error('Failed to load ledger');
+        throw err;
+      }
+    },
+  });
 
-  useEffect(() => { load(1); }, []);
+  const entries = data?.entries ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
+
+  const applyFilters = () => {
+    setApplied({ reason, from, to });
+    setPage(1);
+    void queryClient.invalidateQueries({ queryKey: ['admin-inventory-ledger'] });
+  };
 
   return (
     <div className="space-y-4">
@@ -85,9 +97,9 @@ export default function InventoryLedgerTab() {
             <input type="date" value={to} onChange={e => setTo(e.target.value)}
               className="h-9 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" />
           </div>
-          <Button variant="brand" size="sm" className="rounded-xl h-9" onClick={() => load(1)}>Apply</Button>
-          <button onClick={() => load(page)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
-            <RefreshCw className={`h-4 w-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="brand" size="sm" className="rounded-xl h-9" onClick={applyFilters}>Apply</Button>
+          <button onClick={() => void refetch()} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
+            <RefreshCw className={`h-4 w-4 text-gray-500 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -181,8 +193,8 @@ export default function InventoryLedgerTab() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">Page {page} of {totalPages}</p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => load(page - 1)}>Prev</Button>
-              <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => load(page + 1)}>Next</Button>
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           </div>
         )}

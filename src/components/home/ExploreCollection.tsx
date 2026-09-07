@@ -16,11 +16,22 @@ import { expandProductsForShopListing } from "@/lib/shopProductListing";
 
 const EXPLORE_PAGE_LIMIT = 12;
 
+type ExplorePage = Awaited<ReturnType<typeof productApi.getAll>>;
+
 /**
  * ExploreCollection — random storefront sample with excludeIds cursor.
  * Backend returns explicit hasNextPage based on remaining pool size.
  */
-export default function ExploreCollection() {
+export default function ExploreCollection({
+  initialProducts,
+}: {
+  initialProducts?: Product[] | null;
+} = {}) {
+  const seeded =
+    Array.isArray(initialProducts) && initialProducts.length > 0 ?
+      initialProducts
+    : null;
+
   const {
     data,
     isLoading,
@@ -41,6 +52,20 @@ export default function ExploreCollection() {
     getNextPageParam: (lastPage, allPages) =>
       getNextExcludeIdsParam(lastPage, allPages, EXPLORE_PAGE_LIMIT),
     staleTime: 5 * 60 * 1000,
+    initialData:
+      seeded ?
+        {
+          pages: [
+            {
+              data: { products: seeded },
+              pagination: {
+                hasNextPage: seeded.length >= EXPLORE_PAGE_LIMIT,
+              },
+            } as ExplorePage,
+          ],
+          pageParams: [""],
+        }
+      : undefined,
   });
 
   const products = (data?.pages ?? []).flatMap(

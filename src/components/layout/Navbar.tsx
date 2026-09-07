@@ -26,6 +26,7 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
+import { useWishlistQuery } from "@/hooks/useWishlistQuery";
 import { navigationApi } from "@/lib/api";
 import { MegaMenuCategory } from "@/types";
 import { cn } from "@/lib/utils";
@@ -61,6 +62,7 @@ import { useNavDropdown } from "@/hooks/useNavDropdown";
 import { useMobileNavAutoHide } from "@/hooks/useMobileNavAutoHide";
 import { subscribeWindowScroll } from "@/lib/windowScrollBus";
 import {
+  isPremiumCollectionPath,
   isPremiumProductDetailPath,
   isStoreProductDetailPath,
   isStoreShopListingPath,
@@ -116,7 +118,9 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
     fetchUser,
   } = useAuthStore();
   const { itemCount } = useCartStore();
-  const { products: wishlistProducts } = useWishlistStore();
+  const storeWishlistCount = useWishlistStore((s) => s.wishlistCount);
+  const { data: wishlistProducts = [] } = useWishlistQuery();
+  const wishlistCount = storeWishlistCount > 0 ? storeWishlistCount : wishlistProducts.length;
 
   const { data: categoriesData } = useQuery({
     queryKey: queryKeys.megaMenu,
@@ -240,15 +244,9 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
 
   // Keep showing logged-in UI while cookie session revalidates (rotate/reload
   // used to flash guest chrome because hasSessionChecked resets to false).
-  const isAuthedStable =
-    _hasHydrated && isAuthenticated && (!hasSessionChecked || !isLoading);
+  const isAuthedStable = _hasHydrated && isAuthenticated;
   const authModal = useAuthModal();
   const { href: authHref, open: openAuth } = authModal;
-
-  const ordersHref =
-    isAuthedStable ? "/dashboard/orders" : (
-      authHref("login", "/dashboard/orders")
-    );
 
   const navActive = useStoreNavActive();
 
@@ -256,18 +254,24 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
     pathname === "/cart" || pathname.startsWith("/checkout");
   const isProductDetailPage = isStoreProductDetailPath(pathname);
   const isPremiumProductPage = isPremiumProductDetailPath(pathname);
+  const isPremiumCollectionPage = isPremiumCollectionPath(pathname);
   const isShopListingPage = isStoreShopListingPath(pathname);
   /** Shop listing only: search stays open. PDP uses the navbar search icon instead. */
   const persistMobileSearch = isShopListingPage;
-  /** Shop + PDP mobile: cart/wishlist top-right (no bottom tab bar). */
-  const showCommerceMobileShell = isProductDetailPage || isShopListingPage;
+  /** Shop listing + shop/premium PDP: cart/wishlist top-right (no bottom tab bar). */
+  const showCommerceMobileShell =
+    isProductDetailPage || isPremiumProductPage || isShopListingPage;
+  /** Premium collection + PDPs: hide on scroll-down / show on scroll-up (all viewports). */
   const navAutoHideAllViewports =
-    isProductDetailPage || isPremiumProductPage;
+    isProductDetailPage || isPremiumProductPage || isPremiumCollectionPage;
   const navAutoHideEnabled =
     !isCheckoutFlow &&
     !isMenuOpen &&
     !isSearchOpen &&
-    (isProductDetailPage || !showCommerceMobileShell);
+    (isProductDetailPage ||
+      isPremiumProductPage ||
+      isPremiumCollectionPage ||
+      !showCommerceMobileShell);
   const navChromeVisible = useMobileNavAutoHide({
     enabled: navAutoHideEnabled,
     allViewports: navAutoHideAllViewports,
@@ -331,21 +335,14 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
         showCartBadge: true,
       },
       {
-        id: "orders",
-        label: "Orders",
-        Icon: Package,
-        href: ordersHref,
-        activeKey: "orders",
-      },
-      {
-        id: "profile",
-        label: "Profile",
+        id: "account",
+        label: "Account",
         Icon: User,
         href: isAuthedStable ? "/dashboard" : authHref("login"),
         activeKey: "userHub",
       },
     ],
-    [ordersHref, isAuthedStable, authHref],
+    [isAuthedStable, authHref],
   );
 
   return (
@@ -498,40 +495,18 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                   isCheckoutFlow && "max-lg:hidden",
                 )}
               >
-                {showCommerceMobileShell ?
-                  <button
-                    type='button'
-                    onClick={handleWishlistPress}
-                    className={cn(navIconButton, "relative lg:hidden")}
-                    aria-label='Wishlist'
-                  >
-                    <Heart className='h-5 w-5' strokeWidth={1.75} />
-                    {isAuthedStable && wishlistProducts.length > 0 && (
-                      <span className={navBadgeCount}>
-                        {wishlistProducts.length}
-                      </span>
-                    )}
-                  </button>
-                : null}
-
-                {isAuthedStable ?
-                  <Link
-                    href='/wishlist'
-                    className={cn(
-                      navIconButton,
-                      "relative",
-                      showCommerceMobileShell && "hidden lg:inline-flex",
-                    )}
-                    aria-label='Wishlist'
-                  >
-                    <Heart className='h-5 w-5' strokeWidth={1.75} />
-                    {wishlistProducts.length > 0 && (
-                      <span className={navBadgeCount}>
-                        {wishlistProducts.length}
-                      </span>
-                    )}
-                  </Link>
-                : null}
+                {/* Wishlist — always visible; guests open login (badge when count > 0) */}
+                <button
+                  type='button'
+                  onClick={handleWishlistPress}
+                  className={cn(navIconButton, "relative inline-flex")}
+                  aria-label='Wishlist'
+                >
+                  <Heart className='h-5 w-5' strokeWidth={1.75} />
+                  {wishlistCount > 0 && (
+                    <span className={navBadgeCount}>{wishlistCount}</span>
+                  )}
+                </button>
 
                 <Link
                   href='/cart'
@@ -870,9 +845,9 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                         <Heart className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
                         Wishlist
                       </span>
-                      {wishlistProducts.length > 0 && (
+                      {wishlistCount > 0 && (
                         <span className='bg-[#c5a059]/15 px-2 py-0.5 text-[10px] font-bold text-[#c5a059]'>
-                          {wishlistProducts.length}
+                          {wishlistCount}
                         </span>
                       )}
                     </Link>
@@ -884,27 +859,47 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                       <LogOut className='w-4 h-4 shrink-0' /> Sign Out
                     </button>
                   </div>
-                : <div className='mt-2 flex gap-2.5'>
+                : <div className='space-y-3'>
                     <button
                       type='button'
                       onClick={() => {
                         setIsMenuOpen(false);
-                        openAuth("login");
+                        handleWishlistPress();
                       }}
-                      className='flex-1 border border-navy-700 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:border-[#c5a059]/50 hover:text-[#c5a059]'
+                      className='flex w-full items-center justify-between border border-navy-800 bg-navy-900/50 px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059]/50 hover:text-[#c5a059]'
                     >
-                      Sign In
+                      <span className='flex items-center gap-3'>
+                        <Heart className='w-4 h-4 shrink-0 text-[#c5a059]/70' />{" "}
+                        Wishlist
+                      </span>
+                      {wishlistCount > 0 && (
+                        <span className='bg-[#c5a059]/15 px-2 py-0.5 text-[10px] font-bold text-[#c5a059]'>
+                          {wishlistCount}
+                        </span>
+                      )}
                     </button>
-                    <button
-                      type='button'
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        openAuth("signup");
-                      }}
-                      className='flex-1 bg-[#c5a059] py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#b8924d]'
-                    >
-                      Create Account
-                    </button>
+                    <div className='flex gap-2.5'>
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          openAuth("login");
+                        }}
+                        className='flex-1 border border-navy-700 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:border-[#c5a059]/50 hover:text-[#c5a059]'
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          openAuth("signup");
+                        }}
+                        className='flex-1 bg-[#c5a059] py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#b8924d]'
+                      >
+                        Create Account
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
@@ -919,7 +914,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
           className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(20,25,47,0.55)] [color-scheme:dark]'
           aria-label='Primary'
         >
-          <div className='mx-auto grid min-h-[3.25rem] w-full max-w-xl grid-cols-6 px-0.5'>
+          <div className='mx-auto grid min-h-[3.25rem] w-full max-w-xl grid-cols-5 px-0.5'>
             {mobileBottomNavItems.map(
               ({ id, label, Icon, href, activeKey, showCartBadge }) => {
                 const isOn = navActive[activeKey];

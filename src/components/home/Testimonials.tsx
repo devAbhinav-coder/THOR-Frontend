@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Instagram, Star, X } from "lucide-react";
-import { storefrontApi, testimonialApi } from "@/lib/api";
+import { testimonialApi } from "@/lib/api";
 import type { Testimonial } from "@/types";
 import { cn } from "@/lib/utils";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
@@ -340,41 +341,33 @@ function buildSequence(stories: StoryCard[], minCards = 10): StoryCard[] {
   return out;
 }
 
-export default function Testimonials() {
-  const [items, setItems] = useState<Testimonial[]>([]);
+export default function Testimonials({
+  initialTestimonials,
+  initialInstagramUrl,
+}: {
+  initialTestimonials?: Testimonial[] | null;
+  initialInstagramUrl?: string | null;
+} = {}) {
   const [gallery, setGallery] = useState<{ startIndex: number } | null>(null);
   const [paused, setPaused] = useState(false);
-  const [instagramUrl, setInstagramUrl] = useState(FALLBACK_IG);
   const railRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef(false);
   const pointerX = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    testimonialApi
-      .getPublic()
-      .then((res) => {
-        if (cancelled) return;
-        const list = res.data?.testimonials;
-        setItems(Array.isArray(list) ? (list as Testimonial[]) : []);
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]);
-      });
+  const { data: items = [] } = useQuery({
+    queryKey: ["home-testimonials"],
+    queryFn: async () => {
+      const res = await testimonialApi.getPublic();
+      const list = res.data?.testimonials;
+      return Array.isArray(list) ? (list as Testimonial[]) : [];
+    },
+    initialData:
+      Array.isArray(initialTestimonials) ? initialTestimonials : undefined,
+    staleTime: 1000 * 60 * 5,
+  });
 
-    storefrontApi
-      .getSettings()
-      .then((res) => {
-        if (cancelled) return;
-        const url = res.data?.settings?.footer?.instagramUrl?.trim();
-        if (url) setInstagramUrl(url);
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const instagramUrl =
+    initialInstagramUrl?.trim() || FALLBACK_IG;
 
   const igHandle = useMemo(
     () => instagramHandleFromUrl(instagramUrl),

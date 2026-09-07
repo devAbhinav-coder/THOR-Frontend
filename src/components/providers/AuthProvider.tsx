@@ -2,15 +2,15 @@
 
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useCartStore } from '@/store/useCartStore';
-import { useWishlistStore } from '@/store/useWishlistStore';
 import { useCartSync } from '@/hooks/useCartSync';
+import { useCartQuery } from '@/hooks/useCartQuery';
+import { useWishlistQuery } from '@/hooks/useWishlistQuery';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
-  const { fetchCart } = useCartStore();
-  const { fetchWishlist } = useWishlistStore();
   useCartSync();
+  // Sync cart + wishlist from server into Zustand when authenticated
+  useCartQuery();
+  useWishlistQuery();
 
   useEffect(() => {
     try {
@@ -23,13 +23,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     useAuthStore.getState().fetchUser();
   }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchCart();
-      fetchWishlist();
-    }
-  }, [isAuthenticated, fetchCart, fetchWishlist]);
 
   return <>{children}</>;
 }

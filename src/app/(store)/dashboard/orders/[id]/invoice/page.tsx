@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { orderApi } from '@/lib/api';
 import { Order } from '@/types';
 import OrderInvoiceDocument from '@/components/orders/OrderInvoiceDocument';
@@ -10,20 +11,17 @@ import { Button } from '@/components/ui/button';
 
 export default function UserInvoicePage() {
   const params = useParams();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const orderId = String(params.id || '');
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const res = await orderApi.getById(String(params.id));
-        setOrder(res.data.order as Order);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    run();
-  }, [params.id]);
+  const { data: order, isLoading } = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: async () => {
+      const res = await orderApi.getById(orderId);
+      return res.data.order as Order;
+    },
+    enabled: Boolean(orderId),
+    staleTime: 60_000,
+  });
 
   const canShowInvoice = useMemo(() => {
     if (!order) return false;

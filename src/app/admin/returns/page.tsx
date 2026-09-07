@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api';
 import { formatPrice, formatDate, getOrderStatusColor, cn } from '@/lib/utils';
 import {
@@ -78,57 +79,51 @@ function escapeCsvCell(s: string) {
 }
 
 export default function AdminReturnsPage() {
-  const [returns, setReturns] = useState<ReturnOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [listError, setListError] = useState(false);
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-
-  const [insights, setInsights] = useState<ReturnsInsights | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(true);
-  const [insightsError, setInsightsError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const loadInsights = useCallback(async () => {
-    setInsightsLoading(true);
-    setInsightsError(false);
-    try {
+  const filter = { page, status: statusFilter };
+
+  const {
+    data: insights,
+    isLoading: insightsLoading,
+    isError: insightsError,
+    refetch: refetchInsights,
+  } = useQuery({
+    queryKey: ['admin-returns-insights'],
+    queryFn: async () => {
       const res = await adminApi.getReturnsInsights();
-      setInsights(res.data as ReturnsInsights);
-    } catch {
-      setInsights(null);
-      setInsightsError(true);
-    } finally {
-      setInsightsLoading(false);
-    }
-  }, []);
+      return res.data as ReturnsInsights;
+    },
+  });
 
-  const fetchReturns = useCallback(async () => {
-    setIsLoading(true);
-    setListError(false);
-    try {
-      const params: Record<string, string | number> = { page, limit: 20 };
-      if (statusFilter) params.status = statusFilter;
-      const res = await adminApi.getReturns(params);
-      setReturns((res.data.orders as ReturnOrder[]) || []);
-      setTotal(res.pagination?.total ?? 0);
-    } catch {
-      setReturns([]);
-      setListError(true);
-      toast.error('Could not load returns list.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, statusFilter]);
+  const {
+    data: returnsData,
+    isLoading,
+    isError: listError,
+    refetch: refetchReturns,
+  } = useQuery({
+    queryKey: ['admin-returns', filter],
+    queryFn: async () => {
+      try {
+        const params: Record<string, string | number> = { page, limit: 20 };
+        if (statusFilter) params.status = statusFilter;
+        const res = await adminApi.getReturns(params);
+        return {
+          returns: (res.data.orders as ReturnOrder[]) || [],
+          total: res.pagination?.total ?? 0,
+        };
+      } catch (err) {
+        toast.error('Could not load returns list.');
+        throw err;
+      }
+    },
+  });
 
-  useEffect(() => {
-    loadInsights();
-  }, [loadInsights]);
-
-  useEffect(() => {
-    fetchReturns();
-  }, [fetchReturns]);
+  const returns = returnsData?.returns ?? [];
+  const total = returnsData?.total ?? 0;
 
   const maxReason = useMemo(() => {
     if (!insights?.reasons?.length) return 1;
@@ -193,6 +188,12 @@ export default function AdminReturnsPage() {
     }
   };
 
+  const handleRefresh = () => {
+    void refetchInsights();
+    void refetchReturns();
+    void queryClient.invalidateQueries({ queryKey: ['admin-returns'] });
+  };
+
   const summary = insights?.summary;
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
@@ -209,10 +210,7 @@ export default function AdminReturnsPage() {
               variant="outline"
               size="sm"
               className="rounded-xl border-gray-200"
-              onClick={() => {
-                loadInsights();
-                fetchReturns();
-              }}
+              onClick={handleRefresh}
               disabled={insightsLoading && isLoading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${insightsLoading ? 'animate-spin' : ''}`} />
@@ -243,7 +241,7 @@ export default function AdminReturnsPage() {
         <AdminErrorState
           title="Couldn’t load return insights"
           message="The returns list may still work. Try refresh or check the API."
-          onRetry={loadInsights}
+          onRetry={() => void refetchInsights()}
         />
       )}
 
@@ -404,7 +402,7 @@ export default function AdminReturnsPage() {
       </div>
 
       {listError && !isLoading && (
-        <AdminErrorState title="Couldn’t load returns" onRetry={fetchReturns} />
+        <AdminErrorState title="Couldn’t load returns" onRetry={() => void refetchReturns()} />
       )}
 
       {!listError && (

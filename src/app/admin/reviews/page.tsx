@@ -34,12 +34,13 @@ function ReviewStars({ rating, size = 'h-3.5 w-3.5' }: { rating: number; size?: 
   );
 }
 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 export default function AdminReviewsPage() {
   type ReviewFilter = 'all' | 'replied' | 'unreplied' | 'verified' | 'flagged' | 'hidden';
   type ReviewSort = 'newest' | 'lowest' | 'highest';
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, total: 0 });
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
@@ -61,28 +62,21 @@ export default function AdminReviewsPage() {
     return undefined;
   };
 
-  const fetchReviews = async (page = 1, filter: ReviewFilter = activeFilter) => {
-    setIsLoading(true);
-    try {
-      const status = serverStatusForFilter(filter);
+  const { data: reviewsRes, isLoading } = useQuery({
+    queryKey: ['admin-reviews', page, activeFilter],
+    queryFn: async () => {
+      const status = serverStatusForFilter(activeFilter);
       const res = await adminApi.getReviews({
         page,
         limit: 20,
         ...(status ? { status } : {}),
       });
-      setReviews(res.data.reviews);
-      setPagination(res.pagination);
-    } catch {
-      toast.error('Failed to load reviews');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return res;
+    },
+  });
 
-  useEffect(() => {
-    void fetchReviews(1, activeFilter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when filter changes only
-  }, [activeFilter]);
+  const reviews: Review[] = reviewsRes?.data?.reviews || [];
+  const pagination = reviewsRes?.pagination || { currentPage: 1, totalPages: 1, total: 0 };
 
   const metrics = useMemo(() => {
     if (!reviews.length) return { avg: 0, replied: 0, verified: 0 };
@@ -163,24 +157,10 @@ export default function AdminReviewsPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [imagePreview]);
 
-  const handleModerate = async (
-    id: string,
-    action: 'approve' | 'hide' | 'restore',
-  ) => {
-    setModeratingId(id);
-    try {
-      const res = await adminApi.moderateReview(id, action);
-      const updated = res.data.review as Review;
-      setReviews((prev) => {
-        let next = prev.map((r) => (r._id === id ? { ...r, ...updated } : r));
-        if (
-          (activeFilter === 'flagged' && updated.status === 'visible') ||
-          (activeFilter === 'hidden' && action === 'restore')
-        ) {
-          next = next.filter((r) => r._id !== id);
-        }
-        return next;
-      });
+  const moderateMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'approve' | 'hide' | 'restore' }) =>
+      adminApi.moderateReview(id, action),
+    onSuccess: (_, { action }) => {
       toast.success(
         action === 'approve'
           ? 'Review approved'
@@ -188,47 +168,51 @@ export default function AdminReviewsPage() {
             ? 'Review hidden'
             : 'Review restored',
       );
-    } catch {
-      toast.error('Moderation action failed');
-    } finally {
-      setModeratingId(null);
-    }
-  };
+      void queryClient.invalidateQueries({ queryKey: ['admin-reviews'] });
+    },
+    onError: () => toast.error('Moderation action failed'),
+    onSettled: () => setModeratingId(null),
+  });
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this review? This cannot be undone.')) return;
-    try {
-      await adminApi.deleteReview(id);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteReview(id),
+    onSuccess: () => {
       toast.success('Review deleted');
-      setReviews((prev) => prev.filter((r) => r._id !== id));
-      setPagination((p) => ({ ...p, total: Math.max(0, p.total - 1) }));
-    } catch {
-      toast.error('Failed to delete review');
-    }
+      void queryClient.invalidateQueries({ queryKey: ['admin-reviews'] });
+    },
+    onError: () => toast.error('Failed to delete review'),
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: ({ reviewId, replyText }: { reviewId: string; replyText: string }) =>
+      adminApi.replyToReview(reviewId, replyText),
+    onSuccess: () => {
+      setReplyingTo(null);
+      setReplyText('');
+      toast.success('Reply posted');
+      void queryClient.invalidateQueries({ queryKey: ['admin-reviews'] });
+    },
+    onError: () => toast.error('Failed to post reply'),
+    onSettled: () => setIsReplying(false),
+  });
+
+  const handleModerate = (id: string, action: 'approve' | 'hide' | 'restore') => {
+    setModeratingId(id);
+    moderateMutation.mutate({ id, action });
   };
 
-  const handleReply = async (reviewId: string) => {
+  const handleDelete = (id: string) => {
+    if (!confirm('Delete this review? This cannot be undone.')) return;
+    deleteMutation.mutate(id);
+  };
+
+  const handleReply = (reviewId: string) => {
     if (!replyText.trim()) {
       toast.error('Reply cannot be empty');
       return;
     }
     setIsReplying(true);
-    try {
-      const res = await adminApi.replyToReview(reviewId, replyText.trim());
-      const updated: Review = res.data.review;
-      setReviews((prev) =>
-        prev.map((r) =>
-          r._id === reviewId ? { ...r, adminReply: updated.adminReply } : r,
-        ),
-      );
-      setReplyingTo(null);
-      setReplyText('');
-      toast.success('Reply posted');
-    } catch {
-      toast.error('Failed to post reply');
-    } finally {
-      setIsReplying(false);
-    }
+    replyMutation.mutate({ reviewId, replyText: replyText.trim() });
   };
 
   const openReplyBox = (reviewId: string, existingText?: string) => {
@@ -289,7 +273,7 @@ export default function AdminReviewsPage() {
               key={chip.id}
               onClick={() => {
                 setActiveFilter(chip.id);
-                setPagination((p) => ({ ...p, currentPage: 1 }));
+                setPage(1);
               }}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
@@ -623,7 +607,7 @@ export default function AdminReviewsPage() {
       {pagination.totalPages > 1 && (
         <div className="mt-7 flex items-center justify-center gap-2">
           <button
-            onClick={() => fetchReviews(pagination.currentPage - 1, activeFilter)}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={pagination.currentPage === 1}
             className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >
@@ -633,7 +617,7 @@ export default function AdminReviewsPage() {
             Page {pagination.currentPage} of {pagination.totalPages}
           </span>
           <button
-            onClick={() => fetchReviews(pagination.currentPage + 1, activeFilter)}
+            onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
             disabled={pagination.currentPage === pagination.totalPages}
             className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >

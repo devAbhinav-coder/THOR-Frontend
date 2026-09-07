@@ -1,107 +1,94 @@
 "use client";
 
-import { memo, useState, useMemo, useCallback } from "react";
+import {
+  memo,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  MouseEvent,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingBag, Star, Gift, Tag } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ShoppingBag, Star, Heart, Gift } from "lucide-react";
+import toast from "react-hot-toast";
 import { Product } from "@/types";
-import { formatPrice } from "@/lib/utils";
-import { getStorefrontPriceDisplay, storefrontPriceMeta } from "@/lib/productPricing";
+import { cn } from "@/lib/utils";
 import ProductPriceBlock from "@/components/product/ProductPriceBlock";
+import { storefrontPriceMeta } from "@/lib/productPricing";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useWishlistUiState } from "@/hooks/useWishlistUiState";
-import { useAuthStore } from "@/store/useAuthStore";
-import { cn } from "@/lib/utils";
-import { hasInStockVariant } from "@/lib/productStock";
-import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
-import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
+import { resolveShopCardImage } from "@/lib/pdpImages";
+import { hasInStockVariant } from "@/lib/productStock";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
-import { loginUrlWithRedirect } from "@/lib/safeRedirect";
-import { trackAddToWishlist } from "@/lib/metaPixel";
-import {
-  isLenisScrolling,
-  useScrollHoverPause,
-} from "@/hooks/useScrollHoverPause";
+import { shopProductHref } from "@/lib/shopProductListing";
+import { trackAddToCart, trackAddToWishlist } from "@/lib/metaPixel";
 
 interface ProductCardProps {
   product: Product;
-  className?: string;
+  /** Pass when rendering a specific color shade in multi-color search/catalog rows. */
+  displayColor?: string | null;
 }
 
-/** Round to 2 decimal places — required by Google Merchant Center price format. */
-function toMerchantPrice(n: number): string {
-  return n.toFixed(2);
+function pricePercentOff(mrp?: number, sellPrice?: number): number {
+  if (!mrp || !sellPrice || mrp <= sellPrice) return 0;
+  return Math.round(((mrp - sellPrice) / mrp) * 100);
 }
 
-function ProductCardInner({ product, className }: ProductCardProps) {
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
+function ProductCardInner({ product, displayColor }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  /**
-   * Tracks whether the user has hovered at least once.
-   * We only mount the secondary <Image> after the first hover so that
-   * the initial page load only fetches primary images (no bandwidth competition).
-   * After the first hover the secondary is browser-cached — all later hovers
-   * produce an instant crossfade.
-   */
+  const [hoverScrollPaused, setHoverScrollPaused] = useState(false);
   const [hasHoveredOnce, setHasHoveredOnce] = useState(false);
   const [secondaryLoaded, setSecondaryLoaded] = useState(false);
-  const [secondaryImageError, setSecondaryImageError] = useState(false);
+  const [secondaryFailed, setSecondaryFailed] = useState(false);
   const [primaryImageError, setPrimaryImageError] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  const hoverScrollPaused = useScrollHoverPause();
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
-  const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
+  const { addToCart } = useCartStore();
+  const { toggleWishlist, isInWishlist } = useWishlistStore();
   const router = useRouter();
 
   const inWishlist = useWishlistUiState(product._id);
-  const isOutOfStock = !hasInStockVariant(product);
-  const needsCustomization = useMemo(
-    () => productNeedsCustomization(product),
-    [product.isCustomizable, product.customFields],
-  );
 
-  const { primaryUrl, secondaryUrl } = useMemo(() => {
-    const primary =
-      normalizeCloudinaryDeliveryUrl(product.images[0]?.url) ||
-      String(product.images[0]?.url || "").trim();
-    const secondary =
-      normalizeCloudinaryDeliveryUrl(product.images[1]?.url) ||
-      String(product.images[1]?.url || "").trim();
-    return { primaryUrl: primary, secondaryUrl: secondary };
-  }, [product.images]);
+  const isOutOfStock = !hasInStockVariant(product);
+  const needsCustomization = productNeedsCustomization(product);
+
+  const primaryUrl = useMemo(() => {
+    if (displayColor) {
+      const strict = resolveShopCardImage(product, displayColor);
+      if (strict) return normalizeCloudinaryDeliveryUrl(strict) || strict;
+    }
+    return (
+      normalizeCloudinaryDeliveryUrl(product.images?.[0]?.url) ||
+      String(product.images?.[0]?.url || "").trim()
+    );
+  }, [product, displayColor]);
+
+  const secondaryUrl = useMemo(() => {
+    return (
+      normalizeCloudinaryDeliveryUrl(product.images?.[1]?.url) ||
+      String(product.images?.[1]?.url || "").trim()
+    );
+  }, [product]);
 
   const showPrimaryImage = Boolean(primaryUrl) && !primaryImageError;
 
-  // True when we have a valid, distinct secondary image
-  const hasSecondary = Boolean(
-    secondaryUrl && secondaryUrl !== primaryUrl && !secondaryImageError,
-  );
+  const hasSecondary =
+    Boolean(secondaryUrl) &&
+    secondaryUrl !== primaryUrl &&
+    !secondaryFailed;
+  const showSecondary = isHovered && secondaryLoaded && hasSecondary;
 
-  // Whether the secondary image should currently be visible (only after it has loaded)
-  const showSecondary = isHovered && hasSecondary && secondaryLoaded;
-
-  const canUseHoverEffects = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  }, []);
-
-  const priceDisplay = useMemo(
-    () => getStorefrontPriceDisplay(product),
-    [product],
-  );
-  const discountPercent = priceDisplay.discountPercent;
-  const priceMeta = useMemo(() => storefrontPriceMeta(product), [product]);
-
-  /**
-   * Rich alt text satisfies Google image guidelines:
-   * "<Product Name> — <Category> <Fabric> <Color variants>"
-   */
   const primaryAlt = useMemo(() => {
     const parts: string[] = [product.name];
     if (product.category) parts.push(product.category);
@@ -109,97 +96,144 @@ function ProductCardInner({ product, className }: ProductCardProps) {
     return parts.join(" — ");
   }, [product.name, product.category, product.fabric]);
 
-  /** Schema.org availability URL — read by Googlebot from microdata. */
-  const schemaAvailability =
-    isOutOfStock ?
-      "https://schema.org/OutOfStock"
-    : "https://schema.org/InStock";
+  const discountPercent = useMemo(() => {
+    if (typeof product.discountPercent === "number" && product.discountPercent > 0) {
+      return Math.round(product.discountPercent);
+    }
+    const mrp = (product as unknown as { mrp?: number }).mrp;
+    return pricePercentOff(mrp, product.price);
+  }, [product.discountPercent, product.price, product]);
 
-  const requireAuth = useCallback(
-    (msg: string) => {
-      toast.error(msg);
-      router.push(loginUrlWithRedirect(window.location.pathname + window.location.search));
-    },
-    [router],
-  );
-
-  const handleAddToCart = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!isAuthenticated) return requireAuth("Sign in to add items to cart");
-      if (isOutOfStock) {
-        toast.error("This product is out of stock");
-        return;
-      }
-      if (needsCustomization) {
-        setIsGiftModalOpen(true);
-        return;
-      }
-      router.push(`/shop/${encodeURIComponent(product.slug)}`);
-    },
-    [
-      isAuthenticated,
-      isOutOfStock,
-      needsCustomization,
-      product.slug,
-      requireAuth,
-      router,
-    ],
-  );
-
-  const handleWishlist = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!isAuthenticated) return requireAuth("Sign in to save to wishlist");
-      const alreadySaved = isInWishlist(product._id);
-      await toggleWishlist(product._id, product);
-      if (!alreadySaved) trackAddToWishlist(product);
-    },
-    [isAuthenticated, isInWishlist, product, requireAuth, toggleWishlist],
+  const priceMeta = useMemo(
+    () => storefrontPriceMeta(product, displayColor),
+    [product, displayColor],
   );
 
   const handleMouseEnter = useCallback(() => {
-    if (!canUseHoverEffects || hoverScrollPaused || isLenisScrolling()) return;
     setIsHovered(true);
     setHasHoveredOnce(true);
-  }, [canUseHoverEffects, hoverScrollPaused]);
+    setHoverScrollPaused(false);
+  }, []);
 
   const handleMouseLeave = useCallback(() => {
-    if (!canUseHoverEffects) return;
     setIsHovered(false);
-  }, [canUseHoverEffects]);
-
-  const handleSecondaryError = useCallback(() => {
-    setSecondaryImageError(true);
-    setSecondaryLoaded(false);
+    setHoverScrollPaused(false);
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
   }, []);
 
   const handleSecondaryLoad = useCallback(() => {
     setSecondaryLoaded(true);
   }, []);
 
+  const handleSecondaryError = useCallback(() => {
+    setSecondaryFailed(true);
+  }, []);
+
+  const handleWishlist = useCallback(
+    async (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isAuthenticated) {
+        toast.error("Sign in to save to wishlist");
+        router.push(
+          loginUrlWithRedirect(
+            window.location.pathname + window.location.search,
+          ),
+        );
+        return;
+      }
+      const alreadySaved = isInWishlist(product._id);
+      await toggleWishlist(product._id, product);
+      if (!alreadySaved) trackAddToWishlist(product);
+    },
+    [isAuthenticated, isInWishlist, product, router, toggleWishlist],
+  );
+
+  const handleAddToCart = useCallback(
+    async (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const productHref = shopProductHref(product.slug, displayColor);
+
+      if (isOutOfStock) {
+        toast.error("This piece is currently unavailable");
+        return;
+      }
+
+      if (needsCustomization) {
+        router.push(productHref);
+        return;
+      }
+
+      const colorKey = displayColor?.trim().toLowerCase();
+      const availableVariant =
+        (colorKey
+          ? product.variants?.find(
+              (v) =>
+                String(v.color || "").toLowerCase().trim() === colorKey &&
+                (Number(v.stock) || 0) > 0 &&
+                v.sku,
+            )
+          : undefined) ||
+        product.variants?.find((v) => (Number(v.stock) || 0) > 0 && v.sku) ||
+        product.variants?.find((v) => v.sku) ||
+        product.variants?.[0];
+
+      if (!availableVariant?.sku) {
+        router.push(productHref);
+        return;
+      }
+
+      setIsAddingToCart(true);
+      try {
+        await addToCart(
+          product._id,
+          {
+            sku: availableVariant.sku,
+            size: availableVariant.size,
+            color: availableVariant.color,
+            colorCode: availableVariant.colorCode,
+          },
+          1,
+          undefined,
+          product,
+        );
+        trackAddToCart(
+          product,
+          1,
+          availableVariant.price ?? product.price,
+          availableVariant,
+        );
+      } catch {
+        toast.error("Could not add to bag");
+      } finally {
+        setIsAddingToCart(false);
+      }
+    },
+    [addToCart, displayColor, isOutOfStock, needsCustomization, product, router],
+  );
+
+  const schemaAvailability =
+    isOutOfStock ?
+      "https://schema.org/OutOfStock"
+    : "https://schema.org/InStock";
+
+  const productHref = shopProductHref(product.slug, displayColor);
+
   return (
-    /*
-     * ── Schema.org Product microdata ────────────────────────────────────────
-     * Using <article> + itemscope/itemtype lets Googlebot extract structured
-     * product data directly from HTML on listing pages (Shop, Home, Search)
-     * without waiting for JSON-LD on a PDP.  This satisfies Google Merchant
-     * Center's requirement that product data is visible and machine-readable.
-     * ────────────────────────────────────────────────────────────────────────
-     */
     <article
       itemScope
       itemType='https://schema.org/Product'
       className={cn(
-        "group relative flex h-full min-w-0 flex-col justify-start",
-        "min-h-0 sm:min-h-[460px]",
-        className,
+        "group relative flex h-full cursor-pointer flex-col p-1.5 transition-all duration-300 ease-out hover:-translate-y-1 sm:p-2 sm:hover:-translate-y-1.5",
+        "rounded-2xl border border-transparent bg-white/70 hover:border-gray-200/60 hover:bg-white hover:shadow-xl",
       )}
       aria-label={product.name}
     >
-      {/* ── Hidden microdata fields (not visible, read by crawlers) ── */}
       <meta itemProp='name' content={product.name} />
       <meta
         itemProp='description'
@@ -209,14 +243,9 @@ function ProductCardInner({ product, className }: ProductCardProps) {
         }
       />
       {primaryUrl && <link itemProp='image' href={primaryUrl} />}
-      <meta
-        itemProp='sku'
-        content={product.variants?.[0]?.sku || product._id}
-      />
+      <meta itemProp='sku' content={product.variants?.[0]?.sku || product._id} />
       <meta itemProp='brand' content='The House of Rani' />
-      <meta itemProp='category' content={product.category} />
 
-      {/* Offer microdata — price, currency, availability */}
       <div
         itemProp='offers'
         itemScope
@@ -225,81 +254,12 @@ function ProductCardInner({ product, className }: ProductCardProps) {
         aria-hidden='true'
       >
         <meta itemProp='priceCurrency' content='INR' />
-        <meta itemProp='price' content={toMerchantPrice(product.price)} />
+        <meta itemProp='price' content={priceMeta.priceContent} />
         <link itemProp='availability' href={schemaAvailability} />
         <link itemProp='itemCondition' href='https://schema.org/NewCondition' />
-        <link
-          itemProp='url'
-          href={`/shop/${encodeURIComponent(product.slug)}`}
-        />
-        <div
-          itemProp='hasMerchantReturnPolicy'
-          itemScope
-          itemType='https://schema.org/MerchantReturnPolicy'
-        >
-          <meta itemProp='applicableCountry' content='IN' />
-          <link
-            itemProp='returnPolicyCategory'
-            href='https://schema.org/MerchantReturnFiniteReturnWindow'
-          />
-          <meta itemProp='merchantReturnDays' content='5' />
-          <link itemProp='returnMethod' href='https://schema.org/ReturnByMail' />
-          <link itemProp='returnFees' href='https://schema.org/FreeReturn' />
-        </div>
-        <div
-          itemProp='shippingDetails'
-          itemScope
-          itemType='https://schema.org/OfferShippingDetails'
-        >
-          <div
-            itemProp='shippingRate'
-            itemScope
-            itemType='https://schema.org/MonetaryAmount'
-          >
-            <meta itemProp='value' content='0' />
-            <meta itemProp='currency' content='INR' />
-          </div>
-          <div
-            itemProp='shippingDestination'
-            itemScope
-            itemType='https://schema.org/DefinedRegion'
-          >
-            <meta itemProp='addressCountry' content='IN' />
-          </div>
-          <div
-            itemProp='deliveryTime'
-            itemScope
-            itemType='https://schema.org/ShippingDeliveryTime'
-          >
-            <div
-              itemProp='handlingTime'
-              itemScope
-              itemType='https://schema.org/QuantitativeValue'
-            >
-              <meta itemProp='minValue' content='1' />
-              <meta itemProp='maxValue' content='3' />
-              <meta itemProp='unitCode' content='DAY' />
-            </div>
-            <div
-              itemProp='transitTime'
-              itemScope
-              itemType='https://schema.org/QuantitativeValue'
-            >
-              <meta itemProp='minValue' content='3' />
-              <meta itemProp='maxValue' content='10' />
-              <meta itemProp='unitCode' content='DAY' />
-            </div>
-          </div>
-        </div>
-        {product.comparePrice && product.comparePrice > product.price && (
-          <meta
-            itemProp='highPrice'
-            content={toMerchantPrice(product.comparePrice)}
-          />
-        )}
+        <link itemProp='url' href={productHref} />
       </div>
 
-      {/* AggregateRating microdata */}
       {product.ratings.count > 0 && (
         <div
           itemProp='aggregateRating'
@@ -308,94 +268,73 @@ function ProductCardInner({ product, className }: ProductCardProps) {
           className='hidden'
           aria-hidden='true'
         >
-          <meta
-            itemProp='ratingValue'
-            content={String(product.ratings.average)}
-          />
-          <meta
-            itemProp='reviewCount'
-            content={String(product.ratings.count)}
-          />
+          <meta itemProp='ratingValue' content={String(product.ratings.average)} />
+          <meta itemProp='reviewCount' content={String(product.ratings.count)} />
           <meta itemProp='bestRating' content='5' />
           <meta itemProp='worstRating' content='1' />
         </div>
       )}
 
-      <Link
-        href={`/shop/${encodeURIComponent(product.slug)}`}
-        className='flex min-h-0 flex-none flex-col outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2 rounded-2xl sm:flex-1'
-        aria-label={`View ${product.name}${isOutOfStock ? " (Sold Out)" : ""}`}
-      >
-        {/* ── Image – 3:4 portrait ── */}
+      <div className='flex min-h-0 flex-none flex-col rounded-2xl sm:flex-1'>
         <div
           className='relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-2xl bg-gray-100'
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          {/* ─── PRIMARY image — always rendered, fades out on hover ─── */}
-          {showPrimaryImage ?
-            <Image
-              src={primaryUrl}
-              alt={primaryAlt}
-              fill
-              loader={cloudinaryLoader}
-              sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
-              loading='lazy'
-              quality={70}
-              className={cn(
-                "card-hover-zoom object-cover transition-all duration-500",
-                isHovered && !hoverScrollPaused ? "scale-105" : "scale-100",
-                showSecondary ? "opacity-0" : "opacity-100",
-              )}
-              onError={() => setPrimaryImageError(true)}
-            />
-          : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#f5f0ee] to-[#ebe3e0] px-3 text-center'>
-              <ShoppingBag className='w-10 h-10 text-brand-300' aria-hidden />
-              <span className='text-[11px] font-medium text-gray-500 leading-snug'>
-                Photo updating soon
-              </span>
-            </div>
-          }
+          <Link
+            href={productHref}
+            className='absolute inset-0 z-0 block outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2'
+            aria-label={`View ${product.name}${isOutOfStock ? " (Sold Out)" : ""}`}
+          >
+            {showPrimaryImage ?
+              <Image
+                src={primaryUrl}
+                alt={primaryAlt}
+                fill
+                loader={cloudinaryLoader}
+                sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
+                loading='lazy'
+                quality={70}
+                className={cn(
+                  "card-hover-zoom object-cover transition-all duration-500",
+                  isHovered && !hoverScrollPaused ? "scale-105" : "scale-100",
+                  showSecondary ? "opacity-0" : "opacity-100",
+                )}
+                onError={() => setPrimaryImageError(true)}
+              />
+            : <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#f5f0ee] to-[#ebe3e0] px-3 text-center'>
+                <ShoppingBag className='w-10 h-10 text-brand-300' aria-hidden />
+                <span className='text-[11px] font-medium text-gray-500 leading-snug'>
+                  Photo updating soon
+                </span>
+              </div>
+            }
 
-          {/* ─── SECONDARY image ─────────────────────────────────────────
-               Only mounted after the first hover (hasHoveredOnce) so the
-               initial page load never fetches it and the primary image gets
-               full bandwidth.  Once mounted the browser caches it, so every
-               subsequent hover crossfades instantly.
-          ──────────────────────────────────────────────────────────────── */}
-          {hasSecondary && hasHoveredOnce && (
-            <Image
-              src={secondaryUrl}
-              alt=''
-              aria-hidden='true'
-              fill
-              loader={cloudinaryLoader}
-              sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
-              loading='lazy'
-              quality={70}
-              className={cn(
-                "card-hover-zoom object-cover transition-all duration-500",
-                isHovered && !hoverScrollPaused ? "scale-105" : "scale-100",
-                showSecondary ? "opacity-100" : "opacity-0",
-              )}
-              onLoad={handleSecondaryLoad}
-              onError={handleSecondaryError}
-            />
-          )}
+            {hasSecondary && hasHoveredOnce && (
+              <Image
+                src={secondaryUrl}
+                alt=''
+                aria-hidden='true'
+                fill
+                loader={cloudinaryLoader}
+                sizes='(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'
+                loading='lazy'
+                quality={70}
+                className={cn(
+                  "card-hover-zoom object-cover transition-all duration-500",
+                  isHovered && !hoverScrollPaused ? "scale-105" : "scale-100",
+                  showSecondary ? "opacity-100" : "opacity-0",
+                )}
+                onLoad={handleSecondaryLoad}
+                onError={handleSecondaryError}
+              />
+            )}
+          </Link>
 
-          {/* ── Discount corner badge (reference style) ──
-              Visible to users and crawlers — keeps promo pricing clearly shown. */}
           {product.saleCampaignId && discountPercent >= 1 && !isOutOfStock && (
-            <div className='absolute top-0 left-0 z-30 pointer-events-none'>
-              {/* Small tight ribbon */}
+            <div className='absolute top-0 left-0 z-10 pointer-events-none'>
               <div className='relative w-[50px] h-[50px]'>
-                {/* Corner triangle */}
-                <div
-                  className='absolute top-0 left-0 w-full h-full bg-red-600 
-        [clip-path:polygon(0_0,100%_0,0_100%)]'
-                ></div>
-
-                {/* Text */}
+                <div className='absolute top-0 left-0 w-full h-full bg-red-600 [clip-path:polygon(0_0,100%_0,0_100%)]' />
                 <span className='absolute top-[10px] left-[4px] -rotate-45 text-white text-[10px] font-bold'>
                   {discountPercent}% OFF
                 </span>
@@ -403,8 +342,8 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             </div>
           )}
 
-          {/* Wishlist — top right */}
           <button
+            type='button'
             onClick={handleWishlist}
             className={cn(
               "absolute top-2.5 right-2.5 z-10 h-8 w-8 rounded-full flex items-center justify-center shadow-md transition-all duration-200",
@@ -422,27 +361,6 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             <Heart className={cn("h-4 w-4", inWishlist && "fill-current")} />
           </button>
 
-          {/* Image swap dots */}
-          {hasSecondary && (
-            <div
-              className='hidden sm:flex absolute bottom-14 left-1/2 -translate-x-1/2 gap-1.5 z-10 opacity-0 sm:group-hover:opacity-100 transition-opacity'
-              aria-hidden='true'
-            >
-              {product.images.slice(0, 4).map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "block rounded-full transition-all duration-300",
-                    (i === 0 && !showSecondary) || (i === 1 && showSecondary) ?
-                      "w-5 h-1.5 bg-white"
-                    : "w-1.5 h-1.5 bg-white/50",
-                  )}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Action bar — slides up on hover */}
           {!isOutOfStock && (
             <div className='hidden sm:block absolute bottom-0 left-0 right-0 p-2.5 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 ease-out z-10'>
               <button
@@ -468,15 +386,13 @@ function ProductCardInner({ product, className }: ProductCardProps) {
                   "Adding…"
                 : needsCustomization ?
                   "Customize"
-                : "View Product"}
+                : "Add to Bag"}
               </button>
             </div>
           )}
         </div>
 
-        {/* ── Info ── */}
-        <div className='flex min-h-0 flex-none flex-col gap-0.5 sm:gap-1 sm:flex-1'>
-          {/* Meta — fabric · subcategory · category (deduped) */}
+        <div className='flex min-h-0 flex-none flex-col gap-0.5 sm:gap-1 sm:flex-1 pt-2'>
           {(() => {
             const metaLine = buildProductMetaLine(product);
             if (!metaLine) return null;
@@ -492,15 +408,15 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             );
           })()}
 
-          {/* Title */}
-          <h3
-            className='line-clamp-2 min-h-8 text-xs sm:text-sm font-semibold leading-4 sm:leading-5 text-gray-900'
-            itemProp='name'
-          >
-            {product.name}
-          </h3>
+          <Link href={productHref} className='block group-hover:text-brand-600 transition-colors'>
+            <h3
+              className='line-clamp-2 min-h-8 text-xs sm:text-sm font-semibold leading-4 sm:leading-5 text-gray-900'
+              itemProp='name'
+            >
+              {product.name}
+            </h3>
+          </Link>
 
-          {/* Ratings */}
           <div className='mt-0.2 flex h-2 min-h-2 shrink-0 items-center sm:h-4 sm:min-h-4'>
             <div
               className='flex min-w-0 max-w-full items-center gap-0.5'
@@ -531,16 +447,14 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             </div>
           </div>
 
-          {/* ── Price ───────────────────────────────────────────────────────
-               The <span data-price> + <meta content> pattern is the correct
-               way to make prices machine-readable while keeping them human-
-               visible.  Google Merchant Center auto-detects both.
-          ─────────────────────────────────────────────────────────────── */}
           <div className='flex min-h-[26px] shrink-0 flex-wrap items-center gap-x-2 gap-y-0.5'>
-            <ProductPriceBlock product={product} showBadge={false} />
+            <ProductPriceBlock
+              product={product}
+              displayColor={displayColor}
+              showBadge={false}
+            />
             <meta itemProp='price' content={priceMeta.priceContent} />
             <meta itemProp='priceCurrency' content={priceMeta.priceCurrency} />
-            {/* Availability label — visible to users */}
             {isOutOfStock ?
               <span className='text-[10px] font-semibold text-red-500 ml-auto'>
                 Out of Stock
@@ -548,44 +462,7 @@ function ProductCardInner({ product, className }: ProductCardProps) {
             : <span className='sr-only'>In Stock</span>}
           </div>
         </div>
-      </Link>
-
-      {/* Mobile CTA */}
-      <div className='mt-2 shrink-0 sm:hidden'>
-        <button
-          type='button'
-          onClick={handleAddToCart}
-          disabled={isOutOfStock || isAddingToCart}
-          className={cn(
-            "w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors",
-            isOutOfStock ?
-              "bg-gray-100 text-gray-600 cursor-not-allowed"
-            : "bg-white border border-navy-200 text-navy-900 hover:bg-navy-50",
-          )}
-          aria-label={
-            isOutOfStock ? `${product.name} — Sold Out`
-            : isAddingToCart ?
-              "Adding to cart…"
-            : `View ${product.name}`
-          }
-        >
-          <ShoppingBag className='h-3.5 w-3.5' aria-hidden />
-          {isAddingToCart ?
-            "Adding…"
-          : isOutOfStock ?
-            "Sold Out"
-          : needsCustomization ?
-            "Customize"
-          : "View Details"}
-        </button>
       </div>
-
-      {isGiftModalOpen && (
-        <GiftCustomizationModal
-          product={product}
-          onClose={() => setIsGiftModalOpen(false)}
-        />
-      )}
     </article>
   );
 }

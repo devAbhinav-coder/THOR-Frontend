@@ -12,6 +12,8 @@ import {
   Truck,
   RotateCcw,
   ChevronDown,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { navigationApi, storefrontApi } from "@/lib/api";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
@@ -26,9 +28,13 @@ const FooterContactDialog = dynamic(() => import("@/components/layout/FooterCont
 import { cn } from "@/lib/utils";
 import {
   footerAccentLine,
+  footerAtmosphere,
   footerBottomLink,
   footerBrandDescription,
-  footerBrandTitle,
+  footerContactIcon,
+  footerContactLink,
+  footerContactRow,
+  footerContactText,
   footerContainer,
   footerCopyright,
   footerLink,
@@ -36,11 +42,13 @@ import {
   footerMobileSectionButton,
   footerMobileSectionPanel,
   footerMobileSectionShell,
+  footerPolicyLink,
   footerSectionHeading,
   footerShell,
   footerSocialButton,
   footerTrustIcon,
   footerTrustItem,
+  footerTrustStrip,
   resolveFooterCategoryLimit,
 } from "@/lib/footerStyles";
 
@@ -75,11 +83,11 @@ const TRUST_SIGNALS = [
   { Icon: RotateCcw, label: "5-day easy returns" },
 ] as const;
 
+/** Legal strip — help links live under Concierge */
 const POLICY_LINKS = [
-  { label: "Shipping & Returns", href: "/shipping" },
   { label: "Return Policy", href: "/returns" },
-  { label: "Terms of Service", href: "/terms" },
-  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
 ] as const;
 
 /** Shown if API/SSR categories are unavailable so The Collection never looks empty. */
@@ -274,12 +282,13 @@ export default function Footer({ initialNavCategories = [] }: Props) {
       role='contentinfo'
       aria-label='Site footer'
     >
+      <div className={footerAtmosphere} aria-hidden='true' />
       <div className={footerAccentLine} aria-hidden='true' />
 
       <div className={cn(footerContainer, "py-10 sm:py-14 lg:py-16")}>
         <div className='lg:grid lg:grid-cols-12 lg:items-start lg:gap-12 xl:gap-16'>
           {/* Brand — always visible */}
-          <div className='mb-2 border-b border-navy-800/70 pb-8 lg:col-span-4 lg:mb-0 lg:border-0 lg:pb-0'>
+          <div className='mb-2 border-b border-white/[0.06] pb-8 lg:col-span-4 lg:mb-0 lg:border-0 lg:pb-0'>
             <div className='max-w-md'>
               <Link
                 href='/'
@@ -291,14 +300,32 @@ export default function Footer({ initialNavCategories = [] }: Props) {
                   alt='The House of Rani'
                   width={160}
                   height={50}
-                  className='mb-4 h-11 w-auto object-contain sm:h-12'
+                  className='mb-5 h-11 w-auto object-contain sm:h-12'
                 />
               </Link>
-              <p className={footerBrandTitle}>The House of Rani</p>
-              <p className={cn(footerBrandDescription, "mt-3 max-w-sm")}>
+              <p className={cn(footerBrandDescription, "max-w-sm")}>
                 {footer?.description ||
                   "Your destination for exquisite Indian ethnic wear. Curated sarees, salwar suits, and corsets — crafted with love and tradition."}
               </p>
+
+              <div className={footerContactRow}>
+                <a
+                  href={`tel:${contactPhone.replace(/\s+/g, "")}`}
+                  className={footerContactLink}
+                >
+                  <span className={footerContactIcon} aria-hidden='true'>
+                    <Phone className='h-3.5 w-3.5' strokeWidth={1.75} />
+                  </span>
+                  <span className={footerContactText}>{contactPhone}</span>
+                </a>
+                <a href={`mailto:${contactEmail}`} className={footerContactLink}>
+                  <span className={footerContactIcon} aria-hidden='true'>
+                    <Mail className='h-3.5 w-3.5' strokeWidth={1.75} />
+                  </span>
+                  <span className={footerContactText}>{contactEmail}</span>
+                </a>
+              </div>
+
               {socialLinks.length > 0 && (
                 <div className='mt-5 flex flex-wrap gap-2.5'>
                   {socialLinks.map(({ Icon, href, label }) => (
@@ -363,24 +390,24 @@ export default function Footer({ initialNavCategories = [] }: Props) {
                     Contact us
                   </button>
                 </li>
-                {POLICY_LINKS.map(({ label, href }) => (
-                  <li key={label}>
-                    <Link
-                      href={normalizeHref(href)}
-                      className={footerBottomLink}
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
+                <li>
+                  <Link href='/shipping' className={footerBottomLink}>
+                    Shipping & Returns
+                  </Link>
+                </li>
+                <li>
+                  <Link href='/faq' className={footerBottomLink}>
+                    FAQ
+                  </Link>
+                </li>
               </ul>
             </FooterSection>
           </div>
         </div>
 
         {/* Trust strip */}
-        <div className='mt-8 border-t border-navy-800/80 pt-7 sm:mt-10 sm:pt-8'>
-          <ul className='flex flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-8 sm:gap-y-3'>
+        <div className={footerTrustStrip}>
+          <ul className='flex flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-10 sm:gap-y-3'>
             {TRUST_SIGNALS.map(({ Icon, label }) => (
               <li key={label} className='flex items-center gap-2.5'>
                 <span className={footerTrustIcon} aria-hidden='true'>
@@ -392,11 +419,20 @@ export default function Footer({ initialNavCategories = [] }: Props) {
           </ul>
         </div>
 
-        {/* Copyright only — policies live under Concierge */}
-        <div className='mt-7 border-t border-navy-800/80 pt-5 sm:mt-8'>
-          <p className={cn(footerCopyright, "text-center lg:text-left")}>
+        {/* Copyright + policies */}
+        <div className='mt-6 flex flex-col gap-4 sm:mt-7 sm:flex-row sm:items-center sm:justify-between sm:gap-6'>
+          <p className={cn(footerCopyright, "text-center sm:text-left")}>
             © {new Date().getFullYear()} The House of Rani. All rights reserved.
           </p>
+          <ul className='flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:justify-end'>
+            {POLICY_LINKS.map(({ label, href }) => (
+              <li key={label}>
+                <Link href={normalizeHref(href)} className={footerPolicyLink}>
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 

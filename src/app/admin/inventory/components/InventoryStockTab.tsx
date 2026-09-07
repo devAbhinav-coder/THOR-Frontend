@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import OrderLineThumbnail from '@/components/orders/OrderLineThumbnail';
 import {
   Package, RefreshCw, Search, Download,
   ChevronDown, ChevronRight, Pencil, X as XIcon,
 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi, operatingExpensesApi } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from '@/lib/inventoryConstants';
@@ -15,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import AdminPremiumBadge, { isAdminPremiumProduct } from '@/components/admin/AdminPremiumBadge';
 import InventoryBusinessSummary, {
   type InventoryBusinessSummaryData,
-  type OperatingCostsSnapshot,
 } from './InventoryBusinessSummary';
 import MetricTooltip from '@/components/admin/inventory/MetricTooltip';
 import PeriodToolbar from '@/components/admin/shared/PeriodToolbar';
@@ -607,80 +607,72 @@ function ProductRow({
 }
 
 export default function InventoryStockTab() {
-  const [products, setProducts] = useState<InventoryProduct[]>([]);
-  const [summary, setSummary] = useState<InventoryBusinessSummaryData | null>(null);
-  const [operatingCosts, setOperatingCosts] = useState<OperatingCostsSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('-sold');
   const [period, setPeriod] = useState<RevenuePeriod>('lifetime');
   const [year, setYear] = useState(new Date().getFullYear());
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   const [adjustTarget, setAdjustTarget] = useState<{ p: InventoryProduct; v: Variant } | null>(null);
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
-  const load = useCallback(async (
-    p = 1,
-    s = search,
-    f = filter,
-    sortBy = sort,
-    periodVal = period,
-    yearVal = year,
-  ) => {
-    setLoading(true);
-    try {
-      const params: Record<string, string | number> = {
-        page: p,
-        limit: 20,
-        filter: f,
-        sort: sortBy,
-        period: periodVal,
-      };
-      if (s) params.search = s;
-      if (periodVal === 'year') params.year = yearVal;
-      if (periodVal === 'month') params.month = new Date().getMonth() + 1;
+  const stockQueryKey = ['admin-inventory-stock', page, search, filter, sort, period, year] as const;
 
-      const [res, opexRes] = await Promise.all([
-        inventoryApi.getOverview(params),
-        operatingExpensesApi.getSummary({
-          year: periodVal === 'year' ? yearVal : new Date().getFullYear(),
-        }),
-      ]);
-      setProducts((res.data as { products?: InventoryProduct[] }).products ?? []);
-      setSummary((res.data as { summary?: InventoryBusinessSummaryData }).summary ?? null);
-      const opex = (opexRes.data as { summary?: { yearTotal?: number; monthToDateTotal?: number } }).summary;
-      setOperatingCosts(
-        opex
-          ? { yearTotal: opex.yearTotal ?? 0, monthToDateTotal: opex.monthToDateTotal ?? 0 }
-          : null,
-      );
-      setTotalPages(res.pagination?.totalPages ?? 1);
-      setTotal(res.pagination?.total ?? 0);
-      setPage(p);
-    } catch {
-      toast.error('Failed to load inventory');
-    } finally {
-      setLoading(false);
-    }
-  }, [search, filter, sort, period, year]);
+  const { data, isLoading: loading, refetch, isFetching } = useQuery({
+    queryKey: stockQueryKey,
+    queryFn: async () => {
+      try {
+        const params: Record<string, string | number> = {
+          page,
+          limit: 20,
+          filter,
+          sort,
+          period,
+        };
+        if (search) params.search = search;
+        if (period === 'year') params.year = year;
+        if (period === 'month') params.month = new Date().getMonth() + 1;
 
-  useEffect(() => {
-    load(1, search, filter, sort, period, year);
-  }, [period, year, load]);
+        const [res, opexRes] = await Promise.all([
+          inventoryApi.getOverview(params),
+          operatingExpensesApi.getSummary({
+            year: period === 'year' ? year : new Date().getFullYear(),
+          }),
+        ]);
+        const opex = (opexRes.data as { summary?: { yearTotal?: number; monthToDateTotal?: number } }).summary;
+        return {
+          products: (res.data as { products?: InventoryProduct[] }).products ?? [],
+          summary: (res.data as { summary?: InventoryBusinessSummaryData }).summary ?? null,
+          operatingCosts: opex
+            ? { yearTotal: opex.yearTotal ?? 0, monthToDateTotal: opex.monthToDateTotal ?? 0 }
+            : null,
+          totalPages: res.pagination?.totalPages ?? 1,
+          total: res.pagination?.total ?? 0,
+        };
+      } catch (err) {
+        toast.error('Failed to load inventory');
+        throw err;
+      }
+    },
+  });
+
+  const products = data?.products ?? [];
+  const summary = data?.summary ?? null;
+  const operatingCosts = data?.operatingCosts ?? null;
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
 
   const handleSearch = (v: string) => {
     setSearch(v);
-    load(1, v, filter, sort, period, year);
+    setPage(1);
   };
   const handleFilter = (f: string) => {
     setFilter(f);
-    load(1, search, f, sort, period, year);
+    setPage(1);
   };
 
   const handleExport = async () => {
@@ -727,6 +719,10 @@ export default function InventoryStockTab() {
     }
   };
 
+  const invalidateStock = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin-inventory-stock'] });
+  };
+
   const reorderItems = (summary?.reorderSuggestions ?? []) as ReorderItem[];
 
   return (
@@ -736,8 +732,8 @@ export default function InventoryStockTab() {
         year={year}
         years={years}
         periodLabel={summary?.periodLabel}
-        onPeriodChange={setPeriod}
-        onYearChange={setYear}
+        onPeriodChange={(p) => { setPeriod(p); setPage(1); }}
+        onYearChange={(y) => { setYear(y); setPage(1); }}
       />
 
       {summary && (
@@ -789,7 +785,7 @@ export default function InventoryStockTab() {
             ))}
             <select
               value={sort}
-              onChange={e => { setSort(e.target.value); load(1, search, filter, e.target.value, period, year); }}
+              onChange={e => { setSort(e.target.value); setPage(1); }}
               className="h-10 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700"
             >
               <option value="-sold">Best sellers first</option>
@@ -813,10 +809,10 @@ export default function InventoryStockTab() {
             </Button>
             <button
               type="button"
-              onClick={() => load(page, search, filter, sort, period, year)}
+              onClick={() => void refetch()}
               className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50"
             >
-              <RefreshCw className={`h-4 w-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 text-gray-500 ${isFetching ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -886,7 +882,7 @@ export default function InventoryStockTab() {
             product={adjustTarget.p}
             variant={adjustTarget.v}
             onClose={() => setAdjustTarget(null)}
-            onSaved={() => load(page, search, filter)}
+            onSaved={invalidateStock}
           />
         )}
 
@@ -894,8 +890,8 @@ export default function InventoryStockTab() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">Page {page} of {totalPages} · {total} products</p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => load(page - 1)}>Prev</Button>
-              <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => load(page + 1)}>Next</Button>
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           </div>
         )}

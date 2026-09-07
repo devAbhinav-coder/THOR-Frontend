@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -203,24 +204,34 @@ export default function ProductDetailClient({
   const preferredColor =
     searchParams.get("color")?.trim() || initialColor?.trim() || "";
 
-  /* Core — initialize from SSR product so first paint is not a duplicate skeleton after loading.tsx */
-  const [product, setProduct] = useState<Product | null>(() => {
-    if (!canHydrateFromInitial(slug, initialProduct)) return null;
-    return {
-      ...initialProduct,
-      images: normalizeProductImages(initialProduct.images),
-    };
-  });
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    () => {
-      if (!canHydrateFromInitial(slug, initialProduct)) return null;
-      const variants = normalizeVariants(initialProduct.variants || []);
-      return pickVariantForColor(variants, initialColor || null);
+  const queryClient = useQueryClient();
+
+  const { data: rawProduct, isLoading: isMainLoading } = useQuery({
+    queryKey: ["product", slug],
+    queryFn: async () => {
+      const res = await productApi.getBySlug(slug);
+      return res.data.product as Product;
     },
-  );
-  const [isLoading, setIsLoading] = useState(
-    () => !canHydrateFromInitial(slug, initialProduct),
-  );
+    initialData: canHydrateFromInitial(slug, initialProduct) ? initialProduct : undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const product = useMemo(() => {
+    if (!rawProduct) return null;
+    return {
+      ...rawProduct,
+      images: normalizeProductImages(rawProduct.images),
+    };
+  }, [rawProduct]);
+
+  const isLoading = isMainLoading;
+
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(() => {
+    if (!canHydrateFromInitial(slug, initialProduct) || !initialProduct) return null;
+    const variants = normalizeVariants(initialProduct.variants || []);
+    return pickVariantForColor(variants, initialColor || null);
+  });
+
 
   /* Variant / Qty */
   const [quantity, setQuantity] = useState(1);
@@ -242,20 +253,7 @@ export default function ProductDetailClient({
   >({});
 
   /* Related + More */
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const [moreProducts, setMoreProducts] = useState<Product[]>([]);
 
-  /* Reviews */
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [ratingDistribution, setRatingDistribution] = useState<
-    RatingDistributionBucket[]
-  >([]);
-  const [reviewsPagination, setReviewsPagination] = useState({
-    totalPages: 1,
-    total: 0,
-  });
-  const [reviewEligibility, setReviewEligibility] =
-    useState<ReviewEligibility | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewForm, setReviewForm] = useState<ReviewFormState>({
     rating: 5,
@@ -304,294 +302,150 @@ export default function ProductDetailClient({
     [pathname, router, searchParams],
   );
 
-  const needsCustomization = useMemo(
-    () => (product ? productNeedsCustomization(product) : false),
-    [product],
+  
+
+  
+
+  /* React Query Data Fetching replacing manual initial fetch */
+  const { data: reviewsData } = useQuery({
+    queryKey: ["product-reviews", product?._id],
+    queryFn: async () => {
+      const res = await reviewApi.getProductReviews(product!._id);
+      return {
+        reviews: res.data.reviews || [],
+        ratingDistribution: res.data.ratingDistribution || (res.data as any).data?.ratingDistribution || [],
+        pagination: res.data.pagination || { totalPages: 1, total: 0 }
+      };
+    },
+    enabled: !!product?._id,
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  const reviews = reviewsData?.reviews || [];
+  const ratingDistribution = reviewsData?.ratingDistribution || [];
+  const reviewsPagination = reviewsData?.pagination || { totalPages: 1, total: 0 };
+
+  const { data: reviewEligibilityData } = useQuery({
+    queryKey: ["product-review-eligibility", product?._id],
+    queryFn: async () => {
+      const res = await reviewApi.canReview(product!._id);
+      return {
+        canReview: res.data.canReview,
+        hasPurchased: res.data.hasPurchased ?? false,
+        hasReviewed: res.data.hasReviewed ?? false,
+        orderId: res.data.orderId ? String(res.data.orderId) : null,
+      } as ReviewEligibility;
+    },
+    enabled: !!product?._id && isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  });
+  const reviewEligibility = reviewEligibilityData || null;
+
+  const preferredColorKey = normProductColor(
+    preferredColor || pickVariantForColor(normalizeVariants(product?.variants || []), preferredColor)?.color
   );
 
-  const isGiftMarketingContext = useMemo(
-    () =>
-      !!product?.isGiftable ||
-      product?.category?.toLowerCase() === "gifting" ||
-      needsCustomization,
-    [product, needsCustomization],
-  );
+  const needsCustomization = product ? productNeedsCustomization(product) : false;
+  const isGiftMarketingContext = !!product?.isGiftable || product?.category?.toLowerCase() === "gifting" || needsCustomization;
 
-  /* Initial fetch */
-  useEffect(() => {
-    let cancelled = false;
-    const hydratedFromServer =
-      initialProduct &&
-      String(initialProduct.slug).toLowerCase() === String(slug).toLowerCase();
-    if (!hydratedFromServer) {
-      setIsLoading(true);
-      setProduct(null);
-      setSelectedVariant(null);
-    }
-    setReviews([]);
-    setRelatedProducts([]);
-    setMoreProducts([]);
-    setReviewEligibility(null);
-    setShowReviewForm(false);
+  const { data: relatedProductsData } = useQuery({
+    queryKey: ["product-related", product?.category, product?._id, preferredColorKey],
+    queryFn: async () => {
+      const res = await productApi.getByCategory(product!.category, { limit: 60, sort: "-soldCount" });
+      const all: Product[] = res.data?.products || [];
+      const scoped = isGiftMarketingContext
+        ? all.filter(r => r.isGiftable || r.category?.toLowerCase() === "gifting" || productNeedsCustomization(r))
+        : all.filter(r => !r.isGiftable && r.category?.toLowerCase() !== "gifting");
+      
+      const p = product!;
+      const baseColors = new Set((p.variants || []).map(v => v.color).filter(Boolean).map(c => String(c).toLowerCase().trim()));
+      const baseTags = new Set((p.tags || []).map(t => String(t).toLowerCase().trim()));
+      const baseSub = p.subcategory?.toLowerCase().trim();
+      const baseFab = p.fabric?.toLowerCase().trim();
 
-    const fetchAll = async () => {
-      try {
-        let p: Product | null = null;
-        if (hydratedFromServer && initialProduct) {
-          p = {
-            ...initialProduct,
-            images: normalizeProductImages(initialProduct.images),
-          };
-          if (!cancelled) {
-            setProduct(p);
-            const variants = normalizeVariants(p.variants || []);
-            setSelectedVariant(
-              pickVariantForColor(variants, preferredColor || null),
-            );
-            setIsLoading(false);
+      const scored = scoped
+        .filter(r => r._id !== p._id)
+        .map(r => {
+          let score = 0;
+          if (isGiftMarketingContext) {
+            const baseOccasions = new Set((p.occasions || []).map(o => String(o).toLowerCase().trim()));
+            const rOccasions = new Set((r.occasions || []).map(o => String(o).toLowerCase().trim()));
+            let occasionOverlap = 0;
+            rOccasions.forEach(o => { if (baseOccasions.has(o)) occasionOverlap += 1 });
+            score += Math.min(occasionOverlap, 3) * 50;
+
+            if (productNeedsCustomization(p) === productNeedsCustomization(r)) score += 40;
+
+            const rTags = new Set((r.tags || []).map(t => String(t).toLowerCase().trim()));
+            let tagOverlap = 0;
+            rTags.forEach(t => { if (baseTags.has(t)) tagOverlap += 1 });
+            score += Math.min(tagOverlap, 5) * 10;
+          } else {
+            const rSub = r.subcategory?.toLowerCase().trim();
+            const rFab = r.fabric?.toLowerCase().trim();
+            if (baseSub && rSub && baseSub === rSub) score += 60;
+            if (baseFab && rFab && baseFab === rFab) score += 40;
+            if (preferredColorKey) {
+              const rHasShade = (r.variants || []).some(v => normProductColor(v.color) === preferredColorKey);
+              if (rHasShade) score += 35;
+              if (colorHasTaggedImages(r, preferredColorKey)) score += 25;
+            }
+            const rColors = new Set((r.variants || []).map(v => v.color).filter(Boolean).map(c => String(c).toLowerCase().trim()));
+            let colorOverlap = 0;
+            rColors.forEach(c => { if (baseColors.has(c)) colorOverlap += 1 });
+            score += Math.min(colorOverlap, 3) * 15;
+            const rTags = new Set((r.tags || []).map(t => String(t).toLowerCase().trim()));
+            let tagOverlap = 0;
+            rTags.forEach(t => { if (baseTags.has(t)) tagOverlap += 1 });
+            score += Math.min(tagOverlap, 4) * 6;
           }
-        }
 
-        try {
-          const main = await productApi.getBySlug(slug);
-          if (cancelled) return;
-          const fetched = main.data.product as Product;
-          p = fetched;
-          setProduct((prev) => ({
-            ...fetched,
-            images: normalizeProductImages(fetched.images),
-            activePromotions:
-              fetched.activePromotions?.length ?
-                fetched.activePromotions
-              : prev?.activePromotions,
-            nearEligiblePromotions:
-              fetched.nearEligiblePromotions?.length ?
-                fetched.nearEligiblePromotions
-              : prev?.nearEligiblePromotions,
-            activeCoupons:
-              fetched.activeCoupons?.length ?
-                fetched.activeCoupons
-              : prev?.activeCoupons,
-            nearEligibleCoupons:
-              fetched.nearEligibleCoupons?.length ?
-                fetched.nearEligibleCoupons
-              : prev?.nearEligibleCoupons,
-          }));
-          const variants = normalizeVariants(fetched.variants || []);
-          setSelectedVariant(
-            pickVariantForColor(variants, preferredColor || null),
-          );
-        } catch {
-          if (!p) throw new Error("Failed to fetch product");
-        }
-        if (!p || cancelled) return;
+          const pLower = p.name.toLowerCase();
+          const rLower = r.name.toLowerCase();
+          const pKeywords = pLower.split(/\s+/).filter(k => k.length > 2);
+          let nameMatchScore = 0;
+          pKeywords.forEach(keyword => { if (rLower.includes(keyword)) nameMatchScore += 15 });
+          score += Math.min(nameMatchScore, 45);
 
-        const shadeKey = normProductColor(
-          preferredColor ||
-            pickVariantForColor(
-              normalizeVariants(p.variants || []),
-              preferredColor,
-            )?.color,
-        );
+          if (sumVariantStock(r) > 0) score += 6;
+          score += Math.round((r.ratings?.average || 0) * 2);
+          score += Math.min(r.ratings?.count || 0, 50) / 10;
+          return { r, score };
+        })
+        .sort((a, b) => b.score - a.score)
+        .map(({ r }) => r)
+        .slice(0, 8);
 
-        let bestRelated: Product[] = [];
-        const [reviewsRes, relatedRes, moreRes] = await Promise.allSettled([
-          reviewApi.getProductReviews(p._id),
-          productApi.getByCategory(p.category, {
-            limit: 60,
-            sort: "-soldCount",
-          }),
-          productApi.getAll({ limit: 48, sort: "-createdAt" }),
-        ]);
+      const bestRelated = scored.map(r => ({ ...r, images: normalizeProductImages(r.images) }));
+      return bestRelated;
+    },
+    enabled: !!product && !!product.category,
+    staleTime: 10 * 60 * 1000,
+  });
 
-        if (cancelled) return;
+  const relatedProducts: any[] = relatedProductsData || [];
 
-        if (reviewsRes.status === "fulfilled") {
-          const rv = reviewsRes.value;
-          const rvData = rv.data as {
-            reviews?: Review[];
-            ratingDistribution?: RatingDistributionBucket[];
-          };
-          setReviews(rv.data.reviews || []);
-          setRatingDistribution(
-            rv.ratingDistribution || rvData.ratingDistribution || [],
-          );
-          setReviewsPagination(rv.pagination || { totalPages: 1, total: 0 });
-        }
-        const isGiftBaseProduct =
-          p.isGiftable ||
-          p.category?.toLowerCase() === "gifting" ||
-          productNeedsCustomization(p);
+  const { data: moreProductsData } = useQuery({
+    queryKey: ["product-more", relatedProducts?.[0]?._id],
+    queryFn: async () => {
+      const moreRes = await productApi.getAll({ limit: 48, sort: "-createdAt" });
+      const all: Product[] = moreRes.data?.products || [];
+      const scoped = isGiftMarketingContext
+        ? all.filter(r => r.isGiftable || r.category?.toLowerCase() === "gifting" || productNeedsCustomization(r))
+        : all.filter(r => !r.isGiftable && r.category?.toLowerCase() !== "gifting");
+      
+      const exclude = new Set<string>([product!._id, ...relatedProducts.map((x: any) => x._id)]);
+      const bestMore = scoped
+        .filter(r => !exclude.has(r._id))
+        .slice(0, 8)
+        .map(r => ({ ...r, images: normalizeProductImages(r.images) }));
+      return bestMore;
+    },
+    enabled: !!product && relatedProducts.length > 0,
+    staleTime: 10 * 60 * 1000,
+  });
 
-        if (relatedRes.status === "fulfilled") {
-          const all: Product[] = relatedRes.value.data?.products || [];
-          const scoped =
-            isGiftBaseProduct ?
-              all.filter(
-                (r) =>
-                  r.isGiftable ||
-                  r.category?.toLowerCase() === "gifting" ||
-                  productNeedsCustomization(r),
-              )
-            : all.filter(
-                (r) => !r.isGiftable && r.category?.toLowerCase() !== "gifting",
-              );
-          const baseColors = new Set(
-            (p.variants || [])
-              .map((v) => v.color)
-              .filter(Boolean)
-              .map((c) => String(c).toLowerCase().trim()),
-          );
-          const baseTags = new Set(
-            (p.tags || []).map((t) => String(t).toLowerCase().trim()),
-          );
-          const baseSub = p.subcategory?.toLowerCase().trim();
-          const baseFab = p.fabric?.toLowerCase().trim();
-
-          const scored = scoped
-            .filter((r) => r._id !== p._id)
-            .map((r) => {
-              let score = 0;
-              const isGiftingCategory =
-                p.category?.toLowerCase() === "gifting" ||
-                productNeedsCustomization(p);
-
-              if (isGiftingCategory) {
-                // Gifting Specific Logic
-                const baseOccasions = new Set(
-                  (p.occasions || []).map((o) =>
-                    String(o).toLowerCase().trim(),
-                  ),
-                );
-                const rOccasions = new Set(
-                  (r.occasions || []).map((o) =>
-                    String(o).toLowerCase().trim(),
-                  ),
-                );
-                let occasionOverlap = 0;
-                rOccasions.forEach((o) => {
-                  if (baseOccasions.has(o)) occasionOverlap += 1;
-                });
-                score += Math.min(occasionOverlap, 3) * 50;
-
-                if (
-                  productNeedsCustomization(p) === productNeedsCustomization(r)
-                )
-                  score += 40;
-
-                const rTags = new Set(
-                  (r.tags || []).map((t) => String(t).toLowerCase().trim()),
-                );
-                let tagOverlap = 0;
-                rTags.forEach((t) => {
-                  if (baseTags.has(t)) tagOverlap += 1;
-                });
-                score += Math.min(tagOverlap, 5) * 10;
-              } else {
-                // Apparel / Standard Product Logic (Sarees, etc)
-                const rSub = r.subcategory?.toLowerCase().trim();
-                const rFab = r.fabric?.toLowerCase().trim();
-
-                if (baseSub && rSub && baseSub === rSub) score += 60;
-                if (baseFab && rFab && baseFab === rFab) score += 40;
-
-                if (shadeKey) {
-                  const rHasShade = (r.variants || []).some(
-                    (v) => normProductColor(v.color) === shadeKey,
-                  );
-                  if (rHasShade) score += 35;
-                  if (colorHasTaggedImages(r, shadeKey)) score += 25;
-                }
-
-                const rColors = new Set(
-                  (r.variants || [])
-                    .map((v) => v.color)
-                    .filter(Boolean)
-                    .map((c) => String(c).toLowerCase().trim()),
-                );
-                let colorOverlap = 0;
-                rColors.forEach((c) => {
-                  if (baseColors.has(c)) colorOverlap += 1;
-                });
-                score += Math.min(colorOverlap, 3) * 15;
-
-                const rTags = new Set(
-                  (r.tags || []).map((t) => String(t).toLowerCase().trim()),
-                );
-                let tagOverlap = 0;
-                rTags.forEach((t) => {
-                  if (baseTags.has(t)) tagOverlap += 1;
-                });
-                score += Math.min(tagOverlap, 4) * 6;
-              }
-
-              // Name Similarity Scoring
-              const pLower = p.name.toLowerCase();
-              const rLower = r.name.toLowerCase();
-              const pKeywords = pLower
-                .split(/\s+/)
-                .filter((k) => k.length > 2 && !RELATED_NAME_STOPWORDS.has(k));
-              let nameMatchScore = 0;
-              pKeywords.forEach((keyword) => {
-                if (rLower.includes(keyword)) nameMatchScore += 15;
-              });
-              score += Math.min(nameMatchScore, 45);
-
-              // Gentle preference for better rated / in-stock items
-              if (sumVariantStock(r) > 0) score += 6;
-              score += Math.round((r.ratings?.average || 0) * 2);
-              score += Math.min(r.ratings?.count || 0, 50) / 10;
-
-              return { r, score };
-            })
-            .sort((a, b) => b.score - a.score)
-            .map(({ r }) => r)
-            .slice(0, 8);
-
-          bestRelated = scored.map((r) => ({
-            ...r,
-            images: normalizeProductImages(r.images),
-          }));
-          if (!cancelled) setRelatedProducts(bestRelated);
-        }
-        if (moreRes.status === "fulfilled" && !cancelled) {
-          const all: Product[] = moreRes.value.data?.products || [];
-          const scoped =
-            isGiftBaseProduct ?
-              all.filter(
-                (r) =>
-                  r.isGiftable ||
-                  r.category?.toLowerCase() === "gifting" ||
-                  productNeedsCustomization(r),
-              )
-            : all.filter(
-                (r) => !r.isGiftable && r.category?.toLowerCase() !== "gifting",
-              );
-          const exclude = new Set<string>([
-            p._id,
-            ...bestRelated.map((x) => x._id),
-          ]);
-          setMoreProducts(
-            scoped
-              .filter((r) => !exclude.has(r._id))
-              .slice(0, 8)
-              .map((r) => ({
-                ...r,
-                images: normalizeProductImages(r.images),
-              })),
-          );
-        }
-      } catch {
-        /* not found */
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    void fetchAll();
-    return () => {
-      cancelled = true;
-    };
-  }, [slug, initialProduct?.slug]);
+  const moreProducts: any[] = moreProductsData || [];
 
   useEffect(() => {
     if (!product?.variants?.length || !preferredColor) return;
@@ -600,34 +454,7 @@ export default function ProductDetailClient({
     if (next) setSelectedVariant(next);
   }, [preferredColor, product?._id, product?.variants]);
 
-  /* Review eligibility (only when authenticated & product loaded) */
-  useEffect(() => {
-    const productId = product?._id;
-    if (!isAuthenticated || !productId) {
-      reviewEligibilityRequestKeyRef.current = null;
-      return;
-    }
-    const requestKey = `${productId}:authed`;
-    if (reviewEligibilityRequestKeyRef.current === requestKey) return;
-    reviewEligibilityRequestKeyRef.current = requestKey;
-    let cancelled = false;
-    reviewApi
-      .canReview(productId)
-      .then(
-        (body) =>
-          !cancelled &&
-          setReviewEligibility({
-            canReview: body.data.canReview,
-            hasPurchased: body.data.hasPurchased ?? false,
-            hasReviewed: body.data.hasReviewed ?? false,
-            orderId: body.data.orderId ? String(body.data.orderId) : null,
-          }),
-      )
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, product?._id]);
+  /* Review Eligibility - Handled by React Query below */
 
   /* Analytics: one counted view per product per browser session */
   useEffect(() => {
@@ -734,9 +561,9 @@ export default function ProductDetailClient({
     setQuantity((q) => clampPurchaseQty(q, selectedVariant));
   }, [selectedVariant?.sku, selectedVariant?.stock]);
   const totalReviews = useMemo(() => {
-    const fromPagination = Number(reviewsPagination.total || 0);
+    const fromPagination = Number((reviewsPagination as any).total || 0);
     return fromPagination > 0 ? fromPagination : reviews.length;
-  }, [reviewsPagination.total, reviews.length]);
+  }, [(reviewsPagination as any).total, reviews.length]);
   const displayAverageRating = useMemo(() => {
     const fromProduct = Number(product?.ratings?.average || 0);
     if (fromProduct > 0) return fromProduct;
@@ -990,78 +817,69 @@ export default function ProductDetailClient({
       formData.append("comment", reviewForm.comment);
       formData.append("orderId", reviewEligibility.orderId);
 
-      reviewImages.forEach((img) => {
-        formData.append("images", img);
-      });
+      reviewImages.forEach((img) => formData.append("images", img));
 
       const created = await reviewApi.create(product!._id, formData);
       const newReview: Review = created.data.review;
-      const submittedRating = Math.max(
-        1,
-        Math.min(5, Number(newReview.rating || reviewForm.rating || 0)),
-      );
+      const submittedRating = Math.max(1, Math.min(5, Number(newReview.rating || reviewForm.rating || 0)));
 
-      setReviews((prev) => [newReview, ...prev]);
-      setReviewsPagination((prev) => ({ ...prev, total: prev.total + 1 }));
-      setRatingDistribution((prev) => {
-        const next = [...prev];
-        const idx = next.findIndex((d) => Number(d._id) === submittedRating);
+      queryClient.setQueryData(["product-reviews", product?._id], (old: any) => {
+        if (!old) return old;
+        const nextDistribution = [...(old.ratingDistribution || [])];
+        const idx = nextDistribution.findIndex((d: any) => Number(d._id) === submittedRating);
         if (idx >= 0) {
-          next[idx] = { ...next[idx], count: Number(next[idx].count || 0) + 1 };
+          nextDistribution[idx] = { ...nextDistribution[idx], count: Number(nextDistribution[idx].count || 0) + 1 };
         } else {
-          next.push({ _id: submittedRating, count: 1 });
+          nextDistribution.push({ _id: submittedRating, count: 1 });
         }
-        return next;
-      });
-      setProduct((prev) => {
-        if (!prev) return prev;
-        const prevCount = Number(prev.ratings?.count || 0);
-        const prevAvg = Number(prev.ratings?.average || 0);
-        const nextCount = prevCount + 1;
-        const nextAvg =
-          nextCount > 0 ?
-            Number(
-              ((prevAvg * prevCount + submittedRating) / nextCount).toFixed(1),
-            )
-          : submittedRating;
         return {
-          ...prev,
-          ratings: {
-            average: nextAvg,
-            count: nextCount,
-          },
+          ...old,
+          reviews: [newReview, ...(old.reviews || [])],
+          pagination: { ...old.pagination, total: (old.pagination?.total || 0) + 1 },
+          ratingDistribution: nextDistribution
         };
       });
-      setReviewEligibility((prev) =>
-        prev ? { ...prev, canReview: false, hasReviewed: true } : prev,
-      );
 
-      // Reset form
+      queryClient.setQueryData(["product", slug], (old: any) => {
+        if (!old) return old;
+        const prevCount = Number(old.ratings?.count || 0);
+        const prevAvg = Number(old.ratings?.average || 0);
+        const nextCount = prevCount + 1;
+        const nextAvg = nextCount > 0 ? Number(((prevAvg * prevCount + submittedRating) / nextCount).toFixed(1)) : submittedRating;
+        return {
+          ...old,
+          ratings: { ...old.ratings, average: nextAvg, count: nextCount }
+        };
+      });
+
+      queryClient.setQueryData(["product-review-eligibility", product?._id], (old: any) => {
+        if (!old) return old;
+        return { ...old, canReview: false, hasReviewed: true };
+      });
+
       setShowReviewForm(false);
       setReviewForm({ rating: 5, title: "", comment: "" });
       setReviewImages([]);
       setReviewPreviews([]);
-
       toast.success("Review submitted! Thank you.");
     } catch (err: unknown) {
-      const msg =
-        (err as { message?: string })?.message || "Failed to submit review";
-      toast.error(msg);
+      toast.error((err as { message?: string })?.message || "Failed to submit review");
     } finally {
       setIsSubmittingReview(false);
     }
   };
 
-  const updateHelpfulCountLocally = (
-    reviewId: string,
-    helpfulCount: number,
-  ) => {
+  const updateHelpfulCountLocally = (reviewId: string, helpfulCount: number) => {
     const votes = Array.from({ length: helpfulCount }, () => "");
-    setReviews((prev) =>
-      prev.map((review) =>
-        review._id === reviewId ? { ...review, helpfulVotes: votes } : review,
-      ),
-    );
+    queryClient.setQueryData(["product-reviews", product?._id], (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        reviews: (old.reviews || []).map((review: any) =>
+          review._id === reviewId ? { ...review, helpfulVotes: votes } : review
+        )
+      };
+    });
   };
 
   const handleHelpfulVote = async (reviewId: string) => {

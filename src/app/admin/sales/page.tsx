@@ -12,51 +12,54 @@ import toast from 'react-hot-toast';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { buildBrandedQrDataUrl, downloadDataUrl, shareInvite } from '@/lib/brandedQr';
 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 export default function AdminSalesPage() {
-  const [campaigns, setCampaigns] = useState<SaleCampaign[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editCampaign, setEditCampaign] = useState<SaleCampaign | null>(null);
   const site = useMemo(() => getSiteUrl(), []);
   const storeUrl = `${site}/shop`;
 
-  const fetchCampaigns = async () => {
-    setIsLoading(true);
-    try {
+  const { data: campaigns = [], isLoading } = useQuery({
+    queryKey: ['admin-sales'],
+    queryFn: async () => {
       const res = await saleCampaignApi.getAll();
       const list = res.data?.campaigns;
-      setCampaigns(Array.isArray(list) ? (list as SaleCampaign[]) : []);
-    } catch {
-      toast.error('Failed to load sales');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return Array.isArray(list) ? (list as SaleCampaign[]) : [];
+    },
+  });
 
-  useEffect(() => {
-    fetchCampaigns();
-  }, []);
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this sale campaign?')) return;
-    try {
-      await saleCampaignApi.delete(id);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => saleCampaignApi.delete(id),
+    onSuccess: () => {
       toast.success('Sale deleted');
-      fetchCampaigns();
-    } catch {
+      void queryClient.invalidateQueries({ queryKey: ['admin-sales'] });
+    },
+    onError: () => {
       toast.error('Failed to delete sale');
-    }
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => saleCampaignApi.archive(id),
+    onSuccess: () => {
+      toast.success('Sale archived');
+      void queryClient.invalidateQueries({ queryKey: ['admin-sales'] });
+    },
+    onError: () => {
+      toast.error('Failed to archive sale');
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    if (!confirm('Delete this sale campaign?')) return;
+    deleteMutation.mutate(id);
   };
 
-  const handleArchive = async (id: string, name: string) => {
+  const handleArchive = (id: string, name: string) => {
     if (!confirm(`Archive sale "${name}"?`)) return;
-    try {
-      await saleCampaignApi.archive(id);
-      toast.success('Sale archived');
-      fetchCampaigns();
-    } catch {
-      toast.error('Failed to archive sale');
-    }
+    archiveMutation.mutate(id);
   };
 
   const shareSale = async (c: SaleCampaign) => {
@@ -215,7 +218,7 @@ export default function AdminSalesPage() {
           onSave={() => {
             setIsModalOpen(false);
             setEditCampaign(null);
-            fetchCampaigns();
+            void queryClient.invalidateQueries({ queryKey: ['admin-sales'] });
           }}
         />
       : null}
