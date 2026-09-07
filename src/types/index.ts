@@ -875,6 +875,8 @@ export interface DashboardAnalytics {
     _id: string;
     name: string;
     slug: string;
+    premiumSlug?: string;
+    isPremium?: boolean;
     image: string;
     category: string;
     views: number;

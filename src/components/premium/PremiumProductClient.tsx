@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -22,6 +22,9 @@ import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { isFreeProductSize } from "@/lib/productCatalogOptions";
 import { getSelectedVariantPriceDisplay } from "@/lib/productPricing";
 import { hasInStockVariant } from "@/lib/productStock";
+import { productApi } from "@/lib/api";
+import { trackViewContent } from "@/lib/metaPixel";
+import { trackGaViewItem } from "@/lib/googleAnalytics";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
@@ -294,7 +297,7 @@ export default function PremiumProductClient({ product, related }: Props) {
     return {
       _id: product._id,
       name: product.name,
-      slug: product.slug,
+      slug: product.catalogSlug || product.slug,
       description: product.description,
       shortDescription: product.shortDescription,
       price: product.price,
@@ -321,6 +324,7 @@ export default function PremiumProductClient({ product, related }: Props) {
       isFeatured: false,
       isActive: product.isActive,
       isPremium: true,
+      premiumSlug: product.slug,
       ratings: { average: 0, count: 0 },
       createdAt: new Date().toISOString(),
     };
@@ -330,6 +334,41 @@ export default function PremiumProductClient({ product, related }: Props) {
     if (!isLiveProduct) return undefined;
     return storyProduct;
   }, [isLiveProduct, storyProduct]);
+
+  /* Analytics: one counted view per product per browser session (same as shop PDP) */
+  useEffect(() => {
+    if (!isLiveProduct) return;
+    const viewSlug = product.catalogSlug || product.slug;
+    if (!viewSlug) return;
+    const key = `hor_pv_${viewSlug}`;
+    try {
+      if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(key))
+        return;
+      if (typeof sessionStorage !== "undefined")
+        sessionStorage.setItem(key, "1");
+    } catch {
+      /* storage blocked */
+    }
+    productApi.recordView(viewSlug).catch(() => {});
+  }, [isLiveProduct, product.catalogSlug, product.slug]);
+
+  /* Meta Pixel + GA: one ViewContent / view_item per premium PDP visit */
+  const hasTrackedViewContent = useRef(false);
+  useEffect(() => {
+    hasTrackedViewContent.current = false;
+  }, [product._id]);
+  useEffect(() => {
+    if (
+      !isLiveProduct ||
+      !cartProduct ||
+      !selectedVariant ||
+      hasTrackedViewContent.current
+    )
+      return;
+    hasTrackedViewContent.current = true;
+    trackViewContent(cartProduct, selectedVariant);
+    trackGaViewItem(cartProduct);
+  }, [isLiveProduct, cartProduct, product._id, selectedVariant?.sku]);
 
   const priceDisplay = useMemo(() => {
     if (cartProduct && selectedVariant) {

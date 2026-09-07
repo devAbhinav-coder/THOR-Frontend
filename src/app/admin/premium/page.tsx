@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   Crown,
   ExternalLink,
+  Eye,
   Loader2,
   Package,
   Pencil,
@@ -148,6 +149,7 @@ export default function AdminPremiumPage() {
                 <th className="px-4 py-3">Product</th>
                 <th className="px-4 py-3">Premium URL</th>
                 <th className="px-4 py-3">Price</th>
+                <th className="px-4 py-3">Views</th>
                 <th className="px-4 py-3">Stock</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3" />
@@ -191,6 +193,12 @@ export default function AdminPremiumPage() {
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-900">
                       {formatPrice(p.price)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">
+                      <span className="inline-flex items-center gap-1 tabular-nums">
+                        <Eye className="h-3.5 w-3.5 text-gray-400" aria-hidden />
+                        {p.viewCount || 0}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{stock}</td>
                     <td className="px-4 py-3">

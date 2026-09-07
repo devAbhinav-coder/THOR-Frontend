@@ -25,9 +25,11 @@ export default function TopViewedTable({ rows, compact = false }: { rows: Row[];
       {rows.map((p, i) => {
         const viewPct = (p.views / maxViews) * 100;
         const premium = isAdminPremiumProduct(p);
+        const routeSlug =
+          premium ? (p.premiumSlug || p.slug) : p.slug;
         const href =
           premium ?
-            `/premium/${encodeURIComponent(p.slug)}`
+            `/premium/${encodeURIComponent(routeSlug)}`
           : `/shop/${encodeURIComponent(p.slug)}`;
         return (
           <div

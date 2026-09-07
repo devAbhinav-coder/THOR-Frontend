@@ -6,6 +6,8 @@ import type {
 
 export type PremiumProductView = PremiumProduct & {
   _id: string;
+  /** Catalog `Product.slug` — used for view counting & cart identity. */
+  catalogSlug: string;
   variants: Product["variants"];
   totalStock: number;
   isActive: boolean;
@@ -65,6 +67,7 @@ export function mapApiProductToPremiumView(p: Product): PremiumProductView {
 
   return {
     _id: p._id,
+    catalogSlug: (p.slug || "").trim(),
     slug: getPremiumRouteSlug(p),
     name: p.name,
     subtitle: p.premiumSubtitle || p.shortDescription || p.fabric || "Premium",
@@ -106,5 +109,5 @@ export function mapApiProductsToPremiumViews(
   return products
     .filter((p) => p.isPremium !== false)
     .map(mapApiProductToPremiumView)
-    .filter((p) => p.slug);
+    .filter((p) => p.slug && p.catalogSlug);
 }
