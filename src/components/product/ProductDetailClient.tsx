@@ -608,7 +608,7 @@ export default function ProductDetailClient({
           Product not found
         </h2>
         <Link href='/shop' className='text-sm text-brand-600 underline'>
-          Browse all sarees
+          Browse other products
         </Link>
       </div>
     );

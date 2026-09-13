@@ -8,7 +8,7 @@ export const SHOP_H1_DEFAULT =
 export const GIFTING_H1_DEFAULT =
   "Handmade Gifts, Corporate Gifting & Hampers Online India";
 export const BLOG_H1 = "Saree Styling, Salwar Suits & Ethnic Wear Journal";
-export const FAQ_H1 = "Shopping FAQ — Orders, Shipping & Returns";
+export const FAQ_H1 = "Shopping FAQ - Orders, Shipping & Returns";
 
 const GENERIC_HOME_SLIDE_TITLES = new Set(
   [

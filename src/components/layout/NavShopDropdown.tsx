@@ -50,7 +50,7 @@ export default function NavShopDropdown({
               pathname === "/shop" && !searchParams.get("category"),
             )}
           >
-            All Sarees
+            Explore All
           </Link>
           {categories.map((cat) => {
             const catHref = buildShopCategoryHref(cat);

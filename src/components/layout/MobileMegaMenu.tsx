@@ -29,7 +29,7 @@ export default function MobileMegaMenu({ categories, onClose }: Props) {
           href="/shop/collections"
           className="block border-l-2 border-transparent px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]"
         >
-          All Sarees
+          Explore All
         </Link>
         {categories.map((cat) => {
           const hasSub = cat.subcategories && cat.subcategories.length > 0;

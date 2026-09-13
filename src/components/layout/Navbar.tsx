@@ -725,7 +725,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                   <div className='flex h-9 w-9 items-center justify-center border border-[#c5a059]/30 bg-navy-900 text-[#c5a059] transition-colors group-hover:bg-[#c5a059] group-hover:text-white'>
                     <Store className='w-4 h-4' />
                   </div>
-                  All Sarees
+                  Explore All
                 </Link>
                 <Link
                   onClick={() => setIsMenuOpen(false)}
