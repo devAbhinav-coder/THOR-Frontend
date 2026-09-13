@@ -23,8 +23,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: DISALLOW,
       },
       {
-        userAgent: ["Googlebot", "Googlebot-News"],
-        allow: [...ALLOW_PUBLIC, "/api/feed", "/api/feed/blog", "/llms.txt", "/ai.txt"],
+        userAgent: ["Googlebot", "Googlebot-News", "Pinterestbot"],
+        allow: [...ALLOW_PUBLIC, "/api/feed", "/api/feed/blog", "/feeds/pinterest-catalog.xml", "/feeds/blog-rss.xml", "/feeds/products-rss.xml", "/rss.xml", "/llms.txt", "/ai.txt"],
         disallow: DISALLOW,
       },
       {

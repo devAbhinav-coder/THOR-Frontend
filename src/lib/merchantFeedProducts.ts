@@ -10,7 +10,15 @@ type FeedProduct = {
   price?: number;
   comparePrice?: number;
   category?: string;
+  subcategory?: string;
   fabric?: string;
+  audience?: "women" | "men" | "kids" | "couple" | string;
+  isPremium?: boolean;
+  premiumSlug?: string;
+  premiumSubtitle?: string;
+  craftNote?: string;
+  weaveHours?: number;
+  premiumHeroImage?: { url?: string };
   images?: { url?: string }[];
   variants?: Array<{
     _id?: string;

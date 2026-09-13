@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, Eye, Heart, Calendar, BarChart3, MousePointerClick } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Eye, Heart, Calendar, BarChart3, MousePointerClick, Copy, Rss, ShoppingBag, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { blogApi } from '@/lib/api';
@@ -91,6 +91,54 @@ export default function AdminBlogsPage() {
           </div>
         </div>
       )}
+
+      {/* Pinterest Feeds Helper Card */}
+      <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl border border-rose-100 p-4 mb-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-rose-950 flex items-center gap-2">
+              <Rss className="w-4 h-4 text-rose-600" /> Pinterest RSS Auto Feeds &amp; Shopping Catalog
+            </h2>
+            <p className="text-xs text-rose-700 mt-0.5">
+              Use these RSS &amp; Catalog XML feeds to set up Pinterest Auto-Pinning for blog posts and Pinterest Shopping Product Catalog sync.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/feeds/blog-rss.xml`;
+                navigator.clipboard.writeText(url);
+                toast.success("Copied Blog RSS Feed URL!");
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-rose-900 border border-rose-200 hover:bg-rose-100 transition-colors shadow-xs"
+            >
+              <Rss className="w-3.5 h-3.5 text-rose-600" /> Blog RSS <Copy className="w-3 h-3 text-rose-400" />
+            </button>
+
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/feeds/products-rss.xml`;
+                navigator.clipboard.writeText(url);
+                toast.success("Copied Products RSS Feed URL!");
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-rose-900 border border-rose-200 hover:bg-rose-100 transition-colors shadow-xs"
+            >
+              <Rss className="w-3.5 h-3.5 text-rose-600" /> Product RSS <Copy className="w-3 h-3 text-rose-400" />
+            </button>
+
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/feeds/pinterest-catalog.xml`;
+                navigator.clipboard.writeText(url);
+                toast.success("Copied Pinterest Catalog Feed URL!");
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-xs"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> Catalog Feed XML <Copy className="w-3 h-3 text-rose-200" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
