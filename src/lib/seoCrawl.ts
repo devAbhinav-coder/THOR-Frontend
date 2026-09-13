@@ -64,6 +64,10 @@ export const SEO_CRAWL_ALLOW_PUBLIC = [
   "/returns",
   "/terms",
   "/privacy",
+  "/feeds/pinterest-catalog.xml",
+  "/feeds/products-rss.xml",
+  "/feeds/blog-rss.xml",
+  "/rss.xml",
   "/llms.txt",
   "/ai.txt",
 ] as const;
