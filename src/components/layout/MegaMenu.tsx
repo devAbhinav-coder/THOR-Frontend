@@ -44,7 +44,7 @@ export default function MegaMenu({
                 onClick={onNavigate}
                 className="text-sm font-medium text-navy-900 hover:text-[#c5a059] transition-colors py-1"
               >
-                All Sarees
+                Explore All
               </Link>
               {categories.map((cat) => {
                 const catHref = buildShopCategoryHref(cat);
