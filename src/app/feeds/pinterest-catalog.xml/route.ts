@@ -3,7 +3,8 @@ import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { fetchAllMerchantFeedProducts } from "@/lib/merchantFeedProducts";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function escapeXml(value: string): string {
   return (value || "")
@@ -59,19 +60,24 @@ export async function GET() {
         link = `${siteUrl}/premium/${encodeURIComponent(p.premiumSlug)}`;
       } else if (p.slug) {
         link = `${siteUrl}/shop/${encodeURIComponent(p.slug)}`;
+      } else if (p._id) {
+        link = `${siteUrl}/shop/${encodeURIComponent(String(p._id))}`;
       } else {
         continue;
       }
 
-      let imageLink =
-        p.isPremium && p.premiumHeroImage?.url ?
-          p.premiumHeroImage.url
-        : p.images?.[0]?.url || "";
+      let rawImg = p.isPremium && p.premiumHeroImage?.url ? p.premiumHeroImage.url : p.images?.[0]?.url || "";
+      if (typeof rawImg === "object" && rawImg !== null && "url" in rawImg) {
+        rawImg = String((rawImg as { url?: string }).url || "");
+      }
+      let imageLink = String(rawImg || "").trim();
 
       if (imageLink && imageLink.startsWith("/")) {
         imageLink = `${siteUrl}${imageLink}`;
       }
-      if (!imageLink) continue;
+      if (!imageLink) {
+        imageLink = `${siteUrl}/images/hero-bg.jpg`;
+      }
 
       const rawTitle = p.name || "Saree Product";
       const titleText = p.isPremium && p.premiumSubtitle ? `${rawTitle} — ${p.premiumSubtitle}` : rawTitle;

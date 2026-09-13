@@ -5,7 +5,8 @@ import { fetchAllBlogFeedPosts } from "@/lib/blogFeedData";
 import { blogMetaDescription, blogOgImageUrl } from "@/lib/blogSeo";
 import { plainBlogExcerpt } from "@/lib/blogServer";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function escapeXml(value: string): string {
   return (value || "")

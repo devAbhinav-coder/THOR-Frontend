@@ -73,15 +73,19 @@ async function fetchPaginatedProducts(basePath: string): Promise<FeedProduct[]> 
   return all;
 }
 
-/** Shop catalog products for Google Merchant / Meta feeds (no gifting). */
+/** Shop catalog products for Pinterest & Google Merchant feeds (both regular & premium). */
 export async function fetchAllMerchantFeedProducts(): Promise<FeedProduct[]> {
-  const catalog = await fetchPaginatedProducts("/products");
+  const [catalog, premium] = await Promise.all([
+    fetchPaginatedProducts("/products"),
+    fetchPaginatedProducts("/premium/products"),
+  ]);
 
-  const bySlug = new Map<string, FeedProduct>();
-  for (const product of catalog) {
-    const slug = String(product?.slug || "").trim();
-    if (!slug) continue;
-    if (!bySlug.has(slug)) bySlug.set(slug, product);
+  const byKey = new Map<string, FeedProduct>();
+  for (const product of [...catalog, ...premium]) {
+    if (!product) continue;
+    const key = String(product._id || product.slug || product.premiumSlug || "").trim();
+    if (!key) continue;
+    if (!byKey.has(key)) byKey.set(key, product);
   }
-  return Array.from(bySlug.values());
+  return Array.from(byKey.values());
 }

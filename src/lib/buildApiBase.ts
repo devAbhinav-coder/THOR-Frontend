@@ -21,7 +21,13 @@ function isBuildPhase(): boolean {
  * so routes can gracefully fallback instead of emitting repeated ECONNREFUSED.
  */
 export async function getBuildSafeApiBase(): Promise<string | null> {
-  const base = normalizeBase(process.env.NEXT_PUBLIC_API_URL);
+  const rawBase =
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://www.thehouseofrani.com/api";
+
+  const base = normalizeBase(rawBase);
   if (!base) return null;
   if (!isBuildPhase()) return base;
   if (buildProbePromise) return buildProbePromise;
@@ -36,9 +42,9 @@ export async function getBuildSafeApiBase(): Promise<string | null> {
         signal: controller.signal,
       });
       clearTimeout(timer);
-      return res.ok ? base : null;
+      return res.ok ? base : base; // Return base so runtime route handlers always have API base!
     } catch {
-      return null;
+      return base; // Return base as fallback so runtime requests try fetching from API!
     }
   })();
 

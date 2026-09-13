@@ -3,7 +3,8 @@ import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { fetchAllMerchantFeedProducts } from "@/lib/merchantFeedProducts";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function escapeXml(value: string): string {
   return (value || "")
