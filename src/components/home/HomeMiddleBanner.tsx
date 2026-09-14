@@ -31,42 +31,33 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
   const currentAlignClass = alignClasses[banner.textAlignment || "center"];
 
   return (
-    <section className="w-full bg-[#f9f9f9] pt-2 sm:pt-4 lg:pt-6 pb-8 sm:pb-12 lg:pb-16">
+    <section className="w-full bg-[#f9f9f9] pt-2 sm:pt-4 lg:pt-6 pb-8 sm:pb-10 ">
       <div className="mx-auto max-w-[1536px] px-4 sm:px-6 lg:px-8">
-        <div className="group relative w-full h-[220px] sm:h-[320px] lg:h-[380px] xl:h-[420px] max-h-[420px] overflow-hidden rounded-md border border-[#c5a059]/40 shadow-sm bg-black/90">
-          {/* Ambient blurred backdrop so wide screens fill softly with the image's colors */}
-          <Image
-            src={banner.image}
-            alt=""
-            fill
-            className="object-cover blur-2xl scale-125 opacity-50 brightness-75 transition-transform duration-[10000ms] ease-linear group-hover:scale-135 pointer-events-none"
-            aria-hidden="true"
-          />
-
-          {/* Main 16:9 foreground image (object-contain ensures 100% full view with ZERO cropping) */}
+        <div className="group relative aspect-[2.2/1] w-full overflow-hidden border border-[#c5a059]/40 shadow-sm">
+          {/* Full Width Background Image */}
           <Image
             src={banner.image}
             alt={banner.title || "Promotional Banner"}
             fill
-            className="object-contain transition-transform duration-[10000ms] ease-linear group-hover:scale-[1.03]"
+            className="object-cover transition-transform duration-[10000ms] ease-linear group-hover:scale-105"
             sizes="(max-width: 1536px) 100vw, 1536px"
             priority
           />
 
-          {/* Vignette & Gradient Overlay for premium look */}
+          {/* Subtle Gradient Overlay */}
           <div 
             className={cn(
-              "absolute inset-0 transition-opacity duration-500 pointer-events-none",
+              "absolute inset-0 transition-opacity duration-500",
               isDarkText 
-                ? "bg-gradient-to-r from-white/80 via-white/40 to-white/10 sm:bg-gradient-to-t sm:from-white/50 sm:to-transparent" 
-                : "bg-gradient-to-r from-black/80 via-black/40 to-black/10 sm:bg-gradient-to-t sm:from-black/60 sm:to-black/10",
-              banner.textAlignment === "center" && (isDarkText ? "bg-white/30" : "bg-black/35")
+                ? "bg-gradient-to-r from-white/75 via-white/35 to-transparent sm:bg-gradient-to-t sm:from-white/45 sm:to-transparent" 
+                : "bg-gradient-to-r from-black/75 via-black/35 to-transparent sm:bg-gradient-to-t sm:from-black/55 sm:to-black/10",
+              banner.textAlignment === "center" && (isDarkText ? "bg-white/20" : "bg-black/30")
             )} 
           />
           
           {/* Content Container */}
           <div className={cn(
-            "absolute inset-0 flex flex-col justify-center px-4 py-4 sm:px-12 sm:py-8 lg:px-24 lg:py-10",
+            "absolute inset-0 flex flex-col justify-center px-3 py-3 sm:px-12 sm:py-8 lg:px-24 lg:py-10",
             currentAlignClass
           )}>
             <div className={cn(
@@ -75,7 +66,7 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
             )}>
               {/* Title */}
               {banner.title && (
-                <h2 className="mb-2 sm:mb-3 lg:mb-4 font-serif text-xl sm:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-wide drop-shadow-md text-[#c5a059]">
+                <h2 className="mb-1 sm:mb-3 lg:mb-4 font-serif text-sm sm:text-3xl lg:text-5xl xl:text-6xl leading-tight tracking-wide drop-shadow-md text-[#c5a059]">
                   {banner.title}
                 </h2>
               )}
@@ -83,7 +74,7 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
               {/* Subtitle */}
               {banner.subtitle && (
                 <p className={cn(
-                  "mb-3 sm:mb-5 lg:mb-6 text-xs sm:text-base lg:text-lg font-light tracking-wide leading-relaxed drop-shadow-sm",
+                  "mb-2 sm:mb-6 lg:mb-7 text-[10px] sm:text-base lg:text-lg font-light tracking-wide leading-tight sm:leading-relaxed drop-shadow-sm",
                   isDarkText ? "text-gray-800" : "text-white/90"
                 )}>
                   {banner.subtitle}
@@ -94,7 +85,7 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
               {banner.linkText && banner.linkUrl && (
                 <Link
                   href={banner.linkUrl}
-                  className="relative overflow-hidden border border-[#c5a059] px-4 py-2 sm:px-7 sm:py-2.5 lg:px-9 lg:py-3 text-[10px] sm:text-xs lg:text-sm font-semibold uppercase tracking-[0.2em] sm:tracking-[0.25em] transition-all duration-500 text-[#c5a059] shadow-sm hover:bg-[#c5a059] hover:text-white"
+                  className="relative overflow-hidden border border-[#c5a059] px-3 py-1.5 sm:px-8 sm:py-3 lg:px-10 lg:py-3.5 text-[9px] sm:text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] sm:tracking-[0.25em] transition-all duration-500 text-[#c5a059] shadow-sm hover:bg-[#c5a059] hover:text-white"
                 >
                   <span className="relative z-10">{banner.linkText}</span>
                 </Link>

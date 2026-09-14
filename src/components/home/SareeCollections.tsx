@@ -49,16 +49,16 @@ export default function SareeCollections({ subcategories }: SareeCollectionsProp
   if (!sortedSubcategories.length) return null;
 
   return (
-    <section className={cn(homeSectionStyles.pageBg, "py-12 sm:py-14 lg:py-16")}>
+    <section className={cn(homeSectionStyles.pageBg, "pt-2 sm:pt-4 lg:pt-6 pb-12 sm:pb-14 lg:pb-16")}>
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex flex-col items-center gap-4 px-1 sm:mb-10 lg:flex-row lg:items-end lg:justify-between lg:px-0">
           <div className="text-center lg:text-left">
             <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs">
-              Explore Subcollections
+              Curated Selections
             </p>
-            <h2 className="mt-3 font-serif text-3xl font-medium italic leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15] lg:not-italic">
-              Shop Our <span className="lg:italic">Saree Collection</span>
+            <h2 className="mt-2 font-serif text-2xl font-medium italic leading-tight text-navy-900 sm:text-3xl lg:text-[2.25rem] lg:leading-[1.15] lg:not-italic">
+              Saree <span className="lg:italic">Collections</span>
             </h2>
           </div>
           <Link

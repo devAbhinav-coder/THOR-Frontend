@@ -1450,7 +1450,7 @@ export default function AdminStorefrontPage() {
 
             <ImageUploader
               maxFiles={1}
-              aspectRatio="16:9"
+              aspectRatio="21:9"
               maxSizeMB={5}
               existingImages={
                 homeMiddleBannerFile ? []
@@ -1465,7 +1465,8 @@ export default function AdminStorefrontPage() {
                 setHomeMiddleBannerFile(files[0] || null);
                 markDirty();
               }}
-              label="Middle banner background image"
+              label="Middle banner background image (Recommended: 21:9 panoramic / ~2.2:1)"
+              hint="Upload a wide banner photo (e.g. 1920×820 px or 2560×1080 px). This aspect ratio matches the desktop homepage middle banner perfectly without any cropping."
             />
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
