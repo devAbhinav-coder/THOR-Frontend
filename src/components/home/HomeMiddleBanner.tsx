@@ -31,9 +31,9 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
   const currentAlignClass = alignClasses[banner.textAlignment || "center"];
 
   return (
-    <section className="w-full bg-[#f9f9f9] py-8 sm:py-12 lg:py-16">
+    <section className="w-full bg-[#f9f9f9] pt-2 sm:pt-4 lg:pt-6 pb-8 sm:pb-12 lg:pb-16">
       <div className="mx-auto max-w-[1536px] px-4 sm:px-6 lg:px-8">
-        <div className="group relative aspect-[4/5] w-full overflow-hidden sm:aspect-[16/9] lg:aspect-[2.5/1] border border-[#c5a059]/40 shadow-sm">
+        <div className="group relative aspect-[16/9] w-full overflow-hidden border border-[#c5a059]/40 shadow-sm">
           {/* Background Image with slow zoom effect on hover */}
           <Image
             src={banner.image}
@@ -57,7 +57,7 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
           
           {/* Content Container */}
           <div className={cn(
-            "absolute inset-0 flex flex-col justify-center px-6 py-12 sm:px-16 lg:px-32",
+            "absolute inset-0 flex flex-col justify-center px-4 py-4 sm:px-12 sm:py-8 lg:px-24 lg:py-12",
             currentAlignClass
           )}>
             <div className={cn(
@@ -66,14 +66,14 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
             )}>
               {/* Optional Eyebrow effect if we treat first word of subtitle differently or just keep subtitle */}
               {banner.title && (
-                <h2 className="mb-6 font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-tight tracking-wide drop-shadow-md text-[#c5a059]">
+                <h2 className="mb-2 sm:mb-4 lg:mb-6 font-serif text-xl sm:text-4xl lg:text-5xl xl:text-6xl leading-tight tracking-wide drop-shadow-md text-[#c5a059]">
                   {banner.title}
                 </h2>
               )}
               
               {banner.subtitle && (
                 <p className={cn(
-                  "mb-10 text-base sm:text-lg lg:text-xl font-light tracking-wide leading-relaxed drop-shadow-sm",
+                  "mb-3 sm:mb-6 lg:mb-8 text-xs sm:text-base lg:text-xl font-light tracking-wide leading-relaxed drop-shadow-sm",
                   isDarkText ? "text-gray-800" : "text-white/90"
                 )}>
                   {banner.subtitle}
@@ -83,7 +83,7 @@ export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
               {banner.linkText && banner.linkUrl && (
                 <Link
                   href={banner.linkUrl}
-                  className="relative overflow-hidden border border-[#c5a059] px-10 py-3.5 text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] transition-all duration-500 text-[#c5a059] shadow-sm hover:bg-[#c5a059] hover:text-white"
+                  className="relative overflow-hidden border border-[#c5a059] px-4 py-2 sm:px-8 sm:py-3 lg:px-10 lg:py-3.5 text-[10px] sm:text-xs lg:text-sm font-semibold uppercase tracking-[0.2em] sm:tracking-[0.25em] transition-all duration-500 text-[#c5a059] shadow-sm hover:bg-[#c5a059] hover:text-white"
                 >
                   <span className="relative z-10">{banner.linkText}</span>
                 </Link>
