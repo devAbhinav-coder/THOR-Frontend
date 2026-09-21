@@ -38,10 +38,7 @@ import BagIcon from "@/components/icons/BagIcon";
 import ProfileAvatarImg from "@/components/shared/ProfileAvatarImg";
 import dynamic from "next/dynamic";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
-import {
-  defaultAdminHomeHref,
-  isAdminPanelUser,
-} from "@/lib/adminAccess";
+import { defaultAdminHomeHref, isAdminPanelUser } from "@/lib/adminAccess";
 
 const NavProfileDropdown = dynamic(
   () => import("@/components/layout/NavProfileDropdown"),

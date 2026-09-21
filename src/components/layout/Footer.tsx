@@ -228,7 +228,7 @@ export default function Footer({
       return (body.data.settings ?? null) as StorefrontSettings | null;
     },
     initialData:
-      hasSsrSettings ? initialStorefrontSettings ?? null : undefined,
+      hasSsrSettings ? (initialStorefrontSettings ?? null) : undefined,
     staleTime: 5 * 60 * 1000,
     refetchOnMount: hasSsrSettings ? false : undefined,
     refetchOnWindowFocus: false,

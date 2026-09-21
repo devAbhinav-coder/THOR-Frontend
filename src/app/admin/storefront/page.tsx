@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import StorefrontAdminShell from "@/components/admin/storefront/StorefrontAdminShell";
 import StorefrontSectionPanel from "@/components/admin/storefront/StorefrontSectionPanel";
 import {
@@ -108,33 +108,81 @@ function Toggle({
 function ItemCard({
   title,
   badge,
+  position,
+  onMoveUp,
+  onMoveDown,
+  moveUpDisabled,
+  moveDownDisabled,
   onDelete,
   deleteLabel,
   children,
 }: {
   title: string;
   badge?: React.ReactNode;
+  /** 1-based homepage order (shown on hero slides / banners). */
+  position?: number;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  moveUpDisabled?: boolean;
+  moveDownDisabled?: boolean;
   onDelete?: () => void;
   deleteLabel?: string;
   children: React.ReactNode;
 }) {
+  const showReorder = onMoveUp != null || onMoveDown != null;
+
   return (
     <div className='rounded-xl border border-gray-200 bg-white overflow-hidden'>
       <div className='flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-4 py-2.5'>
         <div className='flex min-w-0 items-center gap-2'>
+          {position != null && (
+            <span
+              className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-xs font-bold text-white'
+              title={`Homepage position ${position}`}
+            >
+              {position}
+            </span>
+          )}
           <p className='truncate text-sm font-bold text-navy-900'>{title}</p>
           {badge}
         </div>
-        {onDelete && (
-          <button
-            type='button'
-            onClick={onDelete}
-            className='inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50'
-          >
-            <Trash2 className='h-3.5 w-3.5' />
-            {deleteLabel ?? "Remove"}
-          </button>
-        )}
+        <div className='flex shrink-0 items-center gap-1'>
+          {showReorder && (
+            <div className='flex items-center rounded-lg border border-gray-200 bg-white'>
+              <button
+                type='button'
+                onClick={onMoveUp}
+                disabled={moveUpDisabled || !onMoveUp}
+                className='rounded-l-lg p-1.5 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30'
+                aria-label='Move up (earlier on homepage)'
+                title='Move up'
+              >
+                <ChevronUp className='h-4 w-4' />
+              </button>
+              <span className='h-5 w-px bg-gray-200' aria-hidden />
+              <button
+                type='button'
+                onClick={onMoveDown}
+                disabled={moveDownDisabled || !onMoveDown}
+                className='rounded-r-lg p-1.5 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30'
+                aria-label='Move down (later on homepage)'
+                title='Move down'
+              >
+                <ChevronDown className='h-4 w-4' />
+              </button>
+            </div>
+          )}
+          {onDelete && (
+            <button
+              type='button'
+              onClick={onDelete}
+              className='inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50'
+            >
+              <Trash2 className='h-3.5 w-3.5' />
+              {deleteLabel ?? "Remove"}
+            </button>
+          )}
+        </div>
       </div>
       <div className='space-y-3 p-4'>{children}</div>
     </div>
@@ -229,6 +277,29 @@ function remapFilesAfterRemoval(
     if (Number.isNaN(i) || i === removedIndex) continue;
     next[i < removedIndex ? i : i - 1] = file;
   }
+  return next;
+}
+
+function swapArrayItems<T>(list: T[], indexA: number, indexB: number): T[] {
+  if (indexA === indexB) return list;
+  const next = [...list];
+  [next[indexA], next[indexB]] = [next[indexB], next[indexA]];
+  return next;
+}
+
+function remapFilesAfterSwap(
+  prev: Record<number, File | null>,
+  indexA: number,
+  indexB: number,
+): Record<number, File | null> {
+  if (indexA === indexB) return prev;
+  const next = { ...prev };
+  const fileA = prev[indexA];
+  const fileB = prev[indexB];
+  if (fileA) next[indexB] = fileA;
+  else delete next[indexB];
+  if (fileB) next[indexA] = fileB;
+  else delete next[indexA];
   return next;
 }
 
@@ -400,6 +471,42 @@ export default function AdminStorefrontPage() {
       next[index] = { ...next[index], ...patch };
       return { ...s, heroSlides: next };
     });
+
+  const moveHeroSlide = (index: number, direction: "up" | "down") => {
+    if (!settings) return;
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= settings.heroSlides.length) return;
+    setHeroImageFiles((prev) => remapFilesAfterSwap(prev, index, target));
+    const refA = slideRefs.current[index];
+    const refB = slideRefs.current[target];
+    slideRefs.current[index] = refB;
+    slideRefs.current[target] = refA;
+    mutate((s) => ({
+      ...s,
+      heroSlides: swapArrayItems(s.heroSlides, index, target),
+    }));
+  };
+
+  const movePremiumAudienceBanner = (
+    index: number,
+    direction: "up" | "down",
+  ) => {
+    if (!settings) return;
+    const list = settings.premiumAudienceBanners || [];
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= list.length) return;
+    setPremiumAudienceBannerFiles((prev) =>
+      remapFilesAfterSwap(prev, index, target),
+    );
+    mutate((s) => ({
+      ...s,
+      premiumAudienceBanners: swapArrayItems(
+        s.premiumAudienceBanners || [],
+        index,
+        target,
+      ),
+    }));
+  };
 
   const patchPromo = (patch: Partial<PromoBannerFields>) =>
     mutate((s) => ({ ...s, promoBanner: { ...s.promoBanner, ...patch } }));
@@ -743,8 +850,10 @@ export default function AdminStorefrontPage() {
           <div className='space-y-4'>
             <div className='flex items-center justify-between gap-2'>
               <p className='text-xs text-gray-500'>
-                Slides rotate automatically on the homepage. Inactive slides
-                stay saved but hidden.
+                Slides rotate automatically on the homepage. Use the{" "}
+                <strong>position number</strong> and ↑↓ buttons to set order —
+                position <strong>1</strong> shows first, then 2, 3, and so on.
+                Inactive slides stay saved but hidden.
               </p>
               <AddButton
                 label='Add slide'
@@ -774,6 +883,13 @@ export default function AdminStorefrontPage() {
               >
                 <ItemCard
                   title={slide.title.trim() || `Slide ${index + 1}`}
+                  position={index + 1}
+                  onMoveUp={() => moveHeroSlide(index, "up")}
+                  onMoveDown={() => moveHeroSlide(index, "down")}
+                  moveUpDisabled={index === 0}
+                  moveDownDisabled={
+                    index === settings.heroSlides.length - 1
+                  }
                   badge={
                     slide.isActive === false ?
                       <span className='rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-500'>
@@ -1846,6 +1962,13 @@ export default function AdminStorefrontPage() {
               <ItemCard
                 key={`premium-${index}`}
                 title={`Audience Banner ${index + 1}`}
+                position={index + 1}
+                onMoveUp={() => movePremiumAudienceBanner(index, "up")}
+                onMoveDown={() => movePremiumAudienceBanner(index, "down")}
+                moveUpDisabled={index === 0}
+                moveDownDisabled={
+                  index === (settings.premiumAudienceBanners?.length ?? 0) - 1
+                }
                 deleteLabel='Delete banner'
                 onDelete={() => {
                   setPremiumAudienceBannerFiles((prev) =>

@@ -38,37 +38,35 @@ export default function FeaturedProducts({
 
   return (
     <section
-      className="bg-[#000d21] py-14 sm:py-20 lg:py-24"
-      aria-labelledby="featured-products-heading"
+      className='bg-[#000d21] py-14 sm:py-20 lg:py-24'
+      aria-labelledby='featured-products-heading'
     >
       <div className={homeSectionStyles.container}>
-        <div className="mb-10 flex flex-col gap-6 sm:mb-14 sm:flex-row sm:items-end sm:justify-between">
-          <div className="text-left">
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs">
+        <div className='mb-10 flex flex-col gap-6 sm:mb-14 sm:flex-row sm:items-end sm:justify-between'>
+          <div className='text-left'>
+            <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs'>
               Curated Selection
             </p>
             <h2
-              id="featured-products-heading"
-              className="mt-3 font-serif text-3xl font-medium leading-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]"
+              id='featured-products-heading'
+              className='mt-3 font-serif text-3xl font-medium leading-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]'
             >
               Featured Masterpieces
             </h2>
           </div>
 
           <Link
-            href="/shop?isFeatured=true"
-            className="shrink-0 self-start text-[11px] font-medium uppercase tracking-[0.22em] text-white underline decoration-white/80 underline-offset-[6px] transition-colors hover:text-[#c5a059] hover:decoration-[#c5a059] sm:self-auto sm:text-xs"
+            href='/shop?isFeatured=true'
+            className='shrink-0 self-start text-[11px] font-medium uppercase tracking-[0.22em] text-white underline decoration-white/80 underline-offset-[6px] transition-colors hover:text-[#c5a059] hover:decoration-[#c5a059] sm:self-auto sm:text-xs'
           >
             View All Works
           </Link>
         </div>
 
         <HorizontalScrollRow
-          variant="dark"
-          className={cn(
-            isLoading && "min-h-[280px] sm:min-h-[360px]",
-          )}
-          innerClassName="items-stretch [&>*]:h-full [&>*]:min-h-0"
+          variant='dark'
+          className={cn(isLoading && "min-h-[280px] sm:min-h-[360px]")}
+          innerClassName='items-stretch [&>*]:h-full [&>*]:min-h-0'
         >
           {isLoading ?
             [...Array(4)].map((_, i) => (
