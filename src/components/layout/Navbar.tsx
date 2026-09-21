@@ -137,6 +137,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
     initialData:
       initialNavCategories.length > 0 ? initialNavCategories : undefined,
     staleTime: 5 * 60 * 1000,
+    refetchOnMount: initialNavCategories.length > 0 ? false : undefined,
   });
   const navCategories = useMemo(() => {
     const pickShopCategories = (cats: MegaMenuCategory[]) =>

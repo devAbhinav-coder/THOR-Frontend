@@ -7,6 +7,7 @@ import StoreAuthModal from "@/components/auth/StoreAuthModal";
 import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
 import WishlistRehydrator from "@/components/wishlist/WishlistRehydrator";
 import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
+import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
 import Navbar from "@/components/layout/Navbar";
 
 const OfferVisitPopup = dynamic(() => import("@/components/coupons/OfferVisitPopup"));
@@ -16,7 +17,10 @@ export default async function StoreLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const initialNavCategories = await fetchShopNavCategoriesServer();
+  const [initialNavCategories, initialStorefrontSettings] = await Promise.all([
+    fetchShopNavCategoriesServer(),
+    fetchStorefrontSettingsHome(),
+  ]);
 
   return (
     <>
@@ -26,7 +30,10 @@ export default async function StoreLayout({
       <main className='isolate min-h-screen flex flex-col bg-background pb-0 lg:pb-0'>
         <StoreErrorBoundary>{children}</StoreErrorBoundary>
       </main>
-      <Footer initialNavCategories={initialNavCategories} />
+      <Footer
+        initialNavCategories={initialNavCategories}
+        initialStorefrontSettings={initialStorefrontSettings}
+      />
       <StoreRaniCare />
       <OfferVisitPopup />
       <Suspense fallback={null}>

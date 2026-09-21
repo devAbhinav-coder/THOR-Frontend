@@ -598,6 +598,15 @@ export const salesPublicList = z.object({
   data: z.object({ campaigns: z.array(doc) }),
 });
 
+export const storefrontPublicOffers = z.object({
+  status: z.string(),
+  data: z.object({
+    coupons: z.array(doc),
+    campaigns: z.array(doc),
+    promotions: z.array(doc),
+  }),
+});
+
 export const reviewsFeatured = z.object({
   status: z.string(),
   results: z.number().optional(),

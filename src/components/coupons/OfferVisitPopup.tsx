@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { X, Copy, Check, Tag, Percent, Sparkles } from 'lucide-react';
-import { couponApi, saleCampaignApi, promotionApi, storefrontApi } from '@/lib/api';
+import { storefrontApi } from '@/lib/api';
 import type { PublicCoupon, PublicSale, PublicPromotion } from '@/types';
 import { cn } from '@/lib/utils';
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/bodyScrollLock';
@@ -165,20 +165,19 @@ export default function OfferVisitPopup() {
 
     let cancelled = false;
     const timer = window.setTimeout(() => {
-      Promise.all([
-        couponApi.getPublic().catch(() => null),
-        saleCampaignApi.getPublic().catch(() => null),
-        promotionApi.getPublic().catch(() => null),
-      ]).then(([couponRes, saleRes, promoRes]) => {
+      storefrontApi
+        .getPublicOffers()
+        .catch(() => null)
+        .then((bundleRes) => {
         if (cancelled) return;
-        const coupons = Array.isArray(couponRes?.data?.coupons)
-          ? (couponRes!.data.coupons as PublicCoupon[])
+        const coupons = Array.isArray(bundleRes?.data?.coupons)
+          ? (bundleRes!.data.coupons as PublicCoupon[])
           : [];
-        const sales = Array.isArray(saleRes?.data?.campaigns)
-          ? (saleRes!.data.campaigns as PublicSale[])
+        const sales = Array.isArray(bundleRes?.data?.campaigns)
+          ? (bundleRes!.data.campaigns as PublicSale[])
           : [];
-        const promotions = Array.isArray(promoRes?.data?.promotions)
-          ? (promoRes!.data.promotions as PublicPromotion[])
+        const promotions = Array.isArray(bundleRes?.data?.promotions)
+          ? (bundleRes!.data.promotions as PublicPromotion[])
           : [];
 
         const all = buildOfferQueue(coupons, sales, promotions);

@@ -259,7 +259,12 @@ export const useAuthStore = create<AuthState>()(
           };
           try {
             await tryMe();
-          } catch {
+          } catch (err: unknown) {
+            const status = (err as { status?: number })?.status;
+            if (status === 429) {
+              set({ isLoading: false, hasSessionChecked: true });
+              return;
+            }
             const { refreshAccessToken } = await import("@/lib/authRefresh");
             const ok = await refreshAccessToken();
             if (!ok) {

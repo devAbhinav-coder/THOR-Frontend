@@ -186,20 +186,28 @@ function FooterSection({
 type Props = {
   /** Same SSR mega-menu snapshot as Navbar - keeps The Collection populated on first paint. */
   initialNavCategories?: MegaMenuCategory[];
+  /** SSR storefront settings - avoids duplicate GET /storefront/settings on every page. */
+  initialStorefrontSettings?: StorefrontSettings | null;
 };
 
-export default function Footer({ initialNavCategories = [] }: Props) {
+export default function Footer({
+  initialNavCategories = [],
+  initialStorefrontSettings = null,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [contactOpen, setContactOpen] = useState(false);
 
+  const hasSsrNav = initialNavCategories.length > 0;
   const { data: categoriesData } = useQuery({
     queryKey: queryKeys.megaMenu,
     queryFn: async () => {
       const body = await navigationApi.getMegaMenu();
       return (body.data.categories || []) as unknown as MegaMenuCategory[];
     },
+    initialData: hasSsrNav ? initialNavCategories : undefined,
     staleTime: 5 * 60 * 1000,
+    refetchOnMount: hasSsrNav ? false : undefined,
   });
 
   const categories = useMemo(() => {
@@ -210,14 +218,20 @@ export default function Footer({ initialNavCategories = [] }: Props) {
     return pickShopCategories(initialNavCategories);
   }, [categoriesData, initialNavCategories]);
 
+  const hasSsrSettings =
+    initialStorefrontSettings !== null &&
+    initialStorefrontSettings !== undefined;
   const { data: settings = null } = useQuery({
     queryKey: queryKeys.storefrontSettings,
     queryFn: async () => {
       const body = await storefrontApi.getSettings();
       return (body.data.settings ?? null) as StorefrontSettings | null;
     },
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
+    initialData:
+      hasSsrSettings ? initialStorefrontSettings ?? null : undefined,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: hasSsrSettings ? false : undefined,
+    refetchOnWindowFocus: false,
   });
 
   const footer = settings?.footer;

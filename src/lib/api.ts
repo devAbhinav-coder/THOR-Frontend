@@ -1061,6 +1061,12 @@ export const storefrontApi = {
       api.get("/storefront/shipping/estimate", { params: { pin } }),
       schemas.shippingEstimate,
     ),
+  getPublicOffers: () =>
+    unwrapAxios(
+      "storefront.publicOffers",
+      api.get("/storefront/public-offers"),
+      schemas.storefrontPublicOffers,
+    ),
 };
 
 export const adminApi = {
