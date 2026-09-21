@@ -346,7 +346,10 @@ function beginRecognition(Ctor: SpeechRecognitionCtor, lang: string) {
 
   instance.onstart = () => {
     startedAt = Date.now();
-    setState({ status: "listening", statusMessage: "Speak now — e.g. red saree under 5000" });
+    setState({
+      status: "listening",
+      statusMessage: "Speak now - e.g. red saree under 5000",
+    });
   };
 
   instance.onresult = handleSpeechResult;
@@ -355,7 +358,7 @@ function beginRecognition(Ctor: SpeechRecognitionCtor, lang: string) {
     if (sessionEnded || gotResult) return;
     if (event.error === "aborted") return;
 
-    // no-speech after partial transcript — use what we heard
+    // no-speech after partial transcript - use what we heard
     if (event.error === "no-speech") {
       const partial = getCombinedTranscript();
       if (partial.length >= 2) {
@@ -396,7 +399,7 @@ function beginRecognition(Ctor: SpeechRecognitionCtor, lang: string) {
       return;
     }
 
-    fail("Didn't catch that. Say the full phrase — e.g. saree under 5000.");
+    fail("Didn't catch that. Say the full phrase - e.g. saree under 5000.");
   };
 
   recognition = instance;
@@ -412,7 +415,7 @@ function beginRecognition(Ctor: SpeechRecognitionCtor, lang: string) {
   instance.start();
 }
 
-/** Request mic (shows Chrome prompt) then start speech — getUserMedia call is sync from click. */
+/** Request mic (shows Chrome prompt) then start speech - getUserMedia call is sync from click. */
 function primeMicThenRecognize(Ctor: SpeechRecognitionCtor, lang: string) {
   const media = navigator.mediaDevices;
   if (!media?.getUserMedia) {
@@ -442,7 +445,10 @@ function primeMicThenRecognize(Ctor: SpeechRecognitionCtor, lang: string) {
     })
     .catch((err: DOMException) => {
       if (sessionEnded) return;
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      if (
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError"
+      ) {
         fail(
           "Microphone denied. Click the lock icon → Microphone → Allow, then Try again.",
         );

@@ -9,7 +9,7 @@ type Props = {
   className?: string;
 };
 
-/** Full-viewport overlay via portal — sits above admin sidebar (z-20) and locks page scroll. */
+/** Full-viewport overlay via portal - sits above admin sidebar (z-20) and locks page scroll. */
 export default function AdminFullScreenOverlay({
   open,
   children,
@@ -50,8 +50,8 @@ export default function AdminFullScreenOverlay({
   return createPortal(
     <div
       className={`fixed inset-0 z-[9999] flex flex-col overflow-hidden overscroll-none ${className}`}
-      role="dialog"
-      aria-modal="true"
+      role='dialog'
+      aria-modal='true'
     >
       {children}
     </div>,

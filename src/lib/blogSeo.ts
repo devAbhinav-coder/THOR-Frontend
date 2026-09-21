@@ -8,7 +8,7 @@ export function blogMetaDescription(blog: Blog): string {
     blog.seoDescription ||
     blog.excerpt ||
     plainBlogExcerpt(blog.content, 165) ||
-    `Read ${blog.title} on The House of Rani Journal — saree styling and Indian ethnic wear inspiration.`
+    `Read ${blog.title} on The House of Rani Journal - saree styling and Indian ethnic wear inspiration.`
   ).slice(0, 165);
 }
 
@@ -84,7 +84,12 @@ export function blogDetailBreadcrumbJsonLd(blog: Blog, siteUrl = getSiteUrl()) {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: `${siteUrl}/` },
-      { "@type": "ListItem", position: 2, name: "Journal", item: `${siteUrl}/blog` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Journal",
+        item: `${siteUrl}/blog`,
+      },
       {
         "@type": "ListItem",
         position: 3,
@@ -123,7 +128,12 @@ export function blogListingBreadcrumbJsonLd(siteUrl = getSiteUrl()) {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: `${siteUrl}/` },
-      { "@type": "ListItem", position: 2, name: "Journal", item: `${siteUrl}/blog` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Journal",
+        item: `${siteUrl}/blog`,
+      },
     ],
   };
 }

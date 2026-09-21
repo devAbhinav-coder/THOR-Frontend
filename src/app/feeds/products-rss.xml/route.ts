@@ -40,7 +40,8 @@ export async function GET() {
           status: 200,
           headers: {
             "Content-Type": "application/xml; charset=utf-8",
-            "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+            "Cache-Control":
+              "public, s-maxage=3600, stale-while-revalidate=86400",
           },
         });
       }
@@ -75,20 +76,28 @@ export async function GET() {
       if (!imageLink) continue;
 
       const rawTitle = p.name || "Saree Product";
-      const titleText = p.isPremium && p.premiumSubtitle ? `${rawTitle} — ${p.premiumSubtitle}` : rawTitle;
+      const titleText =
+        p.isPremium && p.premiumSubtitle ?
+          `${rawTitle} - ${p.premiumSubtitle}`
+        : rawTitle;
       const title = escapeXml(titleText);
 
-      let rawDesc = stripHtml(p.seoDescription || p.shortDescription || p.description || p.name || "");
+      let rawDesc = stripHtml(
+        p.seoDescription || p.shortDescription || p.description || p.name || "",
+      );
       if (p.isPremium) {
         const extra: string[] = [];
         if (p.craftNote) extra.push(`Craft Note: ${p.craftNote}`);
-        if (p.weaveHours) extra.push(`Artisan Weave Time: ${p.weaveHours} Hours`);
+        if (p.weaveHours)
+          extra.push(`Artisan Weave Time: ${p.weaveHours} Hours`);
         if (extra.length > 0) rawDesc = `${extra.join(" | ")}. ${rawDesc}`;
       }
 
       const priceVal = Number(p.price || 0);
       const formattedPrice = `₹${priceVal.toLocaleString("en-IN")} INR`;
-      const description = escapeXml(`${rawDesc.slice(0, 400)} — Price: ${formattedPrice}`);
+      const description = escapeXml(
+        `${rawDesc.slice(0, 400)} - Price: ${formattedPrice}`,
+      );
       const audienceTag = String(p.audience || "women").toLowerCase();
 
       const catParts: string[] = [];

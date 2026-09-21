@@ -44,7 +44,7 @@ export function AdminAiCatalogSeoButton({
       const metaTitle = String(res.data?.metaTitle || "").trim();
       const metaDescription = String(res.data?.metaDescription || "").trim();
       if (!metaTitle || !metaDescription) {
-        toast.error("AI response empty — retry");
+        toast.error("AI response empty - retry");
         return;
       }
       onApply({ metaTitle, metaDescription });
@@ -56,28 +56,25 @@ export function AdminAiCatalogSeoButton({
     }
   };
 
-  const providerLabel =
-    status.blogProvider === "gemini" ? "Gemini" : "Groq";
+  const providerLabel = status.blogProvider === "gemini" ? "Gemini" : "Groq";
 
   return (
-    <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3 space-y-2">
-      <p className="text-[11px] text-violet-900 leading-snug">
+    <div className='rounded-xl border border-violet-200 bg-violet-50/50 p-3 space-y-2'>
+      <p className='text-[11px] text-violet-900 leading-snug'>
         <strong>AI SEO ({providerLabel}):</strong> name se unique meta title +
         description generate karke fields fill karega (India shop intent).
       </p>
       <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full rounded-lg border-violet-300 bg-white text-violet-900 gap-1.5"
+        type='button'
+        variant='outline'
+        size='sm'
+        className='w-full rounded-lg border-violet-300 bg-white text-violet-900 gap-1.5'
         onClick={() => void run()}
         disabled={loading}
       >
-        {loading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Sparkles className="h-3.5 w-3.5" />
-        )}
+        {loading ?
+          <Loader2 className='h-3.5 w-3.5 animate-spin' />
+        : <Sparkles className='h-3.5 w-3.5' />}
         {loading ? "Generating SEO…" : "AI fill meta title & description"}
       </Button>
     </div>

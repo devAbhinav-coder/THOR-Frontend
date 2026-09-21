@@ -7,6 +7,9 @@ type InfoPageConfig = {
   description: string;
   /** Slightly higher for FAQ/blog-adjacent pages Google should crawl sooner */
   priority?: "support" | "policy";
+  /** Override default /ogimage.png when a page has a stronger hero visual */
+  ogImage?: string;
+  ogImageAlt?: string;
 };
 
 export function buildInfoPageMetadata({
@@ -14,11 +17,18 @@ export function buildInfoPageMetadata({
   title,
   description,
   priority = "policy",
+  ogImage: ogImageOverride,
+  ogImageAlt,
 }: InfoPageConfig): Metadata {
   const appUrl = getSiteUrl();
   const canonical = path.startsWith("/") ? path : `/${path}`;
   void priority;
-  const ogImage = `${appUrl}/ogimage.png`;
+  const ogImage = ogImageOverride?.startsWith("http")
+    ? ogImageOverride
+    : ogImageOverride
+      ? `${appUrl}${ogImageOverride.startsWith("/") ? ogImageOverride : `/${ogImageOverride}`}`
+      : `${appUrl}/ogimage.png`;
+  const ogAlt = ogImageAlt ?? `${title} - The House of Rani`;
 
   return {
     title,
@@ -45,7 +55,7 @@ export function buildInfoPageMetadata({
           url: ogImage,
           width: 1200,
           height: 630,
-          alt: `${title} — The House of Rani`,
+          alt: ogAlt,
         },
       ],
     },

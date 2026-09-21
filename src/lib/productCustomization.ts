@@ -1,6 +1,6 @@
 import type { Product } from "@/types";
 
-/** True when PDP/card should use gifting/customize flow instead of quick add-to-cart. */
+/** True when PDP should show admin-configured custom fields and/or quote flow. */
 export function productNeedsCustomization(
   product: Pick<Product, "isCustomizable" | "customFields">,
 ): boolean {

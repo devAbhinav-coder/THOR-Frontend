@@ -67,7 +67,9 @@ type ColorShade = {
   colorCode?: string;
 };
 
-function collectColorShades(variants: ProductVariant[] | undefined): ColorShade[] {
+function collectColorShades(
+  variants: ProductVariant[] | undefined,
+): ColorShade[] {
   const seen = new Set<string>();
   const out: ColorShade[] = [];
   for (const v of variants ?? []) {
@@ -111,7 +113,11 @@ export function PdpStorySection({
   );
 
   useEffect(() => {
-    if (motion.kind !== "poster" || !product.images || product.images.length <= 1)
+    if (
+      motion.kind !== "poster" ||
+      !product.images ||
+      product.images.length <= 1
+    )
       return;
     const interval = setInterval(() => {
       setSlideIdx((prev) => (prev + 1) % product.images.length);
@@ -167,11 +173,13 @@ export function PdpStorySection({
         <div className='border border-gray-200 bg-white lg:col-span-4'>
           {accordionItems.map((item) => {
             const { id, title, icon: Icon } = item;
-            const alwaysOpen =
-              "alwaysOpen" in item && item.alwaysOpen === true;
+            const alwaysOpen = "alwaysOpen" in item && item.alwaysOpen === true;
             const isOpen = alwaysOpen || openId === id;
             return (
-              <div key={id} className='border-b border-gray-200 last:border-b-0'>
+              <div
+                key={id}
+                className='border-b border-gray-200 last:border-b-0'
+              >
                 <button
                   type='button'
                   onClick={() => {
@@ -181,9 +189,7 @@ export function PdpStorySection({
                   aria-expanded={isOpen}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-3 text-left transition-colors sm:gap-3 sm:px-5 sm:py-4",
-                    alwaysOpen ?
-                      "cursor-default"
-                    : "hover:bg-[#faf8f4]/80",
+                    alwaysOpen ? "cursor-default" : "hover:bg-[#faf8f4]/80",
                   )}
                 >
                   <Icon
@@ -198,7 +204,8 @@ export function PdpStorySection({
                     null
                   : isOpen ?
                     <ChevronUp className='h-3.5 w-3.5 shrink-0 text-gray-400 sm:h-4 sm:w-4' />
-                  : <ChevronDown className='h-3.5 w-3.5 shrink-0 text-gray-400 sm:h-4 sm:w-4' />}
+                  : <ChevronDown className='h-3.5 w-3.5 shrink-0 text-gray-400 sm:h-4 sm:w-4' />
+                  }
                 </button>
 
                 {isOpen ?
@@ -228,8 +235,8 @@ export function PdpStorySection({
                           <span className='font-medium text-navy-900'>
                             Delivery:
                           </span>{" "}
-                          Estimated 3–7 business days across India. Free shipping
-                          on orders above ₹1,099.
+                          Estimated 3–7 business days across India. Free
+                          shipping on orders above ₹1,099.
                         </p>
                         <p>
                           <span className='font-medium text-navy-900'>
@@ -354,9 +361,9 @@ export function PdpStorySection({
                       <p className='text-xs leading-relaxed text-gray-600 sm:text-sm'>
                         Slight colour variation may occur due to screen settings
                         and natural fabric dyes. Measurements are approximate.
-                        We photograph each piece in natural light — your saree
-                        may look subtly different in person, which is normal
-                        for handcrafted textiles.
+                        We photograph each piece in natural light - your saree
+                        may look subtly different in person, which is normal for
+                        handcrafted textiles.
                       </p>
                     : null}
                   </div>

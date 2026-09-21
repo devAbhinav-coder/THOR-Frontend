@@ -10,35 +10,49 @@ export function stripMarkdown(text: string): string {
 }
 
 /** Client-side fallback when API bullets are empty or one blob. */
-export function parseDisplayBullets(text: string, bullets?: string[]): {
+export function parseDisplayBullets(
+  text: string,
+  bullets?: string[],
+): {
   intro: string;
   bullets: string[];
 } {
   if (bullets && bullets.length > 0) {
-    const intro = stripMarkdown(text.split('\n')[0]?.trim() || '');
-    const onlyBullets = bullets.map(stripMarkdown).filter((b) => b.trim().length > 2);
+    const intro = stripMarkdown(text.split("\n")[0]?.trim() || "");
+    const onlyBullets = bullets
+      .map(stripMarkdown)
+      .filter((b) => b.trim().length > 2);
     if (onlyBullets.length === bullets.length) {
-      return { intro: intro.startsWith('•') ? '' : intro, bullets: onlyBullets };
+      return {
+        intro: intro.startsWith("•") ? "" : intro,
+        bullets: onlyBullets,
+      };
     }
-    return { intro: '', bullets: onlyBullets };
+    return { intro: "", bullets: onlyBullets };
   }
 
-  const normalized = stripMarkdown(text.replace(/\r\n/g, '\n'));
-  if (!normalized) return { intro: '', bullets: [] };
+  const normalized = stripMarkdown(text.replace(/\r\n/g, "\n"));
+  if (!normalized) return { intro: "", bullets: [] };
 
-  const lines = normalized.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = normalized
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   const parsedBullets: string[] = [];
   const introParts: string[] = [];
 
   for (const line of lines) {
-    const m = line.match(/^(?:[-–—•*]|\d+[.)])\s+(.+)$/);
+    const m = line.match(/^(?:[-–-•*]|\d+[.)])\s+(.+)$/);
     if (m) {
       parsedBullets.push(m[1].trim());
-    } else if (line.startsWith('•')) {
-      parsedBullets.push(line.replace(/^•\s*/, '').trim());
+    } else if (line.startsWith("•")) {
+      parsedBullets.push(line.replace(/^•\s*/, "").trim());
     } else if (/\s•\s/.test(line)) {
       parsedBullets.push(
-        ...line.split(/\s*•\s*/).map((p) => p.trim()).filter((p) => p.length > 2),
+        ...line
+          .split(/\s*•\s*/)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 2),
       );
     } else {
       introParts.push(line);
@@ -46,7 +60,7 @@ export function parseDisplayBullets(text: string, bullets?: string[]): {
   }
 
   if (parsedBullets.length > 0) {
-    return { intro: introParts.join(' '), bullets: parsedBullets };
+    return { intro: introParts.join(" "), bullets: parsedBullets };
   }
 
   if (introParts.length === 1 && introParts[0].length > 80) {
@@ -59,5 +73,8 @@ export function parseDisplayBullets(text: string, bullets?: string[]): {
     }
   }
 
-  return { intro: introParts.join(' '), bullets: introParts.length > 1 ? introParts.slice(1) : [] };
+  return {
+    intro: introParts.join(" "),
+    bullets: introParts.length > 1 ? introParts.slice(1) : [],
+  };
 }

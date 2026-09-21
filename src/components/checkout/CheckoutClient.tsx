@@ -39,7 +39,12 @@ import { authApi, cartApi, couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
 import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Input } from "@/components/ui/input";
-import { Coupon, Order, type CartPromotion, type NearEligibleCoupon } from "@/types";
+import {
+  Coupon,
+  Order,
+  type CartPromotion,
+  type NearEligibleCoupon,
+} from "@/types";
 import { useEligibleCouponsQuery } from "@/hooks/useEligibleCouponsQuery";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
@@ -64,9 +69,7 @@ import CheckoutMiniSummaryBar from "@/components/checkout/CheckoutMiniSummaryBar
 import CheckoutMobileStepper from "@/components/checkout/CheckoutMobileStepper";
 import { useDeliveryEstimate } from "@/hooks/useDeliveryEstimate";
 import type { DeliveryEstimate } from "@/lib/deliveryEstimate";
-import {
-  formatPromisedDate,
-} from "@/lib/deliveryEstimate";
+import { formatPromisedDate } from "@/lib/deliveryEstimate";
 import {
   heritageCta,
   heritagePageBg,
@@ -305,7 +308,7 @@ export default function CheckoutClient() {
           const msg =
             err instanceof Error ? err.message : "Failed to load order";
           toast.error(msg);
-          router.replace("/dashboard/gifting");
+          router.replace("/dashboard/orders");
         } finally {
           setIsOrderLoading(false);
         }
@@ -426,9 +429,9 @@ export default function CheckoutClient() {
   const eligibilityItemsKey =
     buyNowItem ?
       `bn:${buyNowItem.productId}:${buyNowItem.quantity}:${buyNowItem.price}`
-    : cart?.items
+    : (cart?.items
         ?.map((i) => `${i.product}:${i.quantity}:${i.price}`)
-        .join("|") ?? "";
+        .join("|") ?? "");
   const eligibilityLines =
     buyNowItem ?
       [
@@ -938,7 +941,7 @@ export default function CheckoutClient() {
     const ok = await validateAddressFields();
     if (!ok) return;
     if (isDeliveryEstimateLoading) {
-      toast.error("Checking delivery availability — please wait a moment.");
+      toast.error("Checking delivery availability - please wait a moment.");
       return;
     }
     if (deliveryEstimate && !deliveryEstimate.serviceable) {
@@ -1702,7 +1705,7 @@ export default function CheckoutClient() {
                       Email
                     </p>
                     <p className='mt-1 break-all text-sm font-medium text-navy-900'>
-                      {user?.email || "—"}
+                      {user?.email || "-"}
                     </p>
                   </div>
 
@@ -2209,11 +2212,12 @@ export default function CheckoutClient() {
                     <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
                       Promotional Code
                     </p>
-                    {(eligibleCoupons.length > 0 || nearEligibleCoupons.length > 0) && (
+                    {(eligibleCoupons.length > 0 ||
+                      nearEligibleCoupons.length > 0) && (
                       <span className='shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400'>
-                        {eligibleCoupons.length > 0
-                          ? `${eligibleCoupons.length} ready`
-                          : `${nearEligibleCoupons.length} to unlock`}
+                        {eligibleCoupons.length > 0 ?
+                          `${eligibleCoupons.length} ready`
+                        : `${nearEligibleCoupons.length} to unlock`}
                       </span>
                     )}
                   </div>
@@ -2648,7 +2652,7 @@ export default function CheckoutClient() {
                     {(shippingCharge > 0 || codFee > 0) && (
                       <p className='text-[10px] text-gray-500 mt-2 leading-snug'>
                         On returns, shipping and COD fees (if any) are not
-                        refunded — only the product value portion. See{" "}
+                        refunded - only the product value portion. See{" "}
                         <Link
                           href='/terms'
                           className='text-brand-700 font-semibold underline-offset-2 hover:underline'
@@ -2724,10 +2728,10 @@ export default function CheckoutClient() {
                         {isSubmittingOrder || isPlacingOrder ?
                           "Placing order…"
                         : existingOrder ?
-                          `Confirm & Pay — ${formatPrice(total)}`
+                          `Confirm & Pay - ${formatPrice(total)}`
                         : checkoutPaymentMethod === "razorpay" ?
-                          `Confirm & Pay — ${formatPrice(total)}`
-                        : `Confirm & Place Order — ${formatPrice(total)}`}
+                          `Confirm & Pay - ${formatPrice(total)}`
+                        : `Confirm & Place Order - ${formatPrice(total)}`}
                       </button>
 
                       <p className='mt-2 text-center text-[11px] text-gray-400'>
@@ -2850,10 +2854,10 @@ export default function CheckoutClient() {
               {isSubmittingOrder || isPlacingOrder ?
                 "Placing order…"
               : existingOrder ?
-                `Pay — ${formatPrice(total)}`
+                `Pay - ${formatPrice(total)}`
               : checkoutPaymentMethod === "razorpay" ?
-                `Pay — ${formatPrice(total)}`
-              : `Place Order — ${formatPrice(total)}`}
+                `Pay - ${formatPrice(total)}`
+              : `Place Order - ${formatPrice(total)}`}
             </button>
           )}
         </div>

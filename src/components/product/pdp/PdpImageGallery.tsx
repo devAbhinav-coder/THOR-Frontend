@@ -11,7 +11,7 @@ import { PDP_MAIN_LENS_PX, PDP_MAIN_LENS_ZOOM } from "./constants";
 
 export interface PdpImageGalleryProps {
   productId: string;
-  /** Changes when color/images switch — resets selected thumbnail. */
+  /** Changes when color/images switch - resets selected thumbnail. */
   galleryKey?: string;
   name: string;
   images: { url: string; alt?: string }[];
@@ -158,7 +158,9 @@ export function PdpImageGallery({
     }
   };
 
-  const onPdpMainImagePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPdpMainImagePointerLeave = (
+    e: React.PointerEvent<HTMLDivElement>,
+  ) => {
     if (e.pointerType !== "mouse") return;
     if (pdpLensRafRef.current != null) {
       cancelAnimationFrame(pdpLensRafRef.current);
@@ -179,13 +181,17 @@ export function PdpImageGallery({
     const start = touchStartRef.current;
     touchStartRef.current = null;
     if (!start) return;
-    
+
     const endX = e.changedTouches[0]?.clientX ?? start.x;
     const endY = e.changedTouches[0]?.clientY ?? start.y;
     const dx = endX - start.x;
     const dy = endY - start.y;
-    
-    if (images.length > 1 && Math.abs(dx) >= SWIPE_THRESHOLD_PX && Math.abs(dx) >= Math.abs(dy)) {
+
+    if (
+      images.length > 1 &&
+      Math.abs(dx) >= SWIPE_THRESHOLD_PX &&
+      Math.abs(dx) >= Math.abs(dy)
+    ) {
       if (dx > 0) goPrev();
       else goNext();
       return;
@@ -305,15 +311,20 @@ export function PdpImageGallery({
               onTouchEnd={onTouchEnd}
             >
               {images.length > 0 ?
-                <div 
+                <div
                   className={cn(
-                    'absolute inset-0 z-0 flex ease-out will-change-transform',
-                    skipWrapAnimation ? 'transition-none duration-0' : 'transition-transform duration-300'
+                    "absolute inset-0 z-0 flex ease-out will-change-transform",
+                    skipWrapAnimation ?
+                      "transition-none duration-0"
+                    : "transition-transform duration-300",
                   )}
                   style={{ transform: `translateX(-${selectedImage * 100}%)` }}
                 >
                   {images.map((img, i) => (
-                    <div key={img.url || i} className='relative h-full w-full shrink-0'>
+                    <div
+                      key={img.url || i}
+                      className='relative h-full w-full shrink-0'
+                    >
                       <Image
                         src={img.url}
                         alt={img.alt || `${name} ${i + 1}`}
@@ -322,7 +333,9 @@ export function PdpImageGallery({
                         quality={92}
                         className={cn(
                           "select-none transition-opacity duration-200",
-                          isGiftMarketingContext ? "object-cover" : "object-contain"
+                          isGiftMarketingContext ? "object-cover" : (
+                            "object-contain"
+                          ),
                         )}
                         priority={i === 0 || i === selectedImage}
                         draggable={false}
@@ -395,7 +408,7 @@ export function PdpImageGallery({
               {images.length === 1 && images[0]?.url && hoverZoomEnabled && (
                 <button
                   type='button'
-                  className="absolute inset-0 z-[4] bg-transparent cursor-zoom-in hidden md:block"
+                  className='absolute inset-0 z-[4] bg-transparent cursor-zoom-in hidden md:block'
                   aria-label='Open zoom gallery'
                   onClick={() => setImageLightboxOpen(true)}
                 />
@@ -472,10 +485,10 @@ export function PdpImageGallery({
                     e.stopPropagation();
                     setImageLightboxOpen(true);
                   }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm shadow-md active:bg-black/60 transition-colors"
-                  aria-label="View Full Screen"
+                  className='flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm shadow-md active:bg-black/60 transition-colors'
+                  aria-label='View Full Screen'
                 >
-                  <Maximize2 className="h-4 w-4" />
+                  <Maximize2 className='h-4 w-4' />
                 </button>
               </div>
             </div>

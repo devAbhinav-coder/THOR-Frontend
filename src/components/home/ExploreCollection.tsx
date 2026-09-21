@@ -19,7 +19,7 @@ const EXPLORE_PAGE_LIMIT = 12;
 type ExplorePage = Awaited<ReturnType<typeof productApi.getAll>>;
 
 /**
- * ExploreCollection — random storefront sample with excludeIds cursor.
+ * ExploreCollection - random storefront sample with excludeIds cursor.
  * Backend returns explicit hasNextPage based on remaining pool size.
  */
 export default function ExploreCollection({

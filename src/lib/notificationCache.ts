@@ -6,22 +6,22 @@ import type {
 } from "@/types/notifications";
 
 export function getNotificationsCache(
-  queryClient: QueryClient
+  queryClient: QueryClient,
 ): NotificationsListResponse | undefined {
   return queryClient.getQueryData<NotificationsListResponse>(
-    queryKeys.notifications
+    queryKeys.notifications,
   );
 }
 
 export function setNotificationsCache(
   queryClient: QueryClient,
   updater: (
-    prev: NotificationsListResponse | undefined
-  ) => NotificationsListResponse | undefined
+    prev: NotificationsListResponse | undefined,
+  ) => NotificationsListResponse | undefined,
 ): void {
   queryClient.setQueryData<NotificationsListResponse>(
     queryKeys.notifications,
-    updater
+    updater,
   );
 }
 
@@ -30,27 +30,27 @@ function patchList(
   patch: {
     notifications?: NotificationListItem[];
     unreadCount?: number;
-  }
+  },
 ): NotificationsListResponse | undefined {
   if (!prev?.data) return prev;
   return {
     ...prev,
     data: {
       ...prev.data,
-      ...(patch.notifications !== undefined
-        ? { notifications: patch.notifications }
-        : {}),
-      ...(patch.unreadCount !== undefined
-        ? { unreadCount: patch.unreadCount }
-        : {}),
+      ...(patch.notifications !== undefined ?
+        { notifications: patch.notifications }
+      : {}),
+      ...(patch.unreadCount !== undefined ?
+        { unreadCount: patch.unreadCount }
+      : {}),
     },
   };
 }
 
-/** Optimistic single read — decrements badge immediately. */
+/** Optimistic single read - decrements badge immediately. */
 export function optimisticMarkNotificationRead(
   queryClient: QueryClient,
-  notificationId: string
+  notificationId: string,
 ): NotificationsListResponse | undefined {
   const prev = getNotificationsCache(queryClient);
   if (!prev?.data?.notifications) return prev;
@@ -64,7 +64,7 @@ export function optimisticMarkNotificationRead(
 
   const unreadCount = Math.max(
     0,
-    (prev.data.unreadCount ?? 0) - (decremented ? 1 : 0)
+    (prev.data.unreadCount ?? 0) - (decremented ? 1 : 0),
   );
 
   const next = patchList(prev, { notifications, unreadCount });
@@ -72,9 +72,9 @@ export function optimisticMarkNotificationRead(
   return prev;
 }
 
-/** Optimistic mark-all — badge goes to zero immediately. */
+/** Optimistic mark-all - badge goes to zero immediately. */
 export function optimisticMarkAllNotificationsRead(
-  queryClient: QueryClient
+  queryClient: QueryClient,
 ): NotificationsListResponse | undefined {
   const prev = getNotificationsCache(queryClient);
   if (!prev?.data?.notifications) return prev;
@@ -88,9 +88,9 @@ export function optimisticMarkAllNotificationsRead(
   return prev;
 }
 
-/** Optimistic clear — empty list and zero badge. */
+/** Optimistic clear - empty list and zero badge. */
 export function optimisticClearAllNotifications(
-  queryClient: QueryClient
+  queryClient: QueryClient,
 ): NotificationsListResponse | undefined {
   const prev = getNotificationsCache(queryClient);
   if (!prev) return prev;
@@ -101,7 +101,7 @@ export function optimisticClearAllNotifications(
 
 export function restoreNotificationsCache(
   queryClient: QueryClient,
-  snapshot: NotificationsListResponse | undefined
+  snapshot: NotificationsListResponse | undefined,
 ): void {
   if (snapshot !== undefined) {
     queryClient.setQueryData(queryKeys.notifications, snapshot);

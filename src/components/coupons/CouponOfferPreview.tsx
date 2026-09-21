@@ -14,7 +14,7 @@ type Props = {
   hintMessage?: string;
 };
 
-/** Storefront coupon card copy — description, savings, and shopper-friendly terms. */
+/** Storefront coupon card copy - description, savings, and shopper-friendly terms. */
 export function CouponOfferPreview({ coupon, hintMessage }: Props) {
   const badge = couponEligibilityBadge(coupon);
   const primary = couponPrimaryLine(coupon);

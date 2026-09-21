@@ -5,11 +5,11 @@
 export const BRAND_NAME = "The House of Rani";
 export const BRAND_SHORT = "House of Rani";
 
-/** Homepage SERP title (absolute — includes brand once). */
+/** Homepage SERP title (absolute - includes brand once). */
 export const HOME_TITLE =
   "Premium Sarees, Salwar Suits & Corsets | The House of Rani";
 
-/** Meta description — keep ≤155 chars for full SERP display. */
+/** Meta description - keep ≤155 chars for full SERP display. */
 export const HOME_META_DESCRIPTION =
   "Shop premium sarees, salwar suits & corsets at The House of Rani. Festive & bridal styles, free delivery over ₹1,099, easy 5-day returns across India.";
 
@@ -24,12 +24,12 @@ export const ORG_SCHEMA_DESCRIPTION =
 export const HOME_OG_TITLE = HOME_TITLE;
 
 export const HOME_OG_DESCRIPTION =
-  "Discover exquisite sarees, salwar suits & corsets — heritage craftsmanship with modern elegance. Free delivery over ₹1,099.";
+  "Discover exquisite sarees, salwar suits & corsets - heritage craftsmanship with modern elegance. Free delivery over ₹1,099.";
 
 export const FOOTER_DEFAULT_DESCRIPTION =
-  "Discover premium Indian ethnic wear including sarees, salwar suits, and corsets — crafted with elegance, tradition, and timeless design.";
+  "Discover premium Indian ethnic wear including sarees, salwar suits, and corsets - crafted with elegance, tradition, and timeless design.";
 
-/** Shop listing SERP title segment — root template appends `| The House of Rani`. */
+/** Shop listing SERP title segment - root template appends `| The House of Rani`. */
 export const SHOP_META_TITLE =
   "Shop Sarees, Salwar Suits & Corsets Online India";
 export const SHOP_META_DESCRIPTION =

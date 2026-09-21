@@ -1,4 +1,4 @@
-/** `/shop/[slug]` product detail — not listing or collections routes. */
+/** `/shop/[slug]` product detail - not listing or collections routes. */
 export function isStoreProductDetailPath(pathname: string): boolean {
   if (!pathname.startsWith("/shop/")) return false;
   if (pathname.startsWith("/shop/category")) return false;
@@ -7,12 +7,7 @@ export function isStoreProductDetailPath(pathname: string): boolean {
 }
 
 /** Audience landing routes under /premium (not a single product). */
-const PREMIUM_AUDIENCE_SLUGS = new Set([
-  "women",
-  "men",
-  "kids",
-  "couple",
-]);
+const PREMIUM_AUDIENCE_SLUGS = new Set(["women", "men", "kids", "couple"]);
 
 /** `/premium` or `/premium/women|men|kids|couple` collection landings. */
 export function isPremiumCollectionPath(pathname: string): boolean {
@@ -22,7 +17,7 @@ export function isPremiumCollectionPath(pathname: string): boolean {
   return Boolean(slug && PREMIUM_AUDIENCE_SLUGS.has(slug));
 }
 
-/** `/premium/[slug]` premium product detail — not the collection / audience landings. */
+/** `/premium/[slug]` premium product detail - not the collection / audience landings. */
 export function isPremiumProductDetailPath(pathname: string): boolean {
   if (!pathname.startsWith("/premium/")) return false;
   const slug = pathname.slice("/premium/".length).split("/")[0]?.trim();
@@ -30,7 +25,7 @@ export function isPremiumProductDetailPath(pathname: string): boolean {
   return true;
 }
 
-/** Main shop grid — `/shop`, `/shop/collections`, and legacy `/shop/category/...`. */
+/** Main shop grid - `/shop`, `/shop/collections`, and legacy `/shop/category/...`. */
 export function isStoreShopListingPath(pathname: string): boolean {
   if (pathname === "/shop") return true;
   if (pathname === "/shop/collections") return true;

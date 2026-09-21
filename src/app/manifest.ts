@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   const siteUrl = getSiteUrl();
 
   return {
-    name: "The House of Rani — Premium Sarees & Ethnic Wear",
+    name: "The House of Rani - Premium Sarees & Ethnic Wear",
     short_name: "House of Rani",
     description:
       "Shop premium sarees, salwar suits, corsets, and The Rani Premium Edit online in India.",

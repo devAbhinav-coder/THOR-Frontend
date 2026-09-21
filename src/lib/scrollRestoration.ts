@@ -79,7 +79,7 @@ export function saveScrollForRoute(routeKey: string, y: number): void {
       String(Math.max(0, Math.round(y))),
     );
   } catch {
-    // Private mode / quota — ignore.
+    // Private mode / quota - ignore.
   }
 }
 
@@ -108,7 +108,10 @@ export function shouldResetScrollOnForwardNav(
     return false;
   }
 
-  if (isStoreProductDetailPath(prevPath) && isStoreProductDetailPath(nextPath)) {
+  if (
+    isStoreProductDetailPath(prevPath) &&
+    isStoreProductDetailPath(nextPath)
+  ) {
     const prevSlug = prevPath.split("/").pop();
     const nextSlug = nextPath.split("/").pop();
     if (prevSlug && prevSlug === nextSlug) return false;
@@ -117,7 +120,7 @@ export function shouldResetScrollOnForwardNav(
   return true;
 }
 
-/** Forward route entry — always top for PDP; shop filter changes keep scroll. */
+/** Forward route entry - always top for PDP; shop filter changes keep scroll. */
 export function shouldScrollToTopOnRouteEnter(
   prevRouteKey: string | null,
   nextRouteKey: string,
@@ -188,7 +191,10 @@ export function restoreScrollPosition(
   };
 
   window.addEventListener("wheel", cancel, { passive: true, capture: true });
-  window.addEventListener("touchstart", cancel, { passive: true, capture: true });
+  window.addEventListener("touchstart", cancel, {
+    passive: true,
+    capture: true,
+  });
   window.addEventListener("keydown", cancel, true);
 
   const tryRestore = () => {

@@ -11,7 +11,7 @@ export function navShellClass(scrolled: boolean) {
 /**
  * Sticky/fixed shell for header.
  * Auto-hide mobile routes use fixed + translateY so hide/show never changes document height (no scrollY feedback loop).
- * `autoHideAllViewports` — PDP / premium desktop: same hide-on-scroll as mobile.
+ * `autoHideAllViewports` - PDP / premium desktop: same hide-on-scroll as mobile.
  */
 export function navStickyShellClass(
   visible: boolean,
@@ -23,9 +23,7 @@ export function navStickyShellClass(
       return cn(
         "fixed inset-x-0 top-0 z-50",
         "transition-transform duration-300 ease-out motion-reduce:transition-none",
-        visible ?
-          "translate-y-0"
-        : "-translate-y-full pointer-events-none",
+        visible ? "translate-y-0" : "-translate-y-full pointer-events-none",
       );
     }
 
@@ -33,9 +31,7 @@ export function navStickyShellClass(
       "fixed inset-x-0 top-0 z-50 lg:sticky",
       "transition-transform duration-200 ease-out motion-reduce:transition-none",
       "lg:translate-y-0",
-      visible ?
-        "translate-y-0"
-      : "-translate-y-full pointer-events-none",
+      visible ? "translate-y-0" : "-translate-y-full pointer-events-none",
     );
   }
 
@@ -72,7 +68,7 @@ export const navCommerceIconClass =
 export const navSearchInputClass =
   "rounded-none border-navy-700 bg-navy-900/60 py-2 text-[13px] tracking-wide placeholder:text-white/45 placeholder:tracking-wide focus:border-[#c5a059]/60 focus:ring-[#c5a059]/20";
 
-/** Heritage dropdown shell — square, gold accent strip */
+/** Heritage dropdown shell - square, gold accent strip */
 export const navDropdownAccent =
   "h-[2px] bg-gradient-to-r from-navy-900 via-[#c5a059] to-navy-900";
 
@@ -118,7 +114,7 @@ export function navLuxuryDropdownItem(active = false) {
 export const navLuxuryDropdownFooter =
   "border-t border-[#c5a059]/20 bg-white px-5 py-3.5";
 
-/** Fixed-position panels (search autocomplete) — same shell, no open/close motion */
+/** Fixed-position panels (search autocomplete) - same shell, no open/close motion */
 export const navLuxuryDropdownPanelStatic =
   "overflow-hidden rounded-none border border-[#c5a059]/35 bg-white shadow-[0_12px_32px_rgba(26,43,72,0.14)] animate-[fadeIn_0.2s_ease-out_both]";
 

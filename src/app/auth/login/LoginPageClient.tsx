@@ -13,7 +13,11 @@ import {
   AuthBackButton,
 } from "@/components/auth/AuthFormChrome";
 import AuthField from "@/components/auth/AuthField";
-import { authLinkText, authGhostBtn, authPrimaryBtn } from "@/lib/authFormShell";
+import {
+  authLinkText,
+  authGhostBtn,
+  authPrimaryBtn,
+} from "@/lib/authFormShell";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -105,7 +109,13 @@ export default function LoginPageClient({
 
   useEffect(() => {
     if (!hasSessionChecked || !isAuthenticated || !user) return;
-    if (redirect.startsWith("/admin") && user.role !== "admin") return;
+    if (
+      redirect.startsWith("/admin") &&
+      user.role !== "admin" &&
+      user.role !== "staff"
+    ) {
+      return;
+    }
     navigateAfterAuth();
   }, [hasSessionChecked, isAuthenticated, user, redirect, navigateAfterAuth]);
 
@@ -114,7 +124,9 @@ export default function LoginPageClient({
   const [otpEmail, setOtpEmail] = useState("");
   const [otpSending, setOtpSending] = useState(false);
   const [otpResendResetKey, setOtpResendResetKey] = useState(0);
-  const [otpResendCooldownSec, setOtpResendCooldownSec] = useState(DEFAULT_OTP_COOLDOWN_SEC);
+  const [otpResendCooldownSec, setOtpResendCooldownSec] = useState(
+    DEFAULT_OTP_COOLDOWN_SEC,
+  );
   const [otpVerifyCooldownSec, setOtpVerifyCooldownSec] = useState(0);
   const [pendingCopy, setPendingCopy] = useState<PendingCopy>({
     title: "Please wait",
@@ -212,14 +224,18 @@ export default function LoginPageClient({
     try {
       const result = await login(data.email, data.password, turnstileToken);
       if (result.requiresAdmin2FA) {
-        toast("Enter the 6-digit code from your authenticator app.", { icon: "🔐" });
+        toast("Enter the 6-digit code from your authenticator app.", {
+          icon: "🔐",
+        });
         return;
       }
       toast.success("Welcome back!");
       navigateAfterAuth();
     } catch (err: unknown) {
       const error = err as { message?: string };
-      toast.error(error.message || "Login failed. Please check your credentials.");
+      toast.error(
+        error.message || "Login failed. Please check your credentials.",
+      );
     }
   };
 
@@ -238,7 +254,9 @@ export default function LoginPageClient({
     try {
       const result = await loginWithGoogle(credential, turnstileToken);
       if (result.requiresAdmin2FA) {
-        toast("Enter the 6-digit code from your authenticator app.", { icon: "🔐" });
+        toast("Enter the 6-digit code from your authenticator app.", {
+          icon: "🔐",
+        });
         return;
       }
       toast.success("Welcome back!");
@@ -252,7 +270,7 @@ export default function LoginPageClient({
   const googleBlock =
     googleClientId ?
       <AuthGoogleButton
-        mode="login"
+        mode='login'
         onSuccess={(credential) => void handleGoogle(credential)}
         onError={() => toast.error("Google sign-in was cancelled or failed.")}
       />
@@ -260,8 +278,10 @@ export default function LoginPageClient({
 
   const isPending = isLoading || otpSending;
   const showAdmin2FA = !embedded && Boolean(admin2faPending);
-  const showOtpCode = !showAdmin2FA && loginMode === "otp" && otpStep === "code";
-  const showOtpEmail = !showAdmin2FA && loginMode === "otp" && otpStep === "email";
+  const showOtpCode =
+    !showAdmin2FA && loginMode === "otp" && otpStep === "code";
+  const showOtpEmail =
+    !showAdmin2FA && loginMode === "otp" && otpStep === "email";
 
   if (showAdmin2FA && admin2faPending) {
     return (
@@ -274,7 +294,11 @@ export default function LoginPageClient({
           onSuccess={navigateAfterAuth}
           onBack={clearAdmin2faPending}
         />
-        <AuthPendingOverlay active={isLoading} title={pendingCopy.title} description={pendingCopy.description} />
+        <AuthPendingOverlay
+          active={isLoading}
+          title={pendingCopy.title}
+          description={pendingCopy.description}
+        />
       </>
     );
   }
@@ -290,54 +314,79 @@ export default function LoginPageClient({
           <>
             <AuthFormHeader
               embedded={embedded}
-              title="Enter sign-in code"
+              title='Enter sign-in code'
               subtitle={`Code sent to ${otpEmail}`}
-              icon={<Mail className="h-5 w-5" />}
+              icon={<Mail className='h-5 w-5' />}
             />
-            <form onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)} className="space-y-4">
-              <div className="space-y-2 pb-2">
+            <form
+              onSubmit={otpCodeForm.handleSubmit(onVerifyLoginOtp)}
+              className='space-y-4'
+            >
+              <div className='space-y-2 pb-2'>
                 <label className={authFieldLabel(embedded)}>6-digit code</label>
                 <Controller
                   control={otpCodeForm.control}
-                  name="otp"
+                  name='otp'
                   render={({ field }) => (
                     <InputOTP maxLength={6} {...field}>
-                      <InputOTPGroup className="w-full justify-between gap-1 sm:gap-2">
-                        <InputOTPSlot index={0} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={1} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={2} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={3} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={4} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={5} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPGroup className='w-full justify-between gap-1 sm:gap-2'>
+                        <InputOTPSlot
+                          index={0}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={1}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={2}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={3}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={4}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={5}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
                       </InputOTPGroup>
                     </InputOTP>
                   )}
                 />
                 {otpCodeForm.formState.errors.otp?.message && (
-                  <p className="text-xs text-red-600">{otpCodeForm.formState.errors.otp.message}</p>
+                  <p className='text-xs text-red-600'>
+                    {otpCodeForm.formState.errors.otp.message}
+                  </p>
                 )}
               </div>
               <OtpResendCooldown
                 email={otpEmail}
-                type="login"
+                type='login'
                 resetKey={otpResendResetKey}
                 initialSeconds={otpResendCooldownSec}
                 consumeTurnstile={turnstile.consumeOrToast}
               />
               {otpVerifyCooldownSec > 0 && (
-                <p className="text-center text-sm text-amber-700">
+                <p className='text-center text-sm text-amber-700'>
                   Too many attempts. Try again in {otpVerifyCooldownSec}s.
                 </p>
               )}
               <Button
-                type="submit"
-                variant="brand"
-                size="lg"
+                type='submit'
+                variant='brand'
+                size='lg'
                 className={authPrimaryBtn()}
                 loading={isLoading}
                 disabled={otpVerifyCooldownSec > 0}
               >
-                {otpVerifyCooldownSec > 0 ? `Sign in in ${otpVerifyCooldownSec}s` : "Enter the House"}
+                {otpVerifyCooldownSec > 0 ?
+                  `Sign in in ${otpVerifyCooldownSec}s`
+                : "Enter the House"}
               </Button>
               <AuthBackButton
                 embedded={embedded}
@@ -363,23 +412,35 @@ export default function LoginPageClient({
           <>
             <AuthFormHeader
               embedded={embedded}
-              title="Email sign-in code"
-              subtitle="We will send a one-time 6-digit code"
+              title='Email sign-in code'
+              subtitle='We will send a one-time 6-digit code'
             />
-            <form onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)} className="space-y-4">
+            <form
+              onSubmit={otpEmailForm.handleSubmit(onSendLoginOtp)}
+              className='space-y-4'
+            >
               <AuthField
                 embedded={embedded}
                 {...otpEmailForm.register("email")}
-                type="email"
-                label="Email address"
-                placeholder="your@email.com"
+                type='email'
+                label='Email address'
+                placeholder='your@email.com'
                 error={otpEmailForm.formState.errors.email?.message}
-                autoComplete="email"
+                autoComplete='email'
               />
-              <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={otpSending}>
+              <Button
+                type='submit'
+                variant='brand'
+                size='lg'
+                className={authPrimaryBtn()}
+                loading={otpSending}
+              >
                 Send code
               </Button>
-              <AuthBackButton embedded={embedded} onClick={() => setLoginMode("password")}>
+              <AuthBackButton
+                embedded={embedded}
+                onClick={() => setLoginMode("password")}
+              >
                 ← Back to password sign-in
               </AuthBackButton>
             </form>
@@ -388,37 +449,39 @@ export default function LoginPageClient({
             {!embedded && (
               <AuthFormHeader
                 embedded={embedded}
-                title="Sign in to The House of Rani"
-                subtitle="Sign in to continue shopping"
+                title='Sign in to The House of Rani'
+                subtitle='Sign in to continue shopping'
               />
             )}
 
             {googleBlock}
-            {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}
+            {googleClientId ?
+              <AuthFormDivider embedded={embedded} label='or email' />
+            : null}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <form onSubmit={handleSubmit(onSubmit)} className='space-y-3'>
               <AuthField
                 embedded={embedded}
                 {...register("email")}
-                type="email"
-                label="Email address"
-                placeholder="your@email.com"
+                type='email'
+                label='Email address'
+                placeholder='your@email.com'
                 error={errors.email?.message}
-                autoComplete="email"
+                autoComplete='email'
               />
               <AuthField
                 embedded={embedded}
                 {...register("password")}
                 type={showPassword ? "text" : "password"}
-                label="Password"
-                placeholder="Your password"
+                label='Password'
+                placeholder='Your password'
                 error={errors.password?.message}
-                autoComplete="current-password"
+                autoComplete='current-password'
                 labelAction={
                   <AuthNavLink
                     embedded={embedded}
                     onNavigate={onForgotPassword}
-                    href="/auth/forgot-password"
+                    href='/auth/forgot-password'
                     className={authLinkText(embedded)}
                   >
                     Forgot?
@@ -426,25 +489,35 @@ export default function LoginPageClient({
                 }
                 suffix={
                   <button
-                    type="button"
+                    type='button'
                     onClick={() => setShowPassword(!showPassword)}
-                    className="p-1 text-gray-400 transition-colors hover:text-navy-900"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className='p-1 text-gray-400 transition-colors hover:text-navy-900'
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ?
+                      <EyeOff className='h-4 w-4' />
+                    : <Eye className='h-4 w-4' />}
                   </button>
                 }
               />
-              <div className="flex items-center justify-start pt-0.5">
+              <div className='flex items-center justify-start pt-0.5'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => setLoginMode("otp")}
                   className={authGhostBtn(embedded)}
                 >
                   Use email code instead
                 </button>
               </div>
-              <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
+              <Button
+                type='submit'
+                variant='brand'
+                size='lg'
+                className={authPrimaryBtn()}
+                loading={isLoading}
+              >
                 Enter the House
               </Button>
             </form>
@@ -456,7 +529,7 @@ export default function LoginPageClient({
                   <AuthNavLink
                     embedded={embedded}
                     onNavigate={onSwitchToSignup}
-                    href="/auth/signup"
+                    href='/auth/signup'
                     className={authLinkText(embedded)}
                   >
                     Create Account
@@ -467,7 +540,7 @@ export default function LoginPageClient({
                   <AuthNavLink
                     embedded={embedded}
                     onNavigate={onSwitchToSignup}
-                    href="/auth/signup"
+                    href='/auth/signup'
                     className={authLinkText(embedded)}
                   >
                     Create one
@@ -475,14 +548,18 @@ export default function LoginPageClient({
                 </>
               }
             </AuthFormFooter>
-            <AuthLegalNotice mode="signin" />
+            <AuthLegalNotice mode='signin' />
           </>
         }
 
-        {/* One stable widget for the whole login session — never remount on step change. */}
+        {/* One stable widget for the whole login session - never remount on step change. */}
         <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
       </AuthFormRoot>
-      <AuthPendingOverlay active={isPending} title={pendingCopy.title} description={pendingCopy.description} />
+      <AuthPendingOverlay
+        active={isPending}
+        title={pendingCopy.title}
+        description={pendingCopy.description}
+      />
     </>
   );
 }

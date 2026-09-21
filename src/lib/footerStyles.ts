@@ -1,7 +1,7 @@
 export const footerShell =
-  "relative overflow-hidden border-t border-navy-800/90 bg-navy-950 text-white pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))] lg:pb-0";
+  "relative overflow-hidden border-t border-navy-800/90 bg-navy-950 text-white pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-0";
 
-/** Soft gold wash — atmosphere without flat navy slab */
+/** Soft gold wash - atmosphere without flat navy slab */
 export const footerAtmosphere =
   "pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_55%_at_12%_-10%,rgba(212,175,55,0.11),transparent_55%),radial-gradient(ellipse_60%_40%_at_95%_100%,rgba(212,175,55,0.06),transparent_50%)]";
 
@@ -18,8 +18,7 @@ export const footerSectionHeading =
 export const footerBrandTitle =
   "font-serif text-lg font-medium tracking-tight text-white sm:text-xl";
 
-export const footerBrandDescription =
-  "text-sm leading-relaxed text-white/58";
+export const footerBrandDescription = "text-sm leading-relaxed text-white/58";
 
 export const footerLinkList = "space-y-2.5";
 
@@ -39,8 +38,7 @@ export const footerContactLink =
 export const footerContactIcon =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-gold-300/90";
 
-export const footerContactText =
-  "min-w-0 truncate text-left leading-snug";
+export const footerContactText = "min-w-0 truncate text-left leading-snug";
 
 export const footerTrustIcon =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold-300/20 bg-gold-300/[0.06] text-gold-300/90";

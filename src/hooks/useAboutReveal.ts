@@ -9,7 +9,7 @@ import {
 const REVEAL_SELECTOR = "[data-about-reveal], [data-about-reveal-scale]";
 
 /**
- * Lightweight scroll reveals for /about — avoids GSAP + Lenis fighting (jitter).
+ * Lightweight scroll reveals for /about - avoids GSAP + Lenis fighting (jitter).
  */
 export function useAboutReveal(rootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {

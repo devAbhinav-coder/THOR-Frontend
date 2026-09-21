@@ -18,7 +18,7 @@ import { useHomeReveal } from "@/hooks/useHomeReveal";
 import { HorizontalScrollSurface } from "@/components/ui/HorizontalScrollSurface";
 
 type Props = {
-  /** SSR-prefetched storefront settings — avoids a client fetch + late mount CLS. */
+  /** SSR-prefetched storefront settings - avoids a client fetch + late mount CLS. */
   initialSettings?: StorefrontSettings | null;
 };
 
@@ -211,7 +211,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
       className={cn(homeSectionStyles.pageBg, "overflow-hidden")}
       aria-label='Promotional highlights'
     >
-      {/* Hero — festive edit */}
+      {/* Hero - festive edit */}
       <div className='relative min-h-[420px] w-full overflow-hidden sm:min-h-[460px] lg:min-h-[520px]'>
         <Image
           src={promo.backgroundImage}
@@ -344,7 +344,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
             </div>
           : <div className='pt-10 sm:pt-12 lg:pt-14' />}
 
-          {/* Mobile — horizontal scroll */}
+          {/* Mobile - horizontal scroll */}
           <div className='md:hidden'>
             <HorizontalScrollSurface className='flex snap-x snap-mandatory gap-3 px-4 pb-1 scrollbar-hide'>
               {resolvedTiles.map((tile, index) => (
@@ -363,7 +363,7 @@ export default function HomeBanner({ initialSettings }: Props = {}) {
             </HorizontalScrollSurface>
           </div>
 
-          {/* Desktop — compact editorial grid */}
+          {/* Desktop - compact editorial grid */}
           <div
             className={cn(
               homeSectionStyles.container,

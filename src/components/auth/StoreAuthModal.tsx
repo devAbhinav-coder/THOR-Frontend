@@ -24,7 +24,8 @@ const TITLES: Record<AuthModalView, string> = {
 };
 
 const SUBTITLES: Partial<Record<AuthModalView, string>> = {
-  signup: "Discover timeless elegance at The House of Rani. Your journey begins here ",
+  signup:
+    "Discover timeless elegance at The House of Rani. Your journey begins here ",
   forgot: "We will email you a secure 6-digit code",
 };
 
@@ -54,12 +55,14 @@ export default function StoreAuthModal() {
 
   const switchView = useCallback(
     (next: AuthModalView) => {
-      router.push(switchAuthModalViewUrl(pathname, search, next), { scroll: false });
+      router.push(switchAuthModalViewUrl(pathname, search, next), {
+        scroll: false,
+      });
     },
     [pathname, router, search],
   );
 
-  /** After a fresh login/signup inside the modal — close overlay then go to redirect target. */
+  /** After a fresh login/signup inside the modal - close overlay then go to redirect target. */
   const onAuthSuccess = useCallback(() => {
     const cleanUrl = closeAuthModalUrl(pathname, search);
     const pathOnly = pathname.split("?")[0] || "/";
@@ -84,8 +87,9 @@ export default function StoreAuthModal() {
 
   const modalView = admin2faPending ? "login" : view!;
   const modalTitle = admin2faPending ? "Admin two-factor" : TITLES[view!];
-  const modalSubtitle = admin2faPending
-    ? "Enter the code from your authenticator app"
+  const modalSubtitle =
+    admin2faPending ?
+      "Enter the code from your authenticator app"
     : SUBTITLES[view!];
 
   return (
@@ -97,8 +101,8 @@ export default function StoreAuthModal() {
       onClose={admin2faPending ? clearAdmin2faPending : dismissModal}
     >
       <AuthGoogleShell>
-        <div className="relative min-h-[160px]">
-          {admin2faPending ? (
+        <div className='relative min-h-[160px]'>
+          {admin2faPending ?
             <AdminTwoFactorLoginStep
               embedded
               pendingToken={admin2faPending.pendingToken}
@@ -107,7 +111,7 @@ export default function StoreAuthModal() {
               onSuccess={onAuthSuccess}
               onBack={clearAdmin2faPending}
             />
-          ) : view === "login" ? (
+          : view === "login" ?
             <LoginPageClient
               embedded
               redirect={redirect}
@@ -115,19 +119,19 @@ export default function StoreAuthModal() {
               onSwitchToSignup={() => switchView("signup")}
               onForgotPassword={() => switchView("forgot")}
             />
-          ) : view === "signup" ? (
+          : view === "signup" ?
             <SignupPageClient
               embedded
               onSuccess={onAuthSuccess}
               onSwitchToLogin={() => switchView("login")}
             />
-          ) : view === "forgot" ? (
+          : view === "forgot" ?
             <ForgotPasswordClient
               embedded
               onSuccess={onAuthSuccess}
               onBackToLogin={() => switchView("login")}
             />
-          ) : null}
+          : null}
         </div>
       </AuthGoogleShell>
     </AuthModal>

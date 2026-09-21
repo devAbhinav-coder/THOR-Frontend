@@ -24,7 +24,12 @@ import {
   Wallet,
 } from "lucide-react";
 import { adminApi, categoryApi } from "@/lib/api";
-import type { AdminCreateB2bOrderBody, AdminCreateOfflineOrderBody, Category, Product } from "@/types";
+import type {
+  AdminCreateB2bOrderBody,
+  AdminCreateOfflineOrderBody,
+  Category,
+  Product,
+} from "@/types";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { cn, formatPrice } from "@/lib/utils";
 import { hideScrollbarCls } from "@/components/admin/shared/AdminOfferFormUi";
@@ -95,8 +100,9 @@ function lineLabel(line: DraftLine, shopCategories: Category[]): string {
     const p = line.selectedProduct;
     if (!p) return "Catalog product";
     const v = p.variants.find((x) => x.sku === line.variantSku);
-    const vLabel = v
-      ? [v.size, v.color].filter(Boolean).join(" · ") || v.sku
+    const vLabel =
+      v ?
+        [v.size, v.color].filter(Boolean).join(" · ") || v.sku
       : line.variantSku;
     return vLabel ? `${p.name} (${vLabel})` : p.name;
   }
@@ -165,18 +171,23 @@ function LineProfitHint({ line }: { line: DraftLine }) {
     >
       <div className='flex flex-wrap items-center gap-x-4 gap-y-1'>
         <span>
-          Revenue: <strong className='tabular-nums'>{formatPrice(revenue)}</strong>
+          Revenue:{" "}
+          <strong className='tabular-nums'>{formatPrice(revenue)}</strong>
         </span>
         <span>
           COGS:{" "}
           <strong className='tabular-nums'>
-            {Number.isFinite(uc) ? formatPrice(cogs) : "—"}
+            {Number.isFinite(uc) ? formatPrice(cogs) : "-"}
           </strong>
         </span>
         <span>
-          Profit: <strong className='tabular-nums'>{formatPrice(profit)}</strong>
+          Profit:{" "}
+          <strong className='tabular-nums'>{formatPrice(profit)}</strong>
           {revenue > 0 && Number.isFinite(uc) ?
-            <span className='text-[10px] opacity-80'> ({margin.toFixed(0)}%)</span>
+            <span className='text-[10px] opacity-80'>
+              {" "}
+              ({margin.toFixed(0)}%)
+            </span>
           : null}
         </span>
       </div>
@@ -189,11 +200,16 @@ function LineProfitHint({ line }: { line: DraftLine }) {
   );
 }
 
-function buildCatalogLineFromProduct(full: Product, id?: string): CatalogDraft | null {
+function buildCatalogLineFromProduct(
+  full: Product,
+  id?: string,
+): CatalogDraft | null {
   if (!full.variants?.length) return null;
   const first = full.variants[0]!;
   const listed =
-    typeof first.price === "number" && first.price >= 0 ? first.price : full.price;
+    typeof first.price === "number" && first.price >= 0 ?
+      first.price
+    : full.price;
   const cost = variantCostFromProduct(full, first.sku);
   return {
     id: id ?? newLineId(),
@@ -226,8 +242,8 @@ function QtyInput({
 
   return (
     <input
-      type="text"
-      inputMode="numeric"
+      type='text'
+      inputMode='numeric'
       value={text}
       onChange={(e) => {
         const v = e.target.value;
@@ -243,8 +259,8 @@ function QtyInput({
         setText(String(n));
         onChange(n);
       }}
-      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-300"
-      aria-label="Quantity"
+      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-300'
+      aria-label='Quantity'
     />
   );
 }
@@ -274,55 +290,65 @@ function CatalogLineCard({
     : line.variantSku;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200/80">
+    <div className='rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm'>
+      <div className='flex items-start gap-3'>
+        <div className='relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200/80'>
           {product.images[0]?.url ?
-            <Image src={product.images[0].url} alt="" fill className="object-cover" sizes="56px" />
+            <Image
+              src={product.images[0].url}
+              alt=''
+              fill
+              className='object-cover'
+              sizes='56px'
+            />
           : null}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-brand-600">
+        <div className='min-w-0 flex-1'>
+          <div className='flex items-start justify-between gap-2'>
+            <div className='min-w-0'>
+              <p className='text-[10px] font-bold uppercase tracking-wide text-brand-600'>
                 Item {index + 1} · Catalog
               </p>
-              <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+              <p className='text-sm font-semibold text-gray-900 truncate'>
+                {product.name}
+              </p>
               {variantLabel ?
-                <p className="text-xs text-gray-500 truncate">{variantLabel}</p>
+                <p className='text-xs text-gray-500 truncate'>{variantLabel}</p>
               : null}
             </div>
             <button
-              type="button"
+              type='button'
               onClick={onRemove}
-              className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-              aria-label="Remove line"
+              className='shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600'
+              aria-label='Remove line'
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className='h-4 w-4' />
             </button>
           </div>
           <button
-            type="button"
+            type='button'
             onClick={onChangeProduct}
-            className="mt-1 text-xs font-medium text-brand-700 hover:text-brand-800 hover:underline"
+            className='mt-1 text-xs font-medium text-brand-700 hover:text-brand-800 hover:underline'
           >
             Change product
           </button>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block space-y-1.5 sm:col-span-2">
-          <span className="text-xs text-gray-500">
+      <div className='grid gap-3 sm:grid-cols-2'>
+        <label className='block space-y-1.5 sm:col-span-2'>
+          <span className='text-xs text-gray-500'>
             Variant
-            {product.variants.length > 1 ? ` (${product.variants.length} options)` : ""}
+            {product.variants.length > 1 ?
+              ` (${product.variants.length} options)`
+            : ""}
           </span>
           {line.pickLoading ?
-            <div className="flex h-11 items-center rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+            <div className='flex h-11 items-center rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500'>
               Loading variants…
             </div>
           : product.variants.length === 0 ?
-            <div className="flex h-11 items-center rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm text-amber-800">
+            <div className='flex h-11 items-center rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm text-amber-800'>
               No variants on this product
             </div>
           : <select
@@ -331,7 +357,9 @@ function CatalogLineCard({
                 const sku = e.target.value;
                 const v = product.variants.find((x) => x.sku === sku);
                 const listed =
-                  v && typeof v.price === "number" && v.price >= 0 ? v.price : product.price;
+                  v && typeof v.price === "number" && v.price >= 0 ?
+                    v.price
+                  : product.price;
                 const cost = variantCostFromProduct(product, sku);
                 patch(lineId, {
                   variantSku: sku,
@@ -339,41 +367,44 @@ function CatalogLineCard({
                   unitCost: formatCostInput(cost),
                 });
               }}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+              className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
             >
               {product.variants.map((v) => {
-                const label = [v.size, v.color].filter(Boolean).join(" · ") || "Default";
+                const label =
+                  [v.size, v.color].filter(Boolean).join(" · ") || "Default";
                 return (
                   <option key={v.sku} value={v.sku}>
-                    {label} — stock {v.stock}
+                    {label} - stock {v.stock}
                   </option>
                 );
               })}
             </select>
           }
         </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs text-gray-500">Quantity (1–50)</span>
+        <label className='block space-y-1.5'>
+          <span className='text-xs text-gray-500'>Quantity (1–50)</span>
           <QtyInput
             value={line.quantity}
             onChange={(n) => patch(lineId, { quantity: n })}
           />
         </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs text-gray-500">Selling price (₹)</span>
+        <label className='block space-y-1.5'>
+          <span className='text-xs text-gray-500'>Selling price (₹)</span>
           <input
             value={line.unitPrice}
             onChange={(e) => patch(lineId, { unitPrice: e.target.value })}
-            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+            className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
           />
         </label>
-        <label className="block space-y-1.5 sm:col-span-2">
-          <span className="text-xs text-gray-500">Cost of goods — COGS (₹) · per unit</span>
+        <label className='block space-y-1.5 sm:col-span-2'>
+          <span className='text-xs text-gray-500'>
+            Cost of goods - COGS (₹) · per unit
+          </span>
           <input
             value={line.unitCost}
             onChange={(e) => patch(lineId, { unitCost: e.target.value })}
-            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
-            placeholder="Purchase cost per unit"
+            className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+            placeholder='Purchase cost per unit'
           />
         </label>
       </div>
@@ -409,8 +440,8 @@ function ManualLineEditor({
     : selectedCategory?.name || "Category line";
 
   return (
-    <div className="space-y-3">
-      <label className="block space-y-1.5">
+    <div className='space-y-3'>
+      <label className='block space-y-1.5'>
         <span className='text-xs text-gray-600'>Category</span>
         <select
           value={line.categorySelect}
@@ -433,7 +464,7 @@ function ManualLineEditor({
             </option>
           ))}
           <option value={OTHER_CATEGORY_VALUE}>
-            Other — custom description
+            Other - custom description
           </option>
         </select>
       </label>
@@ -453,11 +484,13 @@ function ManualLineEditor({
             />
           }
           <div className='min-w-0'>
-            <p className='text-sm font-medium text-gray-900 truncate'>{previewLabel}</p>
+            <p className='text-sm font-medium text-gray-900 truncate'>
+              {previewLabel}
+            </p>
             <p className='text-[11px] text-gray-500'>
               {selectedCategory?.image ?
-                'Category photo on order'
-              : 'Fashion placeholder on order (no category photo)'}
+                "Category photo on order"
+              : "Fashion placeholder on order (no category photo)"}
             </p>
           </div>
         </div>
@@ -491,7 +524,9 @@ function ManualLineEditor({
           />
         </label>
         <label className='block space-y-1.5 sm:col-span-2'>
-          <span className='text-xs text-gray-500'>Cost of goods — COGS (₹)</span>
+          <span className='text-xs text-gray-500'>
+            Cost of goods - COGS (₹)
+          </span>
           <input
             value={line.unitCost}
             onChange={(e) => patch(lineId, { unitCost: e.target.value })}
@@ -519,16 +554,24 @@ export default function AdminChannelOrderClient({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  const [orderSource, setOrderSource] = useState<"stall" | "personal_contact">("stall");
-  const [fulfillment, setFulfillment] = useState<"delhivery" | "offline_handover">("offline_handover");
-  const [paymentMethod, setPaymentMethod] = useState<"offline_upi" | "offline_cash">("offline_upi");
+  const [orderSource, setOrderSource] = useState<"stall" | "personal_contact">(
+    "stall",
+  );
+  const [fulfillment, setFulfillment] = useState<
+    "delhivery" | "offline_handover"
+  >("offline_handover");
+  const [paymentMethod, setPaymentMethod] = useState<
+    "offline_upi" | "offline_cash"
+  >("offline_upi");
 
   const [lines, setLines] = useState<DraftLine[]>(() => []);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogHits, setCatalogHits] = useState<Product[]>([]);
   const [catalogSearchLoading, setCatalogSearchLoading] = useState(false);
   const [catalogPickLoading, setCatalogPickLoading] = useState(false);
-  const [replaceCatalogLineId, setReplaceCatalogLineId] = useState<string | null>(null);
+  const [replaceCatalogLineId, setReplaceCatalogLineId] = useState<
+    string | null
+  >(null);
   const debouncedCatalogSearch = useDebouncedValue(catalogSearch.trim(), 320);
   const catalogSearchRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -557,7 +600,8 @@ export default function AdminChannelOrderClient({
       .then((res) => {
         if (cancelled) return;
         const raw = res.data?.categories;
-        const list = Array.isArray(raw) ? raw.filter(isShopCatalogCategory) : [];
+        const list =
+          Array.isArray(raw) ? raw.filter(isShopCatalogCategory) : [];
         list.sort((a, b) => a.name.localeCompare(b.name));
         setShopCategories(list);
       })
@@ -567,15 +611,25 @@ export default function AdminChannelOrderClient({
       .finally(() => {
         if (!cancelled) setCategoriesLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const patchCatalog = useCallback((id: string, p: Partial<CatalogDraft>) => {
-    setLines((prev) => prev.map((l) => (l.id === id && l.kind === "catalog" ? { ...l, ...p } : l)));
+    setLines((prev) =>
+      prev.map((l) =>
+        l.id === id && l.kind === "catalog" ? { ...l, ...p } : l,
+      ),
+    );
   }, []);
 
   const patchManual = useCallback((id: string, p: Partial<ManualDraft>) => {
-    setLines((prev) => prev.map((l) => (l.id === id && l.kind === "manual" ? { ...l, ...p } : l)));
+    setLines((prev) =>
+      prev.map((l) =>
+        l.id === id && l.kind === "manual" ? { ...l, ...p } : l,
+      ),
+    );
   }, []);
 
   const removeLine = useCallback((id: string) => {
@@ -620,14 +674,22 @@ export default function AdminChannelOrderClient({
       window.requestAnimationFrame(() => {
         const el = lineRefs.current.get(lineId);
         if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest",
+        });
       });
     });
   }, []);
 
   const scrollToCatalogSearch = useCallback(() => {
     window.requestAnimationFrame(() => {
-      catalogSearchRef.current?.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+      catalogSearchRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
+      });
     });
   }, []);
 
@@ -695,27 +757,44 @@ export default function AdminChannelOrderClient({
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (customerName.trim().length < 2) return toast.error("Enter customer name");
-      if (email.trim() && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email.trim())) {
+      if (customerName.trim().length < 2)
+        return toast.error("Enter customer name");
+      if (
+        email.trim() &&
+        !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email.trim())
+      ) {
         return toast.error("Enter a valid email");
       }
-      if (phone.trim() && !/^[6-9]\d{9}$/.test(phone.replace(/\D/g, "").slice(-10))) {
+      if (
+        phone.trim() &&
+        !/^[6-9]\d{9}$/.test(phone.replace(/\D/g, "").slice(-10))
+      ) {
         return toast.error("Enter a valid 10-digit mobile number");
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (fulfillment === "delhivery") {
         const pin = shipPin.replace(/\D/g, "").slice(0, 6);
-        if (!shipStreet.trim() || !shipCity.trim() || !shipState.trim() || !/^\d{6}$/.test(pin)) {
-          return toast.error("Complete shipping address for Delhivery (street, city, state, 6-digit PIN)");
+        if (
+          !shipStreet.trim() ||
+          !shipCity.trim() ||
+          !shipState.trim() ||
+          !/^\d{6}$/.test(pin)
+        ) {
+          return toast.error(
+            "Complete shipping address for Delhivery (street, city, state, 6-digit PIN)",
+          );
         }
         const customerPh = phone.replace(/\D/g, "").slice(-10);
         const shipPh = shipPhone.replace(/\D/g, "").slice(-10);
-        const effectivePh = /^[6-9]\d{9}$/.test(shipPh) ? shipPh
+        const effectivePh =
+          /^[6-9]\d{9}$/.test(shipPh) ? shipPh
           : /^[6-9]\d{9}$/.test(customerPh) ? customerPh
           : "";
         if (!effectivePh) {
-          return toast.error("Add a valid 10-digit phone (customer or shipping) for Delhivery");
+          return toast.error(
+            "Add a valid 10-digit phone (customer or shipping) for Delhivery",
+          );
         }
       }
       setCurrentStep(3);
@@ -726,18 +805,27 @@ export default function AdminChannelOrderClient({
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]!;
         if (line.kind === "catalog") {
-          if (line.pickLoading) return toast.error(`Line ${i + 1}: still loading variants`);
+          if (line.pickLoading)
+            return toast.error(`Line ${i + 1}: still loading variants`);
           if (!line.selectedProduct?._id || !line.variantSku) {
             return toast.error(`Line ${i + 1}: select a product and variant`);
           }
           const up = lineUnitPrice(line);
-          if (!Number.isFinite(up)) return toast.error(`Line ${i + 1}: enter a valid unit price`);
+          if (!Number.isFinite(up))
+            return toast.error(`Line ${i + 1}: enter a valid unit price`);
         } else {
           const up = lineUnitPrice(line);
-          if (!Number.isFinite(up)) return toast.error(`Line ${i + 1}: enter a valid unit price`);
-          if (!line.categorySelect) return toast.error(`Line ${i + 1}: choose a category or Other`);
-          if (line.categorySelect === OTHER_CATEGORY_VALUE && !line.customTitle.trim()) {
-            return toast.error(`Line ${i + 1}: enter a custom description for Other`);
+          if (!Number.isFinite(up))
+            return toast.error(`Line ${i + 1}: enter a valid unit price`);
+          if (!line.categorySelect)
+            return toast.error(`Line ${i + 1}: choose a category or Other`);
+          if (
+            line.categorySelect === OTHER_CATEGORY_VALUE &&
+            !line.customTitle.trim()
+          ) {
+            return toast.error(
+              `Line ${i + 1}: enter a custom description for Other`,
+            );
           }
         }
       }
@@ -764,7 +852,10 @@ export default function AdminChannelOrderClient({
     (line) => !Number.isFinite(lineUnitCost(line)) || lineUnitCost(line) <= 0,
   ).length;
 
-  const buildPayload = useCallback((): AdminCreateOfflineOrderBody | AdminCreateB2bOrderBody | null => {
+  const buildPayload = useCallback(():
+    | AdminCreateOfflineOrderBody
+    | AdminCreateB2bOrderBody
+    | null => {
     const name = customerName.trim();
     if (name.length < 2) {
       toast.error("Enter customer name");
@@ -839,7 +930,12 @@ export default function AdminChannelOrderClient({
     let shippingAddress: AdminCreateOfflineOrderBody["shippingAddress"];
     if (fulfillment === "delhivery") {
       const pin = shipPin.replace(/\D/g, "").slice(0, 6);
-      if (!shipStreet.trim() || !shipCity.trim() || !shipState.trim() || !/^\d{6}$/.test(pin)) {
+      if (
+        !shipStreet.trim() ||
+        !shipCity.trim() ||
+        !shipState.trim() ||
+        !/^\d{6}$/.test(pin)
+      ) {
         toast.error("Complete shipping address for Delhivery");
         return null;
       }
@@ -868,10 +964,10 @@ export default function AdminChannelOrderClient({
     return {
       customerName: name,
       ...(em ? { email: em } : {}),
-      ...(ph && ph.length === 10 && /^[6-9]\d{9}$/.test(ph) ? { phone: ph } : {}),
-      ...(isB2b ?
-        { orderSource: 'b2b' as const }
-      : { orderSource }),
+      ...(ph && ph.length === 10 && /^[6-9]\d{9}$/.test(ph) ?
+        { phone: ph }
+      : {}),
+      ...(isB2b ? { orderSource: "b2b" as const } : { orderSource }),
       fulfillment,
       paymentMethod,
       lineItems,
@@ -880,9 +976,15 @@ export default function AdminChannelOrderClient({
       ...(isB2b ?
         {
           b2bMeta: {
-            ...(companyName.trim() ? { companyName: companyName.trim().slice(0, 120) } : {}),
-            ...(gstin.trim() ? { gstin: gstin.trim().toUpperCase().slice(0, 20) } : {}),
-            ...(poNumber.trim() ? { poNumber: poNumber.trim().slice(0, 60) } : {}),
+            ...(companyName.trim() ?
+              { companyName: companyName.trim().slice(0, 120) }
+            : {}),
+            ...(gstin.trim() ?
+              { gstin: gstin.trim().toUpperCase().slice(0, 20) }
+            : {}),
+            ...(poNumber.trim() ?
+              { poNumber: poNumber.trim().slice(0, 60) }
+            : {}),
           },
         }
       : {}),
@@ -920,12 +1022,21 @@ export default function AdminChannelOrderClient({
     if (!body) return;
     setSubmitting(true);
     try {
-      const res = isB2b ?
-        await adminApi.createB2bOrder(body as AdminCreateB2bOrderBody)
-      : await adminApi.createOfflineOrder(body as AdminCreateOfflineOrderBody);
-      const order = res.data?.order as { _id?: string; id?: string } | undefined;
+      const res =
+        isB2b ?
+          await adminApi.createB2bOrder(body as AdminCreateB2bOrderBody)
+        : await adminApi.createOfflineOrder(
+            body as AdminCreateOfflineOrderBody,
+          );
+      const order = res.data?.order as
+        | { _id?: string; id?: string }
+        | undefined;
       const id = order?._id || order?.id;
-      toast.success(isB2b ? "B2B order created — stock updated" : "Offline order created — confirmed & paid");
+      toast.success(
+        isB2b ?
+          "B2B order created - stock updated"
+        : "Offline order created - confirmed & paid",
+      );
       if (id) {
         router.push(
           `/admin/orders/${encodeURIComponent(String(id))}${isB2b ? "?newB2b=1" : ""}`,
@@ -933,7 +1044,11 @@ export default function AdminChannelOrderClient({
       } else router.push("/admin/orders");
     } catch (err: unknown) {
       const msg = (err as { message?: string })?.message;
-      toast.error(msg && msg !== "Something went wrong" ? msg : "Could not create order. Check stock, phone, and line items.");
+      toast.error(
+        msg && msg !== "Something went wrong" ?
+          msg
+        : "Could not create order. Check stock, phone, and line items.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -954,7 +1069,10 @@ export default function AdminChannelOrderClient({
         <div className='relative flex flex-wrap items-center justify-between gap-3'>
           <div>
             <div className='flex items-center gap-2 mb-1'>
-              <Link href='/admin/orders' className='inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors'>
+              <Link
+                href='/admin/orders'
+                className='inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors'
+              >
                 <ArrowLeft className='h-3.5 w-3.5' /> Orders
               </Link>
             </div>
@@ -971,7 +1089,7 @@ export default function AdminChannelOrderClient({
             </div>
             <p className='text-sm text-slate-400 mt-1'>
               {isB2b ?
-                "Store catalog sale for wholesale buyers — stock, soldCount & analytics update automatically."
+                "Store catalog sale for wholesale buyers - stock, soldCount & analytics update automatically."
               : "Record stall or personal-contact sales step-by-step."}
             </p>
           </div>
@@ -998,11 +1116,18 @@ export default function AdminChannelOrderClient({
             const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
             return (
-              <div key={step.id} className='relative z-10 flex w-16 flex-col items-center gap-1.5 sm:w-20'>
+              <div
+                key={step.id}
+                className='relative z-10 flex w-16 flex-col items-center gap-1.5 sm:w-20'
+              >
                 <button
                   type='button'
                   aria-current={isActive ? "step" : undefined}
-                  aria-label={`${step.title}${isActive ? " (current)" : isCompleted ? " (done)" : ""}`}
+                  aria-label={`${step.title}${
+                    isActive ? " (current)"
+                    : isCompleted ? " (done)"
+                    : ""
+                  }`}
                   onClick={() => {
                     if (isCompleted || isActive) setCurrentStep(step.id);
                   }}
@@ -1025,7 +1150,9 @@ export default function AdminChannelOrderClient({
                 <span
                   className={cn(
                     "text-center text-[10px] font-bold uppercase tracking-wider sm:text-[11px]",
-                    isActive ? "text-brand-700" : isCompleted ? "text-gray-800" : "text-gray-400",
+                    isActive ? "text-brand-700"
+                    : isCompleted ? "text-gray-800"
+                    : "text-gray-400",
                   )}
                 >
                   {step.title}
@@ -1040,11 +1167,15 @@ export default function AdminChannelOrderClient({
         {/* Step 1 */}
         <div className={cn(currentStep === 1 ? "block" : "hidden")}>
           <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900">Customer Details</h2>
+            <div className='space-y-4'>
+              <h2 className='text-lg font-bold text-gray-900'>
+                Customer Details
+              </h2>
               <div className='grid gap-2 sm:grid-cols-2'>
                 <label className='block space-y-1.5 sm:col-span-2'>
-                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Full name <span className="text-red-500">*</span></span>
+                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                    Full name <span className='text-red-500'>*</span>
+                  </span>
                   <input
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
@@ -1053,7 +1184,9 @@ export default function AdminChannelOrderClient({
                   />
                 </label>
                 <label className='block space-y-1.5'>
-                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Email (Optional)</span>
+                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                    Email (Optional)
+                  </span>
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -1062,7 +1195,9 @@ export default function AdminChannelOrderClient({
                   />
                 </label>
                 <label className='block space-y-1.5'>
-                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Phone (Optional)</span>
+                  <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                    Phone (Optional)
+                  </span>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -1074,7 +1209,9 @@ export default function AdminChannelOrderClient({
               {isB2b ?
                 <div className='grid gap-2 sm:grid-cols-2 pt-2 border-t border-gray-100'>
                   <label className='block space-y-1.5 sm:col-span-2'>
-                    <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Company / buyer name</span>
+                    <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                      Company / buyer name
+                    </span>
                     <input
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
@@ -1083,7 +1220,9 @@ export default function AdminChannelOrderClient({
                     />
                   </label>
                   <label className='block space-y-1.5'>
-                    <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>GSTIN (optional)</span>
+                    <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                      GSTIN (optional)
+                    </span>
                     <input
                       value={gstin}
                       onChange={(e) => setGstin(e.target.value.toUpperCase())}
@@ -1092,7 +1231,9 @@ export default function AdminChannelOrderClient({
                     />
                   </label>
                   <label className='block space-y-1.5'>
-                    <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>PO number (optional)</span>
+                    <span className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                      PO number (optional)
+                    </span>
                     <input
                       value={poNumber}
                       onChange={(e) => setPoNumber(e.target.value)}
@@ -1103,9 +1244,16 @@ export default function AdminChannelOrderClient({
                 </div>
               : null}
             </div>
-            
-            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-end gap-3">
-              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">Next →</Button>
+
+            <div className='pt-4 border-t border-gray-100 mt-6 flex items-center justify-end gap-3'>
+              <Button
+                type='button'
+                variant='brand'
+                onClick={handleNext}
+                className='w-32 rounded-xl shadow-lg'
+              >
+                Next →
+              </Button>
             </div>
           </section>
         </div>
@@ -1113,69 +1261,87 @@ export default function AdminChannelOrderClient({
         {/* Step 2 */}
         <div className={cn(currentStep === 2 ? "block" : "hidden")}>
           <section className='space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900">Order Context & Fulfillment</h2>
-              
-              <div className="space-y-3">
+            <div className='space-y-4'>
+              <h2 className='text-lg font-bold text-gray-900'>
+                Order Context & Fulfillment
+              </h2>
+
+              <div className='space-y-3'>
                 {!isB2b ?
                   <>
-                <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Order source</p>
-                <div className='flex gap-3'>
-                  <button
-                    type='button'
-                    onClick={() => setOrderSource("stall")}
-                    className={cn(
-                      pill, "flex-1 py-3 justify-center text-center text-sm",
-                      orderSource === "stall" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
-                    )}
-                  >
-                    <Store className='mr-1.5 mb-0.5 inline h-4 w-4 opacity-80' />
-                    Stall / POS
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => setOrderSource("personal_contact")}
-                    className={cn(
-                      pill, "flex-1 py-3 justify-center text-center text-sm",
-                      orderSource === "personal_contact" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
-                    )}
-                  >
-                    <UserRound className='mr-1.5 mb-0.5 inline h-4 w-4 opacity-80' />
-                    Personal contact
-                  </button>
-                </div>
+                    <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                      Order source
+                    </p>
+                    <div className='flex gap-3'>
+                      <button
+                        type='button'
+                        onClick={() => setOrderSource("stall")}
+                        className={cn(
+                          pill,
+                          "flex-1 py-3 justify-center text-center text-sm",
+                          orderSource === "stall" ?
+                            "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
+                          : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                        )}
+                      >
+                        <Store className='mr-1.5 mb-0.5 inline h-4 w-4 opacity-80' />
+                        Stall / POS
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => setOrderSource("personal_contact")}
+                        className={cn(
+                          pill,
+                          "flex-1 py-3 justify-center text-center text-sm",
+                          orderSource === "personal_contact" ?
+                            "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
+                          : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                        )}
+                      >
+                        <UserRound className='mr-1.5 mb-0.5 inline h-4 w-4 opacity-80' />
+                        Personal contact
+                      </button>
+                    </div>
                   </>
-                : (
-                  <p className='text-sm text-violet-800 bg-violet-50 border border-violet-100 rounded-xl px-4 py-3'>
-                    B2B wholesale order — catalog lines reduce store inventory and appear under B2B in analytics.
+                : <p className='text-sm text-violet-800 bg-violet-50 border border-violet-100 rounded-xl px-4 py-3'>
+                    B2B wholesale order - catalog lines reduce store inventory
+                    and appear under B2B in analytics.
                   </p>
-                )}
+                }
               </div>
 
-              <div className="pt-4 border-t border-gray-100 space-y-3">
-                <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>Fulfillment Method</p>
+              <div className='pt-4 border-t border-gray-100 space-y-3'>
+                <p className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                  Fulfillment Method
+                </p>
                 <div className='flex gap-3'>
                   <button
                     type='button'
                     onClick={() => setFulfillment("delhivery")}
                     className={cn(
-                      pill, "flex-1 py-3 flex flex-col items-center justify-center gap-1.5",
-                      fulfillment === "delhivery" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                      pill,
+                      "flex-1 py-3 flex flex-col items-center justify-center gap-1.5",
+                      fulfillment === "delhivery" ?
+                        "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
+                      : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
                     )}
                   >
                     <Truck className='h-5 w-5 opacity-80' />
-                    <span className="text-xs sm:text-sm">Delhivery</span>
+                    <span className='text-xs sm:text-sm'>Delhivery</span>
                   </button>
                   <button
                     type='button'
                     onClick={() => setFulfillment("offline_handover")}
                     className={cn(
-                      pill, "flex-1 py-3 flex flex-col items-center justify-center gap-1.5",
-                      fulfillment === "offline_handover" ? "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200" : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
+                      pill,
+                      "flex-1 py-3 flex flex-col items-center justify-center gap-1.5",
+                      fulfillment === "offline_handover" ?
+                        "border-brand-400 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
+                      : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300",
                     )}
                   >
                     <HandIcon className='h-5 w-5 opacity-80' />
-                    <span className="text-xs sm:text-sm">Handover</span>
+                    <span className='text-xs sm:text-sm'>Handover</span>
                   </button>
                 </div>
               </div>
@@ -1189,44 +1355,113 @@ export default function AdminChannelOrderClient({
                 </div>
                 <div className='grid gap-4 sm:grid-cols-2'>
                   <label className='block space-y-1.5'>
-                    <span className='text-xs text-gray-600 font-semibold'>Recipient name</span>
-                    <input value={shipName} onChange={(e) => setShipName(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' placeholder='Defaults to customer name' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      Recipient name
+                    </span>
+                    <input
+                      value={shipName}
+                      onChange={(e) => setShipName(e.target.value)}
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm'
+                      placeholder='Defaults to customer name'
+                    />
                   </label>
                   <label className='block space-y-1.5'>
-                    <span className='text-xs text-gray-600 font-semibold'>Phone</span>
-                    <input value={shipPhone} onChange={(e) => setShipPhone(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' placeholder='10-digit' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      Phone
+                    </span>
+                    <input
+                      value={shipPhone}
+                      onChange={(e) => setShipPhone(e.target.value)}
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm'
+                      placeholder='10-digit'
+                    />
                   </label>
                   <label className='block space-y-1.5 sm:col-span-2'>
-                    <span className='text-xs text-gray-600 font-semibold'>Flat / house (optional)</span>
-                    <input value={shipHouse} onChange={(e) => setShipHouse(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      Flat / house (optional)
+                    </span>
+                    <input
+                      value={shipHouse}
+                      onChange={(e) => setShipHouse(e.target.value)}
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm'
+                    />
                   </label>
                   <label className='block space-y-1.5 sm:col-span-2'>
-                    <span className='text-xs text-gray-600 font-semibold'>Street / area <span className="text-red-500">*</span></span>
-                    <input value={shipStreet} onChange={(e) => setShipStreet(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      Street / area <span className='text-red-500'>*</span>
+                    </span>
+                    <input
+                      value={shipStreet}
+                      onChange={(e) => setShipStreet(e.target.value)}
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm'
+                    />
                   </label>
                   <label className='block space-y-1.5 sm:col-span-2'>
-                    <span className='text-xs text-gray-600 font-semibold'>Landmark (optional)</span>
-                    <input value={shipLandmark} onChange={(e) => setShipLandmark(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      Landmark (optional)
+                    </span>
+                    <input
+                      value={shipLandmark}
+                      onChange={(e) => setShipLandmark(e.target.value)}
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm'
+                    />
                   </label>
                   <label className='block space-y-1.5'>
-                    <span className='text-xs text-gray-600 font-semibold'>City <span className="text-red-500">*</span></span>
-                    <input value={shipCity} onChange={(e) => setShipCity(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      City <span className='text-red-500'>*</span>
+                    </span>
+                    <input
+                      value={shipCity}
+                      onChange={(e) => setShipCity(e.target.value)}
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm'
+                    />
                   </label>
                   <label className='block space-y-1.5'>
-                    <span className='text-xs text-gray-600 font-semibold'>State <span className="text-red-500">*</span></span>
-                    <input value={shipState} onChange={(e) => setShipState(e.target.value)} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      State <span className='text-red-500'>*</span>
+                    </span>
+                    <input
+                      value={shipState}
+                      onChange={(e) => setShipState(e.target.value)}
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm'
+                    />
                   </label>
                   <label className='block space-y-1.5 sm:col-span-2'>
-                    <span className='text-xs text-gray-600 font-semibold'>PIN code <span className="text-red-500">*</span></span>
-                    <input value={shipPin} onChange={(e) => setShipPin(e.target.value.replace(/\D/g, "").slice(0, 6))} className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm tracking-widest' placeholder='6 digits' />
+                    <span className='text-xs text-gray-600 font-semibold'>
+                      PIN code <span className='text-red-500'>*</span>
+                    </span>
+                    <input
+                      value={shipPin}
+                      onChange={(e) =>
+                        setShipPin(
+                          e.target.value.replace(/\D/g, "").slice(0, 6),
+                        )
+                      }
+                      className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm tracking-widest'
+                      placeholder='6 digits'
+                    />
                   </label>
                 </div>
               </div>
             )}
 
-            <div className="pt-4 border-t border-gray-100 mt-6 flex items-center justify-between gap-3">
-              <Button type="button" variant="outline" onClick={handleBack} className="w-24 rounded-xl shadow-sm">← Back</Button>
-              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">Next →</Button>
+            <div className='pt-4 border-t border-gray-100 mt-6 flex items-center justify-between gap-3'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={handleBack}
+                className='w-24 rounded-xl shadow-sm'
+              >
+                ← Back
+              </Button>
+              <Button
+                type='button'
+                variant='brand'
+                onClick={handleNext}
+                className='w-32 rounded-xl shadow-lg'
+              >
+                Next →
+              </Button>
             </div>
           </section>
         </div>
@@ -1238,30 +1473,33 @@ export default function AdminChannelOrderClient({
             <div className='sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur-md px-4 py-4 sm:px-6 space-y-3'>
               <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Products &amp; prices</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Search once at top — pick product, set qty &amp; price on the line below.
+                  <h2 className='text-lg font-bold text-gray-900'>
+                    Products &amp; prices
+                  </h2>
+                  <p className='text-xs text-gray-500 mt-0.5'>
+                    Search once at top - pick product, set qty &amp; price on
+                    the line below.
                   </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm shrink-0">
-                  <span className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 tabular-nums">
+                <div className='flex items-center gap-2 text-sm shrink-0'>
+                  <span className='rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 tabular-nums'>
                     {lines.length} item{lines.length === 1 ? "" : "s"}
                   </span>
                   {lines.length > 0 ?
-                    <span className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-800 tabular-nums">
+                    <span className='rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-800 tabular-nums'>
                       {formatPrice(step3Subtotal)}
                     </span>
                   : null}
                 </div>
               </div>
 
-            <div ref={catalogSearchRef} className="relative z-50 scroll-mt-4">
+              <div ref={catalogSearchRef} className='relative z-50 scroll-mt-4'>
                 {replaceCatalogLineId ?
-                  <p className="mb-2 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                    Replacing item — pick a new product from search, or{" "}
+                  <p className='mb-2 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2'>
+                    Replacing item - pick a new product from search, or{" "}
                     <button
-                      type="button"
-                      className="underline font-semibold"
+                      type='button'
+                      className='underline font-semibold'
                       onClick={() => setReplaceCatalogLineId(null)}
                     >
                       cancel
@@ -1271,13 +1509,13 @@ export default function AdminChannelOrderClient({
                 <SearchField
                   value={catalogSearch}
                   onChange={setCatalogSearch}
-                  placeholder="Search catalog product to add…"
-                  className="w-full"
+                  placeholder='Search catalog product to add…'
+                  className='w-full'
                   isLoading={catalogSearchLoading || catalogPickLoading}
                 />
                 {catalogHits.length > 0 ?
                   <ul
-                    role="listbox"
+                    role='listbox'
                     className={cn(
                       "absolute z-[200] mt-1 w-full max-h-60 overflow-auto rounded-xl border border-gray-200 bg-white shadow-2xl ring-1 ring-black/5",
                       hideScrollbarCls,
@@ -1286,19 +1524,29 @@ export default function AdminChannelOrderClient({
                     {catalogHits.map((p) => (
                       <li key={p._id}>
                         <button
-                          type="button"
-                          role="option"
+                          type='button'
+                          role='option'
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => pickCatalogProduct(p)}
-                          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-brand-50/60"
+                          className='flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-brand-50/60'
                         >
-                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                          <div className='relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gray-100'>
                             {p.images[0]?.url ?
-                              <Image src={p.images[0].url} alt="" fill className="object-cover" sizes="44px" />
+                              <Image
+                                src={p.images[0].url}
+                                alt=''
+                                fill
+                                className='object-cover'
+                                sizes='44px'
+                              />
                             : null}
                           </div>
-                          <span className="min-w-0 flex-1 truncate font-medium text-gray-900">{p.name}</span>
-                          <span className="shrink-0 text-xs text-gray-500">{formatPrice(p.price)}</span>
+                          <span className='min-w-0 flex-1 truncate font-medium text-gray-900'>
+                            {p.name}
+                          </span>
+                          <span className='shrink-0 text-xs text-gray-500'>
+                            {formatPrice(p.price)}
+                          </span>
                         </button>
                       </li>
                     ))}
@@ -1306,28 +1554,42 @@ export default function AdminChannelOrderClient({
                 : null}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addManualLine}>
-                  <Plus className="mr-1.5 h-4 w-4" /> Custom category line
+              <div className='flex flex-wrap gap-2'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  className='rounded-xl'
+                  onClick={addManualLine}
+                >
+                  <Plus className='mr-1.5 h-4 w-4' /> Custom category line
                 </Button>
               </div>
             </div>
 
             {/* Line items */}
-            <div className={cn("px-4 py-4 sm:px-6 space-y-3 min-h-[120px]", hideScrollbarCls)}>
+            <div
+              className={cn(
+                "px-4 py-4 sm:px-6 space-y-3 min-h-[120px]",
+                hideScrollbarCls,
+              )}
+            >
               {lines.length === 0 ?
-                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-10 text-center">
-                  <PackageSearch className="h-9 w-9 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-gray-600">No items yet</p>
-                  <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
-                    Type a product name in the search above, or add a custom category line for non-catalog items.
+                <div className='rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-10 text-center'>
+                  <PackageSearch className='h-9 w-9 text-gray-300 mx-auto mb-2' />
+                  <p className='text-sm font-medium text-gray-600'>
+                    No items yet
+                  </p>
+                  <p className='text-xs text-gray-400 mt-1 max-w-sm mx-auto'>
+                    Type a product name in the search above, or add a custom
+                    category line for non-catalog items.
                   </p>
                 </div>
               : lines.map((line, idx) => (
                   <div
                     key={line.id}
                     ref={(el) => setLineRef(line.id, el)}
-                    className="scroll-mt-36 scroll-mb-32"
+                    className='scroll-mt-36 scroll-mb-32'
                   >
                     {line.kind === "catalog" ?
                       line.selectedProduct ?
@@ -1340,22 +1602,24 @@ export default function AdminChannelOrderClient({
                           onChangeProduct={() => {
                             setReplaceCatalogLineId(line.id);
                             scrollToCatalogSearch();
-                            toast("Search above to replace this product", { icon: "↩️" });
+                            toast("Search above to replace this product", {
+                              icon: "↩️",
+                            });
                           }}
                         />
                       : null
-                    : <div className="rounded-2xl border border-gray-200 bg-gray-50/40 p-3 sm:p-4">
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700 bg-violet-50 px-2.5 py-1 rounded-md">
+                    : <div className='rounded-2xl border border-gray-200 bg-gray-50/40 p-3 sm:p-4'>
+                        <div className='mb-3 flex items-center justify-between gap-2'>
+                          <span className='text-[10px] font-bold uppercase tracking-wide text-violet-700 bg-violet-50 px-2.5 py-1 rounded-md'>
                             Item {idx + 1} · Custom
                           </span>
                           <button
-                            type="button"
+                            type='button'
                             onClick={() => removeLine(line.id)}
-                            className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                            aria-label="Remove line"
+                            className='rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600'
+                            aria-label='Remove line'
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className='h-4 w-4' />
                           </button>
                         </div>
                         <ManualLineEditor
@@ -1374,14 +1638,26 @@ export default function AdminChannelOrderClient({
               }
             </div>
 
-            <div className="sticky bottom-0 z-30 flex items-center justify-between gap-3 border-t border-gray-100 bg-white/95 backdrop-blur-md px-4 py-4 sm:px-6">
-              <Button type="button" variant="outline" onClick={handleBack} className="w-24 rounded-xl shadow-sm">
+            <div className='sticky bottom-0 z-30 flex items-center justify-between gap-3 border-t border-gray-100 bg-white/95 backdrop-blur-md px-4 py-4 sm:px-6'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={handleBack}
+                className='w-24 rounded-xl shadow-sm'
+              >
                 ← Back
               </Button>
-              <div className="hidden sm:block text-xs text-gray-500 tabular-nums">
-                {lines.length > 0 ? `${lines.length} items · ${formatPrice(step3Subtotal)}` : "Add items to continue"}
+              <div className='hidden sm:block text-xs text-gray-500 tabular-nums'>
+                {lines.length > 0 ?
+                  `${lines.length} items · ${formatPrice(step3Subtotal)}`
+                : "Add items to continue"}
               </div>
-              <Button type="button" variant="brand" onClick={handleNext} className="w-32 rounded-xl shadow-lg">
+              <Button
+                type='button'
+                variant='brand'
+                onClick={handleNext}
+                className='w-32 rounded-xl shadow-lg'
+              >
                 Next →
               </Button>
             </div>
@@ -1392,7 +1668,9 @@ export default function AdminChannelOrderClient({
         <div className={cn(currentStep === 4 ? "block" : "hidden")}>
           <section className='space-y-5 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm'>
             <div>
-              <h2 className='text-lg font-bold text-gray-900'>Payment &amp; confirm</h2>
+              <h2 className='text-lg font-bold text-gray-900'>
+                Payment &amp; confirm
+              </h2>
               <p className='mt-1 text-sm text-gray-500'>
                 Choose how the customer paid, review the order, then create it.
               </p>
@@ -1409,25 +1687,34 @@ export default function AdminChannelOrderClient({
                   aria-pressed={paymentMethod === "offline_upi"}
                   className={cn(
                     "relative flex items-center gap-3 rounded-xl border-2 px-4 py-4 text-left transition-all",
-                    paymentMethod === "offline_upi"
-                      ? "border-brand-600 bg-brand-50 shadow-sm ring-2 ring-brand-100"
-                      : "border-gray-200 bg-white hover:border-gray-300",
+                    paymentMethod === "offline_upi" ?
+                      "border-brand-600 bg-brand-50 shadow-sm ring-2 ring-brand-100"
+                    : "border-gray-200 bg-white hover:border-gray-300",
                   )}
                 >
                   <span
                     className={cn(
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                      paymentMethod === "offline_upi" ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500",
+                      paymentMethod === "offline_upi" ?
+                        "bg-brand-600 text-white"
+                      : "bg-gray-100 text-gray-500",
                     )}
                   >
                     <Smartphone className='h-5 w-5' />
                   </span>
                   <span className='min-w-0 flex-1'>
-                    <span className='block text-sm font-bold text-gray-900'>UPI</span>
-                    <span className='block text-xs text-gray-500'>Paid at sale via UPI</span>
+                    <span className='block text-sm font-bold text-gray-900'>
+                      UPI
+                    </span>
+                    <span className='block text-xs text-gray-500'>
+                      Paid at sale via UPI
+                    </span>
                   </span>
                   {paymentMethod === "offline_upi" ?
-                    <Check className='h-5 w-5 shrink-0 text-brand-600' strokeWidth={2.5} />
+                    <Check
+                      className='h-5 w-5 shrink-0 text-brand-600'
+                      strokeWidth={2.5}
+                    />
                   : null}
                 </button>
                 <button
@@ -1436,25 +1723,34 @@ export default function AdminChannelOrderClient({
                   aria-pressed={paymentMethod === "offline_cash"}
                   className={cn(
                     "relative flex items-center gap-3 rounded-xl border-2 px-4 py-4 text-left transition-all",
-                    paymentMethod === "offline_cash"
-                      ? "border-brand-600 bg-brand-50 shadow-sm ring-2 ring-brand-100"
-                      : "border-gray-200 bg-white hover:border-gray-300",
+                    paymentMethod === "offline_cash" ?
+                      "border-brand-600 bg-brand-50 shadow-sm ring-2 ring-brand-100"
+                    : "border-gray-200 bg-white hover:border-gray-300",
                   )}
                 >
                   <span
                     className={cn(
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                      paymentMethod === "offline_cash" ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500",
+                      paymentMethod === "offline_cash" ?
+                        "bg-brand-600 text-white"
+                      : "bg-gray-100 text-gray-500",
                     )}
                   >
                     <Banknote className='h-5 w-5' />
                   </span>
                   <span className='min-w-0 flex-1'>
-                    <span className='block text-sm font-bold text-gray-900'>Cash</span>
-                    <span className='block text-xs text-gray-500'>Paid at sale in cash</span>
+                    <span className='block text-sm font-bold text-gray-900'>
+                      Cash
+                    </span>
+                    <span className='block text-xs text-gray-500'>
+                      Paid at sale in cash
+                    </span>
                   </span>
                   {paymentMethod === "offline_cash" ?
-                    <Check className='h-5 w-5 shrink-0 text-brand-600' strokeWidth={2.5} />
+                    <Check
+                      className='h-5 w-5 shrink-0 text-brand-600'
+                      strokeWidth={2.5}
+                    />
                   : null}
                 </button>
               </div>
@@ -1478,20 +1774,26 @@ export default function AdminChannelOrderClient({
               <ul className='space-y-2 text-sm'>
                 <li className='flex justify-between gap-3'>
                   <span className='text-gray-500'>Customer</span>
-                  <span className='font-medium text-gray-900 text-right'>{customerName || "—"}</span>
+                  <span className='font-medium text-gray-900 text-right'>
+                    {customerName || "-"}
+                  </span>
                 </li>
                 <li className='flex justify-between gap-3'>
                   <span className='text-gray-500'>Source</span>
                   <span className='font-medium text-gray-900'>
-                    {isB2b ? "B2B wholesale"
-                    : orderSource === "stall" ? "Stall / POS"
+                    {isB2b ?
+                      "B2B wholesale"
+                    : orderSource === "stall" ?
+                      "Stall / POS"
                     : "Personal"}
                   </span>
                 </li>
                 <li className='flex justify-between gap-3'>
                   <span className='text-gray-500'>Fulfillment</span>
                   <span className='font-medium text-gray-900'>
-                    {fulfillment === "delhivery" ? "Delhivery" : "In-person handover"}
+                    {fulfillment === "delhivery" ?
+                      "Delhivery"
+                    : "In-person handover"}
                   </span>
                 </li>
                 <li className='flex justify-between gap-3'>
@@ -1519,13 +1821,13 @@ export default function AdminChannelOrderClient({
                           <span className='text-gray-400'> × {q}</span>
                         </span>
                         <span className='shrink-0 font-medium text-gray-900'>
-                          {Number.isFinite(up) ? formatPrice(revenue) : "—"}
+                          {Number.isFinite(up) ? formatPrice(revenue) : "-"}
                         </span>
                       </div>
                       <div className='flex justify-between gap-3 text-[11px] text-gray-500 pl-4'>
                         <span>COGS</span>
                         <span className='tabular-nums'>
-                          {Number.isFinite(uc) ? formatPrice(cogs) : "—"}
+                          {Number.isFinite(uc) ? formatPrice(cogs) : "-"}
                         </span>
                       </div>
                       <div className='flex justify-between gap-3 text-[11px] pl-4'>
@@ -1533,7 +1835,7 @@ export default function AdminChannelOrderClient({
                         <span className='tabular-nums font-medium text-emerald-800'>
                           {Number.isFinite(up) && Number.isFinite(uc) ?
                             formatPrice(profit)
-                          : "—"}
+                          : "-"}
                         </span>
                       </div>
                     </div>
@@ -1550,22 +1852,30 @@ export default function AdminChannelOrderClient({
                 </div>
                 <div className='flex items-center justify-between text-gray-600'>
                   <span>Total COGS</span>
-                  <span className='font-medium tabular-nums'>{formatPrice(reviewCogs)}</span>
+                  <span className='font-medium tabular-nums'>
+                    {formatPrice(reviewCogs)}
+                  </span>
                 </div>
                 <div className='flex items-center justify-between text-emerald-800'>
                   <span className='font-semibold'>Gross profit</span>
-                  <span className='font-bold tabular-nums'>{formatPrice(reviewProfit)}</span>
+                  <span className='font-bold tabular-nums'>
+                    {formatPrice(reviewProfit)}
+                  </span>
                 </div>
               </div>
               {reviewLinesMissingCost > 0 ?
                 <p className='text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2'>
-                  {reviewLinesMissingCost} line{reviewLinesMissingCost > 1 ? "s" : ""} have no
-                  cost of goods — profit may be overstated on the revenue page.
+                  {reviewLinesMissingCost} line
+                  {reviewLinesMissingCost > 1 ? "s" : ""} have no cost of goods
+                  - profit may be overstated on the revenue page.
                 </p>
               : null}
               <p className='text-[11px] text-gray-500'>
                 Order will be saved as <strong>confirmed &amp; paid</strong>
-                {fulfillment === "offline_handover" ? " and marked delivered" : ""}.
+                {fulfillment === "offline_handover" ?
+                  " and marked delivered"
+                : ""}
+                .
               </p>
             </div>
 

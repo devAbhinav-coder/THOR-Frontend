@@ -4,7 +4,7 @@ import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { serverFetch } from "@/lib/serverFetch";
 
-/** Matches Navbar shop dropdown — keep SSR + client lists identical. */
+/** Matches Navbar shop dropdown - keep SSR + client lists identical. */
 export const SHOP_NAV_CATEGORY_LIMIT = 7;
 
 const fetchMegaMenuCached = cache(async (): Promise<MegaMenuCategory[]> => {

@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ShoppingBag,
   ChevronRight,
   Star,
   Zap,
@@ -19,6 +18,7 @@ import { formatPrice, cn } from "@/lib/utils";
 import { getSelectedVariantPriceDisplay } from "@/lib/productPricing";
 import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/product/ProductDetailSkeleton";
+import BagIcon from "@/components/icons/BagIcon";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -69,7 +69,7 @@ const MAX_REVIEW_IMAGES = 5;
 const MAX_REVIEW_IMAGE_SIZE_MB = UPLOAD_MAX_MB.review;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024;
 const REVIEW_IMAGE_MAX_DIMENSION = 2000;
-/** Generic catalog words — weak signals for related-product name matching. */
+/** Generic catalog words - weak signals for related-product name matching. */
 const RELATED_NAME_STOPWORDS = new Set([
   "saree",
   "sari",
@@ -171,9 +171,9 @@ async function compressReviewImageToWebp(file: File): Promise<File> {
 
 interface Props {
   slug: string;
-  /** Server-rendered product — skips full-page skeleton while reviews/related load. */
+  /** Server-rendered product - skips full-page skeleton while reviews/related load. */
   initialProduct?: Product | null;
-  /** From ?color= query — pre-select shade from shop listing. */
+  /** From ?color= query - pre-select shade from shop listing. */
   initialColor?: string;
 }
 
@@ -212,7 +212,8 @@ export default function ProductDetailClient({
       const res = await productApi.getBySlug(slug);
       return res.data.product as Product;
     },
-    initialData: canHydrateFromInitial(slug, initialProduct) ? initialProduct : undefined,
+    initialData:
+      canHydrateFromInitial(slug, initialProduct) ? initialProduct : undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -226,12 +227,14 @@ export default function ProductDetailClient({
 
   const isLoading = isMainLoading;
 
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(() => {
-    if (!canHydrateFromInitial(slug, initialProduct) || !initialProduct) return null;
-    const variants = normalizeVariants(initialProduct.variants || []);
-    return pickVariantForColor(variants, initialColor || null);
-  });
-
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
+    () => {
+      if (!canHydrateFromInitial(slug, initialProduct) || !initialProduct)
+        return null;
+      const variants = normalizeVariants(initialProduct.variants || []);
+      return pickVariantForColor(variants, initialColor || null);
+    },
+  );
 
   /* Variant / Qty */
   const [quantity, setQuantity] = useState(1);
@@ -302,10 +305,6 @@ export default function ProductDetailClient({
     [pathname, router, searchParams],
   );
 
-  
-
-  
-
   /* React Query Data Fetching replacing manual initial fetch */
   const { data: reviewsData } = useQuery({
     queryKey: ["product-reviews", product?._id],
@@ -313,17 +312,23 @@ export default function ProductDetailClient({
       const res = await reviewApi.getProductReviews(product!._id);
       return {
         reviews: res.data.reviews || [],
-        ratingDistribution: res.data.ratingDistribution || (res.data as any).data?.ratingDistribution || [],
-        pagination: res.data.pagination || { totalPages: 1, total: 0 }
+        ratingDistribution:
+          res.data.ratingDistribution ||
+          (res.data as any).data?.ratingDistribution ||
+          [],
+        pagination: res.data.pagination || { totalPages: 1, total: 0 },
       };
     },
     enabled: !!product?._id,
     staleTime: 5 * 60 * 1000,
   });
-  
+
   const reviews = reviewsData?.reviews || [];
   const ratingDistribution = reviewsData?.ratingDistribution || [];
-  const reviewsPagination = reviewsData?.pagination || { totalPages: 1, total: 0 };
+  const reviewsPagination = reviewsData?.pagination || {
+    totalPages: 1,
+    total: 0,
+  };
 
   const { data: reviewEligibilityData } = useQuery({
     queryKey: ["product-review-eligibility", product?._id],
@@ -342,43 +347,85 @@ export default function ProductDetailClient({
   const reviewEligibility = reviewEligibilityData || null;
 
   const preferredColorKey = normProductColor(
-    preferredColor || pickVariantForColor(normalizeVariants(product?.variants || []), preferredColor)?.color
+    preferredColor ||
+      pickVariantForColor(
+        normalizeVariants(product?.variants || []),
+        preferredColor,
+      )?.color,
   );
 
-  const needsCustomization = product ? productNeedsCustomization(product) : false;
-  const isGiftMarketingContext = !!product?.isGiftable || product?.category?.toLowerCase() === "gifting" || needsCustomization;
+  const needsCustomization =
+    product ? productNeedsCustomization(product) : false;
+  const isGiftMarketingContext =
+    !!product?.isGiftable ||
+    product?.category?.toLowerCase() === "gifting" ||
+    needsCustomization;
 
   const { data: relatedProductsData } = useQuery({
-    queryKey: ["product-related", product?.category, product?._id, preferredColorKey],
+    queryKey: [
+      "product-related",
+      product?.category,
+      product?._id,
+      preferredColorKey,
+    ],
     queryFn: async () => {
-      const res = await productApi.getByCategory(product!.category, { limit: 60, sort: "-soldCount" });
+      const res = await productApi.getByCategory(product!.category, {
+        limit: 60,
+        sort: "-soldCount",
+      });
       const all: Product[] = res.data?.products || [];
-      const scoped = isGiftMarketingContext
-        ? all.filter(r => r.isGiftable || r.category?.toLowerCase() === "gifting" || productNeedsCustomization(r))
-        : all.filter(r => !r.isGiftable && r.category?.toLowerCase() !== "gifting");
-      
+      const scoped =
+        isGiftMarketingContext ?
+          all.filter(
+            (r) =>
+              r.isGiftable ||
+              r.category?.toLowerCase() === "gifting" ||
+              productNeedsCustomization(r),
+          )
+        : all.filter(
+            (r) => !r.isGiftable && r.category?.toLowerCase() !== "gifting",
+          );
+
       const p = product!;
-      const baseColors = new Set((p.variants || []).map(v => v.color).filter(Boolean).map(c => String(c).toLowerCase().trim()));
-      const baseTags = new Set((p.tags || []).map(t => String(t).toLowerCase().trim()));
+      const baseColors = new Set(
+        (p.variants || [])
+          .map((v) => v.color)
+          .filter(Boolean)
+          .map((c) => String(c).toLowerCase().trim()),
+      );
+      const baseTags = new Set(
+        (p.tags || []).map((t) => String(t).toLowerCase().trim()),
+      );
       const baseSub = p.subcategory?.toLowerCase().trim();
       const baseFab = p.fabric?.toLowerCase().trim();
 
       const scored = scoped
-        .filter(r => r._id !== p._id)
-        .map(r => {
+        .filter((r) => r._id !== p._id)
+        .map((r) => {
           let score = 0;
           if (isGiftMarketingContext) {
-            const baseOccasions = new Set((p.occasions || []).map(o => String(o).toLowerCase().trim()));
-            const rOccasions = new Set((r.occasions || []).map(o => String(o).toLowerCase().trim()));
+            const baseOccasions = new Set(
+              (p.occasions || []).map((o) => String(o).toLowerCase().trim()),
+            );
+            const rOccasions = new Set(
+              (r.occasions || []).map((o) => String(o).toLowerCase().trim()),
+            );
             let occasionOverlap = 0;
-            rOccasions.forEach(o => { if (baseOccasions.has(o)) occasionOverlap += 1 });
+            rOccasions.forEach((o) => {
+              if (baseOccasions.has(o)) occasionOverlap += 1;
+            });
             score += Math.min(occasionOverlap, 3) * 50;
 
-            if (productNeedsCustomization(p) === productNeedsCustomization(r)) score += 40;
+            if (productNeedsCustomization(p) === productNeedsCustomization(r))
+              score += 40;
 
-            const rTags = new Set((r.tags || []).map(t => String(t).toLowerCase().trim()));
+            const rTags = new Set(
+              (r.tags || []).map((t) => String(t).toLowerCase().trim()),
+            );
             let tagOverlap = 0;
-            rTags.forEach(t => { if (baseTags.has(t)) tagOverlap += 1 });
+            rTags.forEach((t) => {
+              if (baseTags.has(t)) tagOverlap += 1;
+            });
             score += Math.min(tagOverlap, 5) * 10;
           } else {
             const rSub = r.subcategory?.toLowerCase().trim();
@@ -386,25 +433,40 @@ export default function ProductDetailClient({
             if (baseSub && rSub && baseSub === rSub) score += 60;
             if (baseFab && rFab && baseFab === rFab) score += 40;
             if (preferredColorKey) {
-              const rHasShade = (r.variants || []).some(v => normProductColor(v.color) === preferredColorKey);
+              const rHasShade = (r.variants || []).some(
+                (v) => normProductColor(v.color) === preferredColorKey,
+              );
               if (rHasShade) score += 35;
               if (colorHasTaggedImages(r, preferredColorKey)) score += 25;
             }
-            const rColors = new Set((r.variants || []).map(v => v.color).filter(Boolean).map(c => String(c).toLowerCase().trim()));
+            const rColors = new Set(
+              (r.variants || [])
+                .map((v) => v.color)
+                .filter(Boolean)
+                .map((c) => String(c).toLowerCase().trim()),
+            );
             let colorOverlap = 0;
-            rColors.forEach(c => { if (baseColors.has(c)) colorOverlap += 1 });
+            rColors.forEach((c) => {
+              if (baseColors.has(c)) colorOverlap += 1;
+            });
             score += Math.min(colorOverlap, 3) * 15;
-            const rTags = new Set((r.tags || []).map(t => String(t).toLowerCase().trim()));
+            const rTags = new Set(
+              (r.tags || []).map((t) => String(t).toLowerCase().trim()),
+            );
             let tagOverlap = 0;
-            rTags.forEach(t => { if (baseTags.has(t)) tagOverlap += 1 });
+            rTags.forEach((t) => {
+              if (baseTags.has(t)) tagOverlap += 1;
+            });
             score += Math.min(tagOverlap, 4) * 6;
           }
 
           const pLower = p.name.toLowerCase();
           const rLower = r.name.toLowerCase();
-          const pKeywords = pLower.split(/\s+/).filter(k => k.length > 2);
+          const pKeywords = pLower.split(/\s+/).filter((k) => k.length > 2);
           let nameMatchScore = 0;
-          pKeywords.forEach(keyword => { if (rLower.includes(keyword)) nameMatchScore += 15 });
+          pKeywords.forEach((keyword) => {
+            if (rLower.includes(keyword)) nameMatchScore += 15;
+          });
           score += Math.min(nameMatchScore, 45);
 
           if (sumVariantStock(r) > 0) score += 6;
@@ -416,7 +478,10 @@ export default function ProductDetailClient({
         .map(({ r }) => r)
         .slice(0, 8);
 
-      const bestRelated = scored.map(r => ({ ...r, images: normalizeProductImages(r.images) }));
+      const bestRelated = scored.map((r) => ({
+        ...r,
+        images: normalizeProductImages(r.images),
+      }));
       return bestRelated;
     },
     enabled: !!product && !!product.category,
@@ -428,17 +493,31 @@ export default function ProductDetailClient({
   const { data: moreProductsData } = useQuery({
     queryKey: ["product-more", relatedProducts?.[0]?._id],
     queryFn: async () => {
-      const moreRes = await productApi.getAll({ limit: 48, sort: "-createdAt" });
+      const moreRes = await productApi.getAll({
+        limit: 48,
+        sort: "-createdAt",
+      });
       const all: Product[] = moreRes.data?.products || [];
-      const scoped = isGiftMarketingContext
-        ? all.filter(r => r.isGiftable || r.category?.toLowerCase() === "gifting" || productNeedsCustomization(r))
-        : all.filter(r => !r.isGiftable && r.category?.toLowerCase() !== "gifting");
-      
-      const exclude = new Set<string>([product!._id, ...relatedProducts.map((x: any) => x._id)]);
+      const scoped =
+        isGiftMarketingContext ?
+          all.filter(
+            (r) =>
+              r.isGiftable ||
+              r.category?.toLowerCase() === "gifting" ||
+              productNeedsCustomization(r),
+          )
+        : all.filter(
+            (r) => !r.isGiftable && r.category?.toLowerCase() !== "gifting",
+          );
+
+      const exclude = new Set<string>([
+        product!._id,
+        ...relatedProducts.map((x: any) => x._id),
+      ]);
       const bestMore = scoped
-        .filter(r => !exclude.has(r._id))
+        .filter((r) => !exclude.has(r._id))
         .slice(0, 8)
-        .map(r => ({ ...r, images: normalizeProductImages(r.images) }));
+        .map((r) => ({ ...r, images: normalizeProductImages(r.images) }));
       return bestMore;
     },
     enabled: !!product && relatedProducts.length > 0,
@@ -821,41 +900,63 @@ export default function ProductDetailClient({
 
       const created = await reviewApi.create(product!._id, formData);
       const newReview: Review = created.data.review;
-      const submittedRating = Math.max(1, Math.min(5, Number(newReview.rating || reviewForm.rating || 0)));
+      const submittedRating = Math.max(
+        1,
+        Math.min(5, Number(newReview.rating || reviewForm.rating || 0)),
+      );
 
-      queryClient.setQueryData(["product-reviews", product?._id], (old: any) => {
-        if (!old) return old;
-        const nextDistribution = [...(old.ratingDistribution || [])];
-        const idx = nextDistribution.findIndex((d: any) => Number(d._id) === submittedRating);
-        if (idx >= 0) {
-          nextDistribution[idx] = { ...nextDistribution[idx], count: Number(nextDistribution[idx].count || 0) + 1 };
-        } else {
-          nextDistribution.push({ _id: submittedRating, count: 1 });
-        }
-        return {
-          ...old,
-          reviews: [newReview, ...(old.reviews || [])],
-          pagination: { ...old.pagination, total: (old.pagination?.total || 0) + 1 },
-          ratingDistribution: nextDistribution
-        };
-      });
+      queryClient.setQueryData(
+        ["product-reviews", product?._id],
+        (old: any) => {
+          if (!old) return old;
+          const nextDistribution = [...(old.ratingDistribution || [])];
+          const idx = nextDistribution.findIndex(
+            (d: any) => Number(d._id) === submittedRating,
+          );
+          if (idx >= 0) {
+            nextDistribution[idx] = {
+              ...nextDistribution[idx],
+              count: Number(nextDistribution[idx].count || 0) + 1,
+            };
+          } else {
+            nextDistribution.push({ _id: submittedRating, count: 1 });
+          }
+          return {
+            ...old,
+            reviews: [newReview, ...(old.reviews || [])],
+            pagination: {
+              ...old.pagination,
+              total: (old.pagination?.total || 0) + 1,
+            },
+            ratingDistribution: nextDistribution,
+          };
+        },
+      );
 
       queryClient.setQueryData(["product", slug], (old: any) => {
         if (!old) return old;
         const prevCount = Number(old.ratings?.count || 0);
         const prevAvg = Number(old.ratings?.average || 0);
         const nextCount = prevCount + 1;
-        const nextAvg = nextCount > 0 ? Number(((prevAvg * prevCount + submittedRating) / nextCount).toFixed(1)) : submittedRating;
+        const nextAvg =
+          nextCount > 0 ?
+            Number(
+              ((prevAvg * prevCount + submittedRating) / nextCount).toFixed(1),
+            )
+          : submittedRating;
         return {
           ...old,
-          ratings: { ...old.ratings, average: nextAvg, count: nextCount }
+          ratings: { ...old.ratings, average: nextAvg, count: nextCount },
         };
       });
 
-      queryClient.setQueryData(["product-review-eligibility", product?._id], (old: any) => {
-        if (!old) return old;
-        return { ...old, canReview: false, hasReviewed: true };
-      });
+      queryClient.setQueryData(
+        ["product-review-eligibility", product?._id],
+        (old: any) => {
+          if (!old) return old;
+          return { ...old, canReview: false, hasReviewed: true };
+        },
+      );
 
       setShowReviewForm(false);
       setReviewForm({ rating: 5, title: "", comment: "" });
@@ -863,21 +964,26 @@ export default function ProductDetailClient({
       setReviewPreviews([]);
       toast.success("Review submitted! Thank you.");
     } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || "Failed to submit review");
+      toast.error(
+        (err as { message?: string })?.message || "Failed to submit review",
+      );
     } finally {
       setIsSubmittingReview(false);
     }
   };
 
-  const updateHelpfulCountLocally = (reviewId: string, helpfulCount: number) => {
+  const updateHelpfulCountLocally = (
+    reviewId: string,
+    helpfulCount: number,
+  ) => {
     const votes = Array.from({ length: helpfulCount }, () => "");
     queryClient.setQueryData(["product-reviews", product?._id], (old: any) => {
       if (!old) return old;
       return {
         ...old,
         reviews: (old.reviews || []).map((review: any) =>
-          review._id === reviewId ? { ...review, helpfulVotes: votes } : review
-        )
+          review._id === reviewId ? { ...review, helpfulVotes: votes } : review,
+        ),
       };
     });
   };
@@ -1256,7 +1362,7 @@ export default function ProductDetailClient({
                     Adding...
                   </>
                 : <>
-                    <ShoppingBag className='h-4 w-4' /> Add to Bag
+                    <BagIcon className='h-4 w-4' /> Add to Bag
                   </>
                 }
               </button>

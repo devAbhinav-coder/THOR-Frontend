@@ -38,7 +38,7 @@ export default function ExploreHouseShowcaseCard({
         fill
         loader={disableLoader ? undefined : cloudinaryLoader}
         unoptimized={disableLoader}
-        sizes="(max-width: 640px) 30vw, (max-width: 1024px) 160px, 215px"
+        sizes='(max-width: 640px) 30vw, (max-width: 1024px) 160px, 215px'
         className={cn(
           "card-hover-zoom object-cover transition-transform duration-500 ease-out",
           !card.comingSoon && "group-hover:scale-105",
@@ -46,17 +46,17 @@ export default function ExploreHouseShowcaseCard({
         priority={priority}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+      <div className='pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black/90 via-black/50 to-transparent' />
 
       {card.comingSoon && (
-        <div className="pointer-events-none absolute inset-0 z-[1] bg-black/20" />
+        <div className='pointer-events-none absolute inset-0 z-[1] bg-black/20' />
       )}
 
-      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center justify-end px-2 pb-3 text-center text-white sm:px-2.5 sm:pb-3.5 lg:pb-4 xl:pb-5">
-        <h3 className="line-clamp-2 font-serif text-xs font-medium leading-tight tracking-wide drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] sm:text-sm lg:text-base xl:text-lg">
+      <div className='absolute inset-x-0 bottom-0 z-10 flex flex-col items-center justify-end px-2 pb-3 text-center text-white sm:px-2.5 sm:pb-3.5 lg:pb-4 xl:pb-5'>
+        <h3 className='line-clamp-2 font-serif text-xs font-medium leading-tight tracking-wide drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] sm:text-sm lg:text-base xl:text-lg'>
           {card.name}
         </h3>
-        {card.subtitle ? (
+        {card.subtitle ?
           <p
             className={cn(
               "mt-1 max-w-full px-0.5 text-[7px] font-semibold uppercase leading-[1.35] tracking-[0.08em] drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)] sm:text-[8px] sm:tracking-[0.12em] lg:text-[9px] lg:tracking-[0.16em] xl:text-[10px]",
@@ -65,7 +65,7 @@ export default function ExploreHouseShowcaseCard({
           >
             {card.subtitle}
           </p>
-        ) : null}
+        : null}
       </div>
     </>
   );
@@ -74,7 +74,7 @@ export default function ExploreHouseShowcaseCard({
     return (
       <div
         className={cn(EXPLORE_HOUSE_CARD_CLASS, "overflow-hidden", className)}
-        aria-label={`${card.name} — Coming soon`}
+        aria-label={`${card.name} - Coming soon`}
       >
         {content}
       </div>

@@ -160,7 +160,10 @@ function B2bOrderImportPanel({ hidden }: { hidden?: boolean }) {
     let cancelled = false;
     setLoading(true);
     adminApi
-      .listB2bOrdersPendingTaxInvoice({ search: debounced || undefined, limit: 20 })
+      .listB2bOrdersPendingTaxInvoice({
+        search: debounced || undefined,
+        limit: 20,
+      })
       .then((res) => {
         if (!cancelled) setOrders(res.data.orders as PendingB2bOrder[]);
       })
@@ -186,7 +189,8 @@ function B2bOrderImportPanel({ hidden }: { hidden?: boolean }) {
             Create from B2B order
           </h2>
           <p className='mt-1 text-xs text-violet-800/90'>
-            Pick a wholesale order (THOR-…) — a new GST bill gets its own INV- number. Stock is not changed again.
+            Pick a wholesale order (THOR-…) - a new GST bill gets its own INV-
+            number. Stock is not changed again.
           </p>
         </div>
         <div className='relative w-full sm:max-w-xs'>
@@ -212,11 +216,18 @@ function B2bOrderImportPanel({ hidden }: { hidden?: boolean }) {
           </p>
         : <ul className='divide-y divide-gray-100'>
             {orders.map((order) => (
-              <li key={order._id} className='flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between'>
+              <li
+                key={order._id}
+                className='flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between'
+              >
                 <div className='min-w-0'>
-                  <p className='text-sm font-bold text-gray-900'>{order.orderNumber}</p>
+                  <p className='text-sm font-bold text-gray-900'>
+                    {order.orderNumber}
+                  </p>
                   <p className='text-xs text-gray-600 truncate'>
-                    {order.companyName?.trim() || order.buyerName?.trim() || "Buyer"}
+                    {order.companyName?.trim() ||
+                      order.buyerName?.trim() ||
+                      "Buyer"}
                     {order.gstin ? ` • ${order.gstin}` : ""}
                   </p>
                   <p className='text-[11px] text-gray-400 mt-0.5'>
@@ -233,8 +244,12 @@ function B2bOrderImportPanel({ hidden }: { hidden?: boolean }) {
                   onClick={async () => {
                     setCreatingFor(order._id);
                     try {
-                      const res = await adminApi.createTaxInvoiceFromOrder(order._id);
-                      toast.success(`Invoice created from ${order.orderNumber}`);
+                      const res = await adminApi.createTaxInvoiceFromOrder(
+                        order._id,
+                      );
+                      toast.success(
+                        `Invoice created from ${order.orderNumber}`,
+                      );
                       router.push(
                         `/admin/invoices/new?id=${encodeURIComponent(res.data.invoice.id)}`,
                       );
@@ -285,7 +300,7 @@ export default function NewSalesInvoicePage() {
   /** Bumps on StrictMode remount / dependency change so stale `getInvoice` runs never touch state or leave `hydrating` stuck. */
   const hydrateGenRef = useRef(0);
   const [persistedId, setPersistedId] = useState<string | null>(null);
-  /** Server `createdAt` — printed on the invoice as "Created on" after first save. */
+  /** Server `createdAt` - printed on the invoice as "Created on" after first save. */
   const [recordCreatedAt, setRecordCreatedAt] = useState<string | null>(null);
 
   const [seller, setSeller] = useState<SellerDetails>(DEFAULT_SELLER);
@@ -331,7 +346,7 @@ export default function NewSalesInvoicePage() {
               (found.meta as Partial<InvoiceMeta>)
             : {}),
           } as InvoiceMeta);
-          /** Server doesn't persist the client-side `id` on each row — re-create them on hydrate so React keys stay stable. */
+          /** Server doesn't persist the client-side `id` on each row - re-create them on hydrate so React keys stay stable. */
           const rawLines = found.lines;
           const lineSource = Array.isArray(rawLines) ? rawLines : [];
           const hydrated: InvoiceLine[] = lineSource.map((l) => ({
@@ -351,7 +366,7 @@ export default function NewSalesInvoicePage() {
             typeof found.createdAt === "string" ? found.createdAt : null,
           );
         } else {
-          toast.error("Invoice not found — starting a new one.");
+          toast.error("Invoice not found - starting a new one.");
         }
       } catch {
         if (runId === hydrateGenRef.current) {
@@ -525,8 +540,12 @@ export default function NewSalesInvoicePage() {
 
       <div className='print-hidden'>
         <AdminPageHeader
-          title={persistedId ? "Edit GST tax invoice (INV)" : "New GST tax invoice (INV)"}
-          description='B2B wholesale billing — numbers start with INV-. Store orders use THOR- (The House of Rani).'
+          title={
+            persistedId ?
+              "Edit GST tax invoice (INV)"
+            : "New GST tax invoice (INV)"
+          }
+          description='B2B wholesale billing - numbers start with INV-. Store orders use THOR- (The House of Rani).'
           badge='Admin billing'
           actions={
             <div className='flex flex-wrap gap-2'>
@@ -871,7 +890,7 @@ export default function NewSalesInvoicePage() {
             </div>
           </section>
 
-          {/* Seller (collapsed at the bottom — defaults usually fine) */}
+          {/* Seller (collapsed at the bottom - defaults usually fine) */}
           <section className={card}>
             <div className='mb-4 flex items-center gap-2'>
               <span className={sectionBadge}>5</span>
@@ -880,7 +899,7 @@ export default function NewSalesInvoicePage() {
                 Seller (your business)
               </h2>
               <span className='ml-2 text-[11px] text-gray-500'>
-                Pre-filled — edit if your details change
+                Pre-filled - edit if your details change
               </span>
             </div>
             <div className='grid gap-4 sm:grid-cols-2'>
@@ -1100,7 +1119,7 @@ export default function NewSalesInvoicePage() {
 /* ───────────────────────── Sub-components ───────────────────────── */
 
 /**
- * Renders the children at their natural width (default 850px — the invoice's
+ * Renders the children at their natural width (default 850px - the invoice's
  * `max-w`) and proportionally scales the entire box down to fit the parent.
  *
  * Used so the live preview never gets horizontally cut off in the narrow
@@ -1204,7 +1223,7 @@ function SummaryStrip({
           <p className='font-bold tabular-nums text-gray-900'>
             {totals.totalDiscount > 0 ?
               `− ${formatINRMoney(totals.totalDiscount)}`
-            : "—"}
+            : "-"}
           </p>
         </div>
         <div>
@@ -1216,7 +1235,7 @@ function SummaryStrip({
             : "Tax"}
           </p>
           <p className='font-bold tabular-nums text-gray-900'>
-            {taxMode === "none" ? "—" : formatINRMoney(totals.totalGst)}
+            {taxMode === "none" ? "-" : formatINRMoney(totals.totalGst)}
           </p>
         </div>
         <div>
@@ -1294,7 +1313,7 @@ function ItemRow({
             value={line.description}
             onChange={(e) => onPatch({ description: e.target.value })}
             className={inputBase}
-            placeholder='e.g. Banarasi silk saree — wholesale lot'
+            placeholder='e.g. Banarasi silk saree - wholesale lot'
           />
         </label>
         {showHsn ?

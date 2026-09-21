@@ -1,10 +1,15 @@
 import type { BlogImageLayout } from "@/types";
 
-/** Bento grid card patterns — cycles every 4 posts after the featured hero. */
+/** Bento grid card patterns - cycles every 4 posts after the featured hero. */
 export type GridCardVariant = "wide" | "portrait" | "square" | "horizontal";
 
 export function gridVariantForIndex(index: number): GridCardVariant {
-  const variants: GridCardVariant[] = ["wide", "portrait", "square", "horizontal"];
+  const variants: GridCardVariant[] = [
+    "wide",
+    "portrait",
+    "square",
+    "horizontal",
+  ];
   return variants[index % variants.length];
 }
 
@@ -14,12 +19,42 @@ export const BLOG_IMAGE_LAYOUTS: {
   aspect: number | undefined;
   hint: string;
 }[] = [
-  { value: "hero", label: "Hero Banner", aspect: 16 / 9, hint: "Full-width feature image" },
-  { value: "wide", label: "Wide (16:9)", aspect: 16 / 9, hint: "Listing wide card" },
-  { value: "portrait", label: "Portrait (4:5)", aspect: 4 / 5, hint: "Tall editorial card" },
-  { value: "square", label: "Square (1:1)", aspect: 1, hint: "Balanced grid tile" },
-  { value: "inline", label: "Inline Article", aspect: 16 / 10, hint: "In-article figure" },
-  { value: "split", label: "Split Row", aspect: 1, hint: "Side-by-side layout" },
+  {
+    value: "hero",
+    label: "Hero Banner",
+    aspect: 16 / 9,
+    hint: "Full-width feature image",
+  },
+  {
+    value: "wide",
+    label: "Wide (16:9)",
+    aspect: 16 / 9,
+    hint: "Listing wide card",
+  },
+  {
+    value: "portrait",
+    label: "Portrait (4:5)",
+    aspect: 4 / 5,
+    hint: "Tall editorial card",
+  },
+  {
+    value: "square",
+    label: "Square (1:1)",
+    aspect: 1,
+    hint: "Balanced grid tile",
+  },
+  {
+    value: "inline",
+    label: "Inline Article",
+    aspect: 16 / 10,
+    hint: "In-article figure",
+  },
+  {
+    value: "split",
+    label: "Split Row",
+    aspect: 1,
+    hint: "Side-by-side layout",
+  },
 ];
 
 export function defaultLayoutForIndex(index: number): BlogImageLayout {

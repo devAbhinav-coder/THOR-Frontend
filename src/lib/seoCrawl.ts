@@ -24,10 +24,12 @@ export const SEO_CRAWL_DISALLOW = [
   "/api/",
 ] as const;
 
-/** Public storefront pages — sitemap + explicit robots Allow. */
+/** Public storefront pages - sitemap + explicit robots Allow. */
 export const SEO_SITEMAP_STATIC: Array<{
   path: string;
-  changeFrequency: NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
+  changeFrequency: NonNullable<
+    MetadataRoute.Sitemap[number]["changeFrequency"]
+  >;
   priority: number;
 }> = [
   { path: "/", changeFrequency: "daily", priority: 1 },
@@ -72,7 +74,7 @@ export const SEO_CRAWL_ALLOW_PUBLIC = [
   "/ai.txt",
 ] as const;
 
-/** Image SEO allow list (Googlebot-Image) — keep in sync with public storefront media. */
+/** Image SEO allow list (Googlebot-Image) - keep in sync with public storefront media. */
 export const SEO_CRAWL_ALLOW_IMAGES = [
   "/",
   "/shop",
@@ -87,7 +89,7 @@ export const SEO_CRAWL_ALLOW_IMAGES = [
 ] as const;
 
 /**
- * Answer-engine / AEO crawlers — allow public pages + llms.txt.
+ * Answer-engine / AEO crawlers - allow public pages + llms.txt.
  * Training-only bots stay blocked in robots.ts.
  */
 export const SEO_AI_ANSWER_BOTS = [

@@ -21,7 +21,7 @@ import whyChooseUsImg from "@/assets/why-choose-us.png";
 
 function productImageAlt(product: Product): string {
   const name = product.name?.trim() || "saree";
-  return `${name} — shop at ${BRAND_NAME}`;
+  return `${name} - shop at ${BRAND_NAME}`;
 }
 
 function toProductVisual(p: Product): AboutVisualImage | null {
@@ -54,7 +54,7 @@ function toVisual(img: AboutImage | null | undefined): AboutVisualImage | null {
   if (!src) return null;
   return {
     src,
-    alt: img?.alt || `${BRAND_NAME} — handcrafted sarees`,
+    alt: img?.alt || `${BRAND_NAME} - handcrafted sarees`,
     caption: img?.caption,
   };
 }
@@ -72,7 +72,13 @@ function attachProductHref(
   });
   if (!match) return visual;
   const linked = toProductVisual(match);
-  return linked ? { ...visual, href: linked.href, caption: linked.caption ?? visual.caption } : visual;
+  return linked ?
+      {
+        ...visual,
+        href: linked.href,
+        caption: linked.caption ?? visual.caption,
+      }
+    : visual;
 }
 
 /** Same ordered list as before: hero slides → featured → brand fallbacks. */
@@ -98,7 +104,7 @@ async function resolveAboutPageImages(
     const title = slide.title?.trim() || "ethnic saree collection";
     push(
       slide.image as string,
-      `${title} — ${BRAND_NAME} handcrafted sarees`,
+      `${title} - ${BRAND_NAME} handcrafted sarees`,
       slide.subtitle?.trim(),
     );
   });
@@ -110,13 +116,10 @@ async function resolveAboutPageImages(
     }
   });
 
-  push(
-    whyChooseUsImg.src,
-    `${BRAND_NAME} — premium Indian ethnic wear`,
-  );
+  push(whyChooseUsImg.src, `${BRAND_NAME} - premium Indian ethnic wear`);
 
   const ogFallback = `${getSiteUrl()}/ogimage.png`;
-  if (out.length < 2) push(ogFallback, `${BRAND_NAME} — About us`);
+  if (out.length < 2) push(ogFallback, `${BRAND_NAME} - About us`);
 
   return out.slice(0, 8);
 }
@@ -128,9 +131,7 @@ function pickFeaturedForSection(
   fallbackIndex: number,
 ): AboutVisualImage | null {
   const candidate =
-    products.find(
-      (p) => !heroSlideSrcs.has(p.src) && !usedSrcs.has(p.src),
-    ) ??
+    products.find((p) => !heroSlideSrcs.has(p.src) && !usedSrcs.has(p.src)) ??
     products.find((p) => !heroSlideSrcs.has(p.src)) ??
     products[fallbackIndex] ??
     products[0] ??
@@ -162,20 +163,28 @@ async function resolveAboutVisualsAsync(
     .map((img) => attachProductHref(toVisual(img), featured))
     .filter((v): v is AboutVisualImage => Boolean(v));
 
-  const intention =
-    pickFeaturedForSection(products, heroSlideSrcs, usedProductSrcs, 0) ??
+  const intention = pickFeaturedForSection(
+    products,
+    heroSlideSrcs,
+    usedProductSrcs,
+    0,
+  ) ??
     attachProductHref(toVisual(images[4]), featured) ??
     attachProductHref(toVisual(images[5]), featured) ?? {
       src: whyChooseUsImg.src,
-      alt: `${BRAND_NAME} — premium Indian ethnic wear`,
+      alt: `${BRAND_NAME} - premium Indian ethnic wear`,
       href: "/shop",
     };
 
-  const connect =
-    pickFeaturedForSection(products, heroSlideSrcs, usedProductSrcs, 1) ??
+  const connect = pickFeaturedForSection(
+    products,
+    heroSlideSrcs,
+    usedProductSrcs,
+    1,
+  ) ??
     pickFeaturedForSection(products, heroSlideSrcs, new Set(), 0) ?? {
       src: whyChooseUsImg.src,
-      alt: `${BRAND_NAME} — premium Indian ethnic wear`,
+      alt: `${BRAND_NAME} - premium Indian ethnic wear`,
       href: "/shop",
     };
 
@@ -189,7 +198,9 @@ async function resolveAboutVisualsAsync(
 }
 
 /** Unique images for JSON-LD */
-export function collectAboutSchemaImages(visuals: AboutPageVisuals): AboutImage[] {
+export function collectAboutSchemaImages(
+  visuals: AboutPageVisuals,
+): AboutImage[] {
   const out: AboutImage[] = [];
   const seen = new Set<string>();
   const push = (img: AboutImage | null | undefined) => {
@@ -228,13 +239,14 @@ function buildStaticInternalLinks(): AboutInternalLink[] {
     {
       href: "/shop/collections?sort=newest",
       label: "New arrivals",
-      description: "Latest drops — modern drapes with heritage motifs.",
+      description: "Latest drops - modern drapes with heritage motifs.",
       group: "shop",
     },
     {
       href: "/shop/collections/sarees",
       label: "Sarees",
-      description: "Designer weaves for weddings, festivals, and everyday elegance.",
+      description:
+        "Designer weaves for weddings, festivals, and everyday elegance.",
       group: "shop",
     },
     {
@@ -252,7 +264,8 @@ function buildStaticInternalLinks(): AboutInternalLink[] {
     {
       href: "/premium",
       label: "Premium saree edit",
-      description: "Handwoven silks and heritage weaves curated for the discerning few.",
+      description:
+        "Handwoven silks and heritage weaves curated for the discerning few.",
       group: "shop",
     },
     {
@@ -340,7 +353,9 @@ export async function resolveAboutPageData(): Promise<AboutPageData> {
     fetchHomeCategoryStats(),
   ]);
 
-  const categories = (categoryStats || []).filter(isShopCatalogCategory).slice(0, 8);
+  const categories = (categoryStats || [])
+    .filter(isShopCatalogCategory)
+    .slice(0, 8);
   const visuals = await resolveAboutVisualsAsync(featured);
   const products = toProductTeasers(featured);
   const internalLinks = dedupeInternalLinks([

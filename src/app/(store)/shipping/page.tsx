@@ -5,16 +5,16 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/shipping",
-  title: "Shipping Policy — Pan-India Delivery",
+  title: "Shipping Policy - Pan-India Delivery",
   description:
-    "Shipping across India — processing times, 3–10 day delivery estimates, free delivery over ₹1,099, tracking, and delays.",
+    "Shipping across India - processing times, 3–10 day delivery estimates, free delivery over ₹1,099, tracking, and delays.",
   priority: "support",
 });
 
 export default function ShippingPage() {
   return (
     <LegalPageLayout
-      title='Shipping Policy — Sarees & Ethnic Wear Across India'
+      title='Shipping Policy - Sarees & Ethnic Wear Across India'
       description='This policy describes how we process, ship, and deliver orders within India. Timelines are estimates; actual delivery depends on your location and courier performance.'
       lastUpdated='27 March 2026'
     >
@@ -47,7 +47,7 @@ export default function ShippingPage() {
         After dispatch, estimated transit time is generally{" "}
         <strong>3–10 business days</strong> for most pin codes in India,
         depending on distance and service level. Remote or difficult-to-reach
-        areas may take longer. These are estimates only—not guaranteed delivery
+        areas may take longer. These are estimates only-not guaranteed delivery
         dates unless we explicitly offer a guaranteed service and state the
         terms.
       </p>
@@ -107,7 +107,7 @@ export default function ShippingPage() {
       <p>
         <strong>Returns:</strong> Shipping and any separate COD (cash on
         delivery) handling fee are <strong>not refundable</strong> when a return
-        is approved — refunds cover the eligible product value only, consistent
+        is approved - refunds cover the eligible product value only, consistent
         with our Terms of Service.
       </p>
 
@@ -129,7 +129,9 @@ export default function ShippingPage() {
       <p>
         For shipping questions, address changes before dispatch, or delivery
         issues, email{" "}
-        <a href='mailto:support@thehouseofrani.com'>support@thehouseofrani.com</a>
+        <a href='mailto:support@thehouseofrani.com'>
+          support@thehouseofrani.com
+        </a>
         . Include your <strong>order number</strong> so we can help quickly.
       </p>
 

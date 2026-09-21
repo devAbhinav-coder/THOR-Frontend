@@ -17,7 +17,7 @@ type Props = {
   type: OtpFlowType;
   /** Bump to reset the cooldown timer after the parent sends the first code. */
   resetKey?: number;
-  /** Server hint (seconds) when parent just sent a code — overrides default 60s. */
+  /** Server hint (seconds) when parent just sent a code - overrides default 60s. */
   initialSeconds?: number;
   className?: string;
   /**
@@ -83,12 +83,16 @@ export function OtpResendCooldown({
   return (
     <div className={className ?? "flex flex-col items-center gap-1"}>
       <button
-        type="button"
+        type='button'
         onClick={() => void onResend()}
         disabled={disabled}
-        className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#c5a059] transition-colors hover:text-[#b8924d] disabled:cursor-not-allowed disabled:text-gray-300"
+        className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[#c5a059] transition-colors hover:text-[#b8924d] disabled:cursor-not-allowed disabled:text-gray-300'
       >
-        {loading ? "Sending…" : secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : "Resend code"}
+        {loading ?
+          "Sending…"
+        : secondsLeft > 0 ?
+          `Resend code in ${secondsLeft}s`
+        : "Resend code"}
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
 /**
  * React list key for cart / checkout lines. SKU alone is not unique when the same
- * variant is added twice with different customFieldAnswers — duplicate keys cause
+ * variant is added twice with different customFieldAnswers - duplicate keys cause
  * row reuse and wrong product images after quantity/remove updates.
  */
 

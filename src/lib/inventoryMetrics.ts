@@ -1,4 +1,4 @@
-import { formatPrice } from '@/lib/utils';
+import { formatPrice } from "@/lib/utils";
 
 export interface CatalogProfitInput {
   soldCount: number;
@@ -23,30 +23,29 @@ export function buildCatalogProfitBreakdown({
 }
 
 export function formatTurnover(turnover: number | null | undefined): string {
-  if (turnover == null) return 'Sold out';
-  if (turnover === 0) return '0x';
+  if (turnover == null) return "Sold out";
+  if (turnover === 0) return "0x";
   return `${turnover.toFixed(1)}x`;
 }
 
 export const INVENTORY_METRIC_NOTES = {
   estMeaning:
-    '"Est." = estimated from catalog (units already sold × price/cost). Past sales math — NOT a future forecast.',
+    '"Est." = estimated from catalog (units already sold × price/cost). Past sales math - NOT a future forecast.',
   catalogVsOrders:
-    'This is catalog math. Actual cash collected is on the Revenue page (paid orders).',
+    "This is catalog math. Actual cash collected is on the Revenue page (paid orders).",
   productLevelSales:
-    'Each size/color SKU has its own soldCount. Product total = sum of all SKUs.',
+    "Each size/color SKU has its own soldCount. Product total = sum of all SKUs.",
   variantSoldCount:
-    'Each SKU (size + color) tracks sold units separately in variant breakdown.',
-  costMethod:
-    'Purchase bills update cost using WAC (weighted average cost).',
+    "Each SKU (size + color) tracks sold units separately in variant breakdown.",
+  costMethod: "Purchase bills update cost using WAC (weighted average cost).",
   avgCost:
-    'Avg cost = stock-weighted average of variant purchase costs currently on hand.',
+    "Avg cost = stock-weighted average of variant purchase costs currently on hand.",
   avgMrp:
-    'Each SKU uses its own list price. Lifetime revenue = Σ (SKU sold × SKU sell price).',
+    "Each SKU uses its own list price. Lifetime revenue = Σ (SKU sold × SKU sell price).",
   effectiveSellPrice:
-    'Blended avg sell when SKU sold counts are missing; otherwise per-SKU sum.',
+    "Blended avg sell when SKU sold counts are missing; otherwise per-SKU sum.",
   variantStock:
-    'Stock, cost & MRP are per SKU. totalStock = sum of all variant stocks.',
+    "Stock, cost & MRP are per SKU. totalStock = sum of all variant stocks.",
 } as const;
 
 export function summaryTooltipLines(input: {
@@ -60,33 +59,53 @@ export function summaryTooltipLines(input: {
 }) {
   return {
     unitsSold: [
-      { label: 'Units sold', value: input.sold.toLocaleString('en-IN') },
-      { label: 'Per SKU', value: 'Size + color wise' },
+      { label: "Units sold", value: input.sold.toLocaleString("en-IN") },
+      { label: "Per SKU", value: "Size + color wise" },
     ],
     grossRevenue: [
-      { label: 'Meaning', value: 'Est. = catalog estimate' },
-      { label: 'Formula', value: 'Σ (SKU sold × SKU sell price)' },
-      { label: 'Example', value: 'Red 50×₹999 + Blue 10×₹1299' },
-      { label: 'Total', value: formatPrice(input.grossRevenue), highlight: true },
+      { label: "Meaning", value: "Est. = catalog estimate" },
+      { label: "Formula", value: "Σ (SKU sold × SKU sell price)" },
+      { label: "Example", value: "Red 50×₹999 + Blue 10×₹1299" },
+      {
+        label: "Total",
+        value: formatPrice(input.grossRevenue),
+        highlight: true,
+      },
     ],
     grossProfit: [
-      { label: 'Est. revenue', value: formatPrice(input.grossRevenue) },
-      { label: 'Minus COGS', value: formatPrice(input.grossCost) },
-      { label: 'COGS =', value: 'Σ (SKU sold × SKU cost)' },
-      { label: 'Gross profit', value: formatPrice(input.grossProfit), highlight: true },
+      { label: "Est. revenue", value: formatPrice(input.grossRevenue) },
+      { label: "Minus COGS", value: formatPrice(input.grossCost) },
+      { label: "COGS =", value: "Σ (SKU sold × SKU cost)" },
+      {
+        label: "Gross profit",
+        value: formatPrice(input.grossProfit),
+        highlight: true,
+      },
     ],
     margin: [
-      { label: 'Formula', value: '(MRP − cost) ÷ MRP' },
-      { label: 'Or', value: 'profit ÷ revenue' },
-      { label: 'Margin', value: input.margin != null ? `${input.margin}%` : '—', highlight: true },
+      { label: "Formula", value: "(MRP − cost) ÷ MRP" },
+      { label: "Or", value: "profit ÷ revenue" },
+      {
+        label: "Margin",
+        value: input.margin != null ? `${input.margin}%` : "-",
+        highlight: true,
+      },
     ],
     stockAtCost: [
-      { label: 'Formula', value: 'Σ (cost × stock)' },
-      { label: 'Godown value', value: formatPrice(input.stockAtCost), highlight: true },
+      { label: "Formula", value: "Σ (cost × stock)" },
+      {
+        label: "Godown value",
+        value: formatPrice(input.stockAtCost),
+        highlight: true,
+      },
     ],
     stockAtMrp: [
-      { label: 'Formula', value: 'Σ (MRP × stock)' },
-      { label: 'List value', value: formatPrice(input.stockAtMrp), highlight: true },
+      { label: "Formula", value: "Σ (MRP × stock)" },
+      {
+        label: "List value",
+        value: formatPrice(input.stockAtMrp),
+        highlight: true,
+      },
     ],
   };
 }
@@ -108,43 +127,46 @@ export function productRowTooltipLines(product: {
 
   if (product.isPeriodView) {
     return [
-      { label: 'Units sold (period)', value: String(sold) },
-      { label: 'Source', value: 'Paid order lines' },
-      { label: 'Gross revenue', value: formatPrice(product.grossRevenue ?? 0) },
-      { label: 'COGS', value: formatPrice(product.grossCostOfSales ?? 0) },
+      { label: "Units sold (period)", value: String(sold) },
+      { label: "Source", value: "Paid order lines" },
+      { label: "Gross revenue", value: formatPrice(product.grossRevenue ?? 0) },
+      { label: "COGS", value: formatPrice(product.grossCostOfSales ?? 0) },
       {
-        label: 'Gross profit',
+        label: "Gross profit",
         value: formatPrice(product.grossProfit ?? 0),
         highlight: true,
       },
       {
-        label: 'Margin',
+        label: "Margin",
         value:
-          product.marginPercent != null ? `${product.marginPercent}%` : '—',
+          product.marginPercent != null ? `${product.marginPercent}%` : "-",
       },
     ];
   }
 
   return [
-    { label: 'Units sold', value: String(sold) },
+    { label: "Units sold", value: String(sold) },
     {
-      label: 'Revenue formula',
-      value: product.hasVariantPriceSpread ?
-        'Σ (each SKU sold × SKU sell)'
-      : 'units sold × sell price',
+      label: "Revenue formula",
+      value:
+        product.hasVariantPriceSpread ?
+          "Σ (each SKU sold × SKU sell)"
+        : "units sold × sell price",
     },
-    { label: 'Avg cost (on-hand)', value: avgCost > 0 ? formatPrice(avgCost) : 'Not set' },
-    { label: 'Gross revenue', value: formatPrice(product.grossRevenue ?? 0) },
-    { label: 'COGS', value: formatPrice(product.grossCostOfSales ?? 0) },
     {
-      label: 'Gross profit',
+      label: "Avg cost (on-hand)",
+      value: avgCost > 0 ? formatPrice(avgCost) : "Not set",
+    },
+    { label: "Gross revenue", value: formatPrice(product.grossRevenue ?? 0) },
+    { label: "COGS", value: formatPrice(product.grossCostOfSales ?? 0) },
+    {
+      label: "Gross profit",
       value: formatPrice(product.grossProfit ?? 0),
       highlight: true,
     },
     {
-      label: 'Margin',
-      value:
-        product.marginPercent != null ? `${product.marginPercent}%` : '—',
+      label: "Margin",
+      value: product.marginPercent != null ? `${product.marginPercent}%` : "-",
     },
   ];
 }

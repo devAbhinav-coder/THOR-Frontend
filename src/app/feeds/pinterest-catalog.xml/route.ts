@@ -40,7 +40,8 @@ export async function GET() {
           status: 200,
           headers: {
             "Content-Type": "application/xml; charset=utf-8",
-            "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+            "Cache-Control":
+              "public, s-maxage=3600, stale-while-revalidate=86400",
           },
         });
       }
@@ -66,7 +67,10 @@ export async function GET() {
         continue;
       }
 
-      let rawImg = p.isPremium && p.premiumHeroImage?.url ? p.premiumHeroImage.url : p.images?.[0]?.url || "";
+      let rawImg =
+        p.isPremium && p.premiumHeroImage?.url ?
+          p.premiumHeroImage.url
+        : p.images?.[0]?.url || "";
       if (typeof rawImg === "object" && rawImg !== null && "url" in rawImg) {
         rawImg = String((rawImg as { url?: string }).url || "");
       }
@@ -80,29 +84,39 @@ export async function GET() {
       }
 
       const rawTitle = p.name || "Saree Product";
-      const titleText = p.isPremium && p.premiumSubtitle ? `${rawTitle} — ${p.premiumSubtitle}` : rawTitle;
+      const titleText =
+        p.isPremium && p.premiumSubtitle ?
+          `${rawTitle} - ${p.premiumSubtitle}`
+        : rawTitle;
       const title = escapeXml(titleText);
 
-      let rawDesc = p.seoDescription || p.shortDescription || p.description || p.name || "";
+      let rawDesc =
+        p.seoDescription || p.shortDescription || p.description || p.name || "";
       if (p.isPremium) {
         const extra: string[] = [];
         if (p.craftNote) extra.push(`Craft Note: ${p.craftNote}`);
-        if (p.weaveHours) extra.push(`Artisan Weave Time: ${p.weaveHours} Hours`);
-        if (extra.length > 0) rawDesc = `${extra.join(" | ")} — ${rawDesc}`;
+        if (p.weaveHours)
+          extra.push(`Artisan Weave Time: ${p.weaveHours} Hours`);
+        if (extra.length > 0) rawDesc = `${extra.join(" | ")} - ${rawDesc}`;
       }
 
       const desc = escapeXml(stripHtml(rawDesc).slice(0, 4900));
       const priceVal = Number(p.price || 0);
-      const compareVal = p.comparePrice && Number(p.comparePrice) > priceVal ? Number(p.comparePrice) : null;
+      const compareVal =
+        p.comparePrice && Number(p.comparePrice) > priceVal ?
+          Number(p.comparePrice)
+        : null;
       const availability = "in stock";
       const audienceTag = String(p.audience || "women").toLowerCase();
       const customLabel0 = p.isPremium ? "Premium Edit" : "Regular Storefront";
       const customLabel1 = p.category || "Shop";
       const customLabel2 = audienceTag;
-      const customLabel3 = p.weaveHours ? `${p.weaveHours} Hrs Weave` : "In Stock";
+      const customLabel3 =
+        p.weaveHours ? `${p.weaveHours} Hrs Weave` : "In Stock";
       const customLabel4 = compareVal ? "On Sale" : "Full Price";
-      const productType = p.isPremium
-        ? `Premium Edit > ${audienceTag.toUpperCase()} > ${p.category || "Sarees"}`
+      const productType =
+        p.isPremium ?
+          `Premium Edit > ${audienceTag.toUpperCase()} > ${p.category || "Sarees"}`
         : `${audienceTag.toUpperCase()} > ${p.category || "Apparel"}${p.subcategory ? ` > ${p.subcategory}` : ""}`;
 
       itemsXml += `    <item>

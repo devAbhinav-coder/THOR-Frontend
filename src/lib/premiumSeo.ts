@@ -19,12 +19,7 @@ export const PREMIUM_SEO_KEYWORDS = [
   "The House of Rani",
 ] as const;
 
-export type PremiumAudienceSeoId =
-  | "all"
-  | "women"
-  | "men"
-  | "kids"
-  | "couple";
+export type PremiumAudienceSeoId = "all" | "women" | "men" | "kids" | "couple";
 
 type AudienceSeoCopy = {
   path: string;
@@ -37,7 +32,7 @@ type AudienceSeoCopy = {
 const AUDIENCE_SEO: Record<PremiumAudienceSeoId, AudienceSeoCopy> = {
   all: {
     path: "/premium",
-    title: "Hand Painted & Pure Silk Sarees — Premium Edit",
+    title: "Hand Painted & Pure Silk Sarees - Premium Edit",
     description:
       "Shop hand painted sarees, pure silk sarees, Banarasi & Madhubani art sarees, and couple hand painted sets in The Rani Premium Edit. Heirloom weaves with pan-India delivery.",
     keywords: PREMIUM_SEO_KEYWORDS.join(", "),
@@ -54,7 +49,7 @@ const AUDIENCE_SEO: Record<PremiumAudienceSeoId, AudienceSeoCopy> = {
     path: "/premium/men",
     title: "Men's Premium Silk & Heritage Wear",
     description:
-      "Explore men's premium silk and heritage pieces from The Rani Edit — refined Banarasi and handloom styles for weddings and celebrations across India.",
+      "Explore men's premium silk and heritage pieces from The Rani Edit - refined Banarasi and handloom styles for weddings and celebrations across India.",
     keywords:
       "men's premium silk, Banarasi kurta, heritage ethnic wear men, The House of Rani Premium Edit",
   },
@@ -62,7 +57,7 @@ const AUDIENCE_SEO: Record<PremiumAudienceSeoId, AudienceSeoCopy> = {
     path: "/premium/kids",
     title: "Kids' Premium Ethnic & Silk Wear",
     description:
-      "Shop kids' premium ethnic wear from The Rani Edit — soft silks and festive sets crafted for celebrations, with careful finishes and pan-India delivery.",
+      "Shop kids' premium ethnic wear from The Rani Edit - soft silks and festive sets crafted for celebrations, with careful finishes and pan-India delivery.",
     keywords:
       "kids premium ethnic wear, kids silk festive wear, The House of Rani Premium Edit",
   },
@@ -70,7 +65,7 @@ const AUDIENCE_SEO: Record<PremiumAudienceSeoId, AudienceSeoCopy> = {
     path: "/premium/couple",
     title: "Couple Hand Painted Saree Sets",
     description:
-      "Shop couple hand painted saree sets and coordinated premium silk looks — Banarasi, Madhubani, and pure silk pieces made for weddings and occasions.",
+      "Shop couple hand painted saree sets and coordinated premium silk looks - Banarasi, Madhubani, and pure silk pieces made for weddings and occasions.",
     keywords:
       "couple hand painted saree set, couple Banarasi set, matching saree set India, The House of Rani",
   },
@@ -101,14 +96,14 @@ export function buildPremiumCollectionMetadata(
 export const PREMIUM_PAGE_COPY = {
   heroTitle: "HAND PAINTED & PURE SILK",
   heroSubtitle:
-    "Hand painted sarees, pure silk, Banarasi & Madhubani art — including couple hand painted sets.",
+    "Hand painted sarees, pure silk, Banarasi & Madhubani art - including couple hand painted sets.",
   editorialPreHeading: "The Rani Premium Edit",
   editorialHeading: "HAND PAINTED. PURE SILK. HEIRLOOM.",
   editorialText:
-    "Every Premium Edit piece is a hand painted or handloom pure silk saree — Banarasi brocade, Madhubani art, and couple hand painted sets finished over 200+ hours for occasions meant to be inherited.",
-  storyHeading: "MORE THAN A SAREE — BANARASI TO MADHUBANI",
+    "Every Premium Edit piece is a hand painted or handloom pure silk saree - Banarasi brocade, Madhubani art, and couple hand painted sets finished over 200+ hours for occasions meant to be inherited.",
+  storyHeading: "MORE THAN A SAREE - BANARASI TO MADHUBANI",
   storyText:
-    "From Banarasi and pure silk sarees to Madhubani and hand painted artistry, the Premium Collection is an archive of technique — including coordinated couple hand painted sets reimagined for the modern silhouette.",
+    "From Banarasi and pure silk sarees to Madhubani and hand painted artistry, the Premium Collection is an archive of technique - including coordinated couple hand painted sets reimagined for the modern silhouette.",
   finalCtaHeading: "DISCOVER HAND PAINTED & PURE SILK",
   finalCtaText:
     "Explore hand painted sarees, pure silk weaves, Banarasi, Madhubani, and couple sets in The Rani Premium Edit.",
@@ -279,7 +274,7 @@ function buildPremiumAeoFaqs(appUrl: string): Array<{ q: string; a: string }> {
   return [
     {
       q: "What is The Rani Premium Edit?",
-      a: `The Rani Premium Edit (${appUrl}/premium) is The House of Rani’s curated collection of hand painted sarees, pure silk sarees, Banarasi sarees, Madhubani art sarees, and couple hand painted saree sets — heirloom pieces with pan-India delivery.`,
+      a: `The Rani Premium Edit (${appUrl}/premium) is The House of Rani’s curated collection of hand painted sarees, pure silk sarees, Banarasi sarees, Madhubani art sarees, and couple hand painted saree sets - heirloom pieces with pan-India delivery.`,
     },
     {
       q: "Do you sell hand painted and Madhubani sarees online in India?",
@@ -393,12 +388,13 @@ export function buildPremiumSeoSuggestions(input: {
     return { suggestedTitle: "", suggestedDescription: "" };
   }
   return {
-    suggestedTitle: `Buy ${fabricBit}${name} Hand Painted Pure Silk Saree Online`
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 65),
+    suggestedTitle:
+      `Buy ${fabricBit}${name} Hand Painted Pure Silk Saree Online`
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 65),
     suggestedDescription:
-      `Shop ${name} — ${fabricBit || ""}hand painted / pure silk saree with Banarasi or Madhubani craft. Couple sets in The Rani Premium Edit. Free delivery over ₹1,099.`
+      `Shop ${name} - ${fabricBit || ""}hand painted / pure silk saree with Banarasi or Madhubani craft. Couple sets in The Rani Premium Edit. Free delivery over ₹1,099.`
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 160),

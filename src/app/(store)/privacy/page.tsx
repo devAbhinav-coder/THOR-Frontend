@@ -5,7 +5,7 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/privacy",
-  title: "Privacy Policy — How We Protect Your Data",
+  title: "Privacy Policy - How We Protect Your Data",
   description:
     "How The House of Rani collects, uses, and protects your personal information when you shop ethnic wear online in India.",
 });
@@ -15,16 +15,16 @@ const SUPPORT_EMAIL = "support@thehouseofrani.com";
 export default function PrivacyPage() {
   return (
     <LegalPageLayout
-      title="Privacy Policy — How We Protect Your Data"
-      description="This policy explains how we handle your personal data when you use our website, place orders, or contact The House of Rani. We treat your information with care and in line with applicable Indian law."
-      lastUpdated="22 April 2026"
+      title='Privacy Policy - How We Protect Your Data'
+      description='This policy explains how we handle your personal data when you use our website, place orders, or contact The House of Rani. We treat your information with care and in line with applicable Indian law.'
+      lastUpdated='22 April 2026'
     >
       <h2>1. Who we are</h2>
       <p>
         <strong>The House of Rani</strong> (“we”, “us”, “our”) runs this online
         store and related customer services. For privacy questions or requests,
         use the contact details in{" "}
-        <Link href="#contact">Section 10 (Contact)</Link> below.
+        <Link href='#contact'>Section 10 (Contact)</Link> below.
       </p>
 
       <h2>2. Scope</h2>
@@ -93,7 +93,7 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Service providers</strong> for hosting, analytics, email,
-          payments, shipping, and support—only as needed and under appropriate
+          payments, shipping, and support-only as needed and under appropriate
           safeguards.
         </li>
         <li>
@@ -101,8 +101,8 @@ export default function PrivacyPage() {
           rights, safety, and security.
         </li>
         <li>
-          <strong>Business transfers:</strong> in a merger, acquisition, or
-          sale of assets, subject to continued protection of your information.
+          <strong>Business transfers:</strong> in a merger, acquisition, or sale
+          of assets, subject to continued protection of your information.
         </li>
       </ul>
       <p>
@@ -120,38 +120,37 @@ export default function PrivacyPage() {
       <h2>8. Security</h2>
       <p>
         We use appropriate technical and organisational measures to protect
-        personal data. No online transmission is completely risk-free; please use
-        strong passwords and keep your devices secure.
+        personal data. No online transmission is completely risk-free; please
+        use strong passwords and keep your devices secure.
       </p>
 
       <h2>9. Your rights</h2>
       <p>
         Under applicable law (including the Digital Personal Data Protection
         Act, 2023, where it applies to you), you may have rights to access,
-        correct, erase, restrict, or object to processing, and to withdraw consent
-        where processing is consent-based. To exercise these rights, contact us
-        using{" "}
-        <Link href="#contact">Section 10</Link>. You may also complain to the
-        Data Protection Board of India or another competent authority where the
-        law allows.
+        correct, erase, restrict, or object to processing, and to withdraw
+        consent where processing is consent-based. To exercise these rights,
+        contact us using <Link href='#contact'>Section 10</Link>. You may also
+        complain to the Data Protection Board of India or another competent
+        authority where the law allows.
       </p>
 
-      <h2 id="contact">10. Contact</h2>
+      <h2 id='contact'>10. Contact</h2>
       <p>
         For privacy-related questions or requests (including access, correction,
         or deletion), email us at{" "}
         <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Please include
         your name, the email associated with your account, and a clear
-        description of your request. If your message concerns an order, add
-        your <strong>order number</strong> so we can help faster.
+        description of your request. If your message concerns an order, add your{" "}
+        <strong>order number</strong> so we can help faster.
       </p>
 
       <h2>11. Children</h2>
       <p>
         Our services are not aimed at children under 18. We do not knowingly
         collect personal information from children. If you believe we have,{" "}
-        <a href={`mailto:${SUPPORT_EMAIL}`}>contact us</a> and we will take steps
-        to delete it.
+        <a href={`mailto:${SUPPORT_EMAIL}`}>contact us</a> and we will take
+        steps to delete it.
       </p>
 
       <h2>12. Changes to this policy</h2>

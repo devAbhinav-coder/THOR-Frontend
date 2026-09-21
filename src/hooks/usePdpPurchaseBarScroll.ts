@@ -18,7 +18,7 @@ export function usePdpPurchaseBarScroll(
       },
       {
         root: null,
-        // px only — IntersectionObserver does not accept rem in rootMargin
+        // px only - IntersectionObserver does not accept rem in rootMargin
         rootMargin: "-72px 0px 0px 0px",
         threshold: 0,
       },

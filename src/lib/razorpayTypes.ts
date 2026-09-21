@@ -1,5 +1,5 @@
 /**
- * Razorpay Checkout handoff — enough to type verify + open SDK without `window as any`.
+ * Razorpay Checkout handoff - enough to type verify + open SDK without `window as any`.
  * @see https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps
  */
 export type RazorpaySuccessPayload = {
@@ -47,7 +47,8 @@ export type RazorpayConstructor = new (
 
 export function getRazorpayConstructor(): RazorpayConstructor | null {
   if (typeof window === "undefined") return null;
-  const Ctor = (window as unknown as { Razorpay?: RazorpayConstructor }).Razorpay;
+  const Ctor = (window as unknown as { Razorpay?: RazorpayConstructor })
+    .Razorpay;
   return Ctor ?? null;
 }
 

@@ -25,9 +25,17 @@ export function resolveShopSortForApi(sort: string): {
   const normalized = normalizeShopSortValue(sort);
   switch (normalized) {
     case "price":
-      return { listSort: "price", searchSortBy: "price", searchSortOrder: "asc" };
+      return {
+        listSort: "price",
+        searchSortBy: "price",
+        searchSortOrder: "asc",
+      };
     case "-price":
-      return { listSort: "-price", searchSortBy: "price", searchSortOrder: "desc" };
+      return {
+        listSort: "-price",
+        searchSortBy: "price",
+        searchSortOrder: "desc",
+      };
     case "-ratings.average":
       return {
         listSort: "-ratings.average",
@@ -35,9 +43,17 @@ export function resolveShopSortForApi(sort: string): {
         searchSortOrder: "desc",
       };
     case "-soldCount":
-      return { listSort: "-soldCount", searchSortBy: "soldCount", searchSortOrder: "desc" };
+      return {
+        listSort: "-soldCount",
+        searchSortBy: "soldCount",
+        searchSortOrder: "desc",
+      };
     case "soldCount":
-      return { listSort: "soldCount", searchSortBy: "soldCount", searchSortOrder: "asc" };
+      return {
+        listSort: "soldCount",
+        searchSortBy: "soldCount",
+        searchSortOrder: "asc",
+      };
     case "-createdAt":
     default:
       return {
@@ -248,7 +264,11 @@ export function parseShopFiltersFromUrl(
   categoryContext: ShopCategoryContext = null,
 ): ShopFilters {
   const categories = readListParam(searchParams, "categories", "category");
-  const subcategories = readListParam(searchParams, "subcategories", "subcategory");
+  const subcategories = readListParam(
+    searchParams,
+    "subcategories",
+    "subcategory",
+  );
   const occasions = readListParam(searchParams, "occasions", "occasion");
   const fabrics = readListParam(searchParams, "fabrics", "fabric");
   const colors = readListParam(searchParams, "colors", "color");
@@ -256,18 +276,12 @@ export function parseShopFiltersFromUrl(
 
   const parsed: ShopFilters = {
     categories:
-      categories.length > 0 ?
-        categories
-      : categoryContext?.slug ?
-        [
-          categoryContext.name,
-        ]
+      categories.length > 0 ? categories
+      : categoryContext?.slug ? [categoryContext.name]
       : [],
     subcategories:
-      subcategories.length > 0 ?
-        subcategories
-      : categoryContext?.subcategory ?
-        [categoryContext.subcategory.name]
+      subcategories.length > 0 ? subcategories
+      : categoryContext?.subcategory ? [categoryContext.subcategory.name]
       : [],
     occasions,
     fabrics,
@@ -528,7 +542,9 @@ export function shopPriceDraftToFilterStrings(
   return { minPrice: String(min), maxPrice: String(max) };
 }
 
-export function resolveEffectiveMinRating(ratings: string[]): number | undefined {
+export function resolveEffectiveMinRating(
+  ratings: string[],
+): number | undefined {
   const nums = ratings
     .map((r) => Number.parseInt(r, 10))
     .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
@@ -590,7 +606,7 @@ export function buildShopProductQueryParams(
     limit,
   };
 
-  // Stable paginated listing — do not use isRandom here (breaks page-based infinite scroll).
+  // Stable paginated listing - do not use isRandom here (breaks page-based infinite scroll).
   if (effective.categories.length) {
     params.categories = effective.categories.join(",");
   }
@@ -632,8 +648,12 @@ export function resolveCanonicalShopUrl(
     }
   }
 
-  // Use explicit filter state only — do not re-inject route category (breaks uncheck).
-  if (filters.categories.length === 1 && hasSecondaryShopFilters(filters) && catSlug) {
+  // Use explicit filter state only - do not re-inject route category (breaks uncheck).
+  if (
+    filters.categories.length === 1 &&
+    hasSecondaryShopFilters(filters) &&
+    catSlug
+  ) {
     const qs = buildShopQueryString(filters, { omitCategories: true });
     const base = `${SHOP_COLLECTIONS_PATH}/${encodeURIComponent(catSlug)}`;
     return qs ? `${base}?${qs}` : base;

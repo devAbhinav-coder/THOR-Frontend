@@ -48,19 +48,16 @@ function EmptyStateShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[min(70vh,calc(100dvh-14rem))] flex-col items-center justify-center bg-[#f8f9fa] px-4 py-12 sm:py-16">
-      <div className="w-full max-w-md border border-gray-200/80 bg-white px-6 py-10 text-center sm:px-10 sm:py-14">
-        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center border border-[#c5a059]/30 bg-[#f8f9fa]">
-          <ShoppingBag
-            className="h-7 w-7 text-[#c5a059]"
-            strokeWidth={1.25}
-          />
+    <div className='flex min-h-[min(70vh,calc(100dvh-14rem))] flex-col items-center justify-center bg-[#f8f9fa] px-4 py-12 sm:py-16'>
+      <div className='w-full max-w-md border border-gray-200/80 bg-white px-6 py-10 text-center sm:px-10 sm:py-14'>
+        <div className='mx-auto mb-6 flex h-14 w-14 items-center justify-center border border-[#c5a059]/30 bg-[#f8f9fa]'>
+          <ShoppingBag className='h-7 w-7 text-[#c5a059]' strokeWidth={1.25} />
         </div>
-        <h1 className="mb-3 font-serif text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl">
+        <h1 className='mb-3 font-serif text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl'>
           {title}
         </h1>
-        <div className="gold-divider mx-auto mb-5 w-16" aria-hidden />
-        <p className="mb-8 text-sm leading-relaxed text-gray-600 sm:text-base">
+        <div className='gold-divider mx-auto mb-5 w-16' aria-hidden />
+        <p className='mb-8 text-sm leading-relaxed text-gray-600 sm:text-base'>
           {description}
         </p>
         {children}
@@ -89,13 +86,15 @@ export default function CartClient() {
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
 
   const cartItemsKey =
-    cart?.items?.map((i) => `${i.product}:${i.quantity}:${i.price}`).join("|") ??
-    "";
-  const { data: couponsData, isLoading: isLoadingCoupons } = useEligibleCouponsQuery(
-    cart?.subtotal,
-    cartItemsKey,
-    Boolean(isAuthenticated && cart && cart.items.length > 0),
-  );
+    cart?.items
+      ?.map((i) => `${i.product}:${i.quantity}:${i.price}`)
+      .join("|") ?? "";
+  const { data: couponsData, isLoading: isLoadingCoupons } =
+    useEligibleCouponsQuery(
+      cart?.subtotal,
+      cartItemsKey,
+      Boolean(isAuthenticated && cart && cart.items.length > 0),
+    );
   const eligibleCoupons = couponsData?.coupons ?? [];
   const nearEligibleCoupons: NearEligibleCoupon[] =
     couponsData?.nearEligible ?? [];
@@ -142,14 +141,14 @@ export default function CartClient() {
   if (!isAuthenticated) {
     return (
       <EmptyStateShell
-        title="Shopping Bag"
-        description="Please sign in to review your selected pieces of heritage craftsmanship."
+        title='Shopping Bag'
+        description='Please sign in to review your selected pieces of heritage craftsmanship.'
       >
         <Button
           asChild
-          variant="brand"
-          size="lg"
-          className="min-w-[220px] uppercase tracking-[0.14em]"
+          variant='brand'
+          size='lg'
+          className='min-w-[220px] uppercase tracking-[0.14em]'
         >
           <Link href={loginUrlWithRedirect("/cart")} scroll={false}>
             Sign In
@@ -162,12 +161,12 @@ export default function CartClient() {
   if (!cart || cart.items.length === 0) {
     return (
       <EmptyStateShell
-        title="Shopping Bag"
-        description="Your bag is empty. Discover artisanal sarees and ethnic wear curated for you."
+        title='Shopping Bag'
+        description='Your bag is empty. Discover artisanal sarees and ethnic wear curated for you.'
       >
         <Link
-          href="/shop"
-          className="inline-block border-b border-navy-900 pb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900 transition-colors hover:border-[#c5a059] hover:text-[#c5a059]"
+          href='/shop'
+          className='inline-block border-b border-navy-900 pb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900 transition-colors hover:border-[#c5a059] hover:text-[#c5a059]'
         >
           Explore Collections
         </Link>
@@ -181,7 +180,8 @@ export default function CartClient() {
   );
   const promotionDiscount = cart.promotionDiscount ?? 0;
   const couponDiscount = cart.couponDiscount ?? 0;
-  const hasCouponApplied = Boolean(appliedCouponCode?.trim()) || couponDiscount > 0;
+  const hasCouponApplied =
+    Boolean(appliedCouponCode?.trim()) || couponDiscount > 0;
   const shippingCharge =
     payableSubtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE;
   const estimatedTotal = payableSubtotal + shippingCharge;
@@ -201,42 +201,42 @@ export default function CartClient() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-32 pt-8 sm:pt-10 sm:pb-36 lg:pb-16 lg:pt-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="mb-10 sm:mb-12 lg:mb-14">
-          <h1 className="font-serif text-4xl font-semibold tracking-tight text-navy-900 sm:text-5xl lg:text-6xl">
+    <div className='min-h-screen bg-[#f8f9fa] pb-32 pt-8 sm:pt-10 sm:pb-36 lg:pb-16 lg:pt-12'>
+      <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
+        <header className='mb-10 sm:mb-12 lg:mb-14'>
+          <h1 className='font-serif text-4xl font-semibold tracking-tight text-navy-900 sm:text-5xl lg:text-6xl'>
             Shopping Bag
           </h1>
-          <p className="mt-3 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg">
+          <p className='mt-3 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg'>
             Review your selected pieces of heritage craftsmanship.
           </p>
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+          <p className='mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400'>
             {cart.items.length} {cart.items.length === 1 ? "item" : "items"}
           </p>
         </header>
 
         {freeShippingRemaining > 0 && (
-          <div className="mb-8 flex items-center gap-3 border border-[#c5a059]/30 bg-[#fff8eb] px-4 py-3 sm:px-5">
-            <Truck className="h-4 w-4 shrink-0 text-[#c5a059]" />
-            <p className="text-sm text-navy-900/80">
+          <div className='mb-8 flex items-center gap-3 border border-[#c5a059]/30 bg-[#fff8eb] px-4 py-3 sm:px-5'>
+            <Truck className='h-4 w-4 shrink-0 text-[#c5a059]' />
+            <p className='text-sm text-navy-900/80'>
               Add <strong>{formatPrice(freeShippingRemaining)}</strong> more for
               complimentary shipping.
             </p>
           </div>
         )}
 
-        <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-12 lg:gap-8">
-          <div className="lg:col-span-8">
+        <div className='grid grid-cols-1 items-start gap-10 lg:grid-cols-12 lg:gap-8'>
+          <div className='lg:col-span-8'>
             {hasUnavailableItems && (
-              <div className="mb-8 border border-red-200 bg-red-50 px-4 py-3 sm:px-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
+              <div className='mb-8 border border-red-200 bg-red-50 px-4 py-3 sm:px-5'>
+                <p className='text-xs font-semibold uppercase tracking-wide text-red-700'>
                   Some items are sold out. Remove or save them for later before
                   checkout.
                 </p>
               </div>
             )}
 
-            <div className="flex flex-col gap-10 sm:gap-12">
+            <div className='flex flex-col gap-10 sm:gap-12'>
               {cart.items
                 .filter((item: CartItem) => item.product)
                 .map((item: CartItem) => {
@@ -249,8 +249,9 @@ export default function CartClient() {
                   const minQty = 1;
                   const thumb = item.productImage || PLACEHOLDER_IMAGE;
                   const rowKey = item.cartItemId || item.variant.sku;
-                  const productHref = item.productSlug
-                    ? `/shop/${encodeURIComponent(item.productSlug)}`
+                  const productHref =
+                    item.productSlug ?
+                      `/shop/${encodeURIComponent(item.productSlug)}`
                     : "#";
                   const variantLine = [
                     item.variant.size && `Size ${item.variant.size}`,
@@ -269,49 +270,49 @@ export default function CartClient() {
                     >
                       <Link
                         href={productHref}
-                        className="relative col-span-1 aspect-[3/4] overflow-hidden bg-gray-100"
+                        className='relative col-span-1 aspect-[3/4] overflow-hidden bg-gray-100'
                       >
                         <Image
                           key={rowKey}
                           src={thumb}
                           alt={item.productName || "Product"}
                           fill
-                          sizes="(max-width: 640px) 25vw, 200px"
+                          sizes='(max-width: 640px) 25vw, 200px'
                           className={cn(
                             "object-cover transition-transform duration-700 group-hover:scale-105",
                             isOutOfStock && "grayscale-[30%]",
                           )}
                         />
                         {isOutOfStock && (
-                          <span className="absolute bottom-3 left-3 text-[9px] font-semibold uppercase tracking-widest text-navy-900/60 sm:text-[10px]">
+                          <span className='absolute bottom-3 left-3 text-[9px] font-semibold uppercase tracking-widest text-navy-900/60 sm:text-[10px]'>
                             Sold Out
                           </span>
                         )}
                       </Link>
 
-                      <div className="col-span-2 flex flex-col justify-between sm:col-span-3">
+                      <div className='col-span-2 flex flex-col justify-between sm:col-span-3'>
                         <div>
-                          <div className="mb-2 flex items-start justify-between gap-3">
+                          <div className='mb-2 flex items-start justify-between gap-3'>
                             <Link
                               href={productHref}
-                              className="font-serif text-lg font-medium leading-snug text-navy-900 transition-colors hover:text-[#c5a059] sm:text-xl"
+                              className='font-serif text-lg font-medium leading-snug text-navy-900 transition-colors hover:text-[#c5a059] sm:text-xl'
                             >
                               {item.productName || "Product"}
                             </Link>
-                            <span className="shrink-0 font-serif text-lg font-medium text-navy-900 sm:text-xl">
+                            <span className='shrink-0 font-serif text-lg font-medium text-navy-900 sm:text-xl'>
                               {formatPrice(item.price * item.quantity)}
                             </span>
                           </div>
 
                           {variantLine && (
-                            <p className="mb-4 max-w-md text-sm leading-relaxed text-gray-600">
+                            <p className='mb-4 max-w-md text-sm leading-relaxed text-gray-600'>
                               {variantLine}
                             </p>
                           )}
 
                           {item.customFieldAnswers &&
                             item.customFieldAnswers.length > 0 && (
-                              <div className="mb-4 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                              <div className='mb-4 grid grid-cols-1 gap-1.5 sm:grid-cols-2'>
                                 {item.customFieldAnswers.map((ans, i) => {
                                   const isImage =
                                     typeof ans.value === "string" &&
@@ -319,36 +320,35 @@ export default function CartClient() {
                                   return (
                                     <div
                                       key={i}
-                                      className="border border-[#c5a059]/20 bg-[#fff8eb]/60 px-2.5 py-2"
+                                      className='border border-[#c5a059]/20 bg-[#fff8eb]/60 px-2.5 py-2'
                                     >
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#b45309]">
+                                      <p className='text-[10px] font-semibold uppercase tracking-wide text-[#b45309]'>
                                         {ans.label}
                                       </p>
-                                      {isImage ? (
+                                      {isImage ?
                                         <a
                                           href={ans.value}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="mt-1 inline-flex items-center gap-1"
+                                          target='_blank'
+                                          rel='noreferrer'
+                                          className='mt-1 inline-flex items-center gap-1'
                                         >
-                                          <span className="relative h-9 w-9 overflow-hidden border border-[#c5a059]/30 bg-white">
+                                          <span className='relative h-9 w-9 overflow-hidden border border-[#c5a059]/30 bg-white'>
                                             <Image
                                               src={ans.value}
                                               alt={ans.label}
                                               fill
-                                              sizes="36px"
-                                              className="object-cover"
+                                              sizes='36px'
+                                              className='object-cover'
                                             />
                                           </span>
-                                          <span className="text-[10px] font-semibold text-[#c5a059]">
+                                          <span className='text-[10px] font-semibold text-[#c5a059]'>
                                             View
                                           </span>
                                         </a>
-                                      ) : (
-                                        <p className="break-words text-xs font-medium text-gray-700">
+                                      : <p className='break-words text-xs font-medium text-gray-700'>
                                           {ans.value}
                                         </p>
-                                      )}
+                                      }
                                     </div>
                                   );
                                 })}
@@ -356,49 +356,47 @@ export default function CartClient() {
                             )}
 
                           {isUnavailable && (
-                            <p className="mb-4 text-[11px] font-semibold uppercase tracking-wide text-red-600">
-                              {isOutOfStock
-                                ? "This piece is sold out. Remove or save for later to continue."
-                                : "This item is unavailable right now. Remove it to continue."}
+                            <p className='mb-4 text-[11px] font-semibold uppercase tracking-wide text-red-600'>
+                              {isOutOfStock ?
+                                "This piece is sold out. Remove or save for later to continue."
+                              : "This item is unavailable right now. Remove it to continue."
+                              }
                             </p>
                           )}
 
-                          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                            <div className="flex items-center border border-gray-300 px-3 py-1.5 sm:px-4 sm:py-2">
+                          <div className='flex flex-wrap items-center gap-3 sm:gap-4'>
+                            <div className='flex items-center border border-gray-300 px-3 py-1.5 sm:px-4 sm:py-2'>
                               <button
-                                type="button"
+                                type='button'
                                 onClick={() =>
-                                  item.quantity > minQty
-                                    ? updateItem(
-                                        item.cartItemId,
-                                        item.quantity - 1,
-                                      )
-                                    : item.quantity === 1
-                                      ? removeItem(item.cartItemId)
-                                      : undefined
+                                  item.quantity > minQty ?
+                                    updateItem(
+                                      item.cartItemId,
+                                      item.quantity - 1,
+                                    )
+                                  : item.quantity === 1 ?
+                                    removeItem(item.cartItemId)
+                                  : undefined
                                 }
-                                className="flex h-8 w-8 items-center justify-center text-navy-900 transition-colors hover:text-[#c5a059] disabled:opacity-40"
+                                className='flex h-8 w-8 items-center justify-center text-navy-900 transition-colors hover:text-[#c5a059] disabled:opacity-40'
                                 disabled={
                                   isLoading ||
                                   isOutOfStock ||
                                   item.quantity <= minQty
                                 }
-                                aria-label="Decrease quantity"
+                                aria-label='Decrease quantity'
                               >
-                                <Minus className="h-3.5 w-3.5" />
+                                <Minus className='h-3.5 w-3.5' />
                               </button>
-                              <span className="min-w-[2.5rem] px-3 text-center text-xs font-semibold uppercase tracking-widest text-navy-900">
+                              <span className='min-w-[2.5rem] px-3 text-center text-xs font-semibold uppercase tracking-widest text-navy-900'>
                                 {item.quantity}
                               </span>
                               <button
-                                type="button"
+                                type='button'
                                 onClick={() =>
-                                  updateItem(
-                                    item.cartItemId,
-                                    item.quantity + 1,
-                                  )
+                                  updateItem(item.cartItemId, item.quantity + 1)
                                 }
-                                className="flex h-8 w-8 items-center justify-center text-navy-900 transition-colors hover:text-[#c5a059] disabled:opacity-40"
+                                className='flex h-8 w-8 items-center justify-center text-navy-900 transition-colors hover:text-[#c5a059] disabled:opacity-40'
                                 disabled={
                                   isLoading ||
                                   isOutOfStock ||
@@ -409,33 +407,33 @@ export default function CartClient() {
                                       Math.max(1, item.variant.stock ?? 99),
                                     )
                                 }
-                                aria-label="Increase quantity"
+                                aria-label='Increase quantity'
                               >
-                                <Plus className="h-3.5 w-3.5" />
+                                <Plus className='h-3.5 w-3.5' />
                               </button>
                             </div>
 
                             <button
-                              type="button"
+                              type='button'
                               onClick={() => void handleSaveForLater(item)}
                               disabled={
                                 isLoading || savingItemId === item.cartItemId
                               }
-                              className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#c5a059] transition-all duration-300 hover:tracking-[0.2em] disabled:opacity-50 sm:text-[11px]"
+                              className='flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#c5a059] transition-all duration-300 hover:tracking-[0.2em] disabled:opacity-50 sm:text-[11px]'
                             >
-                              <Heart className="h-3.5 w-3.5" />
-                              {savingItemId === item.cartItemId
-                                ? "Saving…"
-                                : "Save for Later"}
+                              <Heart className='h-3.5 w-3.5' />
+                              {savingItemId === item.cartItemId ?
+                                "Saving…"
+                              : "Save for Later"}
                             </button>
                           </div>
                         </div>
 
                         <button
-                          type="button"
+                          type='button'
                           onClick={() => removeItem(item.cartItemId)}
                           disabled={isLoading}
-                          className="mt-6 self-start text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 transition-all duration-200 hover:translate-x-1 hover:text-red-600 disabled:opacity-50 sm:text-[11px]"
+                          className='mt-6 self-start text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 transition-all duration-200 hover:translate-x-1 hover:text-red-600 disabled:opacity-50 sm:text-[11px]'
                         >
                           Remove Item
                         </button>
@@ -445,32 +443,32 @@ export default function CartClient() {
                 })}
             </div>
 
-            <section className="relative mt-12 overflow-hidden border border-[#c5a059]/15 bg-[#f3f4f5] p-6 sm:mt-14 sm:p-8">
-              <div className="relative z-10">
-                <div className="mb-4 flex items-center gap-3">
+            <section className='relative mt-12 overflow-hidden border border-[#c5a059]/15 bg-[#f3f4f5] p-6 sm:mt-14 sm:p-8'>
+              <div className='relative z-10'>
+                <div className='mb-4 flex items-center gap-3'>
                   <Star
-                    className="h-4 w-4 fill-[#c5a059] text-[#c5a059]"
+                    className='h-4 w-4 fill-[#c5a059] text-[#c5a059]'
                     aria-hidden
                   />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a059]">
+                  <h3 className='text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a059]'>
                     Heritage Promise
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
+                <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8'>
                   <div>
-                    <p className="mb-1 text-sm font-medium text-navy-900">
+                    <p className='mb-1 text-sm font-medium text-navy-900'>
                       Authenticity Guaranteed
                     </p>
-                    <p className="text-sm leading-relaxed text-gray-600 opacity-90">
+                    <p className='text-sm leading-relaxed text-gray-600 opacity-90'>
                       Each piece is crafted with verified artisanal techniques
                       and quality you can trust for generations.
                     </p>
                   </div>
                   <div>
-                    <p className="mb-1 text-sm font-medium text-navy-900">
+                    <p className='mb-1 text-sm font-medium text-navy-900'>
                       Thoughtful Care
                     </p>
-                    <p className="text-sm leading-relaxed text-gray-600 opacity-90">
+                    <p className='text-sm leading-relaxed text-gray-600 opacity-90'>
                       Complimentary guidance on preserving your sarees and
                       ethnic wear so they endure beautifully.
                     </p>
@@ -478,66 +476,67 @@ export default function CartClient() {
                 </div>
               </div>
               <BadgeCheck
-                className="pointer-events-none absolute -bottom-8 -right-8 h-40 w-40 text-navy-900/[0.04] sm:h-48 sm:w-48"
+                className='pointer-events-none absolute -bottom-8 -right-8 h-40 w-40 text-navy-900/[0.04] sm:h-48 sm:w-48'
                 aria-hidden
               />
             </section>
           </div>
 
-          <aside className="lg:col-span-4">
-            <div className="lg:sticky lg:top-28">
-              <div className="border-t-4 border-[#c5a059] bg-navy-900 p-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] sm:p-8 lg:p-10">
-                <h2 className="mb-6 font-serif text-xl font-medium text-[#ffdea5] sm:mb-8 sm:text-2xl">
+          <aside className='lg:col-span-4'>
+            <div className='lg:sticky lg:top-28'>
+              <div className='border-t-4 border-[#c5a059] bg-navy-900 p-6 shadow-[0px_20px_40px_rgba(3,22,50,0.08)] sm:p-8 lg:p-10'>
+                <h2 className='mb-6 font-serif text-xl font-medium text-[#ffdea5] sm:mb-8 sm:text-2xl'>
                   Order Summary
                 </h2>
 
-                {cart.promotion ? (
-                  <div className="mb-6 rounded-lg border border-[#c5a059]/40 bg-[#c5a059]/10 px-4 py-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffdea5]/90">
+                {cart.promotion ?
+                  <div className='mb-6 rounded-lg border border-[#c5a059]/40 bg-[#c5a059]/10 px-4 py-3'>
+                    <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffdea5]/90'>
                       Auto offer applied
                     </p>
-                    <p className="mt-1 text-sm font-medium text-white">
+                    <p className='mt-1 text-sm font-medium text-white'>
                       {cart.promotion.label}
                     </p>
-                    <p className="mt-0.5 text-xs text-[#e8d5a3]/90">
+                    <p className='mt-0.5 text-xs text-[#e8d5a3]/90'>
                       You save {formatPrice(cart.promotion.appliedDiscount)}
                     </p>
                   </div>
-                ) : cart.promotionHint ? (
-                  <div className="mb-6 rounded-lg border border-[#c5a059]/30 bg-white/5 px-4 py-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffdea5]/80">
+                : cart.promotionHint ?
+                  <div className='mb-6 rounded-lg border border-[#c5a059]/30 bg-white/5 px-4 py-3'>
+                    <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffdea5]/80'>
                       Offer available
                     </p>
-                    <p className="mt-1 text-sm font-medium text-white">
+                    <p className='mt-1 text-sm font-medium text-white'>
                       {cart.promotionHint.label}
                     </p>
-                    <p className="mt-0.5 text-xs text-[#e8d5a3]/85">
+                    <p className='mt-0.5 text-xs text-[#e8d5a3]/85'>
                       {cart.promotionHint.message}
                     </p>
                   </div>
-                ) : null}
+                : null}
 
-                <div className="mb-6 space-y-4 border-b border-white/10 pb-6 sm:mb-8">
+                <div className='mb-6 space-y-4 border-b border-white/10 pb-6 sm:mb-8'>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
+                    <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70'>
                       Coupon code
                     </p>
-                    <p className="mt-1 text-[11px] text-white/45 leading-relaxed">
-                      Optional — type a code here. Auto offers apply on their own.
+                    <p className='mt-1 text-[11px] text-white/45 leading-relaxed'>
+                      Optional - type a code here. Auto offers apply on their
+                      own.
                     </p>
                   </div>
 
-                  {hasCouponApplied ? (
-                    <div className="space-y-3 border border-[#c5a059]/35 bg-white p-3 shadow-sm sm:p-4">
+                  {hasCouponApplied ?
+                    <div className='space-y-3 border border-[#c5a059]/35 bg-white p-3 shadow-sm sm:p-4'>
                       <CouponAppliedBanner
-                        variant="heritage"
+                        variant='heritage'
                         code={appliedCouponCode}
                         savedAmount={couponDiscount}
                         eligibleCoupons={eligibleCoupons}
                       />
                       <button
-                        type="button"
-                        className="w-full border border-gray-200 py-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500 transition-colors hover:border-[#c5a059]/50 hover:bg-[#fff8eb] hover:text-navy-900 disabled:opacity-50"
+                        type='button'
+                        className='w-full border border-gray-200 py-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500 transition-colors hover:border-[#c5a059]/50 hover:bg-[#fff8eb] hover:text-navy-900 disabled:opacity-50'
                         disabled={couponLoading}
                         onClick={async () => {
                           setCouponLoading(true);
@@ -551,43 +550,44 @@ export default function CartClient() {
                         {couponLoading ? "Removing…" : "Remove Coupon"}
                       </button>
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 sm:flex-row">
+                  : <div className='flex flex-col gap-2 sm:flex-row'>
                       <input
-                        type="text"
+                        type='text'
                         value={couponInput}
                         onChange={(e) =>
                           setCouponInput(e.target.value.toUpperCase())
                         }
-                        placeholder="Enter coupon code"
-                        autoComplete="off"
-                        className="h-10 min-w-0 flex-1 border border-white/20 bg-white/10 px-3 text-sm text-white placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/40"
+                        placeholder='Enter coupon code'
+                        autoComplete='off'
+                        className='h-10 min-w-0 flex-1 border border-white/20 bg-white/10 px-3 text-sm text-white placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-1 focus:ring-[#c5a059]/40'
                         onKeyDown={(e) =>
                           e.key === "Enter" && handleApplyCoupon()
                         }
                       />
                       <button
-                        type="button"
+                        type='button'
                         onClick={handleApplyCoupon}
                         disabled={couponLoading || !couponInput.trim()}
-                        className="h-10 shrink-0 bg-[#c5a059] px-4 text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d] disabled:opacity-50"
+                        className='h-10 shrink-0 bg-[#c5a059] px-4 text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#b8924d] disabled:opacity-50'
                       >
                         {couponLoading ? "Applying…" : "Apply"}
                       </button>
                     </div>
-                  )}
+                  }
 
-                  {(eligibleCoupons.length > 0 || nearEligibleCoupons.length > 0) && (
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ffdea5]/80">
-                      {eligibleCoupons.length > 0
-                        ? `${eligibleCoupons.length} ready to apply`
-                        : `${nearEligibleCoupons.length} offer${nearEligibleCoupons.length === 1 ? "" : "s"} to unlock`}
+                  {(eligibleCoupons.length > 0 ||
+                    nearEligibleCoupons.length > 0) && (
+                    <p className='text-[10px] font-semibold uppercase tracking-widest text-[#ffdea5]/80'>
+                      {eligibleCoupons.length > 0 ?
+                        `${eligibleCoupons.length} ready to apply`
+                      : `${nearEligibleCoupons.length} offer${nearEligibleCoupons.length === 1 ? "" : "s"} to unlock`
+                      }
                     </p>
                   )}
 
-                  <div className="max-h-72 space-y-2 overflow-y-auto pr-0.5">
+                  <div className='max-h-72 space-y-2 overflow-y-auto pr-0.5'>
                     <CouponEligibleOffersList
-                      variant="heritage"
+                      variant='heritage'
                       eligibleCoupons={eligibleCoupons}
                       nearEligibleCoupons={nearEligibleCoupons}
                       isLoading={isLoadingCoupons}
@@ -603,110 +603,108 @@ export default function CartClient() {
                           setCouponLoading(false);
                         }
                       }}
-                      emptyText="No coupons are available for this cart."
-                      loadingText="Loading available offers…"
+                      emptyText='No coupons are available for this cart.'
+                      loadingText='Loading available offers…'
                     />
                   </div>
                 </div>
 
-                <div className="mb-8 space-y-4 sm:mb-10">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <span className="text-sm text-white/70">Subtotal</span>
-                    <span className="text-sm text-white">
+                <div className='mb-8 space-y-4 sm:mb-10'>
+                  <div className='flex items-center justify-between border-b border-white/10 pb-4'>
+                    <span className='text-sm text-white/70'>Subtotal</span>
+                    <span className='text-sm text-white'>
                       {formatPrice(cart.subtotal)}
                     </span>
                   </div>
                   {promotionDiscount > 0 && (
-                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                      <span className="text-sm text-[#ffdea5]/90">
-                        {cart.promotion?.label || 'Auto offer'}
+                    <div className='flex items-center justify-between border-b border-white/10 pb-4'>
+                      <span className='text-sm text-[#ffdea5]/90'>
+                        {cart.promotion?.label || "Auto offer"}
                       </span>
-                      <span className="text-sm text-[#e8d5a3]">
+                      <span className='text-sm text-[#e8d5a3]'>
                         − {formatPrice(promotionDiscount)}
                       </span>
                     </div>
                   )}
                   {couponDiscount > 0 && (
-                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                      <span className="text-sm text-[#ffdea5]/90">
+                    <div className='flex items-center justify-between border-b border-white/10 pb-4'>
+                      <span className='text-sm text-[#ffdea5]/90'>
                         Coupon discount
                       </span>
-                      <span className="text-sm text-[#ffdea5]">
+                      <span className='text-sm text-[#ffdea5]'>
                         − {formatPrice(couponDiscount)}
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <span className="text-sm text-white/70">
+                  <div className='flex items-center justify-between border-b border-white/10 pb-4'>
+                    <span className='text-sm text-white/70'>
                       Shipping &amp; Handling
                     </span>
                     <span
                       className={cn(
                         "text-sm",
-                        shippingCharge === 0
-                          ? "text-[#ffdea5]"
-                          : "text-white",
+                        shippingCharge === 0 ? "text-[#ffdea5]" : "text-white",
                       )}
                     >
-                      {shippingCharge === 0
-                        ? "Complimentary"
-                        : formatPrice(shippingCharge)}
+                      {shippingCharge === 0 ?
+                        "Complimentary"
+                      : formatPrice(shippingCharge)}
                     </span>
                   </div>
                 </div>
 
-                <div className="mb-8 sm:mb-10">
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ffdea5]">
+                <div className='mb-8 sm:mb-10'>
+                  <p className='mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ffdea5]'>
                     Total
                   </p>
-                  <p className="font-serif text-3xl text-white sm:text-4xl">
+                  <p className='font-serif text-3xl text-white sm:text-4xl'>
                     {formatPrice(estimatedTotal)}
                   </p>
                 </div>
 
                 <button
                   ref={checkoutBtnRef}
-                  type="button"
+                  type='button'
                   disabled={isCheckoutLaunching || hasUnavailableItems}
                   onClick={() => void goToCheckout()}
-                  className="mb-4 w-full bg-[#c5a059] py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-50 sm:py-5 max-lg:hidden"
+                  className='mb-4 w-full bg-[#c5a059] py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-50 sm:py-5 max-lg:hidden'
                 >
-                  {isCheckoutLaunching
-                    ? "Opening checkout…"
-                    : "Proceed to Checkout"}
+                  {isCheckoutLaunching ?
+                    "Opening checkout…"
+                  : "Proceed to Checkout"}
                 </button>
 
                 {hasUnavailableItems && (
-                  <p className="mb-4 text-center text-[11px] font-medium text-red-300">
+                  <p className='mb-4 text-center text-[11px] font-medium text-red-300'>
                     Remove sold-out items to proceed to checkout.
                   </p>
                 )}
 
-                <p className="flex items-center justify-center gap-1.5 text-center text-[10px] text-white/40">
-                  <Shield className="h-3 w-3 shrink-0" aria-hidden />
+                <p className='flex items-center justify-center gap-1.5 text-center text-[10px] text-white/40'>
+                  <Shield className='h-3 w-3 shrink-0' aria-hidden />
                   Secured by industry-standard encryption
                 </p>
               </div>
 
-              <div className="mt-6 space-y-4 sm:mt-8">
-                <div className="flex items-center gap-4 text-gray-600">
-                  <Truck className="h-4 w-4 shrink-0 text-[#c5a059]" />
-                  <span className="text-sm">
+              <div className='mt-6 space-y-4 sm:mt-8'>
+                <div className='flex items-center gap-4 text-gray-600'>
+                  <Truck className='h-4 w-4 shrink-0 text-[#c5a059]' />
+                  <span className='text-sm'>
                     Delivery within 5–7 business days across India.
                   </span>
                 </div>
-                <div className="flex items-center gap-4 text-gray-600">
-                  <Undo2 className="h-4 w-4 shrink-0 text-[#c5a059]" />
-                  <span className="text-sm">
+                <div className='flex items-center gap-4 text-gray-600'>
+                  <Undo2 className='h-4 w-4 shrink-0 text-[#c5a059]' />
+                  <span className='text-sm'>
                     Easy returns on eligible non-bespoke items.
                   </span>
                 </div>
               </div>
 
-              <p className="mt-6 text-center">
+              <p className='mt-6 text-center'>
                 <Link
-                  href="/shop"
-                  className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500 transition-colors hover:text-[#c5a059]"
+                  href='/shop'
+                  className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500 transition-colors hover:text-[#c5a059]'
                 >
                   Continue Shopping
                 </Link>
@@ -717,15 +715,15 @@ export default function CartClient() {
       </div>
 
       {/* Mobile Sticky Bottom CTA */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 p-4 lg:hidden pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+      <div className='fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 p-4 lg:hidden pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-4px_16px_rgba(0,0,0,0.05)]'>
         <button
-          type="button"
+          type='button'
           disabled={isCheckoutLaunching || hasUnavailableItems}
           onClick={() => {
             if (checkoutBtnRef.current) checkoutBtnRef.current.click();
             else goToCheckout();
           }}
-          className="w-full bg-[#c5a059] py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-50"
+          className='w-full bg-[#c5a059] py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#b8924d] disabled:cursor-not-allowed disabled:opacity-50'
         >
           {isCheckoutLaunching ? "Opening checkout…" : "Proceed to Checkout"}
         </button>

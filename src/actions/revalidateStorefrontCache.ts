@@ -7,5 +7,5 @@ import { STOREFRONT_SETTINGS_CACHE_TAG } from "@/lib/cacheTags";
 export async function revalidateStorefrontCache(): Promise<void> {
   revalidateTag(STOREFRONT_SETTINGS_CACHE_TAG);
   revalidatePath("/");
-  revalidatePath("/gifting");
+  revalidatePath("/premium");
 }

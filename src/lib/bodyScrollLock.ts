@@ -19,13 +19,12 @@ export function lockBodyScroll(): void {
   if (lockCount !== 1) return;
 
   const html = document.documentElement;
-  savedScrollY =
-    window.scrollY || window.pageYOffset || html.scrollTop || 0;
+  savedScrollY = window.scrollY || window.pageYOffset || html.scrollTop || 0;
 
   html.style.overflow = "hidden";
   document.body.style.overflow = "hidden";
 
-  // iOS / mobile: overflow:hidden alone often fails — pin the body.
+  // iOS / mobile: overflow:hidden alone often fails - pin the body.
   usedFixedLock = isCoarsePointer();
   if (usedFixedLock) {
     document.body.style.position = "fixed";

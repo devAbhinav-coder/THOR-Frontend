@@ -4,7 +4,7 @@ export { colorHasTaggedImages } from "@/lib/pdpImages";
 
 export type ShopListingEntry = {
   product: Product;
-  /** Shade for this card — null when product has no color variants. */
+  /** Shade for this card - null when product has no color variants. */
   displayColor: string | null;
   listKey: string;
 };
@@ -76,10 +76,9 @@ export function shopProductHref(
   return `${base}?color=${encodeURIComponent(c)}`;
 }
 
-export function pickVariantForColor<T extends { color?: string; stock?: number }>(
-  variants: T[],
-  color?: string | null,
-): T | null {
+export function pickVariantForColor<
+  T extends { color?: string; stock?: number },
+>(variants: T[], color?: string | null): T | null {
   if (!variants.length) return null;
   const key = normProductColor(color);
   if (key) {

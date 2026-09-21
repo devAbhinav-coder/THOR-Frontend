@@ -43,10 +43,12 @@ export function pushGtagConsent(choice: CookieConsentChoice): void {
   }
   try {
     window.dispatchEvent(
-      new CustomEvent<CookieConsentChoice>(COOKIE_CONSENT_EVENT, { detail: choice }),
+      new CustomEvent<CookieConsentChoice>(COOKIE_CONSENT_EVENT, {
+        detail: choice,
+      }),
     );
   } catch {
-    /* CustomEvent unsupported — ignore */
+    /* CustomEvent unsupported - ignore */
   }
 }
 

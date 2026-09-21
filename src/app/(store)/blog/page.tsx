@@ -1,10 +1,7 @@
 import BlogListingClient from "@/components/blog/BlogListingClient";
 import { fetchAllBlogFeedPosts } from "@/lib/blogFeedData";
 import { fetchBlogsListingServer, plainBlogExcerpt } from "@/lib/blogServer";
-import {
-  blogListingBreadcrumbJsonLd,
-  blogListingJsonLd,
-} from "@/lib/blogSeo";
+import { blogListingBreadcrumbJsonLd, blogListingJsonLd } from "@/lib/blogSeo";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 const SITE_URL = getSiteUrl();
@@ -26,7 +23,7 @@ export default async function BlogListingPage() {
         "@context": "https://schema.org",
         "@type": "ItemList",
         "@id": `${SITE_URL}/blog#itemlist`,
-        name: "The House of Rani Journal — Latest Stories",
+        name: "The House of Rani Journal - Latest Stories",
         url: `${SITE_URL}/blog`,
         numberOfItems: itemListPosts.length,
         itemListElement: itemListPosts.map((b, idx) => ({

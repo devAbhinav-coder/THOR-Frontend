@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * Response envelopes for `GET/POST/PUT /admin/invoices`.
  * Lives in its own file (only `zod`) so `invoiceStore` never depends on the
- * full `api-schemas` graph — avoids rare cases where `import * as schemas`
+ * full `api-schemas` graph - avoids rare cases where `import * as schemas`
  * yields `undefined` for these keys during module init / HMR.
  */
 

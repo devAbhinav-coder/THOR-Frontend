@@ -49,7 +49,10 @@ export function applyProductCopyDraft(
   apply: (patch: ProductCopyDraft) => void,
   opts?: { fabric?: string },
 ): string[] {
-  const fromJson = draft.text?.trim().startsWith("{") ? tryParseDraftFromText(draft.text) : null;
+  const fromJson =
+    draft.text?.trim().startsWith("{") ?
+      tryParseDraftFromText(draft.text)
+    : null;
   const d = { ...draft, ...fromJson };
 
   const description = (d.description || d.text || "").trim();
@@ -59,7 +62,9 @@ export function applyProductCopyDraft(
   let shortDesc = d.shortDescription?.trim() || "";
   if (shortDesc.length < 110 && description) {
     const plain = description.replace(/^[-•*]\s+/gm, "").replace(/\n+/g, " ");
-    const sentences = plain.split(/(?<=[.!?।])\s+/).filter((s) => s.length > 12);
+    const sentences = plain
+      .split(/(?<=[.!?।])\s+/)
+      .filter((s) => s.length > 12);
     let out = "";
     for (const s of sentences) {
       const next = out ? `${out} ${s}` : s;
@@ -93,11 +98,17 @@ export function applyProductCopyDraft(
   const detailKeys = d.productDetailKeys?.trim() || "";
   const detailValues = d.productDetailValues?.trim() || "";
   if (detailKeys || detailValues || fabric) {
-    const merged = mergeFabricIntoProductDetails(detailKeys, detailValues, fabric);
+    const merged = mergeFabricIntoProductDetails(
+      detailKeys,
+      detailValues,
+      fabric,
+    );
     if (merged.keys.trim()) {
       patch.productDetailKeys = merged.keys;
       patch.productDetailValues = merged.values;
-      filled.push(fabric ? "Product detail table (incl. Fabric)" : "Product detail table");
+      filled.push(
+        fabric ? "Product detail table (incl. Fabric)" : "Product detail table",
+      );
     }
   }
 
@@ -128,11 +139,11 @@ export function AdminAiProductCopySection({
         .map((v, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 rounded-lg bg-white border border-violet-100 px-2 py-1 text-[11px] text-slate-700"
+            className='inline-flex items-center gap-1 rounded-lg bg-white border border-violet-100 px-2 py-1 text-[11px] text-slate-700'
           >
             {v.size && <strong>{v.size}</strong>}
             {v.color && <span>· {v.color}</span>}
-            {v.sku && <span className="text-slate-400">· {v.sku}</span>}
+            {v.sku && <span className='text-slate-400'>· {v.sku}</span>}
           </span>
         )),
     [variants],
@@ -147,8 +158,12 @@ export function AdminAiProductCopySection({
     }
     setLoading(true);
     try {
-      const tagList = tags
-        ? tags.split(",").map((t) => t.trim()).filter(Boolean)
+      const tagList =
+        tags ?
+          tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
         : undefined;
       const res = await adminAiApi.draftProductCopy({
         name: name.trim(),
@@ -170,7 +185,9 @@ export function AdminAiProductCopySection({
       const raw = res.data as ProductCopyDraft;
       const filled = applyProductCopyDraft(raw, onApply, { fabric });
       if (!filled.length) {
-        toast.error("AI response empty — design notes zyada detail se likho aur retry");
+        toast.error(
+          "AI response empty - design notes zyada detail se likho aur retry",
+        );
         return;
       }
       toast.success(`Form filled: ${filled.join(", ")}`);
@@ -182,35 +199,34 @@ export function AdminAiProductCopySection({
   };
 
   return (
-    <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3 space-y-2.5 w-full">
-      <p className="text-[11px] text-violet-900 leading-snug">
-        <strong>AI listing writer:</strong> Pehle <strong>Fabric</strong> select karo + design notes
-        likho → 2-line short description, full description, SEO, specs table (Fabric, Length, Work…).
+    <div className='rounded-xl border border-violet-200 bg-violet-50/50 p-3 space-y-2.5 w-full'>
+      <p className='text-[11px] text-violet-900 leading-snug'>
+        <strong>AI listing writer:</strong> Pehle <strong>Fabric</strong> select
+        karo + design notes likho → 2-line short description, full description,
+        SEO, specs table (Fabric, Length, Work…).
       </p>
       {variantPreview.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">{variantPreview}</div>
+        <div className='flex flex-wrap gap-1.5'>{variantPreview}</div>
       )}
       <textarea
         value={designNotes}
         onChange={(e) => setDesignNotes(e.target.value)}
         rows={2}
-        placeholder="Design notes: peacock pallu, banarasi zari, silk, 5.5m, blouse included, festive/wedding…"
-        className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs resize-y min-h-[52px] focus:outline-none focus:ring-2 focus:ring-violet-300"
+        placeholder='Design notes: peacock pallu, banarasi zari, silk, 5.5m, blouse included, festive/wedding…'
+        className='w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs resize-y min-h-[52px] focus:outline-none focus:ring-2 focus:ring-violet-300'
         disabled={loading}
       />
       <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full rounded-lg border-violet-300 bg-white text-violet-900 gap-1.5"
+        type='button'
+        variant='outline'
+        size='sm'
+        className='w-full rounded-lg border-violet-300 bg-white text-violet-900 gap-1.5'
         onClick={() => void run()}
         disabled={loading}
       >
-        {loading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Sparkles className="h-3.5 w-3.5" />
-        )}
+        {loading ?
+          <Loader2 className='h-3.5 w-3.5 animate-spin' />
+        : <Sparkles className='h-3.5 w-3.5' />}
         {loading ? "Generating full copy…" : "Generate & fill all fields"}
       </Button>
     </div>

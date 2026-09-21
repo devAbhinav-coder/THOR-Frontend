@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { cartApi } from '@/lib/api';
-import { Cart } from '@/types';
-import { useAuthStore } from '@/store/useAuthStore';
-import { publishCart } from '@/store/useCartStore';
-import { useEffect } from 'react';
-import { CART_QUERY_KEY } from '@/lib/queryClient';
+import { useQuery } from "@tanstack/react-query";
+import { cartApi } from "@/lib/api";
+import { Cart } from "@/types";
+import { useAuthStore } from "@/store/useAuthStore";
+import { publishCart } from "@/store/useCartStore";
+import { useEffect } from "react";
+import { CART_QUERY_KEY } from "@/lib/queryClient";
 
 export { CART_QUERY_KEY };
 
@@ -29,7 +29,7 @@ export function useCartQuery() {
 
   useEffect(() => {
     if (query.data === undefined) return;
-    // RQ is source of truth here — do not setQueryData again
+    // RQ is source of truth here - do not setQueryData again
     publishCart(query.data, { syncQuery: false });
   }, [query.data]);
 

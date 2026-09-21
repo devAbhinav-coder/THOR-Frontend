@@ -132,7 +132,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
               {shouldMount ?
                 <Image
                   src={s.image}
-                  alt={s.title || "The House of Rani — premium ethnic wear"}
+                  alt={s.title || "The House of Rani - premium ethnic wear"}
                   fill
                   loader={cloudinaryLoader}
                   priority={i === 0}
@@ -180,7 +180,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                   {subtitle ?
                     <p
                       key={`subtitle-${currentSlide}`}
-                      className="motion-safe:animate-hero-copy-in text-[11px] font-medium tracking-[0.12em] text-gold-100 sm:text-sm [text-shadow:0_1px_14px_rgba(0,0,0,0.55)]"
+                      className='motion-safe:animate-hero-copy-in text-[11px] font-medium tracking-[0.12em] text-gold-100 sm:text-sm [text-shadow:0_1px_14px_rgba(0,0,0,0.55)]'
                     >
                       {subtitle}
                     </p>
@@ -192,7 +192,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                 The House of Rani
               </p>
               <div
-                className="mt-3 hidden h-px w-14 bg-gradient-to-r from-gold-300/90 to-transparent sm:mt-4 sm:block sm:w-20"
+                className='mt-3 hidden h-px w-14 bg-gradient-to-r from-gold-300/90 to-transparent sm:mt-4 sm:block sm:w-20'
                 aria-hidden
               />
 
@@ -230,7 +230,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                 >
                   <Link
                     href={slide.ctaLink || "/shop/collections"}
-                    className="border-b border-white/65 pb-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white transition-colors hover:border-gold-200 hover:text-gold-100 sm:text-xs"
+                    className='border-b border-white/65 pb-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white transition-colors hover:border-gold-200 hover:text-gold-100 sm:text-xs'
                   >
                     {slide.ctaText || "Explore collection"}
                   </Link>

@@ -11,7 +11,7 @@ import { plainBlogExcerpt } from "@/lib/blogServer";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
 type Props = {
-  /** SSR-prefetched latest blogs — section hidden when empty. */
+  /** SSR-prefetched latest blogs - section hidden when empty. */
   initialBlogs?: Blog[] | null;
 };
 
@@ -44,35 +44,38 @@ function HeritageStoryCard({
 
   if (variant === "featured") {
     return (
-      <article className="flex h-full flex-col">
+      <article className='flex h-full flex-col'>
         {img ?
-          <Link href={href} className="group relative mb-5 block aspect-[16/10] overflow-hidden bg-gray-100 sm:mb-6">
+          <Link
+            href={href}
+            className='group relative mb-5 block aspect-[16/10] overflow-hidden bg-gray-100 sm:mb-6'
+          >
             <Image
               src={img}
               alt={blog.title}
               fill
               loader={cloudinaryLoader}
-              sizes="(max-width: 1024px) 100vw, 55vw"
-              className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-              loading="lazy"
+              sizes='(max-width: 1024px) 100vw, 55vw'
+              className='object-cover transition-transform duration-700 group-hover:scale-[1.03]'
+              loading='lazy'
               quality={72}
             />
           </Link>
         : null}
-        <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#c5a059] sm:text-[11px]">
+        <p className='text-[10px] font-medium uppercase tracking-[0.22em] text-[#c5a059] sm:text-[11px]'>
           {blogLabel(blog)}
         </p>
-        <h3 className="mt-2 font-serif text-xl font-medium leading-snug text-navy-900 sm:text-2xl lg:text-3xl">
-          <Link href={href} className="hover:text-navy-700">
+        <h3 className='mt-2 font-serif text-xl font-medium leading-snug text-navy-900 sm:text-2xl lg:text-3xl'>
+          <Link href={href} className='hover:text-navy-700'>
             {blog.title}
           </Link>
         </h3>
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-gray-500 sm:text-base">
+        <p className='mt-3 line-clamp-3 text-sm leading-relaxed text-gray-500 sm:text-base'>
           {blogExcerpt(blog)}
         </p>
         <Link
           href={href}
-          className="mt-4 inline-block text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-900 underline decoration-navy-900/30 underline-offset-[5px] transition-colors hover:decoration-navy-900 sm:text-xs"
+          className='mt-4 inline-block text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-900 underline decoration-navy-900/30 underline-offset-[5px] transition-colors hover:decoration-navy-900 sm:text-xs'
         >
           Read Story
         </Link>
@@ -81,36 +84,36 @@ function HeritageStoryCard({
   }
 
   return (
-    <article className="flex gap-4 border-t border-gray-200/80 pt-5 first:border-t-0 first:pt-0 sm:gap-5">
+    <article className='flex gap-4 border-t border-gray-200/80 pt-5 first:border-t-0 first:pt-0 sm:gap-5'>
       {img ?
         <Link
           href={href}
-          className="group relative h-20 w-20 shrink-0 overflow-hidden bg-gray-100 sm:h-24 sm:w-24"
+          className='group relative h-20 w-20 shrink-0 overflow-hidden bg-gray-100 sm:h-24 sm:w-24'
         >
           <Image
             src={img}
             alt={blog.title}
             fill
             loader={cloudinaryLoader}
-            sizes="96px"
-            className="object-cover transition-transform duration-700 group-hover:scale-[1.05]"
-            loading="lazy"
+            sizes='96px'
+            className='object-cover transition-transform duration-700 group-hover:scale-[1.05]'
+            loading='lazy'
             quality={68}
           />
         </Link>
       : null}
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#c5a059]">
+      <div className='min-w-0 flex-1'>
+        <p className='text-[10px] font-medium uppercase tracking-[0.18em] text-[#c5a059]'>
           {blogLabel(blog)}
         </p>
-        <h3 className="mt-1 line-clamp-2 font-serif text-base font-medium leading-snug text-navy-900 sm:text-lg">
-          <Link href={href} className="hover:text-navy-700">
+        <h3 className='mt-1 line-clamp-2 font-serif text-base font-medium leading-snug text-navy-900 sm:text-lg'>
+          <Link href={href} className='hover:text-navy-700'>
             {blog.title}
           </Link>
         </h3>
         <Link
           href={href}
-          className="mt-2 inline-block text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-900/70 hover:text-navy-900 sm:text-[11px]"
+          className='mt-2 inline-block text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-900/70 hover:text-navy-900 sm:text-[11px]'
         >
           Read Story
         </Link>
@@ -159,27 +162,33 @@ export default function BlogBanner({ initialBlogs }: Props = {}) {
 
   return (
     <section
-      className={cn(homeSectionStyles.pageBg, "bg-gray-50/50 py-14 sm:py-20 lg:py-24")}
-      aria-labelledby="heritage-stories-heading"
+      className={cn(
+        homeSectionStyles.pageBg,
+        "bg-gray-50/50 py-14 sm:py-20 lg:py-24",
+      )}
+      aria-labelledby='heritage-stories-heading'
     >
       <div className={homeSectionStyles.container}>
-        <div className="mb-10 text-center sm:mb-14">
+        <div className='mb-10 text-center sm:mb-14'>
           <h2
-            id="heritage-stories-heading"
-            className="font-serif text-3xl font-medium leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem]"
+            id='heritage-stories-heading'
+            className='font-serif text-3xl font-medium leading-tight text-navy-900 sm:text-4xl lg:text-[2.75rem]'
           >
-            Heritage{" "}
-            <span className="italic text-navy-900">Stories</span>
+            Heritage <span className='italic text-navy-900'>Stories</span>
           </h2>
         </div>
 
-        <div className="grid gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16">
-          <HeritageStoryCard blog={featured} variant="featured" />
+        <div className='grid gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16'>
+          <HeritageStoryCard blog={featured} variant='featured' />
 
           {rest.length > 0 ?
-            <div className="flex flex-col justify-center gap-5 lg:gap-6">
+            <div className='flex flex-col justify-center gap-5 lg:gap-6'>
               {rest.map((blog) => (
-                <HeritageStoryCard key={blog._id} blog={blog} variant="compact" />
+                <HeritageStoryCard
+                  key={blog._id}
+                  blog={blog}
+                  variant='compact'
+                />
               ))}
             </div>
           : null}

@@ -8,7 +8,7 @@ type UseInfiniteScrollTriggerOptions = {
   /** Only block IO on the very first load (not background refetches). */
   isPending?: boolean;
   fetchNextPage: () => Promise<unknown>;
-  /** Fires as soon as sentinel intersects — use to show tail skeletons early. */
+  /** Fires as soon as sentinel intersects - use to show tail skeletons early. */
   onLoadMoreRequested?: () => void;
   rootMargin?: string;
   threshold?: number;

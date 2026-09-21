@@ -1,4 +1,4 @@
-/** Shared heritage checkout styling — navy + gold + editorial white. */
+/** Shared heritage checkout styling - navy + gold + editorial white. */
 export const checkoutGold = "#c5a059";
 export const checkoutGoldHover = "#b8924d";
 
@@ -11,8 +11,7 @@ export const heritageSummaryCard =
 export const heritageCta =
   "w-full bg-navy-900 py-4 sm:py-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-navy-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed";
 
-export const heritageCtaGold =
-  "bg-[#c5a059] hover:bg-[#b8924d] text-white";
+export const heritageCtaGold = "bg-[#c5a059] hover:bg-[#b8924d] text-white";
 
 export const checkoutAccentClass = "text-[#c5a059]";
 export const checkoutRingClass = "ring-[#c5a059]/40";

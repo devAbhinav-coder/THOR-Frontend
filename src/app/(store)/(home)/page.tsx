@@ -11,6 +11,7 @@ import {
 } from "@/lib/storePrefetch";
 import {
   fetchStorefrontHomeBundle,
+  fetchStorefrontHomePageBundle,
 } from "@/lib/storefrontServer";
 import { getSiteUrl } from "@/lib/siteUrl";
 import {
@@ -24,12 +25,22 @@ import {
 } from "@/lib/brandSeo";
 import { absolutePageTitle } from "@/lib/pageSeo";
 
-const CategorySection = dynamic(() => import("@/components/home/CategorySection"));
-const FeaturedProducts = dynamic(() => import("@/components/home/FeaturedProducts"));
-const SareeCollections = dynamic(() => import("@/components/home/SareeCollections"));
-const HomeMiddleBanner = dynamic(() => import("@/components/home/HomeMiddleBanner"));
+const CategorySection = dynamic(
+  () => import("@/components/home/CategorySection"),
+);
+const FeaturedProducts = dynamic(
+  () => import("@/components/home/FeaturedProducts"),
+);
+const SareeCollections = dynamic(
+  () => import("@/components/home/SareeCollections"),
+);
+const HomeMiddleBanner = dynamic(
+  () => import("@/components/home/HomeMiddleBanner"),
+);
 const HomeBanner = dynamic(() => import("@/components/home/HomeBanner"));
-const ExploreCollection = dynamic(() => import("@/components/home/ExploreCollection"));
+const ExploreCollection = dynamic(
+  () => import("@/components/home/ExploreCollection"),
+);
 import HomePremiumShowcase from "@/components/home/HomePremiumShowcase";
 const WhyChooseUs = dynamic(() => import("@/components/home/WhyChooseUs"));
 const BlogBanner = dynamic(() => import("@/components/home/BlogBanner"));
@@ -68,7 +79,7 @@ export const metadata: Metadata = {
         url: OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: "The House of Rani — Premium Sarees, Salwar Suits & Corsets",
+        alt: "The House of Rani - Premium Sarees, Salwar Suits & Corsets",
       },
     ],
   },
@@ -81,27 +92,42 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
+  const homeBundle = await fetchStorefrontHomePageBundle();
   const [
-    storefrontBundle,
-    categoryStats,
-    featuredProducts,
-    latestBlogs,
-    sareeSubcategories,
-    homeTestimonials,
-    exploreProducts,
-  ] = await Promise.all([
-    fetchStorefrontHomeBundle(),
-    fetchHomeCategoryStats(),
-    fetchHomeFeaturedProducts(),
-    fetchHomeLatestBlogs(3),
-    fetchHomeSareeSubcategories(),
-    fetchHomeTestimonials(),
-    fetchHomeExploreProducts(12),
-  ]);
-  const { heroSlides, settings: storefrontSettings } = storefrontBundle;
+    categoryStatsFallback,
+    featuredFallback,
+    blogsFallback,
+    sareeFallback,
+    testimonialsFallback,
+    exploreFallback,
+  ] =
+    homeBundle ?
+      [null, null, null, null, null, null]
+    : await Promise.all([
+        fetchHomeCategoryStats(),
+        fetchHomeFeaturedProducts(),
+        fetchHomeLatestBlogs(3),
+        fetchHomeSareeSubcategories(),
+        fetchHomeTestimonials(),
+        fetchHomeExploreProducts(12),
+      ]);
+
+  let heroSlides = homeBundle?.heroSlides ?? [];
+  let storefrontSettings = homeBundle?.settings ?? null;
+  if (!homeBundle) {
+    const legacyHero = await fetchStorefrontHomeBundle();
+    heroSlides = legacyHero.heroSlides;
+    storefrontSettings = legacyHero.settings;
+  }
+  const categoryStats = homeBundle?.categoryStats ?? categoryStatsFallback;
+  const featuredProducts = homeBundle?.featuredProducts ?? featuredFallback;
+  const latestBlogs = homeBundle?.latestBlogs ?? blogsFallback;
+  const sareeSubcategories = homeBundle?.sareeSubcategories ?? sareeFallback;
+  const homeTestimonials = homeBundle?.testimonials ?? testimonialsFallback;
+  const exploreProducts = homeBundle?.exploreProducts ?? exploreFallback;
 
   /**
-   * WebPage JSON-LD — references the Organization and WebSite nodes
+   * WebPage JSON-LD - references the Organization and WebSite nodes
    * already emitted by the root layout (@graph), so we only add what's
    * unique to the home page here.
    *
@@ -136,11 +162,13 @@ export default async function HomePage() {
         },
       ],
     },
-    dateModified: new Date().toISOString(),
+    ...(storefrontSettings?.updatedAt ?
+      { dateModified: storefrontSettings.updatedAt }
+    : {}),
   };
 
   /**
-   * LocalBusiness schema — helps Google show the brand in local / Maps
+   * LocalBusiness schema - helps Google show the brand in local / Maps
    * results and builds trust (shows the store is a real business).
    */
   const localBusinessLd = {
@@ -163,7 +191,7 @@ export default async function HomePage() {
   };
 
   /**
-   * ItemList of featured products — enables Google's Product Carousel rich
+   * ItemList of featured products - enables Google's Product Carousel rich
    * result on the home page SERP.  Each item is a minimal Product schema
    * node that links back to the full PDP (where price/stock/return/shipping
    * details are fully declared).  Google follows those links to enrich the
@@ -174,121 +202,122 @@ export default async function HomePage() {
     .slice(0, 10);
 
   const featuredItemListLd =
-    featuredProducts && featuredProducts.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@type": "ItemList",
-          name: "Featured Sarees, Salwar Suits & Corsets — The House of Rani",
-          description:
-            "Handpicked premium sarees, salwar suits, and corsets from The House of Rani.",
-          url: `${SITE_URL}/shop/collections`,
-          numberOfItems: featuredProducts.length,
-          itemListElement: featuredProducts
-            .filter((p) => p?.slug && p?.name)
-            .slice(0, 12)
-            .map((p, idx) => ({
-              "@type": "ListItem",
-              position: idx + 1,
-              item: {
-                "@type": "Product",
-                "@id": `${SITE_URL}/shop/${encodeURIComponent(p.slug)}#product`,
-                name: p.name,
-                url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
-                description:
-                  p.shortDescription ||
-                  String(p.description || "").slice(0, 160),
-                image:
-                  p.images?.[0]?.url
-                    ? [p.images[0].url]
-                    : [`${SITE_URL}/ogimage.png`],
-                brand: {
-                  "@type": "Brand",
-                  name: "The House of Rani",
-                },
-                sku: p.variants?.[0]?.sku || p._id,
-                offers: {
-                  "@type": "Offer",
-                  priceCurrency: "INR",
-                  price: Number(p.price || 0).toFixed(2),
-                  priceValidUntil,
-                  availability:
-                    p.totalStock > 0
-                      ? "https://schema.org/InStock"
-                      : "https://schema.org/OutOfStock",
-                  itemCondition: "https://schema.org/NewCondition",
-                  url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
-                  seller: {
-                    "@type": "Organization",
-                    name: "The House of Rani",
-                    url: SITE_URL,
-                  },
-                  hasMerchantReturnPolicy: {
-                    "@type": "MerchantReturnPolicy",
-                    applicableCountry: "IN",
-                    returnPolicyCategory:
-                      "https://schema.org/MerchantReturnFiniteReturnWindow",
-                    merchantReturnDays: 5,
-                    returnMethod: "https://schema.org/ReturnByMail",
-                    returnFees: "https://schema.org/FreeReturn",
-                  },
-                  shippingDetails: {
-                    "@type": "OfferShippingDetails",
-                    shippingRate: {
-                      "@type": "MonetaryAmount",
-                      value: "0",
-                      currency: "INR",
-                    },
-                    shippingDestination: {
-                      "@type": "DefinedRegion",
-                      addressCountry: "IN",
-                    },
-                    deliveryTime: {
-                      "@type": "ShippingDeliveryTime",
-                      handlingTime: {
-                        "@type": "QuantitativeValue",
-                        minValue: 1,
-                        maxValue: 3,
-                        unitCode: "DAY",
-                      },
-                      transitTime: {
-                        "@type": "QuantitativeValue",
-                        minValue: 3,
-                        maxValue: 10,
-                        unitCode: "DAY",
-                      },
-                    },
-                  },
-                },
-                ...(Number(p.ratings?.count || 0) > 0
-                  ? {
-                      aggregateRating: {
-                        "@type": "AggregateRating",
-                        ratingValue: String(p.ratings.average),
-                        reviewCount: String(p.ratings.count),
-                        bestRating: "5",
-                        worstRating: "1",
-                      },
-                    }
-                  : {}),
+    featuredProducts && featuredProducts.length > 0 ?
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: "Featured Sarees, Salwar Suits & Corsets - The House of Rani",
+        description:
+          "Handpicked premium sarees, salwar suits, and corsets from The House of Rani.",
+        url: `${SITE_URL}/shop/collections`,
+        numberOfItems: featuredProducts.length,
+        itemListElement: featuredProducts
+          .filter((p) => p?.slug && p?.name)
+          .slice(0, 12)
+          .map((p, idx) => ({
+            "@type": "ListItem",
+            position: idx + 1,
+            item: {
+              "@type": "Product",
+              "@id": `${SITE_URL}/shop/${encodeURIComponent(p.slug)}#product`,
+              name: p.name,
+              url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
+              description:
+                p.shortDescription || String(p.description || "").slice(0, 160),
+              image:
+                p.images?.[0]?.url ?
+                  [p.images[0].url]
+                : [`${SITE_URL}/ogimage.png`],
+              brand: {
+                "@type": "Brand",
+                name: "The House of Rani",
               },
-            })),
-        }
-      : null;
+              sku: p.variants?.[0]?.sku || p._id,
+              offers: {
+                "@type": "Offer",
+                priceCurrency: "INR",
+                price: Number(p.price || 0).toFixed(2),
+                priceValidUntil,
+                availability:
+                  p.totalStock > 0 ?
+                    "https://schema.org/InStock"
+                  : "https://schema.org/OutOfStock",
+                itemCondition: "https://schema.org/NewCondition",
+                url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`,
+                seller: {
+                  "@type": "Organization",
+                  name: "The House of Rani",
+                  url: SITE_URL,
+                },
+                hasMerchantReturnPolicy: {
+                  "@type": "MerchantReturnPolicy",
+                  applicableCountry: "IN",
+                  returnPolicyCategory:
+                    "https://schema.org/MerchantReturnFiniteReturnWindow",
+                  merchantReturnDays: 5,
+                  returnMethod: "https://schema.org/ReturnByMail",
+                  returnFees: "https://schema.org/FreeReturn",
+                },
+                shippingDetails: {
+                  "@type": "OfferShippingDetails",
+                  shippingRate: {
+                    "@type": "MonetaryAmount",
+                    value: "0",
+                    currency: "INR",
+                  },
+                  shippingDestination: {
+                    "@type": "DefinedRegion",
+                    addressCountry: "IN",
+                  },
+                  deliveryTime: {
+                    "@type": "ShippingDeliveryTime",
+                    handlingTime: {
+                      "@type": "QuantitativeValue",
+                      minValue: 1,
+                      maxValue: 3,
+                      unitCode: "DAY",
+                    },
+                    transitTime: {
+                      "@type": "QuantitativeValue",
+                      minValue: 3,
+                      maxValue: 10,
+                      unitCode: "DAY",
+                    },
+                  },
+                },
+              },
+              ...(Number(p.ratings?.count || 0) > 0 ?
+                {
+                  aggregateRating: {
+                    "@type": "AggregateRating",
+                    ratingValue: String(p.ratings.average),
+                    reviewCount: String(p.ratings.count),
+                    bestRating: "5",
+                    worstRating: "1",
+                  },
+                }
+              : {}),
+            },
+          })),
+      }
+    : null;
 
   return (
     <>
       <script
-        type="application/ld+json"
+        type='application/ld+json'
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homePageLd) }}
       />
       <script
-        type="application/ld+json"
+        type='application/ld+json'
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd) }}
       />
       {featuredItemListLd && (
         <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(featuredItemListLd) }}
+          type='application/ld+json'
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(featuredItemListLd),
+          }}
         />
       )}
       <HeroSection
@@ -306,9 +335,7 @@ export default async function HomePage() {
       <FeaturedProducts initialProducts={featuredProducts} />
       <HomeBanner initialSettings={storefrontSettings} />
       <ExploreCollection initialProducts={exploreProducts} />
-      <HomePremiumShowcase
-        showcase={storefrontSettings?.homePremiumShowcase}
-      />
+      <HomePremiumShowcase showcase={storefrontSettings?.homePremiumShowcase} />
       <WhyChooseUs />
       <BlogBanner initialBlogs={latestBlogs} />
       <Testimonials

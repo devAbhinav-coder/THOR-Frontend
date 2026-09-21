@@ -36,7 +36,7 @@ const FEATURES = [
     title: "Story-led designs",
     short: "Meaning",
     description:
-      "Story-led designs — every pattern has a meaning worth knowing.",
+      "Story-led designs - every pattern has a meaning worth knowing.",
     tag: "Intention",
   },
 ] as const;
@@ -124,12 +124,12 @@ export default function AboutChapterFeatures() {
             </h2>
           </div>
           <p className="text-stone-500 text-sm sm:text-base max-w-md leading-relaxed">
-            Four pillars of every drape — craft, comfort, modernity, and stories
+            Four pillars of every drape - craft, comfort, modernity, and stories
             woven into the weave.
           </p>
         </div>
 
-        {/* Mobile + tablet — all 4 pillars visible (2×2) */}
+        {/* Mobile + tablet - all 4 pillars visible (2×2) */}
         <ul
           data-about-reveal
           className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-4 mt-8 lg:hidden"
@@ -142,7 +142,7 @@ export default function AboutChapterFeatures() {
           ))}
         </ul>
 
-        {/* Desktop — interactive row */}
+        {/* Desktop - interactive row */}
         <div
           data-about-reveal
           className="hidden lg:grid lg:grid-cols-4 mt-10"

@@ -42,8 +42,15 @@ export default function BlogStoryOutline({
     .filter((r) => r.inStory && r.row.placement !== "cover");
 
   const available = rows
-    .map((row, index) => ({ index, row, url: row.kind === "existing" ? row.url : row.preview }))
-    .filter((r) => r.row.placement !== "cover" && !contentHasImageMarker(r.index, content));
+    .map((row, index) => ({
+      index,
+      row,
+      url: row.kind === "existing" ? row.url : row.preview,
+    }))
+    .filter(
+      (r) =>
+        r.row.placement !== "cover" && !contentHasImageMarker(r.index, content),
+    );
 
   const removeFromStory = (index: number) => {
     onContentChange(clearImageFromContent(content, index));
@@ -51,26 +58,29 @@ export default function BlogStoryOutline({
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-gray-500 py-4 text-center">
-        Upload images first — then insert them via Add Media in the editor.
+      <p className='text-sm text-gray-500 py-4 text-center'>
+        Upload images first - then insert them via Add Media in the editor.
       </p>
     );
   }
 
   return (
-    <div className="space-y-5">
+    <div className='space-y-5'>
       {sections.length > 0 && (
-        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-3">
+        <div className='rounded-xl bg-gray-50 border border-gray-100 p-4'>
+          <p className='text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-3'>
             Article sections
           </p>
-          <ol className="space-y-2">
+          <ol className='space-y-2'>
             {sections.map((title, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="text-[10px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
+              <li
+                key={i}
+                className='flex items-start gap-2 text-sm text-gray-700'
+              >
+                <span className='text-[10px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded shrink-0 mt-0.5'>
                   {i + 1}
                 </span>
-                <span className="line-clamp-2">{title}</span>
+                <span className='line-clamp-2'>{title}</span>
               </li>
             ))}
           </ol>
@@ -79,32 +89,40 @@ export default function BlogStoryOutline({
 
       {placed.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+          <p className='text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2'>
             Images in story ({placed.length})
           </p>
-          <div className="space-y-2">
+          <div className='space-y-2'>
             {placed.map(({ index, url }) => (
               <div
                 key={index}
-                className="flex items-center gap-3 p-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50"
+                className='flex items-center gap-3 p-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50'
               >
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 shrink-0">
+                <div className='w-12 h-12 rounded-lg overflow-hidden bg-gray-200 shrink-0'>
                   {url ?
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                  : <ImageIcon className="w-5 h-5 m-auto text-gray-400" />}
+                    <img
+                      src={url}
+                      alt=''
+                      className='w-full h-full object-cover'
+                    />
+                  : <ImageIcon className='w-5 h-5 m-auto text-gray-400' />}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800">Image #{index + 1}</p>
-                  <p className="text-[10px] text-emerald-700">Placed in article body</p>
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium text-gray-800'>
+                    Image #{index + 1}
+                  </p>
+                  <p className='text-[10px] text-emerald-700'>
+                    Placed in article body
+                  </p>
                 </div>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => removeFromStory(index)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  title="Remove from story"
+                  className='p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors'
+                  title='Remove from story'
                 >
-                  <X className="w-4 h-4" />
+                  <X className='w-4 h-4' />
                 </button>
               </div>
             ))}
@@ -114,25 +132,30 @@ export default function BlogStoryOutline({
 
       {available.length > 0 && onInsertInStory && (
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+          <p className='text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2'>
             Ready to insert ({available.length})
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className='grid grid-cols-2 sm:grid-cols-3 gap-2'>
             {available.map(({ index, url }) => (
               <button
                 key={index}
-                type="button"
+                type='button'
                 onClick={() => onInsertInStory(index)}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50/50 transition-all group"
+                className='flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50/50 transition-all group'
               >
-                <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-100">
+                <div className='w-full aspect-square rounded-lg overflow-hidden bg-gray-100'>
                   {url ?
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                  : <ImageIcon className="w-6 h-6 m-auto mt-[40%] text-gray-300" />}
+                    <img
+                      src={url}
+                      alt=''
+                      className='w-full h-full object-cover'
+                    />
+                  : <ImageIcon className='w-6 h-6 m-auto mt-[40%] text-gray-300' />
+                  }
                 </div>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-brand-700">
-                  <AlignLeft className="w-3 h-3" />
+                <span className='inline-flex items-center gap-1 text-[10px] font-bold uppercase text-brand-700'>
+                  <AlignLeft className='w-3 h-3' />
                   Insert #{index + 1}
                 </span>
               </button>
@@ -142,7 +165,7 @@ export default function BlogStoryOutline({
       )}
 
       {placed.length === 0 && available.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-2">
+        <p className='text-sm text-gray-500 text-center py-2'>
           All images are assigned as featured cover or end gallery.
         </p>
       )}

@@ -1,7 +1,7 @@
-import type { Product, ProductVariant } from '@/types';
-import { formatPrice } from '@/lib/utils';
-import { normProductColor } from '@/lib/productColorImages';
-import { pickVariantForColor } from '@/lib/shopProductListing';
+import type { Product, ProductVariant } from "@/types";
+import { formatPrice } from "@/lib/utils";
+import { normProductColor } from "@/lib/productColorImages";
+import { pickVariantForColor } from "@/lib/shopProductListing";
 
 export type StorefrontPriceDisplay = {
   sellLabel: string;
@@ -11,7 +11,7 @@ export type StorefrontPriceDisplay = {
   discountPercent: number;
   showDiscount: boolean;
   saleBadge: string | null;
-  /** Lowest sell — for schema.org / cart */
+  /** Lowest sell - for schema.org / cart */
   primarySell: number;
   /** Strikethrough MRP when above sell */
   primaryMrp: number | null;
@@ -29,24 +29,24 @@ export type SelectedVariantPriceDisplay = {
 };
 
 function hasCustomVariantListPrice(
-  variant: Pick<ProductVariant, 'price'>,
+  variant: Pick<ProductVariant, "price">,
 ): boolean {
-  return typeof variant.price === 'number' && variant.price >= 0;
+  return typeof variant.price === "number" && variant.price >= 0;
 }
 
 /** Catalog list price for one SKU (before sale). */
 function variantCatalogListPrice(
-  variant: Pick<ProductVariant, 'price' | 'listPrice'>,
-  product: Pick<Product, 'price' | 'catalogBasePrice'>,
+  variant: Pick<ProductVariant, "price" | "listPrice">,
+  product: Pick<Product, "price" | "catalogBasePrice">,
 ): number {
-  if (typeof variant.listPrice === 'number' && variant.listPrice >= 0) {
+  if (typeof variant.listPrice === "number" && variant.listPrice >= 0) {
     return variant.listPrice;
   }
   if (hasCustomVariantListPrice(variant)) {
     return variant.price!;
   }
   if (
-    typeof product.catalogBasePrice === 'number' &&
+    typeof product.catalogBasePrice === "number" &&
     product.catalogBasePrice >= 0
   ) {
     return product.catalogBasePrice;
@@ -58,28 +58,34 @@ function variantCatalogListPrice(
 function applyClientSaleToListPrice(
   product: Pick<
     Product,
-    'price' | 'comparePrice' | 'effectivePrice' | 'catalogBasePrice'
+    "price" | "comparePrice" | "effectivePrice" | "catalogBasePrice"
   >,
   listPrice: number,
 ): number {
   const catalogBase =
-    typeof product.catalogBasePrice === 'number' && product.catalogBasePrice > 0
-      ? product.catalogBasePrice
-      : null;
+    (
+      typeof product.catalogBasePrice === "number" &&
+      product.catalogBasePrice > 0
+    ) ?
+      product.catalogBasePrice
+    : null;
 
   if (
     catalogBase != null &&
-    typeof product.effectivePrice === 'number' &&
+    typeof product.effectivePrice === "number" &&
     product.effectivePrice < catalogBase
   ) {
-    return Math.round((listPrice * product.effectivePrice / catalogBase) * 100) / 100;
+    return (
+      Math.round(((listPrice * product.effectivePrice) / catalogBase) * 100) /
+      100
+    );
   }
 
   const sell = Number(product.price ?? 0);
   const compare = product.comparePrice;
   if (compare != null && compare > sell && compare > 0 && catalogBase != null) {
     if (Math.abs(compare - catalogBase) < 0.01) {
-      return Math.round((listPrice * sell / compare) * 100) / 100;
+      return Math.round(((listPrice * sell) / compare) * 100) / 100;
     }
   }
 
@@ -87,13 +93,13 @@ function applyClientSaleToListPrice(
 }
 
 export function variantSellPrice(
-  variant: Pick<ProductVariant, 'price' | 'sellPrice' | 'listPrice'>,
+  variant: Pick<ProductVariant, "price" | "sellPrice" | "listPrice">,
   product: Pick<
     Product,
-    'price' | 'comparePrice' | 'effectivePrice' | 'catalogBasePrice'
+    "price" | "comparePrice" | "effectivePrice" | "catalogBasePrice"
   >,
 ): number {
-  if (typeof variant.sellPrice === 'number' && variant.sellPrice >= 0) {
+  if (typeof variant.sellPrice === "number" && variant.sellPrice >= 0) {
     return variant.sellPrice;
   }
   const list = variantCatalogListPrice(variant, product);
@@ -101,11 +107,11 @@ export function variantSellPrice(
 }
 
 export function variantMrp(
-  variant: Pick<ProductVariant, 'price' | 'sellPrice' | 'mrp' | 'listPrice'>,
-  product: Pick<Product, 'price' | 'comparePrice'>,
+  variant: Pick<ProductVariant, "price" | "sellPrice" | "mrp" | "listPrice">,
+  product: Pick<Product, "price" | "comparePrice">,
   sell: number,
 ): number | null {
-  if (typeof variant.mrp === 'number' && variant.mrp > sell) {
+  if (typeof variant.mrp === "number" && variant.mrp > sell) {
     return variant.mrp;
   }
   const productMrp = product.comparePrice;
@@ -113,7 +119,7 @@ export function variantMrp(
     return productMrp;
   }
   const list =
-    typeof variant.listPrice === 'number' ? variant.listPrice
+    typeof variant.listPrice === "number" ? variant.listPrice
     : hasCustomVariantListPrice(variant) ? variant.price!
     : null;
   if (list != null && list > sell) {
@@ -124,7 +130,7 @@ export function variantMrp(
 
 /** Variants included on a listing card (all SKUs, or one shade when expanded). */
 function listingScopeVariants(
-  product: Pick<Product, 'variants'>,
+  product: Pick<Product, "variants">,
   displayColor?: string | null,
 ): ProductVariant[] {
   const variants = product.variants ?? [];
@@ -134,11 +140,15 @@ function listingScopeVariants(
   return variants.filter((v) => normProductColor(v.color) === key);
 }
 
-/** Storefront cards: sell for this card's shade/SKUs — single price, never a range. */
+/** Storefront cards: sell for this card's shade/SKUs - single price, never a range. */
 export function getListingSellPrice(
   product: Pick<
     Product,
-    'price' | 'comparePrice' | 'effectivePrice' | 'catalogBasePrice' | 'variants'
+    | "price"
+    | "comparePrice"
+    | "effectivePrice"
+    | "catalogBasePrice"
+    | "variants"
   >,
   displayColor?: string | null,
 ): number {
@@ -151,7 +161,7 @@ export function getListingSellPrice(
   }
 
   if (
-    typeof product.catalogBasePrice === 'number' &&
+    typeof product.catalogBasePrice === "number" &&
     product.catalogBasePrice >= 0
   ) {
     return applyClientSaleToListPrice(product, product.catalogBasePrice);
@@ -188,18 +198,27 @@ export function getStorefrontPriceDisplay(
   product: Product,
   displayColor?: string | null,
 ): StorefrontPriceDisplay {
-  const saleBadge = product.saleCampaignId ? product.saleBadge ?? null : null;
+  const saleBadge = product.saleCampaignId ? (product.saleBadge ?? null) : null;
   const listingSell = getListingSellPrice(product, displayColor);
 
   const sellLabel = formatPrice(listingSell);
   const primaryMrp = getListingMrp(product, listingSell, displayColor);
 
   let discountPercent = 0;
-  if (product.saleCampaignId && primaryMrp != null && primaryMrp > listingSell && primaryMrp > 0) {
+  if (
+    product.saleCampaignId &&
+    primaryMrp != null &&
+    primaryMrp > listingSell &&
+    primaryMrp > 0
+  ) {
     discountPercent = Math.round(
       ((primaryMrp - listingSell) / primaryMrp) * 100,
     );
-  } else if (!displayColor && product.saleCampaignId && (product.discountPercent ?? 0) > 0) {
+  } else if (
+    !displayColor &&
+    product.saleCampaignId &&
+    (product.discountPercent ?? 0) > 0
+  ) {
     discountPercent = product.discountPercent ?? 0;
   }
 
@@ -209,7 +228,8 @@ export function getStorefrontPriceDisplay(
     fromPrefix: false,
     hasSpread: false,
     discountPercent,
-    showDiscount: Boolean(product.saleCampaignId) && (discountPercent >= 1 || !!saleBadge),
+    showDiscount:
+      Boolean(product.saleCampaignId) && (discountPercent >= 1 || !!saleBadge),
     saleBadge,
     primarySell: listingSell,
     primaryMrp,
@@ -240,7 +260,7 @@ export function getSelectedVariantPriceDisplay(
   const sell = resolveVariantStorefrontPrice(product, variant);
   const mrp = resolveVariantStorefrontMrp(product, variant, sell);
   const saveAmount = mrp != null && mrp > sell ? mrp - sell : 0;
-  const saleBadge = product.saleCampaignId ? product.saleBadge ?? null : null;
+  const saleBadge = product.saleCampaignId ? (product.saleBadge ?? null) : null;
   let discountPercent = 0;
   if (product.saleCampaignId && mrp != null && mrp > sell && mrp > 0) {
     discountPercent = Math.round(((mrp - sell) / mrp) * 100);
@@ -251,7 +271,8 @@ export function getSelectedVariantPriceDisplay(
     mrp,
     mrpLabel: mrp != null ? formatPrice(mrp) : null,
     discountPercent,
-    showDiscount: Boolean(product.saleCampaignId) && (discountPercent >= 1 || !!saleBadge),
+    showDiscount:
+      Boolean(product.saleCampaignId) && (discountPercent >= 1 || !!saleBadge),
     saveAmount,
     saleBadge,
   };
@@ -261,18 +282,18 @@ export function getSelectedVariantPriceDisplay(
 
 /** Catalog list/sell price for one SKU in admin (no storefront sale). */
 export function variantCatalogSellPrice(
-  variant: Pick<ProductVariant, 'price'>,
+  variant: Pick<ProductVariant, "price">,
   productPrice: number,
 ): number {
-  if (typeof variant.price === 'number' && variant.price >= 0) {
+  if (typeof variant.price === "number" && variant.price >= 0) {
     return variant.price;
   }
   return Number(productPrice ?? 0);
 }
 
 export function variantCatalogMrp(
-  variant: Pick<ProductVariant, 'price'>,
-  product: Pick<Product, 'price' | 'comparePrice'>,
+  variant: Pick<ProductVariant, "price">,
+  product: Pick<Product, "price" | "comparePrice">,
 ): number | null {
   const sell = variantCatalogSellPrice(variant, product.price);
   const compare = product.comparePrice;
@@ -281,24 +302,27 @@ export function variantCatalogMrp(
 }
 
 export function collectVariantSellPrices(
-  product: Pick<Product, 'price' | 'variants' | 'catalogBasePrice'>,
+  product: Pick<Product, "price" | "variants" | "catalogBasePrice">,
 ): number[] {
   const base =
-    typeof product.catalogBasePrice === 'number'
-      ? product.catalogBasePrice
-      : Number(product.price ?? 0);
+    typeof product.catalogBasePrice === "number" ?
+      product.catalogBasePrice
+    : Number(product.price ?? 0);
   const variants = product.variants ?? [];
   if (!variants.length) return base > 0 ? [base] : [];
   return variants
     .map((v) => {
-      if (typeof v.price === 'number' && v.price >= 0) return v.price;
+      if (typeof v.price === "number" && v.price >= 0) return v.price;
       return base;
     })
     .filter((p) => p >= 0);
 }
 
 export function hasVariantSellSpread(
-  product: Pick<Product, 'price' | 'variants' | 'hasVariantPriceSpread' | 'catalogBasePrice'>,
+  product: Pick<
+    Product,
+    "price" | "variants" | "hasVariantPriceSpread" | "catalogBasePrice"
+  >,
 ): boolean {
   if (product.hasVariantPriceSpread) return true;
   const prices = collectVariantSellPrices(product);
@@ -307,12 +331,20 @@ export function hasVariantSellSpread(
 }
 
 export function formatSellPriceRange(
-  product: Pick<Product, 'price' | 'variants' | 'sellPriceMin' | 'sellPriceMax' | 'hasVariantPriceSpread'>,
+  product: Pick<
+    Product,
+    | "price"
+    | "variants"
+    | "sellPriceMin"
+    | "sellPriceMax"
+    | "hasVariantPriceSpread"
+  >,
 ): string {
   if (
-    typeof product.sellPriceMin === 'number' &&
-    typeof product.sellPriceMax === 'number' &&
-    Math.round(product.sellPriceMin * 100) !== Math.round(product.sellPriceMax * 100)
+    typeof product.sellPriceMin === "number" &&
+    typeof product.sellPriceMax === "number" &&
+    Math.round(product.sellPriceMin * 100) !==
+      Math.round(product.sellPriceMax * 100)
   ) {
     return `${formatPrice(product.sellPriceMin)} – ${formatPrice(product.sellPriceMax)}`;
   }
@@ -334,7 +366,16 @@ export type ProductPriceDisplay = {
 };
 
 export function getProductPriceDisplay(
-  product: Pick<Product, 'price' | 'comparePrice' | 'variants' | 'sellPriceMin' | 'sellPriceMax' | 'hasVariantPriceSpread' | 'catalogBasePrice'>,
+  product: Pick<
+    Product,
+    | "price"
+    | "comparePrice"
+    | "variants"
+    | "sellPriceMin"
+    | "sellPriceMax"
+    | "hasVariantPriceSpread"
+    | "catalogBasePrice"
+  >,
 ): ProductPriceDisplay {
   const hasSpread = hasVariantSellSpread(product);
   const sellLabel =
@@ -355,10 +396,10 @@ export function getProductPriceDisplay(
 }
 
 export function variantPriceOverridesBase(
-  variant: Pick<ProductVariant, 'price' | 'sellPrice'>,
+  variant: Pick<ProductVariant, "price" | "sellPrice">,
   productPrice: number,
 ): boolean {
-  if (typeof variant.price === 'number' && variant.price >= 0) {
+  if (typeof variant.price === "number" && variant.price >= 0) {
     return Math.round(variant.price * 100) !== Math.round(productPrice * 100);
   }
   return false;
@@ -375,7 +416,7 @@ export function storefrontPriceMeta(
   const d = getStorefrontPriceDisplay(product, displayColor);
   return {
     priceContent: toMerchantPrice(d.primarySell),
-    priceCurrency: 'INR',
+    priceCurrency: "INR",
     ariaLabel: `Price: ${d.sellLabel}`,
   };
 }

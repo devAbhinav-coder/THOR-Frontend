@@ -2,7 +2,7 @@ import { resolveCategoryPageSeo } from "@/lib/categoryPageSeo";
 import { SHOP_META_TITLE } from "@/lib/brandSeo";
 
 export type ShopHeroContent = {
-  /** Visible on hero — short brand line */
+  /** Visible on hero - short brand line */
   eyebrow: string;
   titleLine1: string;
   titleLine2: string;
@@ -36,8 +36,8 @@ export function resolveShopHeroContent(options: {
       titleLine1: short,
       titleLine2: "",
       subtitle:
-        "Refine with fabric, price, and rating filters — premium sarees, salwar suits & corsets delivered across India.",
-      h1Accessible: `Search results for ${search} — sarees, salwar suits & corsets`,
+        "Refine with fabric, price, and rating filters - premium sarees, salwar suits & corsets delivered across India.",
+      h1Accessible: `Search results for ${search} - sarees, salwar suits & corsets`,
       perks: DEFAULT_PERKS,
     };
   }
@@ -54,8 +54,8 @@ export function resolveShopHeroContent(options: {
       subtitle:
         custom && custom.length <= 140 ?
           custom
-        : `Browse ${label} — artisan details, celebration-ready styles, and trusted delivery across India.`,
-      h1Accessible: `${label} — Shop Online India`,
+        : `Browse ${label} - artisan details, celebration-ready styles, and trusted delivery across India.`,
+      h1Accessible: `${label} - Shop Online India`,
       perks: DEFAULT_PERKS,
     };
   }
@@ -69,7 +69,7 @@ export function resolveShopHeroContent(options: {
       subtitle:
         custom && custom.length <= 140 ?
           custom
-        : `Handpicked ${category} — artisan details, celebration-ready styles, and trusted delivery across India.`,
+        : `Handpicked ${category} - artisan details, celebration-ready styles, and trusted delivery across India.`,
       h1Accessible: resolveCategoryPageSeo(category, category).title,
       perks: DEFAULT_PERKS,
     };
@@ -93,7 +93,7 @@ export function resolveShopHeroContent(options: {
       titleLine1: "Featured styles",
       titleLine2: "our clients love",
       subtitle:
-        "A rotating selection of bestsellers and new arrivals — premium sarees, salwar suits, and corsets ready to ship.",
+        "A rotating selection of bestsellers and new arrivals - premium sarees, salwar suits, and corsets ready to ship.",
       h1Accessible:
         "Featured premium sarees, salwar suits, and corsets online India",
       perks: DEFAULT_PERKS,
@@ -106,7 +106,7 @@ export function resolveShopHeroContent(options: {
       titleLine1: "Sale styles",
       titleLine2: "& ethnic wear",
       subtitle:
-        "Handpicked sarees, salwar suits, and corsets with special pricing — celebration-ready looks at reduced rates.",
+        "Handpicked sarees, salwar suits, and corsets with special pricing - celebration-ready looks at reduced rates.",
       h1Accessible: "Sale sarees, salwar suits, and corsets online India",
       perks: DEFAULT_PERKS,
     };
@@ -125,7 +125,7 @@ export function resolveShopHeroContent(options: {
       titleLine1: banner,
       titleLine2: "collection",
       subtitle:
-        "Premium Indian ethnic wear — sarees, salwar suits & corsets delivered with care across India.",
+        "Premium Indian ethnic wear - sarees, salwar suits & corsets delivered with care across India.",
       h1Accessible: banner,
       perks: DEFAULT_PERKS,
     };
@@ -136,7 +136,7 @@ export function resolveShopHeroContent(options: {
     titleLine1: "Sarees, suits & corsets",
     titleLine2: "for every celebration",
     subtitle:
-      "Discover designer silk, cotton, and festive drapes with story-led motifs — free delivery over ₹1,099 & hassle-free 5-day returns.",
+      "Discover designer silk, cotton, and festive drapes with story-led motifs - free delivery over ₹1,099 & hassle-free 5-day returns.",
     h1Accessible: SHOP_META_TITLE,
     perks: DEFAULT_PERKS,
   };

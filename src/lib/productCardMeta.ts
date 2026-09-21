@@ -1,10 +1,9 @@
 import type { Product } from "@/types";
 
-/** Fabric · subcategory · category — deduped, no redundant labels. */
-export function buildProductMetaLine(product: Pick<
-  Product,
-  "fabric" | "subcategory" | "category"
->): string {
+/** Fabric · subcategory · category - deduped, no redundant labels. */
+export function buildProductMetaLine(
+  product: Pick<Product, "fabric" | "subcategory" | "category">,
+): string {
   const fabric = product.fabric?.trim();
   const sub = product.subcategory?.trim();
   const cat = product.category?.trim();

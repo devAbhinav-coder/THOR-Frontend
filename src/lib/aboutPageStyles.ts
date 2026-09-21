@@ -1,4 +1,4 @@
-/** About page — aligned with homepage heritage editorial (square, gold frames). */
+/** About page - aligned with homepage heritage editorial (square, gold frames). */
 export const aboutPageStyles = {
   ctaGold:
     "inline-flex items-center justify-center gap-2 bg-[#c5a059] px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white transition-colors hover:bg-[#b8924d] sm:px-10 sm:text-xs",
@@ -11,10 +11,10 @@ export const aboutPageStyles = {
   ctaOutlineNavy:
     "inline-flex items-center justify-center gap-2 border-2 border-navy-900 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900 transition-colors hover:bg-navy-900 hover:text-white sm:px-8 sm:text-xs",
 
-  /** White / cream sections — gold border + white padding */
+  /** White / cream sections - gold border + white padding */
   frameLight:
     "border border-[#c5a059]/40 bg-white p-2 sm:p-2.5 lg:border-[#c5a059]/50",
-  /** Navy sections — white padding only, no gold border */
+  /** Navy sections - white padding only, no gold border */
   frameDark: "bg-white p-2 sm:p-2.5",
 
   eyebrow:

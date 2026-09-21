@@ -8,7 +8,7 @@ import { useFinePointerHover } from "@/hooks/useFinePointerHover";
 
 export type LightboxImage = { url: string; alt?: string };
 
-/** Magnification for the right (or stacked) zoom panel only — main preview stays fixed at 1×. */
+/** Magnification for the right (or stacked) zoom panel only - main preview stays fixed at 1×. */
 const ZOOM_LENS_SCALE = 2.2;
 /** Cap for pinch-zoom on touch devices (browser zoom was feeling too strong). */
 const MOBILE_LIGHTBOX_MAX_PINCH_ZOOM = 4.0;
@@ -38,14 +38,20 @@ export default function ProductImageLightbox({
   const hoverZoomEnabled = useFinePointerHover();
   const [hoveringZoom, setHoveringZoom] = useState(false);
   const [focal, setFocal] = useState({ x: 50, y: 50 });
-  
+
   const [mobilePinchZoom, setMobilePinchZoom] = useState(1);
   const mobilePinchZoomRef = useRef(1);
   const pinchGestureRef = useRef<{ d0: number; z0: number } | null>(null);
-  
+
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const panRef = useRef({ x: 0, y: 0 });
-  const touchStart1Ref = useRef<{x: number, y: number, tx: number, ty: number, time: number} | null>(null);
+  const touchStart1Ref = useRef<{
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
+    time: number;
+  } | null>(null);
 
   const mainRef = useRef<HTMLDivElement>(null);
   mobilePinchZoomRef.current = mobilePinchZoom;
@@ -124,24 +130,24 @@ export default function ProductImageLightbox({
       } else if (e.touches.length === 1) {
         const now = Date.now();
         if (touchStart1Ref.current && now - touchStart1Ref.current.time < 300) {
-           const nextZoom = mobilePinchZoomRef.current > 1 ? 1 : 2.5;
-           mobilePinchZoomRef.current = nextZoom;
-           setMobilePinchZoom(nextZoom);
-           
-           if (nextZoom === 1) {
-             panRef.current = { x: 0, y: 0 };
-             setPan({ x: 0, y: 0 });
-           }
-           touchStart1Ref.current = null;
-           return;
+          const nextZoom = mobilePinchZoomRef.current > 1 ? 1 : 2.5;
+          mobilePinchZoomRef.current = nextZoom;
+          setMobilePinchZoom(nextZoom);
+
+          if (nextZoom === 1) {
+            panRef.current = { x: 0, y: 0 };
+            setPan({ x: 0, y: 0 });
+          }
+          touchStart1Ref.current = null;
+          return;
         }
 
-        touchStart1Ref.current = { 
-          x: e.touches[0].clientX, 
-          y: e.touches[0].clientY, 
-          tx: panRef.current.x, 
+        touchStart1Ref.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          tx: panRef.current.x,
           ty: panRef.current.y,
-          time: now
+          time: now,
         };
       }
     };
@@ -151,18 +157,27 @@ export default function ProductImageLightbox({
         e.preventDefault();
         const { d0, z0 } = pinchGestureRef.current;
         const d = touchDistance(e.touches[0], e.touches[1]);
-        const next = Math.max(1, Math.min(MOBILE_LIGHTBOX_MAX_PINCH_ZOOM, z0 * (d / d0)));
+        const next = Math.max(
+          1,
+          Math.min(MOBILE_LIGHTBOX_MAX_PINCH_ZOOM, z0 * (d / d0)),
+        );
         mobilePinchZoomRef.current = next;
         setMobilePinchZoom(next);
         if (next === 1) {
           panRef.current = { x: 0, y: 0 };
           setPan({ x: 0, y: 0 });
         }
-      } else if (e.touches.length === 1 && touchStart1Ref.current && mobilePinchZoomRef.current > 1) {
+      } else if (
+        e.touches.length === 1 &&
+        touchStart1Ref.current &&
+        mobilePinchZoomRef.current > 1
+      ) {
         e.preventDefault();
         const start = touchStart1Ref.current;
-        const dx = (e.touches[0].clientX - start.x) / mobilePinchZoomRef.current;
-        const dy = (e.touches[0].clientY - start.y) / mobilePinchZoomRef.current;
+        const dx =
+          (e.touches[0].clientX - start.x) / mobilePinchZoomRef.current;
+        const dy =
+          (e.touches[0].clientY - start.y) / mobilePinchZoomRef.current;
         panRef.current = { x: start.tx + dx, y: start.ty + dy };
         setPan({ ...panRef.current });
       }
@@ -170,16 +185,20 @@ export default function ProductImageLightbox({
 
     const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) pinchGestureRef.current = null;
-      if (e.touches.length === 0 && touchStart1Ref.current && mobilePinchZoomRef.current === 1) {
-         const start = touchStart1Ref.current;
-         if (Date.now() - start.time > 800) return; // Prevent super slow swipes from triggering
-         const cx = e.changedTouches[0].clientX;
-         const dx = cx - start.x;
-         if (Math.abs(dx) > 48) {
-            if (dx < 0) go(idx + 1);
-            else go(idx - 1);
-            touchStart1Ref.current = null;
-         }
+      if (
+        e.touches.length === 0 &&
+        touchStart1Ref.current &&
+        mobilePinchZoomRef.current === 1
+      ) {
+        const start = touchStart1Ref.current;
+        if (Date.now() - start.time > 800) return; // Prevent super slow swipes from triggering
+        const cx = e.changedTouches[0].clientX;
+        const dx = cx - start.x;
+        if (Math.abs(dx) > 48) {
+          if (dx < 0) go(idx + 1);
+          else go(idx - 1);
+          touchStart1Ref.current = null;
+        }
       }
     };
 
@@ -251,8 +270,6 @@ export default function ProductImageLightbox({
         <X className='h-5 w-5' />
       </button>
 
-
-
       {images.length > 1 && (
         <div className='ml-0 mr-2 mt-16 hidden max-h-[85vh] w-[5.5rem] shrink-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:ml-0 sm:mt-0 sm:flex sm:self-center sm:pt-0 lg:w-24'>
           {images.map((img, i) => (
@@ -308,11 +325,11 @@ export default function ProductImageLightbox({
             }}
           >
             {/* Main preview Desktop */}
-            <div className="hidden sm:block w-full h-full">
+            <div className='hidden sm:block w-full h-full'>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={cur.url}
-                alt={cur.alt || `${productName} — image ${idx + 1}`}
+                alt={cur.alt || `${productName} - image ${idx + 1}`}
                 draggable={false}
                 className={cn(
                   "h-full w-full select-none",
@@ -330,12 +347,10 @@ export default function ProductImageLightbox({
             </div>
 
             {/* Main preview Mobile */}
-            <div 
-              className="flex sm:hidden w-full h-full relative items-center justify-center overflow-hidden"
-            >
+            <div className='flex sm:hidden w-full h-full relative items-center justify-center overflow-hidden'>
               <img
                 src={cur.url}
-                alt={cur.alt || `${productName} — image ${idx + 1}`}
+                alt={cur.alt || `${productName} - image ${idx + 1}`}
                 draggable={false}
                 className={cn(
                   "w-full h-full select-none max-h-[85vh] transition-transform",
@@ -364,7 +379,7 @@ export default function ProductImageLightbox({
               >
                 <ZoomIn className='h-3.5 w-3.5 shrink-0' />
                 {hoveringZoom ?
-                  "Move on image — zoom on the right"
+                  "Move on image - zoom on the right"
                 : "Hover to see zoom on the right"}
               </div>
             )}

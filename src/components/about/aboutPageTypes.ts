@@ -10,14 +10,14 @@ export type AboutVisualImage = AboutImage & {
 };
 
 export type AboutPageVisuals = {
-  /** Top hero background only — not reused in gallery */
+  /** Top hero background only - not reused in gallery */
   hero: AboutImage | null;
   dreamBanner: AboutVisualImage | null;
-  /** “Woven in detail” — hero slides + featured (product tiles link to PDP) */
+  /** “Woven in detail” - hero slides + featured (product tiles link to PDP) */
   bento: AboutVisualImage[];
-  /** Chapter 03 — featured saree (not hero slide 3) */
+  /** Chapter 03 - featured saree (not hero slide 3) */
   intention: AboutVisualImage | null;
-  /** Instagram block — featured saree (not hero slide 4) */
+  /** Instagram block - featured saree (not hero slide 4) */
   connect: AboutVisualImage | null;
 };
 

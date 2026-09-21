@@ -1,17 +1,17 @@
-/** Legacy Unsplash placeholders — never show in UI. */
+/** Legacy Unsplash placeholders - never show in UI. */
 const LEGACY_PLACEHOLDER_FRAGMENTS = [
-  'photo-1558618666-fcd25c85cd64',
-  'images.unsplash.com/photo-1558618666',
-  'photo-1586790170083-2f9ceadc966d',
-  'images.unsplash.com/photo-1586790170083',
+  "photo-1558618666-fcd25c85cd64",
+  "images.unsplash.com/photo-1558618666",
+  "photo-1586790170083-2f9ceadc966d",
+  "images.unsplash.com/photo-1586790170083",
 ];
 
-/** Same-origin SVG — reliable in admin UI and order thumbnails. */
+/** Same-origin SVG - reliable in admin UI and order thumbnails. */
 export const OFFLINE_MANUAL_LINE_PLACEHOLDER_PATH =
-  '/images/offline-line-placeholder.svg';
+  "/images/offline-line-placeholder.svg";
 
-export const OFFLINE_MANUAL_ITEM_SLUG = 'offline-manual-item';
-export const OFFLINE_MANUAL_VARIANT_SKU = 'SYS-OFFLINE-MANUAL';
+export const OFFLINE_MANUAL_ITEM_SLUG = "offline-manual-item";
+export const OFFLINE_MANUAL_VARIANT_SKU = "SYS-OFFLINE-MANUAL";
 
 export function isManualOfflineOrderLine(item: {
   slug?: string;
@@ -56,18 +56,22 @@ export function countMissingManualLineCosts(order: {
   return (order.items ?? []).filter(isManualLineMissingCost).length;
 }
 
-export function isLegacyOfflineManualPlaceholder(url: string | undefined | null): boolean {
+export function isLegacyOfflineManualPlaceholder(
+  url: string | undefined | null,
+): boolean {
   const u = url?.trim();
   if (!u) return false;
   return LEGACY_PLACEHOLDER_FRAGMENTS.some((f) => u.includes(f));
 }
 
-export function isOfflineManualLinePlaceholder(url: string | undefined | null): boolean {
+export function isOfflineManualLinePlaceholder(
+  url: string | undefined | null,
+): boolean {
   const u = url?.trim();
   if (!u) return false;
   return (
     u === OFFLINE_MANUAL_LINE_PLACEHOLDER_PATH ||
-    u.endsWith('/images/offline-line-placeholder.svg')
+    u.endsWith("/images/offline-line-placeholder.svg")
   );
 }
 
@@ -86,8 +90,8 @@ export function isUsableOrderLineImage(
   const url = image?.trim();
   if (!url) return false;
   if (isLegacyOfflineManualPlaceholder(url)) return false;
-  if (url.startsWith('data:image/svg+xml')) return false;
+  if (url.startsWith("data:image/svg+xml")) return false;
   if (isOfflineManualLinePlaceholder(url)) return true;
-  if (opts?.isOfflineManual && url.includes('unsplash.com')) return false;
+  if (opts?.isOfflineManual && url.includes("unsplash.com")) return false;
   return true;
 }

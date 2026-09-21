@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Minus, Plus, ShoppingBag, Zap } from "lucide-react";
+import { Minus, Plus, Zap } from "lucide-react";
+import BagIcon from "@/components/icons/BagIcon";
 import type { ProductVariant } from "@/types";
 import { cn } from "@/lib/utils";
 import { clampPurchaseQty } from "@/lib/variantLimits";
@@ -42,16 +43,16 @@ export function PdpMobilePurchaseBar({
 }: PdpMobilePurchaseBarProps) {
   return (
     <>
-      {/* Mobile — always Add to Bag + Buy Now (no scroll transform) */}
+      {/* Mobile - always Add to Bag + Buy Now (no scroll transform) */}
       <div
         className={cn(barShellClass, "lg:hidden")}
-        role="toolbar"
-        aria-label="Purchase actions"
+        role='toolbar'
+        aria-label='Purchase actions'
       >
-        <div className="mx-auto max-w-7xl px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex gap-2.5">
+        <div className='mx-auto max-w-7xl px-3 py-2.5 sm:px-4 sm:py-3'>
+          <div className='flex gap-2.5'>
             <button
-              type="button"
+              type='button'
               onClick={onAddToCart}
               disabled={isOutOfStock || isAddingToCart}
               className={cn(
@@ -62,16 +63,16 @@ export function PdpMobilePurchaseBar({
               )}
             >
               {isAddingToCart ?
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-navy-900/30 border-t-navy-900" />
+                <span className='h-4 w-4 animate-spin rounded-full border-2 border-navy-900/30 border-t-navy-900' />
               : <>
-                  <ShoppingBag className="h-4 w-4 shrink-0" aria-hidden />
+                  <BagIcon className='h-4 w-4 shrink-0' aria-hidden />
                   Add to Bag
                 </>
               }
             </button>
             <button
               ref={buyNowRef}
-              type="button"
+              type='button'
               onClick={onBuyNow}
               disabled={isOutOfStock || isBuyingNow}
               className={cn(
@@ -82,9 +83,9 @@ export function PdpMobilePurchaseBar({
               )}
             >
               {isBuyingNow ?
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                <span className='h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white' />
               : <>
-                  <Zap className="h-4 w-4 shrink-0" aria-hidden />
+                  <Zap className='h-4 w-4 shrink-0' aria-hidden />
                   Buy Now
                 </>
               }
@@ -93,7 +94,7 @@ export function PdpMobilePurchaseBar({
         </div>
       </div>
 
-      {/* Laptop — sticky shortcut bar only after scroll */}
+      {/* Laptop - sticky shortcut bar only after scroll */}
       {enriched ?
         <div
           className={cn(
@@ -101,61 +102,63 @@ export function PdpMobilePurchaseBar({
             "hidden shadow-[0_-10px_40px_rgba(0,13,33,0.16)] lg:block",
             "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
           )}
-          role="toolbar"
-          aria-label="Purchase actions"
+          role='toolbar'
+          aria-label='Purchase actions'
         >
-          <div className="mx-auto max-w-7xl px-8 py-3">
-            <div className="flex min-h-[4rem] items-center gap-4">
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-[#c5a059]/20 bg-[#faf8f4]">
+          <div className='mx-auto max-w-7xl px-8 py-3'>
+            <div className='flex min-h-[4rem] items-center gap-4'>
+              <div className='relative h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-[#c5a059]/20 bg-[#faf8f4]'>
                 {productImage ?
                   <Image
                     src={productImage}
-                    alt=""
+                    alt=''
                     fill
-                    className="object-cover"
-                    sizes="48px"
+                    className='object-cover'
+                    sizes='48px'
                   />
-                : (
-                  <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                    <ShoppingBag className="h-4 w-4 text-gray-400" aria-hidden />
+                : <div className='flex h-full w-full items-center justify-center bg-gray-100'>
+                    <BagIcon
+                      className='h-4 w-4 text-gray-400'
+                      aria-hidden
+                    />
                   </div>
-                )}
+                }
               </div>
 
-              <p className="min-w-0 flex-1 truncate text-sm font-medium leading-tight text-navy-900">
+              <p className='min-w-0 flex-1 truncate text-sm font-medium leading-tight text-navy-900'>
                 {productName}
               </p>
 
-              <div className="inline-flex shrink-0 items-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm">
+              <div className='inline-flex shrink-0 items-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
-                  className="px-2.5 py-2 text-gray-600 transition-colors hover:bg-gray-50"
-                  aria-label="Decrease quantity"
+                  className='px-2.5 py-2 text-gray-600 transition-colors hover:bg-gray-50'
+                  aria-label='Decrease quantity'
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className='h-4 w-4' />
                 </button>
-                <span className="min-w-[2rem] border-x border-gray-200 px-2.5 py-2 text-center text-sm font-bold text-navy-900">
+                <span className='min-w-[2rem] border-x border-gray-200 px-2.5 py-2 text-center text-sm font-bold text-navy-900'>
                   {quantity}
                 </span>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() =>
                     onQuantityChange(
                       clampPurchaseQty(quantity + 1, selectedVariant),
                     )
                   }
                   disabled={quantity >= maxQty || maxQty < 1}
-                  className="px-2.5 py-2 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
-                  aria-label="Increase quantity"
+                  className='px-2.5 py-2 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40'
+                  aria-label='Increase quantity'
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className='h-4 w-4' />
                 </button>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className='flex shrink-0 items-center gap-2'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={onAddToCart}
                   disabled={isOutOfStock || isAddingToCart}
                   className={cn(
@@ -165,26 +168,27 @@ export function PdpMobilePurchaseBar({
                   )}
                 >
                   {isAddingToCart ?
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-navy-900/30 border-t-navy-900" />
+                    <span className='h-4 w-4 animate-spin rounded-full border-2 border-navy-900/30 border-t-navy-900' />
                   : <>
-                      <ShoppingBag className="h-4 w-4" aria-hidden />
+                      <BagIcon className='h-4 w-4' aria-hidden />
                       Add to Bag
                     </>
                   }
                 </button>
                 <button
-                  type="button"
+                  type='button'
                   onClick={onBuyNow}
                   disabled={isOutOfStock || isBuyingNow}
                   className={cn(
                     "inline-flex items-center gap-1.5 bg-[#c5a059] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-[#b8924f]",
-                    isOutOfStock && "cursor-not-allowed bg-gray-200 text-gray-400",
+                    isOutOfStock &&
+                      "cursor-not-allowed bg-gray-200 text-gray-400",
                   )}
                 >
                   {isBuyingNow ?
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    <span className='h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white' />
                   : <>
-                      <Zap className="h-4 w-4" aria-hidden />
+                      <Zap className='h-4 w-4' aria-hidden />
                       Buy Now
                     </>
                   }

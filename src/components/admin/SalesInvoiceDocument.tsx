@@ -54,9 +54,9 @@ type Props = {
 };
 
 function fmtDate(iso: string): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return new Intl.DateTimeFormat("en-IN", {
     year: "numeric",
     month: "short",
@@ -66,7 +66,7 @@ function fmtDate(iso: string): string {
 
 /**
  * Print-ready B2B tax invoice (GST / non-GST). Used only for admin-generated
- * bills — no storefront order or shipping fields.
+ * bills - no storefront order or shipping fields.
  */
 export default function SalesInvoiceDocument({
   seller,
@@ -86,7 +86,7 @@ export default function SalesInvoiceDocument({
   const showIgst = meta.taxMode === "igst";
 
   /** Match the buyer-state prompt to the chosen tax mode for an at-a-glance sanity check. */
-  const placeOfSupply = buyer.state || "—";
+  const placeOfSupply = buyer.state || "-";
 
   /** Column count for the colspan on the totals row of an empty invoice. */
   const colCount =
@@ -104,7 +104,7 @@ export default function SalesInvoiceDocument({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        /* Browser margin (URL, date, title) is NOT controllable from CSS —
+        /* Browser margin (URL, date, title) is NOT controllable from CSS -
            only from Print → "Headers and footers" off. We still draw a clear
            frame around the invoice content itself in the PDF. */
         @page { size: A4; margin: 0; }
@@ -141,7 +141,7 @@ export default function SalesInvoiceDocument({
           }
           .print-hidden { display: none !important; }
           /* Force the items-table wrapper to never scroll in print and the
-             table to fit page width — kills the horizontal scrollbar that
+             table to fit page width - kills the horizontal scrollbar that
              Chrome otherwise rasterises into the saved PDF. */
           #sales-invoice-print-container .overflow-x-auto {
             overflow: visible !important;
@@ -168,7 +168,7 @@ export default function SalesInvoiceDocument({
         className='mx-auto w-full max-w-[850px] bg-white text-black font-sans antialiased print:max-w-none print:w-full'
       >
         <div className='border border-gray-400 p-6 sm:p-8 print:border-0 print:p-5'>
-          {/* Header — seller block + invoice meta */}
+          {/* Header - seller block + invoice meta */}
           <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-gray-400 pb-3'>
             <div className='flex flex-col'>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -192,21 +192,21 @@ export default function SalesInvoiceDocument({
               {seller.email ?
                 <p className='text-xs pt-1'>Email: {seller.email}</p>
               : null}
-              {seller.phone ? <p className='text-xs'>Ph: {seller.phone}</p> : null}
+              {seller.phone ?
+                <p className='text-xs'>Ph: {seller.phone}</p>
+              : null}
               <div className='mt-1 flex flex-col items-start sm:items-end gap-0.5'>
                 {seller.gstin ?
-                  <p className='text-xs font-semibold'>
-                    GSTIN: {seller.gstin}
-                  </p>
+                  <p className='text-xs font-semibold'>GSTIN: {seller.gstin}</p>
                 : null}
                 {/* {seller.pan ? (
                   <p className='text-[11px] text-gray-600'>PAN: {seller.pan}</p>
                 ) : null} */}
-                {seller.state ? (
+                {seller.state ?
                   <p className='text-[11px] text-gray-600'>
                     State: {seller.state}
                   </p>
-                ) : null}
+                : null}
               </div>
             </div>
           </div>
@@ -218,7 +218,7 @@ export default function SalesInvoiceDocument({
                 <span className='font-semibold inline-block w-32'>
                   Invoice Number:
                 </span>
-                {meta.invoiceNumber || "—"}
+                {meta.invoiceNumber || "-"}
               </p>
               <p>
                 <span className='font-semibold inline-block w-32'>
@@ -226,30 +226,30 @@ export default function SalesInvoiceDocument({
                 </span>
                 {fmtDate(meta.invoiceDate)}
               </p>
-              {recordCreatedAt?.trim() ? (
+              {recordCreatedAt?.trim() ?
                 <p>
                   <span className='font-semibold inline-block w-32'>
                     Created on:
                   </span>
                   {formatDateTime(recordCreatedAt.trim())}
                 </p>
-              ) : null}
-              {meta.dueDate ? (
+              : null}
+              {meta.dueDate ?
                 <p>
                   <span className='font-semibold inline-block w-32'>
                     Due Date:
                   </span>
                   {fmtDate(meta.dueDate)}
                 </p>
-              ) : null}
-              {meta.poNumber ? (
+              : null}
+              {meta.poNumber ?
                 <p>
                   <span className='font-semibold inline-block w-32'>
                     PO / Reference:
                   </span>
                   {meta.poNumber}
                 </p>
-              ) : null}
+              : null}
             </div>
             <div className='text-xs space-y-0.5 sm:text-right'>
               <p>
@@ -262,18 +262,18 @@ export default function SalesInvoiceDocument({
                   "IGST (inter-state)"
                 : "Non-GST"}
               </p>
-              {meta.taxMode !== "none" ? (
+              {meta.taxMode !== "none" ?
                 <p>
                   <span className='font-semibold inline-block w-32 text-left'>
                     Place of supply:
                   </span>
                   {placeOfSupply}
                 </p>
-              ) : null}
+              : null}
             </div>
           </div>
 
-          {/* Buyer block — second column (tax details) auto-hides when buyer has no GSTIN/PAN */}
+          {/* Buyer block - second column (tax details) auto-hides when buyer has no GSTIN/PAN */}
           {(() => {
             const hasBuyerTax = Boolean(
               buyer.gstin?.trim() || buyer.pan?.trim(),
@@ -294,58 +294,64 @@ export default function SalesInvoiceDocument({
                       buyer.name?.trim() ||
                       "Customer"}
                   </p>
-                  {buyer.companyName?.trim() && buyer.name?.trim() ? (
+                  {buyer.companyName?.trim() && buyer.name?.trim() ?
                     <p className='text-xs text-gray-700 mt-0.5'>
                       Attn: {buyer.name}
                     </p>
-                  ) : null}
-                  {buyer.address?.trim() ? (
+                  : null}
+                  {buyer.address?.trim() ?
                     <div className='text-xs text-gray-700 mt-0.5 leading-snug whitespace-pre-line'>
                       {buyer.address}
                     </div>
-                  ) : null}
+                  : null}
                   <div className='text-xs text-gray-700 mt-1 space-y-0.5'>
-                    {buyer.state ? <p>State: {buyer.state}</p> : null}
-                    {buyer.phone ? <p>Phone: {buyer.phone}</p> : null}
-                    {buyer.email ? <p>Email: {buyer.email}</p> : null}
+                    {buyer.state ?
+                      <p>State: {buyer.state}</p>
+                    : null}
+                    {buyer.phone ?
+                      <p>Phone: {buyer.phone}</p>
+                    : null}
+                    {buyer.email ?
+                      <p>Email: {buyer.email}</p>
+                    : null}
                   </div>
                 </div>
-                {hasBuyerTax ? (
+                {hasBuyerTax ?
                   <div>
                     <h2 className='text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 border-b border-gray-300 pb-0.5'>
                       Buyer Tax Details
                     </h2>
                     <div className='text-xs text-gray-700 mt-0.5 leading-snug space-y-0.5'>
-                      {buyer.gstin?.trim() ? (
+                      {buyer.gstin?.trim() ?
                         <p>
                           <span className='font-semibold inline-block w-20'>
                             GSTIN:
                           </span>
                           {buyer.gstin}
                         </p>
-                      ) : null}
-                      {buyer.pan?.trim() ? (
+                      : null}
+                      {buyer.pan?.trim() ?
                         <p>
                           <span className='font-semibold inline-block w-20'>
                             PAN:
                           </span>
                           {buyer.pan}
                         </p>
-                      ) : null}
+                      : null}
                     </div>
-                    {meta.poNumber ? (
+                    {meta.poNumber ?
                       <p className='mt-2 text-[11px] text-gray-600'>
                         Reference: {meta.poNumber}
                       </p>
-                    ) : null}
+                    : null}
                   </div>
-                ) : null}
+                : null}
               </div>
             );
           })()}
 
           {/*
-            Items table — screen lets the inner table grow + horizontal-scroll
+            Items table - screen lets the inner table grow + horizontal-scroll
             inside the bordered card; print forces it back to the page width
             so the saved PDF has NO horizontal scroll bar and shows every
             column. Block borders (full grid) on every cell.
@@ -355,19 +361,21 @@ export default function SalesInvoiceDocument({
               <colgroup>
                 <col className='w-8 print:w-[6%]' />
                 <col className='print:w-auto' />
-                {meta.showHsn ? <col className='w-16 print:w-[10%]' /> : null}
+                {meta.showHsn ?
+                  <col className='w-16 print:w-[10%]' />
+                : null}
                 <col className='w-12 print:w-[8%]' />
                 <col className='w-12 print:w-[7%]' />
                 <col className='w-20 print:w-[11%]' />
-                {meta.showDiscount ? (
+                {meta.showDiscount ?
                   <col className='w-12 print:w-[7%]' />
-                ) : null}
-                {showTax ? (
+                : null}
+                {showTax ?
                   <>
                     <col className='w-12 print:w-[7%]' />
                     <col className='w-20 print:w-[11%]' />
                   </>
-                ) : null}
+                : null}
                 <col className='w-24 print:w-[14%]' />
               </colgroup>
               <thead>
@@ -378,11 +386,11 @@ export default function SalesInvoiceDocument({
                   <th className='border border-gray-400 py-1.5 px-2 text-left'>
                     Description
                   </th>
-                  {meta.showHsn ? (
+                  {meta.showHsn ?
                     <th className='border border-gray-400 py-1.5 px-1.5 text-left'>
                       HSN/SAC
                     </th>
-                  ) : null}
+                  : null}
                   <th className='border border-gray-400 py-1.5 px-1.5 text-center'>
                     Unit
                   </th>
@@ -392,12 +400,12 @@ export default function SalesInvoiceDocument({
                   <th className='border border-gray-400 py-1.5 px-1.5 text-right'>
                     Rate
                   </th>
-                  {meta.showDiscount ? (
+                  {meta.showDiscount ?
                     <th className='border border-gray-400 py-1.5 px-1.5 text-right'>
                       Disc%
                     </th>
-                  ) : null}
-                  {showTax ? (
+                  : null}
+                  {showTax ?
                     <>
                       <th className='border border-gray-400 py-1.5 px-1.5 text-right'>
                         GST%
@@ -406,7 +414,7 @@ export default function SalesInvoiceDocument({
                         GST ₹
                       </th>
                     </>
-                  ) : null}
+                  : null}
                   <th className='border border-gray-400 py-1.5 px-1.5 text-right'>
                     Amount
                   </th>
@@ -419,7 +427,7 @@ export default function SalesInvoiceDocument({
                       colSpan={colCount}
                       className='border border-gray-400 py-6 text-center text-gray-400 text-xs italic'
                     >
-                      No line items yet — add rows from the editor on the left.
+                      No line items yet - add rows from the editor on the left.
                     </td>
                   </tr>
                 : computedLines.map(({ line, c }, i) => (
@@ -436,11 +444,11 @@ export default function SalesInvoiceDocument({
                           )}
                         </p>
                       </td>
-                      {meta.showHsn ? (
+                      {meta.showHsn ?
                         <td className='border border-gray-400 py-1.5 px-1.5 text-left tabular-nums text-gray-700'>
-                          {line.hsn || "—"}
+                          {line.hsn || "-"}
                         </td>
-                      ) : null}
+                      : null}
                       <td className='border border-gray-400 py-1.5 px-1.5 text-center text-gray-700'>
                         {c.unitLabel}
                       </td>
@@ -450,21 +458,21 @@ export default function SalesInvoiceDocument({
                       <td className='border border-gray-400 py-1.5 px-1.5 text-right tabular-nums'>
                         {formatINRMoney(line.rate)}
                       </td>
-                      {meta.showDiscount ? (
+                      {meta.showDiscount ?
                         <td className='border border-gray-400 py-1.5 px-1.5 text-right tabular-nums'>
-                          {line.discountPct ? `${line.discountPct}%` : "—"}
+                          {line.discountPct ? `${line.discountPct}%` : "-"}
                         </td>
-                      ) : null}
-                      {showTax ? (
+                      : null}
+                      {showTax ?
                         <>
                           <td className='border border-gray-400 py-1.5 px-1.5 text-right tabular-nums'>
-                            {line.gstPct ? `${line.gstPct}%` : "—"}
+                            {line.gstPct ? `${line.gstPct}%` : "-"}
                           </td>
                           <td className='border border-gray-400 py-1.5 px-1.5 text-right tabular-nums'>
                             {formatINRMoney(c.gstAmt)}
                           </td>
                         </>
-                      ) : null}
+                      : null}
                       <td className='border border-gray-400 py-1.5 px-1.5 text-right font-medium tabular-nums'>
                         {formatINRMoney(c.total)}
                       </td>
@@ -486,7 +494,7 @@ export default function SalesInvoiceDocument({
                   {rupeesInWords(totals.grandTotal)}
                 </p>
               </div>
-              {meta.notes ? (
+              {meta.notes ?
                 <div>
                   <h4 className='font-bold text-gray-800 uppercase tracking-widest text-[9px] mb-1'>
                     Notes
@@ -495,8 +503,8 @@ export default function SalesInvoiceDocument({
                     {meta.notes}
                   </p>
                 </div>
-              ) : null}
-              {meta.terms ? (
+              : null}
+              {meta.terms ?
                 <div>
                   <h4 className='font-bold text-gray-800 uppercase tracking-widest text-[9px] mb-1'>
                     Terms &amp; Conditions
@@ -505,7 +513,7 @@ export default function SalesInvoiceDocument({
                     {meta.terms}
                   </p>
                 </div>
-              ) : null}
+              : null}
               <div>
                 <h4 className='font-bold text-gray-800 uppercase tracking-widest text-[9px] mb-1'>
                   Declaration
@@ -532,7 +540,7 @@ export default function SalesInvoiceDocument({
                   </span>
                 </div>
               )}
-              {showCgstSgst && totals.cgst > 0 ? (
+              {showCgstSgst && totals.cgst > 0 ?
                 <>
                   <div className='flex justify-between py-1.5 px-2 text-xs border-b border-gray-200'>
                     <span className='text-gray-600 font-medium'>CGST</span>
@@ -547,15 +555,15 @@ export default function SalesInvoiceDocument({
                     </span>
                   </div>
                 </>
-              ) : null}
-              {showIgst && totals.igst > 0 ? (
+              : null}
+              {showIgst && totals.igst > 0 ?
                 <div className='flex justify-between py-1.5 px-2 text-xs border-b border-gray-200'>
                   <span className='text-gray-600 font-medium'>IGST</span>
                   <span className='tabular-nums font-medium'>
                     {formatINRMoney(totals.igst)}
                   </span>
                 </div>
-              ) : null}
+              : null}
               {Math.abs(totals.roundOff) >= 0.005 && (
                 <div className='flex justify-between py-1.5 px-2 text-xs border-b border-gray-200 text-gray-600'>
                   <span className='font-medium'>Round-off</span>
@@ -597,7 +605,7 @@ export default function SalesInvoiceDocument({
               physical signature.
             </p>
           </div>
-          {/* In-document page # (Chrome/Firefox paged counter). Browser margin URL/title is separate — disable "Headers and footers" in print. */}
+          {/* In-document page # (Chrome/Firefox paged counter). Browser margin URL/title is separate - disable "Headers and footers" in print. */}
           <div
             className='invoice-print-page-footer hidden print:block'
             aria-hidden

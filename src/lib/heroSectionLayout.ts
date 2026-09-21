@@ -1,7 +1,7 @@
-/** Shared hero layout tokens — keep HeroSection + skeleton in sync (no CLS). */
+/** Shared hero layout tokens - keep HeroSection + skeleton in sync (no CLS). */
 export const heroLayout = {
   section: "relative w-full bg-navy-950",
-  /** Mobile: 16:9 banner — desktop: tall viewport hero */
+  /** Mobile: 16:9 banner - desktop: tall viewport hero */
   media:
     "relative w-full overflow-hidden aspect-[16/9] sm:aspect-auto sm:h-[min(92svh,920px)]",
   overlay:
@@ -12,11 +12,11 @@ export const heroLayout = {
   copy: "max-w-2xl pointer-events-auto",
   badgeSlot: "mb-1 flex h-6 items-center sm:mb-3 sm:h-8",
   subtitleSlot: "mb-1 flex h-4 items-center sm:mb-3 sm:h-6",
-  titleSlot: "mt-1.5 min-h-[1.75rem] sm:mt-4 sm:min-h-[4.5rem] lg:min-h-[5.5rem]",
-  descriptionSlot:
-    "mt-1 min-h-0 sm:mt-3 sm:min-h-[2.75rem] lg:min-h-[3rem]",
+  titleSlot:
+    "mt-1.5 min-h-[1.75rem] sm:mt-4 sm:min-h-[4.5rem] lg:min-h-[5.5rem]",
+  descriptionSlot: "mt-1 min-h-0 sm:mt-3 sm:min-h-[2.75rem] lg:min-h-[3rem]",
   ctaSlot: "mt-2 flex h-7 items-center sm:mt-6 sm:h-9",
-  /** Transparent dock — sits over image bottom, does not crop image */
+  /** Transparent dock - sits over image bottom, does not crop image */
   bottomDock:
     "absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-navy-950/90 via-navy-950/55 to-transparent backdrop-blur-[1.5px]",
   offerStrip:

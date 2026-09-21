@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -40,7 +41,7 @@ type GalleryPhoto = {
   product?: StoryProduct;
 };
 
-/** Canonical PDP path used across the storefront — not /shop/product/... */
+/** Canonical PDP path used across the storefront - not /shop/product/... */
 function productHref(product?: StoryProduct) {
   if (!product) return null;
   const slug = product.slug?.trim();
@@ -95,15 +96,19 @@ function ProductChip({ product }: { product: StoryProduct }) {
     <Link
       href={href}
       onClick={(e) => e.stopPropagation()}
-      className="mt-0.5 inline-flex max-w-[85%] items-center gap-1.5 rounded-full bg-black/40 px-2 py-1 text-left text-white ring-1 ring-white/30 backdrop-blur-[2px] transition hover:bg-black/55"
+      className='mt-0.5 inline-flex max-w-[85%] items-center gap-1.5 rounded-full bg-black/40 px-2 py-1 text-left text-white ring-1 ring-white/30 backdrop-blur-[2px] transition hover:bg-black/55'
     >
-      {product.image ? (
-        <span className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full bg-white/30 ring-1 ring-white/40">
+      {product.image ?
+        <span className='relative h-4 w-4 shrink-0 overflow-hidden rounded-full bg-white/30 ring-1 ring-white/40'>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={product.image} alt="" className="h-full w-full object-cover" />
+          <img
+            src={product.image}
+            alt=''
+            className='h-full w-full object-cover'
+          />
         </span>
-      ) : null}
-      <span className="truncate text-[9px] font-medium tracking-wide sm:text-[10px]">
+      : null}
+      <span className='truncate text-[9px] font-medium tracking-wide sm:text-[10px]'>
         Shop · {product.name}
       </span>
     </Link>
@@ -130,17 +135,17 @@ function StoryTile({ story }: { story: StoryCard }) {
       }
 
       <div
-        className='pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black/75 via-black/28 to-transparent'
+        className='pointer-events-none absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black/90 via-black/45 to-transparent'
         aria-hidden
       />
 
-      <div className='absolute inset-x-0 bottom-0 z-10 flex flex-col gap-1.5 px-3 pb-3 pt-8 sm:px-3.5 sm:pb-3.5'>
+      <div className='absolute inset-x-0 bottom-0 z-10 flex flex-col gap-1 px-2.5 pb-2.5 pt-6 sm:gap-1.5 sm:px-3.5 sm:pb-3.5 sm:pt-8'>
         <Stars rating={story.rating} />
-        <p className='line-clamp-4 font-serif text-[11px] leading-snug text-white italic drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] sm:text-[12px]'>
+        <p className='line-clamp-3 font-serif text-[10.5px] leading-snug text-white italic drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] sm:line-clamp-4 sm:text-[12px]'>
           &ldquo;{story.quote}&rdquo;
         </p>
         <p className='text-[8px] font-semibold uppercase tracking-[0.16em] text-white/85 sm:text-[9px]'>
-          — {story.name}
+          - {story.name}
         </p>
         {story.product ?
           <ProductChip product={story.product} />
@@ -153,30 +158,39 @@ function StoryTile({ story }: { story: StoryCard }) {
 function PhotoGallery({
   photos,
   startIndex,
+  initialView = "grid",
   onClose,
 }: {
   photos: GalleryPhoto[];
   startIndex: number;
+  initialView?: "grid" | "full";
   onClose: () => void;
 }) {
-  const [view, setView] = useState<"grid" | "full">("grid");
+  const [view, setView] = useState<"grid" | "full">(initialView);
   const [index, setIndex] = useState(startIndex);
   const [entered, setEntered] = useState(false);
+  const [isZoomedPhoto, setIsZoomedPhoto] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const id = requestAnimationFrame(() => setEntered(true));
-    const prev = document.body.style.overflow;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
     return () => {
       cancelAnimationFrame(id);
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
     };
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (view === "full") setView("grid");
+        if (isZoomedPhoto) setIsZoomedPhoto(false);
+        else if (view === "full") setView("grid");
         else onClose();
       }
       if (view === "full" && e.key === "ArrowLeft") {
@@ -188,37 +202,51 @@ function PhotoGallery({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, photos.length, view]);
+  }, [onClose, photos.length, view, isZoomedPhoto]);
 
   const current = photos[index];
 
-  return (
+  if (!mounted || typeof window === "undefined") return null;
+
+  return createPortal(
     <div
       className={cn(
-        "fixed inset-0 z-[110] flex flex-col bg-[#0b1220] transition-opacity duration-300",
+        "fixed inset-0 z-[9999] flex flex-col bg-[#0b1220] transition-opacity duration-300 w-screen h-screen min-h-[100dvh]",
         entered ? "opacity-100" : "opacity-0",
       )}
       role='dialog'
       aria-modal='true'
-      aria-label='Customer photo gallery'
+      aria-label='Customer review gallery'
     >
-      <div className='flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6'>
+      <div className='sticky top-0 z-40 flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0b1220]/95 backdrop-blur-md px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6'>
         <div>
           <p className='text-[10px] font-semibold uppercase tracking-[0.2em] text-[#d4b87a]'>
-            Customer photos
+            Customer Reviews
           </p>
-          <p className='mt-0.5 text-sm text-white/80'>
-            {photos.length} {photos.length === 1 ? "photo" : "photos"}
+          <p className='mt-0.5 text-xs text-white/80 sm:text-sm'>
+            {photos.length} {photos.length === 1 ? "Review" : "Reviews"}
           </p>
         </div>
-        <button
-          type='button'
-          className='rounded-full bg-white/10 p-2.5 text-white hover:bg-white/20'
-          aria-label='Close gallery'
-          onClick={onClose}
-        >
-          <X className='h-5 w-5' />
-        </button>
+        <div className='flex items-center gap-2'>
+          {view === "full" && (
+            <button
+              type='button'
+              className='rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/20'
+              onClick={() => setView("grid")}
+            >
+              ← Back
+            </button>
+          )}
+          <button
+            type='button'
+            className='flex items-center gap-1.5 rounded-full bg-[#c5a059] px-3.5 py-1.5 text-xs font-semibold text-navy-950 shadow-md transition hover:bg-[#d4b87a] active:scale-95'
+            aria-label='Close gallery'
+            onClick={onClose}
+          >
+            <span>Close</span>
+            <X className='h-4 w-4 stroke-[2.5]' />
+          </button>
+        </div>
       </div>
 
       {view === "grid" ?
@@ -242,7 +270,7 @@ function PhotoGallery({
                   loading={i < 6 ? "eager" : "lazy"}
                 />
                 <div
-                  className='pointer-events-none absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-black/75 via-black/30 to-transparent'
+                  className='pointer-events-none absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-black/85 via-black/40 to-transparent'
                   aria-hidden
                 />
                 <div className='absolute inset-x-0 bottom-0 p-2.5 sm:p-3'>
@@ -253,7 +281,7 @@ function PhotoGallery({
                     &ldquo;{photo.quote}&rdquo;
                   </p>
                   <p className='mt-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/80'>
-                    — {photo.name}
+                    - {photo.name}
                   </p>
                 </div>
               </button>
@@ -261,21 +289,24 @@ function PhotoGallery({
           </div>
         </div>
       : current ?
-        <div className='relative flex min-h-0 flex-1 flex-col'>
-          <div className='relative flex min-h-0 flex-1 items-center justify-center px-3 py-3 sm:px-8'>
+        <div className='relative flex min-h-0 flex-1 flex-col overflow-hidden'>
+          <div className='relative flex min-h-0 flex-1 items-center justify-center px-1 sm:px-4 py-2'>
+            {/* Main Photo - Tap to toggle pure full-screen mode */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               key={current.url}
               src={current.url}
               alt={`Photo from ${current.name}`}
-              className='max-h-full max-w-full rounded-xl object-contain shadow-2xl'
+              className='max-h-full max-w-full rounded-xl object-contain shadow-2xl cursor-zoom-in transition-transform duration-300 hover:scale-[1.01]'
+              onClick={() => setIsZoomedPhoto(true)}
+              title='Tap photo for pure full-screen view'
             />
 
             {photos.length > 1 && (
               <>
                 <button
                   type='button'
-                  className='absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-2.5 text-white hover:bg-black/60 sm:left-4'
+                  className='absolute left-2 top-1/2 z-30 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:left-4 sm:p-2.5'
                   aria-label='Previous photo'
                   onClick={() =>
                     setIndex((i) => (i - 1 + photos.length) % photos.length)
@@ -285,7 +316,7 @@ function PhotoGallery({
                 </button>
                 <button
                   type='button'
-                  className='absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-2.5 text-white hover:bg-black/60 sm:right-4'
+                  className='absolute right-2 top-1/2 z-30 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:right-4 sm:p-2.5'
                   aria-label='Next photo'
                   onClick={() => setIndex((i) => (i + 1) % photos.length)}
                 >
@@ -295,35 +326,83 @@ function PhotoGallery({
             )}
           </div>
 
-          <div className='shrink-0 border-t border-white/10 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6'>
+          {/* Dedicated Luxury Bottom Info Panel - Below Photo */}
+          <div className='shrink-0 border-t border-white/10 bg-[#0d1527] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4'>
             <div className='mx-auto flex max-w-lg flex-col gap-1.5'>
-              <Stars rating={current.rating} size='md' />
-              <p className='font-serif text-sm leading-relaxed text-white italic sm:text-base'>
-                &ldquo;{current.quote}&rdquo;
-              </p>
               <div className='flex items-center justify-between gap-3'>
-                <p className='text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80'>
-                  — {current.name}
-                </p>
-                <p className='text-[11px] text-white/45'>
+                <Stars rating={current.rating} size='md' />
+                <p className='text-[11px] font-medium text-white/50'>
                   {index + 1} / {photos.length}
                 </p>
               </div>
-              {current.product ?
-                <ProductChip product={current.product} />
-              : null}
-              <button
-                type='button'
-                className='mt-2 self-start text-[11px] font-medium uppercase tracking-[0.16em] text-[#d4b87a] hover:text-white'
-                onClick={() => setView("grid")}
-              >
-                ← All photos
-              </button>
+              <p className='line-clamp-3 font-serif text-xs leading-relaxed text-white italic sm:line-clamp-4 sm:text-sm'>
+                &ldquo;{current.quote}&rdquo;
+              </p>
+              <p className='text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 sm:text-[11px]'>
+                - {current.name}
+              </p>
+              <div className='mt-1 flex flex-wrap items-center justify-between gap-2.5'>
+                {current.product ?
+                  <ProductChip product={current.product} />
+                : null}
+                <button
+                  type='button'
+                  className='text-[10px] font-medium uppercase tracking-[0.16em] text-[#d4b87a] transition hover:text-white sm:text-[11px]'
+                  onClick={() => setView("grid")}
+                >
+                  ← Back
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Pure Full-Screen Photo Lightbox Mode (100% solid pitch black backdrop, z-[10000]) */}
+          {isZoomedPhoto && (
+            <div
+              className='fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-black p-4 transition-all duration-300 cursor-zoom-out w-screen h-screen min-h-[100dvh] overflow-hidden'
+              onClick={() => setIsZoomedPhoto(false)}
+              role='button'
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") setIsZoomedPhoto(false);
+              }}
+              aria-label='Close full screen photo'
+            >
+              {/* Dedicated Top Bar for Pure Lightbox */}
+              <div className='absolute top-0 inset-x-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/90 via-black/50 to-transparent pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6'>
+                <p className='text-xs font-semibold uppercase tracking-[0.18em] text-white/80'>
+                  {current.name}
+                </p>
+                <button
+                  type='button'
+                  className='flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1.5 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/30 active:scale-95'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsZoomedPhoto(false);
+                  }}
+                  aria-label='Exit full screen photo'
+                >
+                  <span>Close</span>
+                  <X className='h-4 w-4 stroke-[2.5]' />
+                </button>
+              </div>
+
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={current.url}
+                alt={`Pure full screen ${current.name}`}
+                className='max-h-full max-w-full object-contain shadow-2xl'
+              />
+
+              <p className='pointer-events-none absolute bottom-6 text-[11px] font-medium uppercase tracking-[0.18em] text-white/60 bg-black/60 px-3.5 py-1.5 rounded-full backdrop-blur-sm border border-white/10'>
+                Tap anywhere to exit
+              </p>
+            </div>
+          )}
         </div>
       : null}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -366,8 +445,7 @@ export default function Testimonials({
     staleTime: 1000 * 60 * 5,
   });
 
-  const instagramUrl =
-    initialInstagramUrl?.trim() || FALLBACK_IG;
+  const instagramUrl = initialInstagramUrl?.trim() || FALLBACK_IG;
 
   const igHandle = useMemo(
     () => instagramHandleFromUrl(instagramUrl),
@@ -497,13 +575,13 @@ export default function Testimonials({
     >
       <div className={cn(homeSectionStyles.container, "mb-7 sm:mb-9")}>
         <HomeSectionHeader
-          eyebrow="Stories from our community"
-          title="Voices of Grace"
-          subtitle="Customer photos & reviews — tap a story, shop the look, follow us for more."
+          eyebrow='Stories from our community'
+          title='Voices of Grace'
+          subtitle='Customer photos & reviews - tap a story, shop the look, follow us for more.'
         />
       </div>
 
-      {/* Same width shell as Explore Our House — laptop side gap, mobile full-bleed */}
+      {/* Same width shell as Explore Our House - laptop side gap, mobile full-bleed */}
       <div className='mx-auto max-w-7xl px-0 md:px-6 lg:px-8'>
         <div
           ref={railRef}
@@ -525,8 +603,9 @@ export default function Testimonials({
             }
             .voices-track {
               display: flex;
+              flex-wrap: nowrap;
               width: max-content;
-              gap: 0.05rem;
+              gap: 0.5rem;
               align-items: center;
               will-change: transform;
               animation-name: voices-marquee;
@@ -595,28 +674,33 @@ export default function Testimonials({
         </div>
       </div>
 
-      <div className={cn(homeSectionStyles.container, "mt-2 flex justify-center sm:mt-4")}>
+      <div
+        className={cn(
+          homeSectionStyles.container,
+          "mt-2 flex justify-center sm:mt-4",
+        )}
+      >
         <a
           href={instagramUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group inline-flex items-center gap-3 rounded-full bg-white/90 px-4 py-2.5 shadow-[0_8px_24px_rgba(15,23,42,0.08)] ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:gap-3.5 sm:px-5 sm:py-3"
+          target='_blank'
+          rel='noopener noreferrer'
+          className='group inline-flex items-center gap-3 rounded-full bg-white/90 px-4 py-2.5 shadow-[0_8px_24px_rgba(15,23,42,0.08)] ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:gap-3.5 sm:px-5 sm:py-3'
         >
           <span
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[linear-gradient(45deg,#f58529,#dd2a7b,#8134af,#515bd4)] text-white shadow-sm sm:h-11 sm:w-11"
+            className='flex h-10 w-10 items-center justify-center rounded-full bg-[linear-gradient(45deg,#f58529,#dd2a7b,#8134af,#515bd4)] text-white shadow-sm sm:h-11 sm:w-11'
             aria-hidden
           >
-            <Instagram className="h-5 w-5" strokeWidth={1.75} />
+            <Instagram className='h-5 w-5' strokeWidth={1.75} />
           </span>
-          <span className="text-left">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-900/55">
+          <span className='text-left'>
+            <span className='block text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-900/55'>
               Follow us
             </span>
-            <span className="mt-0.5 block text-sm font-semibold text-navy-950 group-hover:text-navy-800 sm:text-[15px]">
+            <span className='mt-0.5 block text-sm font-semibold text-navy-950 group-hover:text-navy-800 sm:text-[15px]'>
               {igHandle}
             </span>
           </span>
-          <span className="ml-1 rounded-full bg-navy-950 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white transition group-hover:bg-navy-800 sm:ml-2">
+          <span className='ml-1 rounded-full bg-navy-950 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white transition group-hover:bg-navy-800 sm:ml-2'>
             Follow
           </span>
         </a>

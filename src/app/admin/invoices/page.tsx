@@ -26,7 +26,7 @@ import {
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return new Intl.DateTimeFormat("en-IN", {
     year: "numeric",
     month: "short",
@@ -50,7 +50,7 @@ export default function AdminInvoicesListPage() {
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
 
-  /** Defensive setter — guarantees state is always an array even if a stale
+  /** Defensive setter - guarantees state is always an array even if a stale
    *  module (HMR / bad build) passes us something unexpected. */
   const applyInvoices = useCallback((next: unknown) => {
     setInvoices(Array.isArray(next) ? (next as SavedInvoice[]) : []);
@@ -147,15 +147,25 @@ export default function AdminInvoicesListPage() {
         <div className='pointer-events-none absolute -bottom-8 left-8 h-28 w-28 rounded-full bg-indigo-400/10 blur-2xl' />
         <div className='relative flex flex-wrap items-center justify-between gap-4'>
           <div>
-            <p className='text-[10px] font-bold uppercase tracking-widest text-blue-300/80 mb-1'>Admin — Billing</p>
+            <p className='text-[10px] font-bold uppercase tracking-widest text-blue-300/80 mb-1'>
+              Admin - Billing
+            </p>
             <div className='flex items-center gap-3'>
-              <h1 className='text-2xl font-serif font-bold text-white tracking-tight'>GST tax invoices (INV)</h1>
+              <h1 className='text-2xl font-serif font-bold text-white tracking-tight'>
+                GST tax invoices (INV)
+              </h1>
               <p className='text-sm text-blue-100/90 mt-1 max-w-xl'>
-                B2B billing numbers start with <strong>INV-</strong>. Order receipts use <strong>THOR-</strong> on the order page.
+                B2B billing numbers start with <strong>INV-</strong>. Order
+                receipts use <strong>THOR-</strong> on the order page.
               </p>
-              <span className='rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/60 ring-1 ring-white/15'>GST</span>
+              <span className='rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/60 ring-1 ring-white/15'>
+                GST
+              </span>
             </div>
-            <p className='text-sm text-slate-400 mt-1 hidden sm:block'>Admin-only GST bills for offline wholesale — fabric by meter, kg, pcs, etc.</p>
+            <p className='text-sm text-slate-400 mt-1 hidden sm:block'>
+              Admin-only GST bills for offline wholesale - fabric by meter, kg,
+              pcs, etc.
+            </p>
           </div>
           <Link
             href='/admin/invoices/new'
@@ -183,20 +193,21 @@ export default function AdminInvoicesListPage() {
         </div>
         <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
           <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>
-            This month — count
+            This month - count
           </p>
           <p className='mt-1 text-2xl font-extrabold text-gray-900 tabular-nums'>
             {totalThisMonth.count}
           </p>
           <p className='mt-1 text-xs text-gray-500'>
-            Invoices dated in {new Date().toLocaleString("en-IN", {
+            Invoices dated in{" "}
+            {new Date().toLocaleString("en-IN", {
               month: "long",
             })}
           </p>
         </div>
         <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
           <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>
-            This month — value
+            This month - value
           </p>
           <p className='mt-1 text-2xl font-extrabold text-gray-900 tabular-nums'>
             {formatINRMoney(totalThisMonth.sum)}
@@ -222,7 +233,10 @@ export default function AdminInvoicesListPage() {
           Loading…
         </div>
       : filtered.length === 0 ?
-        <EmptyState hasAny={safeInvoices.length > 0} clearQuery={() => setQuery("")} />
+        <EmptyState
+          hasAny={safeInvoices.length > 0}
+          clearQuery={() => setQuery("")}
+        />
       : <div className='rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden'>
           <ul className='divide-y divide-gray-100'>
             {filtered.map((inv) => (
@@ -271,8 +285,7 @@ export default function AdminInvoicesListPage() {
                       {inv.buyer.gstin ? ` • GSTIN ${inv.buyer.gstin}` : ""}
                     </p>
                     <p className='mt-0.5 text-[11px] text-gray-400'>
-                      Saved {fmtRelative(inv.updatedAt)} • {inv.itemCount}{" "}
-                      item
+                      Saved {fmtRelative(inv.updatedAt)} • {inv.itemCount} item
                       {inv.itemCount === 1 ? "" : "s"}
                       {inv.orderId && inv.orderNumber ?
                         <>
@@ -296,7 +309,7 @@ export default function AdminInvoicesListPage() {
                     <p className='text-[11px] text-gray-500'>Grand total</p>
                   </div>
                 </button>
-              <div className='flex shrink-0 items-center gap-2 self-end sm:self-auto sm:pl-0'>
+                <div className='flex shrink-0 items-center gap-2 self-end sm:self-auto sm:pl-0'>
                   <Button
                     asChild
                     variant='outline'
@@ -311,9 +324,7 @@ export default function AdminInvoicesListPage() {
                   </Button>
                   <button
                     type='button'
-                    onClick={() =>
-                      handleDelete(inv.id, inv.meta.invoiceNumber)
-                    }
+                    onClick={() => handleDelete(inv.id, inv.meta.invoiceNumber)}
                     className='rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors'
                     aria-label={`Delete ${inv.meta.invoiceNumber}`}
                   >
@@ -347,7 +358,8 @@ function EmptyState({
       <p className='mx-auto mt-1 max-w-md text-sm text-gray-600'>
         {hasAny ?
           "Nothing matches that search. Try clearing it or use a different keyword."
-        : "Create a standalone tax bill (meter, kg, pcs, etc.). Nothing from the shop checkout — admin billing only."}
+        : "Create a standalone tax bill (meter, kg, pcs, etc.). Nothing from the shop checkout - admin billing only."
+        }
       </p>
       <div className='mt-5 flex justify-center gap-2'>
         {hasAny ?

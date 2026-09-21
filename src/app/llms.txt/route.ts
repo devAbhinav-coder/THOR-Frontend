@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { ABOUT_LLMS_SUMMARY } from "@/lib/aboutPageSeo";
 
 export const revalidate = 86400;
 
@@ -7,10 +8,11 @@ export async function GET() {
   const siteUrl = getSiteUrl();
 
   const body = `# The House of Rani
-> Premium sarees, salwar suits, corsets, and The Rani Premium Edit — hand painted & pure silk sarees shipped across India.
+> Premium sarees, salwar suits, corsets, and The Rani Premium Edit - hand painted & pure silk sarees shipped across India.
 
 ## About
-The House of Rani is an Indian e-commerce brand for premium ethnic wear.
+${ABOUT_LLMS_SUMMARY}
+Primary categories: premium ethnic wear online in India.
 Primary apparel categories: sarees, salwar suits, and corsets.
 Premium Edit: hand painted sarees, pure silk sarees, Banarasi sarees, Madhubani art sarees, and couple hand painted saree sets.
 Free delivery on orders over ₹1,099. 5-day returns. Pan-India shipping.

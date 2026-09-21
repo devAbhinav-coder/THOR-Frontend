@@ -20,10 +20,10 @@ export function AdminAiReviewDraftButton({ reviewId, onDraft }: Props) {
 
   return (
     <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="rounded-lg border-violet-200 text-violet-900 gap-1 text-xs h-8"
+      type='button'
+      variant='outline'
+      size='sm'
+      className='rounded-lg border-violet-200 text-violet-900 gap-1 text-xs h-8'
       disabled={loading}
       onClick={async () => {
         setLoading(true);
@@ -33,7 +33,7 @@ export function AdminAiReviewDraftButton({ reviewId, onDraft }: Props) {
           const text = d.replyText || d.text || "";
           if (!text) throw new Error("Empty draft");
           onDraft(text);
-          toast.success("Reply draft ready — edit & send");
+          toast.success("Reply draft ready - edit & send");
         } catch (e) {
           toast.error(aiErrorMessage(e));
         } finally {
@@ -41,11 +41,9 @@ export function AdminAiReviewDraftButton({ reviewId, onDraft }: Props) {
         }
       }}
     >
-      {loading ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : (
-        <Sparkles className="h-3 w-3" />
-      )}
+      {loading ?
+        <Loader2 className='h-3 w-3 animate-spin' />
+      : <Sparkles className='h-3 w-3' />}
       AI draft
     </Button>
   );

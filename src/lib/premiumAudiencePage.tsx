@@ -19,7 +19,7 @@ async function PremiumAudiencePage({
     fetchStorefrontSettingsHome(),
   ]);
 
-  // API-only — never seed static mock products.
+  // API-only - never seed static mock products.
   const products = mapApiProductsToPremiumViews(apiProducts ?? []);
 
   const jsonLd = buildPremiumCollectionJsonLd(
@@ -34,7 +34,7 @@ async function PremiumAudiencePage({
   return (
     <>
       <script
-        type="application/ld+json"
+        type='application/ld+json'
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PremiumCollectionClient

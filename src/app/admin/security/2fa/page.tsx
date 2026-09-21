@@ -116,95 +116,118 @@ export default function AdminTwoFactorPage() {
 
   if (loadError) {
     return (
-      <div className="p-4 sm:p-6">
+      <div className='p-4 sm:p-6'>
         <AdminErrorState onRetry={() => void loadStatus()} />
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
+    <div className='p-4 sm:p-6 max-w-3xl mx-auto space-y-6'>
       <AdminPageHeader
-        title="Admin two-factor authentication"
-        description="Protect the admin panel with Google Authenticator, Authy, or any TOTP app."
+        title='Admin two-factor authentication'
+        description='Protect the admin panel with Google Authenticator, Authy, or any TOTP app.'
       />
 
-      {loading ? (
-        <div className="rounded-xl border bg-white p-8 animate-pulse h-48" />
-      ) : (
-        <div className="rounded-xl border bg-white p-5 sm:p-6 shadow-sm space-y-5">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="h-6 w-6 text-brand-600 shrink-0 mt-0.5" />
+      {loading ?
+        <div className='rounded-xl border bg-white p-8 animate-pulse h-48' />
+      : <div className='rounded-xl border bg-white p-5 sm:p-6 shadow-sm space-y-5'>
+          <div className='flex items-start gap-3'>
+            <ShieldCheck className='h-6 w-6 text-brand-600 shrink-0 mt-0.5' />
             <div>
-              <p className="font-semibold text-navy-900">
+              <p className='font-semibold text-navy-900'>
                 Status: {enabled ? "Enabled" : "Not enabled"}
               </p>
-              <p className="text-sm text-gray-600 mt-1">
-                {enabled
-                  ? "Each admin sign-in requires a 6-digit code from your authenticator app."
-                  : required
-                    ? "Your deployment requires 2FA — enable it before using other admin tools."
-                    : "Recommended for production admin accounts."}
+              <p className='text-sm text-gray-600 mt-1'>
+                {enabled ?
+                  "Each admin sign-in requires a 6-digit code from your authenticator app."
+                : required ?
+                  "Your deployment requires 2FA - enable it before using other admin tools."
+                : "Recommended for production admin accounts."}
               </p>
             </div>
           </div>
 
           {backupCodes && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-              <p className="text-sm font-semibold text-amber-900 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
+            <div className='rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3'>
+              <p className='text-sm font-semibold text-amber-900 flex items-center gap-2'>
+                <CheckCircle2 className='h-4 w-4' />
                 Save these backup codes now
               </p>
-              <p className="text-xs text-amber-800">
-                Each code works once if you lose your phone. Store them somewhere safe.
+              <p className='text-xs text-amber-800'>
+                Each code works once if you lose your phone. Store them
+                somewhere safe.
               </p>
-              <pre className="text-xs font-mono bg-white/80 rounded-lg p-3 border border-amber-100 whitespace-pre-wrap">
+              <pre className='text-xs font-mono bg-white/80 rounded-lg p-3 border border-amber-100 whitespace-pre-wrap'>
                 {backupCodes.join("\n")}
               </pre>
-              <Button type="button" variant="outline" size="sm" onClick={() => void copyBackupCodes()}>
-                <Copy className="h-4 w-4 mr-1.5" />
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => void copyBackupCodes()}
+              >
+                <Copy className='h-4 w-4 mr-1.5' />
                 Copy codes
               </Button>
             </div>
           )}
 
           {!enabled && !setup && (
-            <Button type="button" onClick={() => void startSetup()} disabled={busy}>
+            <Button
+              type='button'
+              onClick={() => void startSetup()}
+              disabled={busy}
+            >
               Set up authenticator
             </Button>
           )}
 
           {setup && (
-            <div className="space-y-4 border-t pt-5">
-              <p className="text-sm text-gray-700">
-                Scan this QR code with your authenticator app, then enter the 6-digit code.
+            <div className='space-y-4 border-t pt-5'>
+              <p className='text-sm text-gray-700'>
+                Scan this QR code with your authenticator app, then enter the
+                6-digit code.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 items-start">
-                <div className="rounded-xl border p-3 bg-white">
+              <div className='flex flex-col sm:flex-row gap-4 items-start'>
+                <div className='rounded-xl border p-3 bg-white'>
                   <Image
                     src={setup.qrDataUrl}
-                    alt="Authenticator QR code"
+                    alt='Authenticator QR code'
                     width={180}
                     height={180}
                     unoptimized
                   />
                 </div>
-                <div className="text-xs font-mono break-all text-gray-600 space-y-2">
-                  <p className="font-sans text-sm font-medium text-gray-800">Manual key</p>
+                <div className='text-xs font-mono break-all text-gray-600 space-y-2'>
+                  <p className='font-sans text-sm font-medium text-gray-800'>
+                    Manual key
+                  </p>
                   <p>{setup.secret}</p>
                 </div>
               </div>
               <input
                 value={verifyCode}
-                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="6-digit code"
-                className="h-11 w-full max-w-xs rounded-xl border px-3 text-sm tracking-[0.3em]"
+                onChange={(e) =>
+                  setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                placeholder='6-digit code'
+                className='h-11 w-full max-w-xs rounded-xl border px-3 text-sm tracking-[0.3em]'
               />
-              <div className="flex gap-2">
-                <Button type="button" onClick={() => void enable()} disabled={busy}>
+              <div className='flex gap-2'>
+                <Button
+                  type='button'
+                  onClick={() => void enable()}
+                  disabled={busy}
+                >
                   Enable 2FA
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setSetup(null)} disabled={busy}>
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={() => setSetup(null)}
+                  disabled={busy}
+                >
                   Cancel
                 </Button>
               </div>
@@ -212,28 +235,35 @@ export default function AdminTwoFactorPage() {
           )}
 
           {enabled && (
-            <div className="space-y-3 border-t pt-5">
-              <p className="text-sm font-medium text-gray-800">Disable two-factor</p>
+            <div className='space-y-3 border-t pt-5'>
+              <p className='text-sm font-medium text-gray-800'>
+                Disable two-factor
+              </p>
               <input
-                type="password"
+                type='password'
                 value={disablePassword}
                 onChange={(e) => setDisablePassword(e.target.value)}
-                placeholder="Your password"
-                className="h-11 w-full max-w-md rounded-xl border px-3 text-sm"
+                placeholder='Your password'
+                className='h-11 w-full max-w-md rounded-xl border px-3 text-sm'
               />
               <input
                 value={disableCode}
                 onChange={(e) => setDisableCode(e.target.value)}
-                placeholder="Authenticator or backup code"
-                className="h-11 w-full max-w-md rounded-xl border px-3 text-sm"
+                placeholder='Authenticator or backup code'
+                className='h-11 w-full max-w-md rounded-xl border px-3 text-sm'
               />
-              <Button type="button" variant="outline" onClick={() => void disable()} disabled={busy}>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => void disable()}
+                disabled={busy}
+              >
                 Disable 2FA
               </Button>
             </div>
           )}
         </div>
-      )}
+      }
     </div>
   );
 }

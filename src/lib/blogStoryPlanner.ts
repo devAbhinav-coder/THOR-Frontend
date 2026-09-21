@@ -55,7 +55,9 @@ export function segmentsToContent(segments: StorySegment[]): string {
 }
 
 /** Split HTML blob into heading-led sections for the planner. */
-export function splitHtmlByHeadings(html: string): Array<{ heading: string | null; html: string }> {
+export function splitHtmlByHeadings(
+  html: string,
+): Array<{ heading: string | null; html: string }> {
   const trimmed = html.trim();
   if (!trimmed) return [];
 
@@ -74,8 +76,11 @@ export function splitHtmlByHeadings(html: string): Array<{ heading: string | nul
   });
 }
 
-/** First block element (p, blockquote, etc.) vs remainder — for intro / prose sections. */
-export function splitAfterFirstBodyBlock(html: string): { lead: string; tail: string } {
+/** First block element (p, blockquote, etc.) vs remainder - for intro / prose sections. */
+export function splitAfterFirstBodyBlock(html: string): {
+  lead: string;
+  tail: string;
+} {
   const trimmed = html.trim();
   if (!trimmed) return { lead: "", tail: "" };
 
@@ -89,7 +94,9 @@ export function splitAfterFirstBodyBlock(html: string): { lead: string; tail: st
   return { lead, tail };
 }
 
-export function segmentsToPlannerLines(segments: StorySegment[]): PlannerLine[] {
+export function segmentsToPlannerLines(
+  segments: StorySegment[],
+): PlannerLine[] {
   const lines: PlannerLine[] = [];
 
   for (const seg of segments) {
@@ -168,7 +175,10 @@ export function indicesUsedInStory(content: string): Set<number> {
   return used;
 }
 
-export function clearImageFromLines(lines: PlannerLine[], imageIndex: number): PlannerLine[] {
+export function clearImageFromLines(
+  lines: PlannerLine[],
+  imageIndex: number,
+): PlannerLine[] {
   const out: PlannerLine[] = [];
 
   for (const line of lines) {
@@ -191,7 +201,10 @@ export function clearImageFromLines(lines: PlannerLine[], imageIndex: number): P
   return out;
 }
 
-export function clearImageFromContent(content: string, imageIndex: number): string {
+export function clearImageFromContent(
+  content: string,
+  imageIndex: number,
+): string {
   const lines = clearImageFromLines(contentToPlannerLines(content), imageIndex);
   return plannerLinesToContent(lines);
 }
@@ -205,7 +218,11 @@ export function extractHeadingBody(html: string): {
   const m = trimmed.match(/^(<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>)\s*([\s\S]*)$/i);
   if (m) {
     return {
-      heading: m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || null,
+      heading:
+        m[1]
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim() || null,
       headingHtml: m[1].trim(),
       bodyHtml: m[2].trim(),
     };
@@ -213,7 +230,7 @@ export function extractHeadingBody(html: string): {
   return { heading: null, headingHtml: "", bodyHtml: trimmed };
 }
 
-/** Body-only fragment after a below-heading split — not its own planner section. */
+/** Body-only fragment after a below-heading split - not its own planner section. */
 export function isPrimarySectionTextLine(
   line: PlannerLine,
   lineIndex: number,
@@ -228,7 +245,10 @@ export function isPrimarySectionTextLine(
   return Boolean(headingHtml);
 }
 
-function findPrimaryTextLineIndex(lines: PlannerLine[], sectionIndex: number): number {
+function findPrimaryTextLineIndex(
+  lines: PlannerLine[],
+  sectionIndex: number,
+): number {
   let idx = -1;
   for (let i = 0; i < lines.length; i++) {
     if (isPrimarySectionTextLine(lines[i], i, lines)) {
@@ -278,7 +298,10 @@ export function insertImageBelowHeading(
 
   const bodyFragments: PlannerLine[] = [];
   for (let i = start + 1; i < end; i++) {
-    if (lines[i].type === "text" && !isPrimarySectionTextLine(lines[i], i, lines)) {
+    if (
+      lines[i].type === "text" &&
+      !isPrimarySectionTextLine(lines[i], i, lines)
+    ) {
       bodyFragments.push(lines[i]);
     }
   }
@@ -391,10 +414,17 @@ export function textSectionCount(content: string): number {
 }
 
 export function rowSignature(indices: number[]): string {
-  return indices.slice().sort((a, b) => a - b).join(",");
+  return indices
+    .slice()
+    .sort((a, b) => a - b)
+    .join(",");
 }
 
-export function contentHasRowPair(content: string, a: number, b: number): boolean {
+export function contentHasRowPair(
+  content: string,
+  a: number,
+  b: number,
+): boolean {
   const sig = rowSignature([a, b]);
   return contentToPlannerLines(content).some(
     (l) => l.type === "row" && rowSignature(l.indices) === sig,
@@ -402,7 +432,10 @@ export function contentHasRowPair(content: string, a: number, b: number): boolea
 }
 
 /** Partner index when image sits in a [[row:a,b]] marker. */
-export function imageRowPartner(content: string, imageIndex: number): number | null {
+export function imageRowPartner(
+  content: string,
+  imageIndex: number,
+): number | null {
   for (const line of contentToPlannerLines(content)) {
     if (line.type === "row" && line.indices.includes(imageIndex)) {
       const partner = line.indices.find((i) => i !== imageIndex);
@@ -432,13 +465,16 @@ export function addPartnerToImageLine(
   if (rowIdx >= 0) {
     const row = lines[rowIdx];
     if (row.type === "row") {
-      if (row.indices.includes(partnerIndex)) return plannerLinesToContent(lines);
+      if (row.indices.includes(partnerIndex))
+        return plannerLinesToContent(lines);
       lines[rowIdx] = { type: "row", indices: [...row.indices, partnerIndex] };
       return plannerLinesToContent(lines);
     }
   }
 
-  const lineIdx = lines.findIndex((l) => l.type === "image" && l.index === imageIndex);
+  const lineIdx = lines.findIndex(
+    (l) => l.type === "image" && l.index === imageIndex,
+  );
   if (lineIdx < 0) return plannerLinesToContent(lines);
 
   lines[lineIdx] = { type: "row", indices: [imageIndex, partnerIndex] };
@@ -486,7 +522,8 @@ export function buildStorySectionViews(content: string): StorySectionView[] {
 
   for (let s = 0; s < primaryStarts.length; s++) {
     const start = primaryStarts[s];
-    const end = s + 1 < primaryStarts.length ? primaryStarts[s + 1] : lines.length;
+    const end =
+      s + 1 < primaryStarts.length ? primaryStarts[s + 1] : lines.length;
     const textLine = lines[start];
     if (textLine.type !== "text") continue;
 
@@ -504,7 +541,9 @@ export function buildStorySectionViews(content: string): StorySectionView[] {
       }
     }
 
-    const { heading, bodyHtml, headingHtml } = extractHeadingBody(textLine.html);
+    const { heading, bodyHtml, headingHtml } = extractHeadingBody(
+      textLine.html,
+    );
     const headingSlotItems: PlacedItemView[] = [];
     const afterItems: PlacedItemView[] = [];
 
@@ -518,7 +557,8 @@ export function buildStorySectionViews(content: string): StorySectionView[] {
         const prevIsSectionStart = cursor === start + 1;
         const next = lines[cursor + 1];
         const nextIsBodyFragment =
-          next?.type === "text" && !isPrimarySectionTextLine(next, cursor + 1, lines);
+          next?.type === "text" &&
+          !isPrimarySectionTextLine(next, cursor + 1, lines);
 
         if (headingHtml) {
           if (nextIsBodyFragment || !bodyHtml) {
@@ -533,7 +573,10 @@ export function buildStorySectionViews(content: string): StorySectionView[] {
         }
       }
 
-      if (row.type === "text" && !isPrimarySectionTextLine(row, cursor, lines)) {
+      if (
+        row.type === "text" &&
+        !isPrimarySectionTextLine(row, cursor, lines)
+      ) {
         bodyParts.push(row.html);
         cursor++;
         continue;
@@ -551,7 +594,10 @@ export function buildStorySectionViews(content: string): StorySectionView[] {
       : "";
 
     const displayHeading =
-      heading || (headingHtml ? null : s === 0 ? "Introduction" : null);
+      heading ||
+      (headingHtml ? null
+      : s === 0 ? "Introduction"
+      : null);
 
     views.push({
       sectionIndex: s,

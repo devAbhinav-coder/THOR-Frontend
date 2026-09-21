@@ -138,7 +138,7 @@ export function PdpVariantPicker({
                   <button
                     key={color}
                     type='button'
-                    aria-label={`${color}${ok ? "" : " — out of stock"}`}
+                    aria-label={`${color}${ok ? "" : " - out of stock"}`}
                     aria-pressed={selected}
                     onClick={() => v && onSelectColor(v)}
                     disabled={!ok}

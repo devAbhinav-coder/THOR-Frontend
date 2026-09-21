@@ -48,7 +48,7 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // ── Brand palette (heritage gold #c5a059 — maps all `brand-*` utilities site-wide) ──
+        // ── Brand palette (heritage gold #c5a059 - maps all `brand-*` utilities site-wide) ──
         brand: {
           50: "#faf6ef",
           100: "#f3ead4",
@@ -76,7 +76,7 @@ module.exports = {
           900: "#14192f", // ← Prussian blue
           950: "#14192f",
         },
-        // ── Gold accent (heritage gold #c5a059 — navbar, hero, chatbot) ───
+        // ── Gold accent (heritage gold #c5a059 - navbar, hero, chatbot) ───
         gold: {
           50: "#faf6ef",
           100: "#f3ead4",
@@ -188,11 +188,16 @@ module.exports = {
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 2s infinite",
         fadeIn: "fadeIn 0.5s ease-out",
-        "rani-panel-in": "rani-panel-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "rani-panel-out": "rani-panel-out 0.22s cubic-bezier(0.4, 0, 1, 1) both",
-        "rani-msg-user": "rani-msg-user 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "rani-msg-bot": "rani-msg-bot 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "rani-fab-ring": "rani-fab-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "rani-panel-in":
+          "rani-panel-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "rani-panel-out":
+          "rani-panel-out 0.22s cubic-bezier(0.4, 0, 1, 1) both",
+        "rani-msg-user":
+          "rani-msg-user 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "rani-msg-bot":
+          "rani-msg-bot 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "rani-fab-ring":
+          "rani-fab-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "rani-online": "rani-online 2s ease-in-out infinite",
         "rani-header-shine": "rani-header-shine 6s ease infinite",
         "nav-indeterminate": "nav-indeterminate 1s ease-in-out infinite",

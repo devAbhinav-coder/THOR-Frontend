@@ -1,19 +1,19 @@
-import { create } from 'zustand';
-import { Cart, CartItem, Product } from '@/types';
-import { cartApi } from '@/lib/api';
-import { variantSellPrice } from '@/lib/productPricing';
+import { create } from "zustand";
+import { Cart, CartItem, Product } from "@/types";
+import { cartApi } from "@/lib/api";
+import { variantSellPrice } from "@/lib/productPricing";
 import {
   getOrCreateCartIdempotencyKey,
   clearCartIdempotencyKey,
-} from '@/lib/cartIdempotency';
-import { getQueryClient, CART_QUERY_KEY } from '@/lib/queryClient';
-import toast from 'react-hot-toast';
+} from "@/lib/cartIdempotency";
+import { getQueryClient, CART_QUERY_KEY } from "@/lib/queryClient";
+import toast from "react-hot-toast";
 
 /** Survives full page reload / new tab so checkout still sees cart-applied coupon after fetchCart. */
-export const CART_APPLIED_COUPON_STORAGE_KEY = 'hor_cart_applied_coupon_code';
+export const CART_APPLIED_COUPON_STORAGE_KEY = "hor_cart_applied_coupon_code";
 
 function readStoredCouponCode(): string | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   try {
     const s = sessionStorage.getItem(CART_APPLIED_COUPON_STORAGE_KEY);
     if (s?.trim()) return s.trim();
@@ -25,7 +25,7 @@ function readStoredCouponCode(): string | null {
 }
 
 function writeStoredCouponCode(code: string | null): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     if (code) {
       sessionStorage.setItem(CART_APPLIED_COUPON_STORAGE_KEY, code);
@@ -43,7 +43,10 @@ function writeStoredCouponCode(code: string | null): void {
  * Never wipe stored code while server still shows a discount but we couldn't resolve the
  * string yet (populate lag / race). Only clear when discount is actually gone.
  */
-function syncCouponStorage(code: string | null, cart: Cart | null | undefined): void {
+function syncCouponStorage(
+  code: string | null,
+  cart: Cart | null | undefined,
+): void {
   const d = cart?.discount ?? 0;
   if (d <= 0) {
     writeStoredCouponCode(null);
@@ -58,10 +61,18 @@ const updateItemChains = new Map<string, Promise<void>>();
 
 type CartApiError = { message?: string; status?: number };
 
-function cartAddKey(productId: string, sku: string, answers?: Array<{ label: string; value: string }>) {
-  const a = answers?.length
-    ? [...answers].sort((x, y) => x.label.localeCompare(y.label)).map((x) => `${x.label}:${x.value}`).join('|')
-    : '';
+function cartAddKey(
+  productId: string,
+  sku: string,
+  answers?: Array<{ label: string; value: string }>,
+) {
+  const a =
+    answers?.length ?
+      [...answers]
+        .sort((x, y) => x.label.localeCompare(y.label))
+        .map((x) => `${x.label}:${x.value}`)
+        .join("|")
+    : "";
   return `${productId}:${sku}:${a}`;
 }
 
@@ -100,12 +111,17 @@ function appliedCouponCodeFromCart(
   if (discount <= 0) return null;
 
   const raw = cart.coupon;
-  if (raw && typeof raw === 'object' && raw !== null && 'code' in raw) {
+  if (raw && typeof raw === "object" && raw !== null && "code" in raw) {
     const code = (raw as { code?: string }).code;
-    if (typeof code === 'string' && code.trim().length > 0) return code.trim();
+    if (typeof code === "string" && code.trim().length > 0) return code.trim();
   }
-  // API sometimes returns coupon as unpopulated ObjectId string — keep last known code
-  if (typeof raw === 'string' && raw.length > 0 && previous && previous.trim().length > 0) {
+  // API sometimes returns coupon as unpopulated ObjectId string - keep last known code
+  if (
+    typeof raw === "string" &&
+    raw.length > 0 &&
+    previous &&
+    previous.trim().length > 0
+  ) {
     return previous.trim();
   }
   if (previous && previous.trim().length > 0) return previous.trim();
@@ -198,26 +214,28 @@ async function patchCartItemQuantity(
     if (error.status === 409) {
       try {
         await syncFromServer();
-        const body = await cartApi.update(cartItemId, quantity, { idempotencyKey });
+        const body = await cartApi.update(cartItemId, quantity, {
+          idempotencyKey,
+        });
         clearCartIdempotencyKey(idemOp);
         applyServerCart(body.data.cart);
         return;
       } catch (retryErr: unknown) {
         await syncFromServer();
         const retryError = retryErr as CartApiError;
-        toast.error(retryError.message || 'Failed to update cart');
+        toast.error(retryError.message || "Failed to update cart");
         return;
       }
     }
     await syncFromServer();
-    toast.error(error.message || 'Failed to update cart');
+    toast.error(error.message || "Failed to update cart");
   }
 }
 
 function mergeOptimisticCart(
   previous: Cart | null,
   product: Product,
-  variant: CartItem['variant'],
+  variant: CartItem["variant"],
   quantity: number,
   customFieldAnswers?: Array<{ label: string; value: string }>,
 ): Cart {
@@ -237,7 +255,9 @@ function mergeOptimisticCart(
 
   const prevItems = previous?.items ?? [];
   const idx = prevItems.findIndex(
-    (it) => it.variant.sku === variant.sku && answersMatch(it.customFieldAnswers, customFieldAnswers),
+    (it) =>
+      it.variant.sku === variant.sku &&
+      answersMatch(it.customFieldAnswers, customFieldAnswers),
   );
 
   let items: CartItem[];
@@ -254,7 +274,7 @@ function mergeOptimisticCart(
   const total = Math.max(0, subtotal - discount);
 
   return {
-    _id: previous?._id ?? 'pending',
+    _id: previous?._id ?? "pending",
     items,
     coupon: previous?.coupon,
     subtotal,
@@ -276,61 +296,68 @@ interface CartState {
   fetchCart: () => Promise<void>;
   addToCart: (
     productId: string,
-    variant: CartItem['variant'],
+    variant: CartItem["variant"],
     quantity: number,
     customFieldAnswers?: Array<{ label: string; value: string }>,
     /** When set, cart badge + drawer update immediately (then server confirms) */
     product?: Product,
     options?: AddToCartOptions,
   ) => Promise<void>;
-   updateItem: (cartItemId: string, quantity: number) => Promise<void>;
-   removeItem: (cartItemId: string) => Promise<void>;
-   clearCart: () => Promise<void>;
-   applyCoupon: (code: string) => Promise<void>;
-   removeCoupon: () => Promise<void>;
-   resetCart: () => void;
-   /** After checkout: bust server cache, sync empty cart, clear coupon storage. */
-   purgeCartAfterCheckout: () => Promise<void>;
- }
- 
- export const useCartStore = create<CartState>((set, get) => ({
-   cart: null,
-   isLoading: false,
-   itemCount: 0,
-   appliedCouponCode: null,
- 
-   fetchCart: async () => {
-     set({ isLoading: true });
-     const previousCode = get().appliedCouponCode;
-     try {
-       const body = await cartApi.get();
-       publishCart(body.data.cart, { previousCoupon: previousCode });
-     } catch {
-       // silent fail
-     } finally {
-       set({ isLoading: false });
-     }
-   },
- 
-   addToCart: async (productId, variant, quantity, customFieldAnswers, product, options) => {
-     const key = cartAddKey(productId, variant.sku, customFieldAnswers);
-     if (addCartInFlight.has(key)) return;
+  updateItem: (cartItemId: string, quantity: number) => Promise<void>;
+  removeItem: (cartItemId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
+  applyCoupon: (code: string) => Promise<void>;
+  removeCoupon: () => Promise<void>;
+  resetCart: () => void;
+  /** After checkout: bust server cache, sync empty cart, clear coupon storage. */
+  purgeCartAfterCheckout: () => Promise<void>;
+}
 
-     const previousCart = get().cart;
-     const previousCount = get().itemCount;
-     const previousCoupon = get().appliedCouponCode;
+export const useCartStore = create<CartState>((set, get) => ({
+  cart: null,
+  isLoading: false,
+  itemCount: 0,
+  appliedCouponCode: null,
 
-     if (product) {
-       addCartInFlight.add(key);
-       const optimistic = mergeOptimisticCart(
-         previousCart,
-         product,
-         variant,
-         quantity,
-         customFieldAnswers,
-       );
-       publishCart(optimistic, { previousCoupon });
-     }
+  fetchCart: async () => {
+    set({ isLoading: true });
+    const previousCode = get().appliedCouponCode;
+    try {
+      const body = await cartApi.get();
+      publishCart(body.data.cart, { previousCoupon: previousCode });
+    } catch {
+      // silent fail
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  addToCart: async (
+    productId,
+    variant,
+    quantity,
+    customFieldAnswers,
+    product,
+    options,
+  ) => {
+    const key = cartAddKey(productId, variant.sku, customFieldAnswers);
+    if (addCartInFlight.has(key)) return;
+
+    const previousCart = get().cart;
+    const previousCount = get().itemCount;
+    const previousCoupon = get().appliedCouponCode;
+
+    if (product) {
+      addCartInFlight.add(key);
+      const optimistic = mergeOptimisticCart(
+        previousCart,
+        product,
+        variant,
+        quantity,
+        customFieldAnswers,
+      );
+      publishCart(optimistic, { previousCoupon });
+    }
 
     const idemOp = `add:${key}`;
     const idempotencyKey = getOrCreateCartIdempotencyKey(idemOp);
@@ -344,7 +371,7 @@ interface CartState {
       publishCart(body.data.cart, { previousCoupon });
       const toastMsg = options?.successToast;
       if (toastMsg !== false) {
-        toast.success(toastMsg ?? 'Added to cart!');
+        toast.success(toastMsg ?? "Added to cart!");
       }
     } catch (err: unknown) {
       if (product) {
@@ -353,7 +380,7 @@ interface CartState {
         if (!previousCart) set({ itemCount: previousCount });
       }
       const error = err as { message?: string };
-      toast.error(error.message || 'Failed to add to cart');
+      toast.error(error.message || "Failed to add to cart");
       throw err;
     } finally {
       if (product) addCartInFlight.delete(key);
@@ -369,7 +396,10 @@ interface CartState {
     const nextItems = previousCart.items.map((it) =>
       it.cartItemId === cartItemId ? { ...it, quantity } : it,
     );
-    const nextSubtotal = nextItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+    const nextSubtotal = nextItems.reduce(
+      (sum, it) => sum + it.price * it.quantity,
+      0,
+    );
     const optimisticCart = {
       ...previousCart,
       items: nextItems,
@@ -404,7 +434,10 @@ interface CartState {
     const nextItems = previousCart.items.filter(
       (it) => it.cartItemId !== cartItemId,
     );
-    const nextSubtotal = nextItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+    const nextSubtotal = nextItems.reduce(
+      (sum, it) => sum + it.price * it.quantity,
+      0,
+    );
     const optimisticCart = {
       ...previousCart,
       items: nextItems,
@@ -458,7 +491,7 @@ interface CartState {
       await cartApi.clear();
       publishCart(null);
     } catch {
-      toast.error('Failed to clear cart');
+      toast.error("Failed to clear cart");
     }
   },
 
@@ -474,13 +507,17 @@ interface CartState {
       const discount = cart?.discount ?? 0;
       if (discount <= 0) {
         publishCart(cart, { previousCoupon: null, fallbackCoupon: null });
-        toast.error('This coupon cannot be applied to your cart.');
-        throw new Error('Coupon not applied');
+        toast.error("This coupon cannot be applied to your cart.");
+        throw new Error("Coupon not applied");
       }
       const cartCoupon =
-        cart?.coupon && typeof cart.coupon === 'object' && cart.coupon !== null
-          ? (cart.coupon as { code?: string; appliedDiscount?: number })
-          : null;
+        (
+          cart?.coupon &&
+          typeof cart.coupon === "object" &&
+          cart.coupon !== null
+        ) ?
+          (cart.coupon as { code?: string; appliedDiscount?: number })
+        : null;
       const resolved = (cartCoupon?.code || normalized).trim();
       publishCart(cart, {
         previousCoupon: get().appliedCouponCode,
@@ -490,8 +527,8 @@ interface CartState {
       toast.success(`Coupon applied. You saved ₹${saved}.`);
     } catch (err: unknown) {
       const error = err as { message?: string };
-      if (error.message !== 'Coupon not applied') {
-        toast.error(error.message || 'Invalid coupon');
+      if (error.message !== "Coupon not applied") {
+        toast.error(error.message || "Invalid coupon");
       }
       throw err;
     }
@@ -501,9 +538,9 @@ interface CartState {
     try {
       const body = await cartApi.removeCoupon();
       publishCart(body.data.cart, { previousCoupon: null });
-      toast.success('Coupon removed from your cart.');
+      toast.success("Coupon removed from your cart.");
     } catch {
-      toast.error('Failed to remove coupon');
+      toast.error("Failed to remove coupon");
     }
   },
 
@@ -511,7 +548,7 @@ interface CartState {
     publishCart(null);
   },
 
-   purgeCartAfterCheckout: async () => {
+  purgeCartAfterCheckout: async () => {
     publishCart(null);
     try {
       await cartApi.clear();
@@ -540,10 +577,9 @@ export function getCartAppliedCouponCodeForOrder(): string | null {
 
   if (appliedCouponCode?.trim()) return appliedCouponCode.trim();
   const raw = cart?.coupon;
-  if (raw && typeof raw === 'object' && raw !== null && 'code' in raw) {
+  if (raw && typeof raw === "object" && raw !== null && "code" in raw) {
     const c = (raw as { code?: string }).code;
-    if (typeof c === 'string' && c.trim()) return c.trim();
+    if (typeof c === "string" && c.trim()) return c.trim();
   }
   return readStoredCouponCode();
 }
-

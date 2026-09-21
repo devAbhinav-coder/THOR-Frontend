@@ -40,7 +40,7 @@ const playfair = Playfair_Display({
 const SITE_URL = getSiteUrl();
 
 /**
- * Lighthouse warns when more than 4 `preconnect` hints exist — extra
+ * Lighthouse warns when more than 4 `preconnect` hints exist - extra
  * connections waste sockets and bandwidth. Keep the highest-impact origins
  * (API + Cloudinary, since both are used during the LCP), preconnect the
  * font CDN since `next/font` already requests from `fonts.gstatic.com`,
@@ -49,9 +49,9 @@ const SITE_URL = getSiteUrl();
  */
 function preconnectHints(): { href: string; crossOrigin?: "" }[] {
   const hints: { href: string; crossOrigin?: "" }[] = [
-    // Cloudinary CDN — all product / hero / category images live here.
+    // Cloudinary CDN - all product / hero / category images live here.
     { href: "https://res.cloudinary.com", crossOrigin: "" },
-    // Google Fonts binary CDN — DM Sans + Playfair Display.
+    // Google Fonts binary CDN - DM Sans + Playfair Display.
     { href: "https://fonts.gstatic.com", crossOrigin: "" },
   ];
   const api = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -66,7 +66,7 @@ function preconnectHints(): { href: string; crossOrigin?: "" }[] {
 }
 
 /**
- * Cheaper hint than preconnect — tells the browser to resolve DNS but not
+ * Cheaper hint than preconnect - tells the browser to resolve DNS but not
  * open a socket. Used for origins that load *after* hydration (analytics).
  */
 const DNS_PREFETCH_HINTS = [
@@ -97,31 +97,30 @@ export const metadata: Metadata = {
   creator: "The House of Rani",
   applicationName: "The House of Rani",
   category: "fashion",
-openGraph: {
-  type: "website",
-  locale: "en_IN",
-  url: SITE_URL,
-  siteName: "The House of Rani",
-  title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
-  description:
-    "Shop premium sarees, salwar suits, corsets, and The Rani Premium Edit online in India. Designer weaves, festive & bridal styles, free delivery over ₹1,099.",
-  images: [
-    {
-      url: `${SITE_URL}/ogimage.png`,
-      width: 1200,
-      height: 630,
-      alt: "Premium Sarees, Salwar Suits & Corsets – The House of Rani",
-
-    },
-  ],
-},
- twitter: {
-  card: "summary_large_image",
-  title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
-  description:
-    "Shop premium sarees, salwar suits, corsets, and hand painted pure silk — designed for weddings, festivals, and everyday elegance.",
-  images: [`${SITE_URL}/ogimage.png`],
-},
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    url: SITE_URL,
+    siteName: "The House of Rani",
+    title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
+    description:
+      "Shop premium sarees, salwar suits, corsets, and The Rani Premium Edit online in India. Designer weaves, festive & bridal styles, free delivery over ₹1,099.",
+    images: [
+      {
+        url: `${SITE_URL}/ogimage.png`,
+        width: 1200,
+        height: 630,
+        alt: "Premium Sarees, Salwar Suits & Corsets – The House of Rani",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Premium Sarees, Salwar Suits & Corsets | The House of Rani",
+    description:
+      "Shop premium sarees, salwar suits, corsets, and hand painted pure silk - designed for weddings, festivals, and everyday elegance.",
+    images: [`${SITE_URL}/ogimage.png`],
+  },
   verification: {
     google: "c-mAKK6c-M5IbneZfLyOePUcU6LaG0a8H2QVX3vQz2M",
     ...(Object.keys(verificationOther).length ?
@@ -158,7 +157,7 @@ export default async function RootLayout({
 }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const appUrl = SITE_URL;
-  /** Single @graph: Organization ↔ WebSite publisher — helps Google show a brand site name vs raw domain. */
+  /** Single @graph: Organization ↔ WebSite publisher - helps Google show a brand site name vs raw domain. */
   const siteGraphLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -185,8 +184,8 @@ export default async function RootLayout({
           contactType: "customer service",
           availableLanguage: ["English", "Hindi"],
           areaServed: "IN",
-          email:"support@thehouseofrani.com",
-          telephone:"+91-8340311033"
+          email: "support@thehouseofrani.com",
+          telephone: "+91-8340311033",
         },
         areaServed: {
           "@type": "Country",
@@ -304,7 +303,7 @@ n.queue=[]}(window,document,'script',
         {/*
          * 3rd-party analytics moved out of <head> and deferred so they don't
          * compete with the LCP image / hydration. `afterInteractive` runs
-         * after page becomes interactive — Lighthouse no longer counts these
+         * after page becomes interactive - Lighthouse no longer counts these
          * as render-blocking, which lifts the Performance score.
          */}
         <Script

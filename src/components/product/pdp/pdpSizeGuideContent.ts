@@ -47,7 +47,7 @@ export function getPdpSizeGuideContent(input: {
   };
 }
 
-/** Resolve modal content — returns null when size guide should not show on PDP. */
+/** Resolve modal content - returns null when size guide should not show on PDP. */
 export function resolvePdpSizeGuideContent(input: {
   sizeGuide?: PdpSizeGuideData;
   category?: string;

@@ -3,7 +3,7 @@ export type FooterQuickLink = {
   href: string;
 };
 
-/** Curatorial — brand & explore (support links live under Concierge). */
+/** Curatorial - brand & explore (support links live under Concierge). */
 export const DEFAULT_FOOTER_CURATORIAL_LINKS: FooterQuickLink[] = [
   { label: "Our Story", href: "/about" },
   { label: "Blog", href: "/blog" },
@@ -20,7 +20,7 @@ const BLOG_LINK: FooterQuickLink = { label: "Blog", href: "/blog" };
 
 const CURATORIAL_ORDER = ["/about", "/blog", "/shop", "/premium"];
 
-/** Paths reserved for Concierge — not shown in Curatorial. */
+/** Paths reserved for Concierge - not shown in Curatorial. */
 const CONCIERGE_PATHS = new Set([
   "/shipping",
   "/returns",
@@ -40,7 +40,10 @@ function normalizePath(href: string): string {
   if (!raw) return "/";
   if (/^(https?:|mailto:|tel:)/i.test(raw)) return raw;
   try {
-    const url = new URL(raw.startsWith("/") ? raw : `/${raw}`, "https://dummy.local");
+    const url = new URL(
+      raw.startsWith("/") ? raw : `/${raw}`,
+      "https://dummy.local",
+    );
     return url.pathname.replace(/\/+$/, "") || "/";
   } catch {
     return raw.split("?")[0]?.split("#")[0] || "/";

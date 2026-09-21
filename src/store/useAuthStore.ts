@@ -1,10 +1,10 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { User } from '@/types';
-import { authApi } from '@/lib/api';
-import { syncAuthGateCookie } from '@/lib/authGateCookie';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { User } from "@/types";
+import { authApi } from "@/lib/api";
+import { syncAuthGateCookie } from "@/lib/authGateCookie";
 
-/** Set after persist rehydrates — avoids TDZ if referenced before `useAuthStore` is assigned */
+/** Set after persist rehydrates - avoids TDZ if referenced before `useAuthStore` is assigned */
 let markAuthHydrated: () => void;
 
 export type LoginResult =
@@ -33,7 +33,9 @@ function loginResultFromBody(
   setPending: (pending: Admin2FAPending | null) => void,
 ): LoginResult {
   if (body.data?.requiresAdmin2FA && body.data.pendingToken) {
-    const preview = body.data.user as { email?: string; name?: string } | undefined;
+    const preview = body.data.user as
+      | { email?: string; name?: string }
+      | undefined;
     const pending: Admin2FAPending = {
       pendingToken: body.data.pendingToken,
       email: preview?.email,
@@ -48,18 +50,22 @@ function loginResultFromBody(
 
 interface AuthState {
   user: User | null;
-  /** Kept null — access token lives in httpOnly cookie only (no localStorage). */
+  /** Kept null - access token lives in httpOnly cookie only (no localStorage). */
   token: null;
   isAuthenticated: boolean;
   isLoading: boolean;
   /** True after the initial cookie-based session probe completes once. */
   hasSessionChecked: boolean;
-  /** After zustand persist finishes reading localStorage — avoids admin redirect race on full page load */
+  /** After zustand persist finishes reading localStorage - avoids admin redirect race on full page load */
   _hasHydrated: boolean;
-  /** Admin TOTP step — in-memory only (not persisted). */
+  /** Admin TOTP step - in-memory only (not persisted). */
   admin2faPending: Admin2FAPending | null;
   clearAdmin2faPending: () => void;
-  login: (email: string, password: string, turnstileToken?: string) => Promise<LoginResult>;
+  login: (
+    email: string,
+    password: string,
+    turnstileToken?: string,
+  ) => Promise<LoginResult>;
   verifyAdmin2FA: (pendingToken: string, code: string) => Promise<void>;
   signupStart: (data: {
     name: string;
@@ -68,10 +74,21 @@ interface AuthState {
     phone: string;
     turnstileToken?: string;
   }) => Promise<void>;
-  signupVerify: (email: string, otp: string, turnstileToken?: string) => Promise<void>;
-  loginWithGoogle: (credential: string, turnstileToken?: string) => Promise<LoginResult>;
+  signupVerify: (
+    email: string,
+    otp: string,
+    turnstileToken?: string,
+  ) => Promise<void>;
+  loginWithGoogle: (
+    credential: string,
+    turnstileToken?: string,
+  ) => Promise<LoginResult>;
   /** Passwordless login after `/auth/verify-otp` with type `login`. */
-  loginWithOtp: (email: string, otp: string, turnstileToken?: string) => Promise<void>;
+  loginWithOtp: (
+    email: string,
+    otp: string,
+    turnstileToken?: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setUser: (user: User) => void;
@@ -95,7 +112,11 @@ export const useAuthStore = create<AuthState>()(
         login: async (email, password, turnstileToken) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.login({ email, password, turnstileToken });
+            const body = await authApi.login({
+              email,
+              password,
+              turnstileToken,
+            });
             const result = loginResultFromBody(body, (pending) =>
               set({ admin2faPending: pending }),
             );
@@ -143,7 +164,11 @@ export const useAuthStore = create<AuthState>()(
         signupVerify: async (email, otp, turnstileToken) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.verifyOtpSignup({ email, otp, turnstileToken });
+            const body = await authApi.verifyOtpSignup({
+              email,
+              otp,
+              turnstileToken,
+            });
             set({
               user: body.data.user,
               token: null,
@@ -181,7 +206,11 @@ export const useAuthStore = create<AuthState>()(
         loginWithOtp: async (email, otp, turnstileToken) => {
           set({ isLoading: true });
           try {
-            const body = await authApi.verifyOtpLogin({ email, otp, turnstileToken });
+            const body = await authApi.verifyOtpLogin({
+              email,
+              otp,
+              turnstileToken,
+            });
             set({
               user: body.data.user,
               token: null,
@@ -209,9 +238,8 @@ export const useAuthStore = create<AuthState>()(
               admin2faPending: null,
             });
             // Drop previous user's cart/wishlist so guest UI never shows stale badges
-            const { clearSessionCommerceCaches } = await import(
-              '@/lib/sessionCommerceClear'
-            );
+            const { clearSessionCommerceCaches } =
+              await import("@/lib/sessionCommerceClear");
             clearSessionCommerceCaches();
           }
         },
@@ -232,7 +260,7 @@ export const useAuthStore = create<AuthState>()(
           try {
             await tryMe();
           } catch {
-            const { refreshAccessToken } = await import('@/lib/authRefresh');
+            const { refreshAccessToken } = await import("@/lib/authRefresh");
             const ok = await refreshAccessToken();
             if (!ok) {
               syncAuthGateCookie(null, false);
@@ -242,9 +270,8 @@ export const useAuthStore = create<AuthState>()(
                 isAuthenticated: false,
                 hasSessionChecked: true,
               });
-              const { clearSessionCommerceCaches } = await import(
-                '@/lib/sessionCommerceClear'
-              );
+              const { clearSessionCommerceCaches } =
+                await import("@/lib/sessionCommerceClear");
               clearSessionCommerceCaches();
               return;
             }
@@ -258,9 +285,8 @@ export const useAuthStore = create<AuthState>()(
                 isAuthenticated: false,
                 hasSessionChecked: true,
               });
-              const { clearSessionCommerceCaches } = await import(
-                '@/lib/sessionCommerceClear'
-              );
+              const { clearSessionCommerceCaches } =
+                await import("@/lib/sessionCommerceClear");
               clearSessionCommerceCaches();
             }
           } finally {
@@ -275,7 +301,7 @@ export const useAuthStore = create<AuthState>()(
       };
     },
     {
-      name: 'auth-storage',
+      name: "auth-storage",
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
@@ -293,6 +319,6 @@ export const useAuthStore = create<AuthState>()(
         if (state) syncAuthGateCookie(state.user, state.isAuthenticated);
         markAuthHydrated?.();
       },
-    }
-  )
+    },
+  ),
 );

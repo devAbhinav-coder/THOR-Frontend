@@ -7,8 +7,7 @@ type Props = {
 };
 
 export default function OrderInvoiceDocument({ order }: Props) {
-  const inPersonOffline =
-    order.offlineMeta?.fulfillment === "offline_handover";
+  const inPersonOffline = order.offlineMeta?.fulfillment === "offline_handover";
 
   // E-commerce Invoice format
   const invoiceNumber = orderInvoiceNumber(order.orderNumber);
@@ -169,9 +168,9 @@ export default function OrderInvoiceDocument({ order }: Props) {
                 {order.paymentMethod === "cod" ?
                   "Cash on Delivery"
                 : order.paymentMethod === "offline_upi" ?
-                  "Offline — UPI"
+                  "Offline - UPI"
                 : order.paymentMethod === "offline_cash" ?
-                  "Offline — cash"
+                  "Offline - cash"
                 : "Online"}
               </p>
               <p>
@@ -237,12 +236,13 @@ export default function OrderInvoiceDocument({ order }: Props) {
                 {inPersonOffline ? "Fulfilment" : "Shipped To"}
               </h2>
               <p className='font-bold text-xs tracking-tight'>
-                {inPersonOffline ? "" : (order.shippingAddress?.name || "Customer")}
+                {inPersonOffline ?
+                  ""
+                : order.shippingAddress?.name || "Customer"}
               </p>
               <div className='text-xs text-gray-700 mt-0.5 leading-snug'>
-                {inPersonOffline ?
-                  null
-                : <>
+                {inPersonOffline ? null : (
+                  <>
                     {order.shippingAddress?.house && (
                       <p>{order.shippingAddress.house}</p>
                     )}
@@ -262,7 +262,7 @@ export default function OrderInvoiceDocument({ order }: Props) {
                       <p>Phone: +91 {order.shippingAddress.phone}</p>
                     )}
                   </>
-                }
+                )}
               </div>
             </div>
           </div>

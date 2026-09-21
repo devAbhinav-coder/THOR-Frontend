@@ -1,4 +1,4 @@
-/** Shared catalog options — admin product form + shop filters stay in sync. */
+/** Shared catalog options - admin product form + shop filters stay in sync. */
 export const PRODUCT_OCCASIONS = [
   "Wedding",
   "Bridal",
@@ -12,7 +12,7 @@ export const PRODUCT_OCCASIONS = [
 
 export type ProductOccasion = (typeof PRODUCT_OCCASIONS)[number];
 
-/** Admin + storefront — saree / ethnic wear size presets (Free Size default). */
+/** Admin + storefront - saree / ethnic wear size presets (Free Size default). */
 export const PRODUCT_SIZES = [
   "Free Size",
   "XS",
@@ -45,7 +45,9 @@ export function isFreeProductSize(size: string): boolean {
 }
 
 export function nextUnusedProductSize(existing: string[]): string {
-  const used = new Set(existing.map((s) => s.trim().toLowerCase()).filter(Boolean));
+  const used = new Set(
+    existing.map((s) => s.trim().toLowerCase()).filter(Boolean),
+  );
   for (const preset of PRODUCT_SIZES) {
     if (!used.has(preset.toLowerCase())) return preset;
   }
@@ -107,5 +109,7 @@ export function mergeFabricOptions(
     seen.add(key);
     out.push(trimmed);
   }
-  return out.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  return out.sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  );
 }

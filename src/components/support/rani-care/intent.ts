@@ -138,7 +138,12 @@ export type IntentSuggestion = {
   actionValue: string;
 };
 
-const INTENT_HINTS: { intent: Intent; keywords: string[]; label: string; actionValue: string }[] = [
+const INTENT_HINTS: {
+  intent: Intent;
+  keywords: string[];
+  label: string;
+  actionValue: string;
+}[] = [
   {
     intent: "show_orders",
     keywords: ["order", "track", "status", "delivery", "parcel", "ship"],
@@ -177,8 +182,11 @@ const INTENT_HINTS: { intent: Intent; keywords: string[]; label: string; actionV
   },
 ];
 
-/** Best-effort guess when intent is unclear — powers “Did you mean?” chips */
-export function getIntentSuggestions(input: string, limit = 2): IntentSuggestion[] {
+/** Best-effort guess when intent is unclear - powers “Did you mean?” chips */
+export function getIntentSuggestions(
+  input: string,
+  limit = 2,
+): IntentSuggestion[] {
   const q = normalizeForIntent(input);
   if (!q || q.length < 2) return [];
 
@@ -220,7 +228,10 @@ export const INTENT_USER_LABEL: Partial<Record<Intent, string>> = {
 };
 
 /** Try to match order number in free text against cached orders */
-export function findOrderIdByNumber(text: string, orders: Order[]): string | null {
+export function findOrderIdByNumber(
+  text: string,
+  orders: Order[],
+): string | null {
   const t = text.toUpperCase().replace(/\s+/g, " ").trim();
   for (const o of orders) {
     const num = o.orderNumber.toUpperCase();

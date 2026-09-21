@@ -5,16 +5,16 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/returns",
-  title: "Returns & Refunds — 5-Day Easy Returns",
+  title: "Returns & Refunds - 5-Day Easy Returns",
   description:
-    "5-day returns, refunds, and cancellations for sarees, salwar suits & corsets at The House of Rani — including COD rules.",
+    "5-day returns, refunds, and cancellations for sarees, salwar suits & corsets at The House of Rani - including COD rules.",
   priority: "support",
 });
 
 export default function ReturnsPage() {
   return (
     <LegalPageLayout
-      title='Returns & Refunds — 5-Day Easy Returns'
+      title='Returns & Refunds - 5-Day Easy Returns'
       description='We want you to love every piece you order. This page sets out how returns, refunds, and cancellations work for purchases made on our website, so expectations are clear from the start.'
       lastUpdated='17 July 2026'
     >
@@ -75,7 +75,7 @@ export default function ReturnsPage() {
         order confirmation.
       </p>
 
-      <h2>5. Refunds — product value, COD, and shipping</h2>
+      <h2>5. Refunds - product value, COD, and shipping</h2>
       <p>
         When a return is approved and we receive the item back (and inspect it
         where needed), refunds are generally applied to the{" "}
@@ -107,10 +107,10 @@ export default function ReturnsPage() {
       <h2>6. Timelines</h2>
       <p>
         Eligible returns must be requested within{" "}
-        <strong>5 days of delivery</strong>, unless a different window is
-        stated on the product page, checkout, or your order email. Refunds,
-        after approval, are typically initiated within a reasonable number of
-        working days after we receive the return; your bank or wallet may take
+        <strong>5 days of delivery</strong>, unless a different window is stated
+        on the product page, checkout, or your order email. Refunds, after
+        approval, are typically initiated within a reasonable number of working
+        days after we receive the return; your bank or wallet may take
         additional time to show the credit.
       </p>
 

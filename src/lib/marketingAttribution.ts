@@ -23,17 +23,24 @@ function readCookie(name: string): string | undefined {
   return match ? decodeURIComponent(match.slice(prefix.length)) : undefined;
 }
 
-/** Meta Click ID cookie — only set when the pixel has not already written `_fbc`. */
-export function writeMetaFbcCookie(fbclid: string, capturedAtMs?: number): void {
+/** Meta Click ID cookie - only set when the pixel has not already written `_fbc`. */
+export function writeMetaFbcCookie(
+  fbclid: string,
+  capturedAtMs?: number,
+): void {
   if (typeof document === "undefined" || !fbclid.trim()) return;
   if (readCookie("_fbc")) return;
-  const timestamp = Number.isFinite(capturedAtMs) ? Number(capturedAtMs) : Date.now();
+  const timestamp =
+    Number.isFinite(capturedAtMs) ? Number(capturedAtMs) : Date.now();
   const value = `fb.1.${timestamp}.${fbclid.trim()}`;
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
   document.cookie = `_fbc=${encodeURIComponent(value)}; max-age=${FBC_COOKIE_MAX_AGE_SEC}; path=/; SameSite=Lax${secure}`;
 }
 
-function trim(value: string | null | undefined, max: number): string | undefined {
+function trim(
+  value: string | null | undefined,
+  max: number,
+): string | undefined {
   const v = value?.trim();
   if (!v) return undefined;
   return v.slice(0, max);
@@ -73,16 +80,18 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
       } catch {
         /* private mode */
       }
-      const capturedAtMs = updated.capturedAt ?
-        new Date(updated.capturedAt).getTime()
-      : Date.now();
+      const capturedAtMs =
+        updated.capturedAt ?
+          new Date(updated.capturedAt).getTime()
+        : Date.now();
       writeMetaFbcCookie(fbclid, capturedAtMs);
       return updated;
     }
     if (existing.fbclid) {
-      const capturedAtMs = existing.capturedAt ?
-        new Date(existing.capturedAt).getTime()
-      : undefined;
+      const capturedAtMs =
+        existing.capturedAt ?
+          new Date(existing.capturedAt).getTime()
+        : undefined;
       writeMetaFbcCookie(existing.fbclid, capturedAtMs);
     }
     return existing;
@@ -101,11 +110,11 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
 
   const hasSignal = Boolean(
     payload.utmSource ||
-      payload.utmMedium ||
-      payload.utmCampaign ||
-      payload.utmContent ||
-      payload.utmTerm ||
-      payload.fbclid,
+    payload.utmMedium ||
+    payload.utmCampaign ||
+    payload.utmContent ||
+    payload.utmTerm ||
+    payload.fbclid,
   );
   if (!hasSignal) return null;
 
@@ -116,9 +125,8 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
   }
 
   if (payload.fbclid) {
-    const capturedAtMs = payload.capturedAt ?
-      new Date(payload.capturedAt).getTime()
-    : Date.now();
+    const capturedAtMs =
+      payload.capturedAt ? new Date(payload.capturedAt).getTime() : Date.now();
     writeMetaFbcCookie(payload.fbclid, capturedAtMs);
   }
 
@@ -128,15 +136,14 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
 export function getStoredMarketingAttribution(): MarketingAttribution | null {
   const stored = readStored();
   if (stored?.fbclid) {
-    const capturedAtMs = stored.capturedAt ?
-      new Date(stored.capturedAt).getTime()
-    : undefined;
+    const capturedAtMs =
+      stored.capturedAt ? new Date(stored.capturedAt).getTime() : undefined;
     writeMetaFbcCookie(stored.fbclid, capturedAtMs);
   }
   return stored;
 }
 
-/** Payload for checkout API — omits empty fields. */
+/** Payload for checkout API - omits empty fields. */
 export function getMarketingAttributionForCheckout():
   | MarketingAttribution
   | undefined {

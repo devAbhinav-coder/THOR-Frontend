@@ -1,8 +1,9 @@
+import { cache } from "react";
 import type { Blog, Category, Product } from "@/types";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { serverFetch } from "@/lib/serverFetch";
 
-/** Categories with counts for home “Browse by Category” — avoids a client-only skeleton flash. */
+/** Categories with counts for home “Browse by Category” - avoids a client-only skeleton flash. */
 export async function fetchHomeCategoryStats(): Promise<
   (Category & { productCount: number })[] | null
 > {
@@ -25,14 +26,19 @@ export async function fetchHomeCategoryStats(): Promise<
 }
 
 /** Saree subcategories for home page section. */
-export async function fetchHomeSareeSubcategories(): Promise<Category[] | null> {
+export async function fetchHomeSareeSubcategories(): Promise<
+  Category[] | null
+> {
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
-    const res = await serverFetch(`${base}/categories/slug/sarees/subcategories`, {
-      next: { revalidate: 3600 },
-      headers: { Accept: "application/json" },
-    });
+    const res = await serverFetch(
+      `${base}/categories/slug/sarees/subcategories`,
+      {
+        next: { revalidate: 3600 },
+        headers: { Accept: "application/json" },
+      },
+    );
     if (!res.ok) return null;
     const json = (await res.json()) as {
       data?: { subcategories?: Category[] };
@@ -44,7 +50,7 @@ export async function fetchHomeSareeSubcategories(): Promise<Category[] | null> 
   }
 }
 
-/** Latest published blogs for home Heritage Stories — hides section when empty. */
+/** Latest published blogs for home Heritage Stories - hides section when empty. */
 export async function fetchHomeLatestBlogs(limit = 3): Promise<Blog[] | null> {
   const base = await getBuildSafeApiBase();
   if (!base) return null;
@@ -67,7 +73,7 @@ export async function fetchHomeLatestBlogs(limit = 3): Promise<Blog[] | null> {
   }
 }
 
-/** Featured products for home — same as `productApi.getFeatured()`. */
+/** Featured products for home - same as `productApi.getFeatured()`. */
 export async function fetchHomeFeaturedProducts(): Promise<Product[] | null> {
   const base = await getBuildSafeApiBase();
   if (!base) return null;
@@ -85,7 +91,7 @@ export async function fetchHomeFeaturedProducts(): Promise<Product[] | null> {
   }
 }
 
-/** Public testimonials for home — same as `testimonialApi.getPublic()`. */
+/** Public testimonials for home - same as `testimonialApi.getPublic()`. */
 export async function fetchHomeTestimonials(): Promise<
   import("@/types").Testimonial[] | null
 > {
@@ -130,81 +136,36 @@ export async function fetchHomeExploreProducts(
   }
 }
 
-/** Single product for PDP — matches `productApi.getBySlug` payload. */
-export async function fetchProductBySlugServer(
-  slug: string,
-): Promise<Product | null> {
-  const base = await getBuildSafeApiBase();
-  if (!base) return null;
-  const safe = encodeURIComponent(slug);
-  try {
-    const res = await serverFetch(`${base}/products/${safe}`, {
-      next: { revalidate: 60 },
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data?: { product?: Product } };
-    const p = json?.data?.product;
-    return p && typeof p === "object" ? p : null;
-  } catch {
-    return null;
-  }
-}
-
-type GiftingCategoriesEnvelope = {
-  status: string;
-  data?: { categories?: Category[] };
-};
-
-type GiftingProductsEnvelope = {
-  status: string;
-  data?: {
-    products?: Product[];
-    page?: number;
-    limit?: number;
-    total?: number;
-  };
-};
-
-export async function fetchGiftingCategoriesServer(): Promise<GiftingCategoriesEnvelope | null> {
-  const base = await getBuildSafeApiBase();
-  if (!base) return null;
-  try {
-    const res = await serverFetch(`${base}/gifting/categories`, {
-      next: { revalidate: 120 },
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as GiftingCategoriesEnvelope;
-  } catch {
-    return null;
-  }
-}
-
-/** First page of gifting grid (default filters) — hydrates infinite query. */
-export async function fetchGiftingProductsFirstPageServer(): Promise<GiftingProductsEnvelope | null> {
-  const base = await getBuildSafeApiBase();
-  if (!base) return null;
-  try {
-    const qs = new URLSearchParams({ page: "1", limit: "20" });
-    const res = await serverFetch(`${base}/gifting/products?${qs}`, {
-      next: { revalidate: 45 },
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as GiftingProductsEnvelope;
-  } catch {
-    return null;
-  }
-}
+/** Single product for PDP - deduped per request (metadata + page + JSON-LD). */
+export const fetchProductBySlugServer = cache(
+  async (slug: string): Promise<Product | null> => {
+    const base = await getBuildSafeApiBase();
+    if (!base) return null;
+    const safe = encodeURIComponent(slug);
+    try {
+      const res = await serverFetch(`${base}/products/${safe}`, {
+        next: { revalidate: 60 },
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { data?: { product?: Product } };
+      const p = json?.data?.product;
+      return p && typeof p === "object" ? p : null;
+    } catch {
+      return null;
+    }
+  },
+);
 
 type PremiumProductsEnvelope = {
   status: string;
   data?: { products?: Product[] };
 };
 
-/** Premium collection grid — all active premium products. */
-export async function fetchPremiumProductsServer(audience?: string): Promise<Product[] | null> {
+/** Premium collection grid - all active premium products. */
+export async function fetchPremiumProductsServer(
+  audience?: string,
+): Promise<Product[] | null> {
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
@@ -225,23 +186,23 @@ export async function fetchPremiumProductsServer(audience?: string): Promise<Pro
   }
 }
 
-/** Single premium PDP payload. */
-export async function fetchPremiumProductBySlugServer(
-  slug: string,
-): Promise<Product | null> {
-  const base = await getBuildSafeApiBase();
-  if (!base) return null;
-  const safe = encodeURIComponent(slug);
-  try {
-    const res = await serverFetch(`${base}/premium/products/${safe}`, {
-      next: { revalidate: 60 },
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data?: { product?: Product } };
-    const p = json?.data?.product;
-    return p && typeof p === "object" ? p : null;
-  } catch {
-    return null;
-  }
-}
+/** Single premium PDP payload - deduped per request (metadata + page). */
+export const fetchPremiumProductBySlugServer = cache(
+  async (slug: string): Promise<Product | null> => {
+    const base = await getBuildSafeApiBase();
+    if (!base) return null;
+    const safe = encodeURIComponent(slug);
+    try {
+      const res = await serverFetch(`${base}/premium/products/${safe}`, {
+        next: { revalidate: 60 },
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { data?: { product?: Product } };
+      const p = json?.data?.product;
+      return p && typeof p === "object" ? p : null;
+    } catch {
+      return null;
+    }
+  },
+);

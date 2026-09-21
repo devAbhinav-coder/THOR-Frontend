@@ -25,7 +25,12 @@ import {
 import ProductDetailsBulkFields from "@/components/admin/ProductDetailsBulkFields";
 import { ProductMotionVideoUploader } from "@/components/admin/ProductMotionVideoUploader";
 import { ProductMotionReelField } from "@/components/admin/ProductMotionReelField";
-import { PRODUCT_FABRICS, PRODUCT_OCCASIONS, PREMIUM_PRODUCT_CATEGORY, isPresetProductFabric } from "@/lib/productCatalogOptions";
+import {
+  PRODUCT_FABRICS,
+  PRODUCT_OCCASIONS,
+  PREMIUM_PRODUCT_CATEGORY,
+  isPresetProductFabric,
+} from "@/lib/productCatalogOptions";
 import {
   PDP_SIZE_GUIDE_PRESETS,
   sizeGuideRowsFromText,
@@ -220,124 +225,129 @@ export default function ProductFormModal({
     setSizeGuideTipsText(preset.content.tips.join("\n"));
   };
 
-  const hydrateFromProduct = useCallback((p: Product | null) => {
-    if (!p) {
+  const hydrateFromProduct = useCallback(
+    (p: Product | null) => {
+      if (!p) {
+        setForm({
+          name: "",
+          description: "",
+          shortDescription: "",
+          price: "",
+          comparePrice: "",
+          category: defaultIsPremium ? PREMIUM_PRODUCT_CATEGORY : "",
+          subcategory: "",
+          fabric: "",
+          careInstructions: "",
+          occasions: [] as string[],
+          tags: "",
+          isFeatured: false,
+          isActive: true,
+          isPremium: defaultIsPremium,
+          audience: "women",
+          premiumSlug: "",
+          premiumSubtitle: "",
+          craftNote: "",
+          weaveHours: "",
+          sortOrderPremium: "0",
+          seoTitle: "",
+          seoDescription: "",
+          hsnCode: "",
+        });
+        setColorGroups([emptyColorGroup()]);
+        setDetailsKeysText("");
+        setDetailsValuesText("");
+        setHighlightsText("");
+        setMotionVideoUrl("");
+        setMotionVideoPublicId("");
+        setClearMotionVideo(false);
+        setMotionVideoUploading(false);
+        setMotionReelUrl("");
+        setSizeGuideEnabled(false);
+        setSizeGuidePreset("");
+        setSizeGuideTitle("");
+        setSizeGuideIntro("");
+        setSizeGuideRowsText("");
+        setSizeGuideTipsText("");
+        setEditorialOpen(defaultPremiumEditorialOpen());
+        setEditorialClose(defaultPremiumEditorialClose());
+        setPremiumHeroFile(null);
+        setPremiumHeroPreview(null);
+        return;
+      }
       setForm({
-        name: "",
-        description: "",
-        shortDescription: "",
-        price: "",
-        comparePrice: "",
-        category: defaultIsPremium ? PREMIUM_PRODUCT_CATEGORY : "",
-        subcategory: "",
-        fabric: "",
-        careInstructions: "",
-        occasions: [] as string[],
-        tags: "",
-        isFeatured: false,
-        isActive: true,
-        isPremium: defaultIsPremium,
-        audience: "women",
-        premiumSlug: "",
-        premiumSubtitle: "",
-        craftNote: "",
-        weaveHours: "",
-        sortOrderPremium: "0",
-        seoTitle: "",
-        seoDescription: "",
-        hsnCode: "",
+        name: p.name || "",
+        description: p.description || "",
+        shortDescription: p.shortDescription || "",
+        price: p.price != null ? String(p.price) : "",
+        comparePrice: p.comparePrice != null ? String(p.comparePrice) : "",
+        category: p.isPremium ? PREMIUM_PRODUCT_CATEGORY : p.category || "",
+        subcategory: p.isPremium ? "" : p.subcategory || "",
+        fabric: p.fabric || "",
+        careInstructions: p.careInstructions || "",
+        occasions: [...(p.occasions || [])],
+        tags: (p.tags || []).join(", "),
+        isFeatured: p.isFeatured ?? false,
+        isActive: p.isActive !== undefined ? p.isActive : true,
+        isPremium: p.isPremium ?? false,
+        audience: p.audience || "women",
+        premiumSlug: p.premiumSlug || "",
+        premiumSubtitle: p.premiumSubtitle || "",
+        craftNote: p.craftNote || "",
+        weaveHours: p.weaveHours != null ? String(p.weaveHours) : "",
+        sortOrderPremium:
+          p.sortOrderPremium != null ? String(p.sortOrderPremium) : "0",
+        seoTitle: p.seoTitle || "",
+        seoDescription: p.seoDescription || "",
+        hsnCode: p.hsnCode || "",
       });
-      setColorGroups([emptyColorGroup()]);
-      setDetailsKeysText("");
-      setDetailsValuesText("");
-      setHighlightsText("");
-      setMotionVideoUrl("");
-      setMotionVideoPublicId("");
+      setColorGroups(colorGroupsFromProduct(p));
+      const { keysText, valuesText } = bulkTextFromPairs(
+        p.productDetails || [],
+      );
+      setDetailsKeysText(keysText);
+      setDetailsValuesText(valuesText);
+      setHighlightsText((p.highlights || []).join("\n"));
+      setMotionVideoUrl(p.motionVideoUrl || "");
+      setMotionVideoPublicId(p.motionVideoPublicId || "");
       setClearMotionVideo(false);
       setMotionVideoUploading(false);
-      setMotionReelUrl("");
-      setSizeGuideEnabled(false);
+      setMotionReelUrl(p.motionReelUrl || "");
+      const sg = p.sizeGuide;
+      setSizeGuideEnabled(sg?.enabled === true);
       setSizeGuidePreset("");
-      setSizeGuideTitle("");
-      setSizeGuideIntro("");
-      setSizeGuideRowsText("");
-      setSizeGuideTipsText("");
-      setEditorialOpen(defaultPremiumEditorialOpen());
-      setEditorialClose(defaultPremiumEditorialClose());
+      setSizeGuideTitle(sg?.title || "");
+      setSizeGuideIntro(sg?.intro || "");
+      setSizeGuideRowsText(sizeGuideRowsToText(sg?.rows || []));
+      setSizeGuideTipsText((sg?.tips || []).join("\n"));
+      setEditorialOpen(
+        p.premiumEditorialOpen ?
+          {
+            title: p.premiumEditorialOpen.title ?? "",
+            fields:
+              p.premiumEditorialOpen.fields?.length ?
+                p.premiumEditorialOpen.fields
+              : defaultPremiumEditorialOpen().fields,
+            note: p.premiumEditorialOpen.note ?? "",
+          }
+        : defaultPremiumEditorialOpen(),
+      );
+      setEditorialClose(
+        p.premiumEditorialClose ?
+          {
+            title: p.premiumEditorialClose.title ?? "",
+            fields:
+              p.premiumEditorialClose.fields?.length ?
+                p.premiumEditorialClose.fields
+              : defaultPremiumEditorialClose().fields,
+            note: p.premiumEditorialClose.note ?? "",
+          }
+        : defaultPremiumEditorialClose(),
+      );
       setPremiumHeroFile(null);
-      setPremiumHeroPreview(null);
-      return;
-    }
-    setForm({
-      name: p.name || "",
-      description: p.description || "",
-      shortDescription: p.shortDescription || "",
-      price: p.price != null ? String(p.price) : "",
-      comparePrice: p.comparePrice != null ? String(p.comparePrice) : "",
-      category: p.isPremium ? PREMIUM_PRODUCT_CATEGORY : p.category || "",
-      subcategory: p.isPremium ? "" : p.subcategory || "",
-      fabric: p.fabric || "",
-      careInstructions: p.careInstructions || "",
-      occasions: [...(p.occasions || [])],
-      tags: (p.tags || []).join(", "),
-      isFeatured: p.isFeatured ?? false,
-      isActive: p.isActive !== undefined ? p.isActive : true,
-      isPremium: p.isPremium ?? false,
-      audience: p.audience || "women",
-      premiumSlug: p.premiumSlug || "",
-      premiumSubtitle: p.premiumSubtitle || "",
-      craftNote: p.craftNote || "",
-      weaveHours: p.weaveHours != null ? String(p.weaveHours) : "",
-      sortOrderPremium:
-        p.sortOrderPremium != null ? String(p.sortOrderPremium) : "0",
-      seoTitle: p.seoTitle || "",
-      seoDescription: p.seoDescription || "",
-      hsnCode: p.hsnCode || "",
-    });
-    setColorGroups(colorGroupsFromProduct(p));
-    const { keysText, valuesText } = bulkTextFromPairs(p.productDetails || []);
-    setDetailsKeysText(keysText);
-    setDetailsValuesText(valuesText);
-    setHighlightsText((p.highlights || []).join("\n"));
-    setMotionVideoUrl(p.motionVideoUrl || "");
-    setMotionVideoPublicId(p.motionVideoPublicId || "");
-    setClearMotionVideo(false);
-    setMotionVideoUploading(false);
-    setMotionReelUrl(p.motionReelUrl || "");
-    const sg = p.sizeGuide;
-    setSizeGuideEnabled(sg?.enabled === true);
-    setSizeGuidePreset("");
-    setSizeGuideTitle(sg?.title || "");
-    setSizeGuideIntro(sg?.intro || "");
-    setSizeGuideRowsText(sizeGuideRowsToText(sg?.rows || []));
-    setSizeGuideTipsText((sg?.tips || []).join("\n"));
-    setEditorialOpen(
-      p.premiumEditorialOpen ?
-        {
-          title: p.premiumEditorialOpen.title ?? "",
-          fields:
-            p.premiumEditorialOpen.fields?.length ?
-              p.premiumEditorialOpen.fields
-            : defaultPremiumEditorialOpen().fields,
-          note: p.premiumEditorialOpen.note ?? "",
-        }
-      : defaultPremiumEditorialOpen(),
-    );
-    setEditorialClose(
-      p.premiumEditorialClose ?
-        {
-          title: p.premiumEditorialClose.title ?? "",
-          fields:
-            p.premiumEditorialClose.fields?.length ?
-              p.premiumEditorialClose.fields
-            : defaultPremiumEditorialClose().fields,
-          note: p.premiumEditorialClose.note ?? "",
-        }
-      : defaultPremiumEditorialClose(),
-    );
-    setPremiumHeroFile(null);
-    setPremiumHeroPreview(p.premiumHeroImage?.url ?? null);
-  }, [defaultIsPremium]);
+      setPremiumHeroPreview(p.premiumHeroImage?.url ?? null);
+    },
+    [defaultIsPremium],
+  );
 
   useEffect(() => {
     fetchAdminCatalogCategories()
@@ -411,7 +421,7 @@ export default function ProductFormModal({
       })
       .catch(() => {
         if (cancelled) return;
-        toast.error("Could not load full product — showing partial data");
+        toast.error("Could not load full product - showing partial data");
         setLoadedProduct(product);
         hydrateFromProduct(product);
       })
@@ -424,9 +434,14 @@ export default function ProductFormModal({
   }, [product?._id, hydrateFromProduct]);
 
   const selectedCategory = categories.find((c) => c.name === form.category);
-  const subcategories = allSubcategories.filter((s) => 
-    s.categoryId === selectedCategory?._id || (s.categoryId as any)?._id === selectedCategory?._id || s.categorySlug === selectedCategory?.slug
-  ).map(s => s.name);
+  const subcategories = allSubcategories
+    .filter(
+      (s) =>
+        s.categoryId === selectedCategory?._id ||
+        (s.categoryId as any)?._id === selectedCategory?._id ||
+        s.categorySlug === selectedCategory?.slug,
+    )
+    .map((s) => s.name);
 
   const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -528,7 +543,7 @@ export default function ProductFormModal({
     const expectedNewUploads = draftMeta.filter((m) => !m.publicId).length;
     if (expectedNewUploads !== newFiles.length) {
       return toast.error(
-        "Photo upload sync error — refresh the page, re-add photos per color, and save again.",
+        "Photo upload sync error - refresh the page, re-add photos per color, and save again.",
       );
     }
 
@@ -538,7 +553,7 @@ export default function ProductFormModal({
     );
     if (!detailsParsed.ok) return toast.error(detailsParsed.error);
     if (motionVideoUploading) {
-      return toast.error("Please wait — motion video is still uploading.");
+      return toast.error("Please wait - motion video is still uploading.");
     }
     if (motionReelUrl.trim() && !isValidInstagramReelUrl(motionReelUrl)) {
       return toast.error("Paste a valid public Instagram reel link.");
@@ -547,12 +562,11 @@ export default function ProductFormModal({
     setIsSaving(true);
     setUploadProgress(newFiles.length > 0 || premiumHeroFile ? 0 : null);
     try {
-      // Signed direct-to-Cloudinary — keep large binaries off the API request path.
+      // Signed direct-to-Cloudinary - keep large binaries off the API request path.
       let groupsForSave: ColorVariantGroup[] = normalizedGroups;
       if (newFiles.length > 0) {
-        const uploaded = await uploadProductGalleryImages(
-          newFiles,
-          (p) => setUploadProgress(Math.min(90, p.percent)),
+        const uploaded = await uploadProductGalleryImages(newFiles, (p) =>
+          setUploadProgress(Math.min(90, p.percent)),
         );
         let uploadIdx = 0;
         groupsForSave = normalizedGroups.map((g) => {
@@ -577,9 +591,8 @@ export default function ProductFormModal({
 
       let signedPremiumHero: { url: string; publicId: string } | null = null;
       if (premiumHeroFile) {
-        signedPremiumHero = await uploadPremiumHeroImage(
-          premiumHeroFile,
-          (p) => setUploadProgress(Math.min(95, 90 + Math.round(p.percent / 20))),
+        signedPremiumHero = await uploadPremiumHeroImage(premiumHeroFile, (p) =>
+          setUploadProgress(Math.min(95, 90 + Math.round(p.percent / 20))),
         );
         setPremiumHeroPreview(signedPremiumHero.url);
         setPremiumHeroFile(null);
@@ -614,17 +627,19 @@ export default function ProductFormModal({
       fd.append("isFeatured", String(form.isFeatured));
       fd.append("isActive", String(form.isActive));
       fd.append("isPremium", String(form.isPremium));
-      
+
       if (form.isPremium && form.audience) {
         fd.append("audience", form.audience);
       }
 
-      if (form.premiumSlug.trim()) fd.append("premiumSlug", form.premiumSlug.trim());
+      if (form.premiumSlug.trim())
+        fd.append("premiumSlug", form.premiumSlug.trim());
       if (form.premiumSubtitle.trim()) {
         fd.append("premiumSubtitle", form.premiumSubtitle.trim());
       }
       if (form.craftNote.trim()) fd.append("craftNote", form.craftNote.trim());
-      if (form.weaveHours.trim()) fd.append("weaveHours", form.weaveHours.trim());
+      if (form.weaveHours.trim())
+        fd.append("weaveHours", form.weaveHours.trim());
       fd.append("sortOrderPremium", form.sortOrderPremium || "0");
       if (form.isPremium) {
         fd.append(
@@ -664,7 +679,9 @@ export default function ProductFormModal({
             color: row.color,
             colorCode: row.colorCode,
             stock: row.stock,
-            ...(row.price != null && row.price >= 0 ? { price: row.price } : {}),
+            ...(row.price != null && row.price >= 0 ?
+              { price: row.price }
+            : {}),
             ...(row.costPrice != null && row.costPrice > 0 ?
               { costPrice: row.costPrice }
             : {}),
@@ -770,9 +787,9 @@ export default function ProductFormModal({
 
   return (
     <AdminOfferModal
-      accent="product"
-      maxWidth="4xl"
-      eyebrow="Catalog"
+      accent='product'
+      maxWidth='4xl'
+      eyebrow='Catalog'
       title={editingProduct ? "Edit product" : "Add product"}
       subtitle={
         editingProduct ?
@@ -780,30 +797,33 @@ export default function ProductFormModal({
         : "Name, pricing, photos per color, variants & SEO"
       }
       onClose={onClose}
-      footerClassName="flex-col sm:flex-row sm:items-center sm:justify-between"
+      footerClassName='flex-col sm:flex-row sm:items-center sm:justify-between'
       footer={
         <>
-          <p className="text-xs text-gray-500 sm:flex-1">
-            {editingProduct ?
-              "Changes save immediately."
-            : "* Required fields"}
+          <p className='text-xs text-gray-500 sm:flex-1'>
+            {editingProduct ? "Changes save immediately." : "* Required fields"}
             {uploadProgress != null ?
               ` · Photos ${Math.round(uploadProgress)}%`
             : motionVideoUploading ?
               " · Motion video uploading…"
             : null}
           </p>
-          <div className="flex gap-2.5 w-full sm:w-auto">
-            <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={onClose}>
+          <div className='flex gap-2.5 w-full sm:w-auto'>
+            <Button
+              type='button'
+              variant='outline'
+              className='flex-1 sm:flex-none'
+              onClick={onClose}
+            >
               Cancel
             </Button>
             <Button
-              type="submit"
+              type='submit'
               form={PRODUCT_FORM_ID}
-              variant="brand"
+              variant='brand'
               loading={isSaving}
               disabled={loadingProduct || motionVideoUploading}
-              className="flex-1 sm:flex-none sm:min-w-[140px]"
+              className='flex-1 sm:flex-none sm:min-w-[140px]'
             >
               {isSaving ?
                 "Saving…"
@@ -815,38 +835,54 @@ export default function ProductFormModal({
         </>
       }
     >
-      <form id={PRODUCT_FORM_ID} onSubmit={handleSubmit} className="relative space-y-4">
+      <form
+        id={PRODUCT_FORM_ID}
+        onSubmit={handleSubmit}
+        className='relative space-y-4'
+      >
         {loadingProduct && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm rounded-2xl min-h-[200px]">
-            <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
-            <p className="text-sm font-medium text-gray-600">Loading product…</p>
+          <div className='absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm rounded-2xl min-h-[200px]'>
+            <Loader2 className='h-8 w-8 text-brand-600 animate-spin' />
+            <p className='text-sm font-medium text-gray-600'>
+              Loading product…
+            </p>
           </div>
         )}
 
-        <AdminOfferSection title="Basic information" description="Name, description & HSN" icon={Package}>
-          <div className="space-y-3">
-            <AdminOfferField label="Product name" required>
+        <AdminOfferSection
+          title='Basic information'
+          description='Name, description & HSN'
+          icon={Package}
+        >
+          <div className='space-y-3'>
+            <AdminOfferField label='Product name' required>
               <input
                 className={adminOfferInputCls}
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
-                placeholder="e.g. Banarasi Silk Saree in Royal Blue"
+                placeholder='e.g. Banarasi Silk Saree in Royal Blue'
                 required
               />
             </AdminOfferField>
-            <AdminOfferField label="Description" required hint="Heritage story & care notes — shown in Product Details accordion on PDP.">
+            <AdminOfferField
+              label='Description'
+              required
+              hint='Heritage story & care notes - shown in Product Details accordion on PDP.'
+            >
               <textarea
                 className={cn(adminOfferTextareaCls, "min-h-[120px]")}
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
-                placeholder={"Pure silk weave\nHandcrafted border\nDry clean only"}
+                placeholder={
+                  "Pure silk weave\nHandcrafted border\nDry clean only"
+                }
                 rows={5}
                 required
               />
             </AdminOfferField>
             <AdminOfferField
               label="Why You'll Love It"
-              hint="One highlight per line — shows in the gold PDP panel (max 8)."
+              hint='One highlight per line - shows in the gold PDP panel (max 8).'
             >
               <textarea
                 className={cn(adminOfferTextareaCls, "min-h-[100px]")}
@@ -858,69 +894,76 @@ export default function ProductFormModal({
                 rows={4}
               />
             </AdminOfferField>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <AdminOfferField label="Short description" hint="~120–200 chars for listings">
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+              <AdminOfferField
+                label='Short description'
+                hint='~120–200 chars for listings'
+              >
                 <input
                   className={adminOfferInputCls}
                   value={form.shortDescription}
                   onChange={(e) => set("shortDescription", e.target.value)}
-                  placeholder="2 sentences for shop cards"
+                  placeholder='2 sentences for shop cards'
                 />
               </AdminOfferField>
-              <AdminOfferField label="HSN code">
+              <AdminOfferField label='HSN code'>
                 <input
                   className={adminOfferInputCls}
                   value={form.hsnCode}
                   onChange={(e) => set("hsnCode", e.target.value)}
-                  placeholder="e.g. 6204"
+                  placeholder='e.g. 6204'
                 />
               </AdminOfferField>
             </div>
           </div>
         </AdminOfferSection>
 
-        <AdminOfferSection title="Pricing" icon={IndianRupee}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <AdminOfferField label="Selling price (₹)" required>
+        <AdminOfferSection title='Pricing' icon={IndianRupee}>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+            <AdminOfferField label='Selling price (₹)' required>
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type='number'
+                min='0'
+                step='0.01'
                 className={adminOfferInputCls}
                 value={form.price}
                 onChange={(e) => set("price", e.target.value)}
-                placeholder="1499"
+                placeholder='1499'
                 required
               />
             </AdminOfferField>
-            <AdminOfferField label="MRP / compare price (₹)">
+            <AdminOfferField label='MRP / compare price (₹)'>
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type='number'
+                min='0'
+                step='0.01'
                 className={adminOfferInputCls}
                 value={form.comparePrice}
                 onChange={(e) => set("comparePrice", e.target.value)}
-                placeholder="1999"
+                placeholder='1999'
               />
             </AdminOfferField>
           </div>
-          {form.price && form.comparePrice && Number(form.comparePrice) > Number(form.price) && (
-            <p className="text-xs text-emerald-700 font-medium bg-emerald-50/80 rounded-lg px-3 py-2 border border-emerald-100">
-              {Math.round(
-                ((Number(form.comparePrice) - Number(form.price)) / Number(form.comparePrice)) * 100,
-              )}
-              % discount will show on storefront
-            </p>
-          )}
+          {form.price &&
+            form.comparePrice &&
+            Number(form.comparePrice) > Number(form.price) && (
+              <p className='text-xs text-emerald-700 font-medium bg-emerald-50/80 rounded-lg px-3 py-2 border border-emerald-100'>
+                {Math.round(
+                  ((Number(form.comparePrice) - Number(form.price)) /
+                    Number(form.comparePrice)) *
+                    100,
+                )}
+                % discount will show on storefront
+              </p>
+            )}
         </AdminOfferSection>
 
-        <AdminOfferSection title="Category & tags" icon={FolderTree}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <AdminOfferSection title='Category & tags' icon={FolderTree}>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             {form.isPremium ?
               <AdminOfferField
-                label="Category"
-                hint="Premium products always use category Premium and stay off the shop page."
+                label='Category'
+                hint='Premium products always use category Premium and stay off the shop page.'
                 required
               >
                 <input
@@ -931,14 +974,14 @@ export default function ProductFormModal({
                 />
               </AdminOfferField>
             : <>
-                <AdminOfferField label="Category" required>
+                <AdminOfferField label='Category' required>
                   <select
                     className={adminOfferSelectCls}
                     value={form.category}
                     onChange={(e) => setCategory(e.target.value)}
                     required
                   >
-                    <option value="">Select category</option>
+                    <option value=''>Select category</option>
                     {categories
                       .filter(
                         (c) =>
@@ -953,19 +996,19 @@ export default function ProductFormModal({
                       ))}
                   </select>
                   {categories.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
+                    <p className='text-xs text-amber-600 mt-1'>
                       Create categories in Admin → Categories first.
                     </p>
                   )}
                 </AdminOfferField>
-                <AdminOfferField label="Subcategory">
+                <AdminOfferField label='Subcategory'>
                   <select
                     className={adminOfferSelectCls}
                     value={form.subcategory}
                     onChange={(e) => set("subcategory", e.target.value)}
                     disabled={!form.category || subcategories.length === 0}
                   >
-                    <option value="">None</option>
+                    <option value=''>None</option>
                     {subcategories.map((s) => (
                       <option key={s} value={s}>
                         {s}
@@ -976,59 +1019,62 @@ export default function ProductFormModal({
               </>
             }
             <AdminOfferField
-              label="Fabric"
-              hint="Pick a preset or type your own fabric name."
+              label='Fabric'
+              hint='Pick a preset or type your own fabric name.'
             >
               <input
                 className={adminOfferInputCls}
-                list="admin-product-fabric-presets"
+                list='admin-product-fabric-presets'
                 value={form.fabric}
                 onChange={(e) => set("fabric", e.target.value)}
-                placeholder="e.g. Handwoven mulberry silk"
-                autoComplete="off"
+                placeholder='e.g. Handwoven mulberry silk'
+                autoComplete='off'
               />
-              <datalist id="admin-product-fabric-presets">
+              <datalist id='admin-product-fabric-presets'>
                 {PRODUCT_FABRICS.map((f) => (
                   <option key={f} value={f} />
                 ))}
-                {form.fabric.trim() &&
-                !isPresetProductFabric(form.fabric) ?
+                {form.fabric.trim() && !isPresetProductFabric(form.fabric) ?
                   <option value={form.fabric.trim()} />
                 : null}
               </datalist>
             </AdminOfferField>
             <AdminOfferField
-              label="Care instructions"
-              hint="Shown under Fabric & Care on the PDP — e.g. dry clean only, hand wash cold."
+              label='Care instructions'
+              hint='Shown under Fabric & Care on the PDP - e.g. dry clean only, hand wash cold.'
             >
               <textarea
                 className={cn(adminOfferTextareaCls, "min-h-[88px]")}
                 value={form.careInstructions}
                 onChange={(e) => set("careInstructions", e.target.value)}
-                placeholder="Dry clean only. Do not bleach. Store folded in a muslin bag."
+                placeholder='Dry clean only. Do not bleach. Store folded in a muslin bag.'
                 rows={3}
               />
             </AdminOfferField>
-            <AdminOfferField label="Tags" hint="Comma separated">
+            <AdminOfferField label='Tags' hint='Comma separated'>
               <input
                 className={adminOfferInputCls}
                 value={form.tags}
                 onChange={(e) => set("tags", e.target.value)}
-                placeholder="silk, wedding, festive"
+                placeholder='silk, wedding, festive'
               />
             </AdminOfferField>
           </div>
 
-          <AdminOfferField label="Occasions">
-            <div className="flex flex-wrap gap-2">
+          <AdminOfferField label='Occasions'>
+            <div className='flex flex-wrap gap-2'>
               {PRODUCT_OCCASIONS.map((occ) => (
                 <button
                   key={occ}
-                  type="button"
+                  type='button'
                   onClick={() => toggleOccasion(occ)}
                   className={cn(
                     "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
-                    form.occasions.some((o) => o.toLowerCase() === occ.toLowerCase()) ?
+                    (
+                      form.occasions.some(
+                        (o) => o.toLowerCase() === occ.toLowerCase(),
+                      )
+                    ) ?
                       "border-brand-600 bg-brand-600 text-white shadow-sm"
                     : "border-gray-200 bg-white/80 text-gray-600 hover:border-brand-400",
                   )}
@@ -1037,19 +1083,24 @@ export default function ProductFormModal({
                 </button>
               ))}
               {form.occasions
-                .filter((o) => !PRODUCT_OCCASIONS.some((p) => p.toLowerCase() === o.toLowerCase()))
+                .filter(
+                  (o) =>
+                    !PRODUCT_OCCASIONS.some(
+                      (p) => p.toLowerCase() === o.toLowerCase(),
+                    ),
+                )
                 .map((occ) => (
                   <button
                     key={occ}
-                    type="button"
+                    type='button'
                     onClick={() => toggleOccasion(occ)}
-                    className="rounded-full border border-brand-500 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800"
+                    className='rounded-full border border-brand-500 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800'
                   >
                     {occ} ×
                   </button>
                 ))}
             </div>
-            <div className="mt-2 flex gap-2">
+            <div className='mt-2 flex gap-2'>
               <input
                 className={cn(adminOfferInputCls, "flex-1")}
                 value={customOccasion}
@@ -1060,26 +1111,31 @@ export default function ProductFormModal({
                     addCustomOccasion();
                   }
                 }}
-                placeholder="Add custom occasion…"
+                placeholder='Add custom occasion…'
               />
-              <Button type="button" variant="outline" onClick={addCustomOccasion} disabled={!customOccasion.trim()}>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={addCustomOccasion}
+                disabled={!customOccasion.trim()}
+              >
                 Add
               </Button>
             </div>
           </AdminOfferField>
 
-          <div className="flex flex-col sm:flex-row sm:gap-6 gap-3 pt-1 border-t border-gray-100/80">
+          <div className='flex flex-col sm:flex-row sm:gap-6 gap-3 pt-1 border-t border-gray-100/80'>
             <AdminOfferSwitch
               checked={form.isFeatured}
               onChange={(v) => set("isFeatured", v)}
-              label="Featured"
-              description="Highlight on homepage & collections"
+              label='Featured'
+              description='Highlight on homepage & collections'
             />
             <AdminOfferSwitch
               checked={form.isActive}
               onChange={(v) => set("isActive", v)}
-              label="Active / visible"
-              description="Product appears on shop when on"
+              label='Active / visible'
+              description='Product appears on shop when on'
             />
             <AdminOfferSwitch
               checked={form.isPremium}
@@ -1097,87 +1153,94 @@ export default function ProductFormModal({
                   : {}),
                 }));
               }}
-              label="Premium collection"
-              description="Shows on /premium only — not on the shop page. Category is set to Premium."
+              label='Premium collection'
+              description='Shows on /premium only - not on the shop page. Category is set to Premium.'
             />
           </div>
 
           {form.isPremium && (
-            <div className="grid gap-4 rounded-xl border border-amber-100 bg-amber-50/40 p-4 sm:grid-cols-2">
-              <AdminOfferField label="Target Audience">
+            <div className='grid gap-4 rounded-xl border border-amber-100 bg-amber-50/40 p-4 sm:grid-cols-2'>
+              <AdminOfferField label='Target Audience'>
                 <select
                   className={adminOfferSelectCls}
                   value={form.audience}
                   onChange={(e) => set("audience", e.target.value)}
                 >
-                  <option value="women">Women</option>
-                  <option value="men">Men</option>
-                  <option value="kids">Kids</option>
-                  <option value="couple">Couple</option>
+                  <option value='women'>Women</option>
+                  <option value='men'>Men</option>
+                  <option value='kids'>Kids</option>
+                  <option value='couple'>Couple</option>
                 </select>
               </AdminOfferField>
-              <AdminOfferField label="Premium URL slug">
+              <AdminOfferField label='Premium URL slug'>
                 <input
                   className={adminOfferInputCls}
                   value={form.premiumSlug}
                   onChange={(e) => set("premiumSlug", e.target.value)}
-                  placeholder="rani-silk-rose-gold"
+                  placeholder='rani-silk-rose-gold'
                 />
               </AdminOfferField>
-              <AdminOfferField label="Sort order">
+              <AdminOfferField label='Sort order'>
                 <input
                   className={adminOfferInputCls}
-                  type="number"
+                  type='number'
                   min={0}
                   value={form.sortOrderPremium}
                   onChange={(e) => set("sortOrderPremium", e.target.value)}
                 />
               </AdminOfferField>
-              <AdminOfferField label="Premium subtitle">
+              <AdminOfferField label='Premium subtitle'>
                 <input
                   className={adminOfferInputCls}
                   value={form.premiumSubtitle}
                   onChange={(e) => set("premiumSubtitle", e.target.value)}
-                  placeholder="Handwoven Silk"
+                  placeholder='Handwoven Silk'
                 />
               </AdminOfferField>
-              <AdminOfferField label="Weave hours (Atelier headline)">
+              <AdminOfferField label='Weave hours (Atelier headline)'>
                 <input
                   className={adminOfferInputCls}
-                  type="number"
+                  type='number'
                   min={0}
                   value={form.weaveHours}
                   onChange={(e) => set("weaveHours", e.target.value)}
                 />
               </AdminOfferField>
-              <AdminOfferField label="Atelier craft note" className="sm:col-span-2">
+              <AdminOfferField
+                label='Atelier craft note'
+                className='sm:col-span-2'
+              >
                 <textarea
                   className={adminOfferTextareaCls}
                   rows={3}
                   value={form.craftNote}
                   onChange={(e) => set("craftNote", e.target.value)}
-                  placeholder="Shown in the Atelier note section below the editorial gallery…"
+                  placeholder='Shown in the Atelier note section below the editorial gallery…'
                 />
               </AdminOfferField>
 
-              <AdminOfferField label="Premium hero image" className="sm:col-span-2">
-                <p className="mb-2 text-xs text-gray-500">
-                  Full-screen hero on the product page. Separate from gallery images — used in the carousel with the first gallery shot.
+              <AdminOfferField
+                label='Premium hero image'
+                className='sm:col-span-2'
+              >
+                <p className='mb-2 text-xs text-gray-500'>
+                  Full-screen hero on the product page. Separate from gallery
+                  images - used in the carousel with the first gallery shot.
                 </p>
                 {premiumHeroPreview ?
-                  <div className="relative mb-3 aspect-[3/4] max-w-[200px] overflow-hidden rounded-lg border border-amber-200/80 bg-white">
+                  <div className='relative mb-3 aspect-[3/4] max-w-[200px] overflow-hidden rounded-lg border border-amber-200/80 bg-white'>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={premiumHeroPreview}
-                      alt="Premium hero preview"
-                      className="h-full w-full object-cover"
+                      alt='Premium hero preview'
+                      className='h-full w-full object-cover'
                     />
                   </div>
                 : null}
                 <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-amber-900"
+                  type='file'
+                  accept='image/jpeg,image/png,image/webp,image/gif'
+                  className='block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-amber-900'
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -1187,16 +1250,17 @@ export default function ProductFormModal({
                 />
               </AdminOfferField>
 
-              <div className="sm:col-span-2 space-y-6 border-t border-amber-200/60 pt-4">
+              <div className='sm:col-span-2 space-y-6 border-t border-amber-200/60 pt-4'>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
+                  <p className='text-xs font-semibold uppercase tracking-wide text-amber-900/80'>
                     First editorial row (beside 1st gallery image)
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Body, Weave labels + note — shown next to the first image after hero.
+                  <p className='mt-1 text-xs text-gray-500'>
+                    Body, Weave labels + note - shown next to the first image
+                    after hero.
                   </p>
                 </div>
-                <AdminOfferField label="Section title (optional)">
+                <AdminOfferField label='Section title (optional)'>
                   <input
                     className={adminOfferInputCls}
                     value={editorialOpen.title ?? ""}
@@ -1205,12 +1269,12 @@ export default function ProductFormModal({
                     }
                   />
                 </AdminOfferField>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className='grid gap-3 sm:grid-cols-2'>
                   {editorialOpen.fields.map((field, i) => (
-                    <div key={i} className="grid gap-2 sm:col-span-1">
+                    <div key={i} className='grid gap-2 sm:col-span-1'>
                       <input
                         className={adminOfferInputCls}
-                        placeholder="Label (e.g. Body)"
+                        placeholder='Label (e.g. Body)'
                         value={field.label}
                         onChange={(e) =>
                           setEditorialOpen((p) => ({
@@ -1223,7 +1287,7 @@ export default function ProductFormModal({
                       />
                       <input
                         className={adminOfferInputCls}
-                        placeholder="Value"
+                        placeholder='Value'
                         value={field.value}
                         onChange={(e) =>
                           setEditorialOpen((p) => ({
@@ -1237,7 +1301,7 @@ export default function ProductFormModal({
                     </div>
                   ))}
                 </div>
-                <AdminOfferField label="Editorial note">
+                <AdminOfferField label='Editorial note'>
                   <textarea
                     className={adminOfferTextareaCls}
                     rows={3}
@@ -1248,30 +1312,34 @@ export default function ProductFormModal({
                   />
                 </AdminOfferField>
 
-                <div className="border-t border-amber-200/60 pt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
+                <div className='border-t border-amber-200/60 pt-4'>
+                  <p className='text-xs font-semibold uppercase tracking-wide text-amber-900/80'>
                     Last editorial row (beside final image)
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Same layout as the first row — title, labels + values, and editorial note beside the last gallery image.
+                  <p className='mt-1 text-xs text-gray-500'>
+                    Same layout as the first row - title, labels + values, and
+                    editorial note beside the last gallery image.
                   </p>
                 </div>
-                <AdminOfferField label="Section title (optional)">
+                <AdminOfferField label='Section title (optional)'>
                   <input
                     className={adminOfferInputCls}
                     value={editorialClose.title ?? ""}
                     onChange={(e) =>
-                      setEditorialClose((p) => ({ ...p, title: e.target.value }))
+                      setEditorialClose((p) => ({
+                        ...p,
+                        title: e.target.value,
+                      }))
                     }
-                    placeholder="e.g. The pallu"
+                    placeholder='e.g. The pallu'
                   />
                 </AdminOfferField>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className='grid gap-3 sm:grid-cols-2'>
                   {editorialClose.fields.map((field, i) => (
-                    <div key={i} className="grid gap-2 sm:col-span-1">
+                    <div key={i} className='grid gap-2 sm:col-span-1'>
                       <input
                         className={adminOfferInputCls}
-                        placeholder="Label (e.g. Pallu)"
+                        placeholder='Label (e.g. Pallu)'
                         value={field.label}
                         onChange={(e) =>
                           setEditorialClose((p) => ({
@@ -1284,7 +1352,7 @@ export default function ProductFormModal({
                       />
                       <input
                         className={adminOfferInputCls}
-                        placeholder="Value"
+                        placeholder='Value'
                         value={field.value}
                         onChange={(e) =>
                           setEditorialClose((p) => ({
@@ -1298,7 +1366,7 @@ export default function ProductFormModal({
                     </div>
                   ))}
                 </div>
-                <AdminOfferField label="Editorial note">
+                <AdminOfferField label='Editorial note'>
                   <textarea
                     className={adminOfferTextareaCls}
                     rows={3}
@@ -1314,11 +1382,11 @@ export default function ProductFormModal({
         </AdminOfferSection>
 
         <AdminOfferSection
-          title="See in Motion"
-          description="Upload a clip or paste an Instagram Reel — video takes priority on the storefront"
+          title='See in Motion'
+          description='Upload a clip or paste an Instagram Reel - video takes priority on the storefront'
           icon={Package}
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             <ProductMotionVideoUploader
               videoUrl={motionVideoUrl}
               videoPublicId={motionVideoPublicId}
@@ -1340,8 +1408,8 @@ export default function ProductFormModal({
         </AdminOfferSection>
 
         <AdminOfferSection
-          title="Colors, sizes & photos"
-          description="Upload photos per color — customer sees images for their chosen color"
+          title='Colors, sizes & photos'
+          description='Upload photos per color - customer sees images for their chosen color'
           icon={Palette}
         >
           <ProductColorVariantEditor
@@ -1356,76 +1424,85 @@ export default function ProductFormModal({
         </AdminOfferSection>
 
         <AdminOfferSection
-          title="Size guide (PDP)"
-          description="Show a size chart on the product page — pick a preset or write your own"
+          title='Size guide (PDP)'
+          description='Show a size chart on the product page - pick a preset or write your own'
           icon={Ruler}
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             <AdminOfferSwitch
               checked={sizeGuideEnabled}
               onChange={setSizeGuideEnabled}
-              label="Show size guide"
-              description="Appears next to size picker when this product has sizes"
+              label='Show size guide'
+              description='Appears next to size picker when this product has sizes'
             />
 
             {sizeGuideEnabled ?
               <>
                 <AdminOfferField
-                  label="Preset template"
-                  hint="Loads starter copy — you can edit everything below"
+                  label='Preset template'
+                  hint='Loads starter copy - you can edit everything below'
                 >
                   <select
                     className={adminOfferSelectCls}
                     value={sizeGuidePreset}
                     onChange={(e) => applySizeGuidePreset(e.target.value)}
                   >
-                    <option value="">Custom / keep current</option>
-                    {Object.entries(PDP_SIZE_GUIDE_PRESETS).map(([id, preset]) => (
-                      <option key={id} value={id}>
-                        {preset.label}
-                      </option>
-                    ))}
+                    <option value=''>Custom / keep current</option>
+                    {Object.entries(PDP_SIZE_GUIDE_PRESETS).map(
+                      ([id, preset]) => (
+                        <option key={id} value={id}>
+                          {preset.label}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </AdminOfferField>
 
-                <AdminOfferField label="Modal title">
+                <AdminOfferField label='Modal title'>
                   <input
                     className={adminOfferInputCls}
                     value={sizeGuideTitle}
                     onChange={(e) => setSizeGuideTitle(e.target.value)}
-                    placeholder="Salwar suit sizing"
+                    placeholder='Salwar suit sizing'
                   />
                 </AdminOfferField>
 
-                <AdminOfferField label="Intro text">
+                <AdminOfferField label='Intro text'>
                   <textarea
                     className={cn(adminOfferTextareaCls, "min-h-[72px]")}
                     value={sizeGuideIntro}
                     onChange={(e) => setSizeGuideIntro(e.target.value)}
-                    placeholder="Brief note on how to measure and pick a size"
+                    placeholder='Brief note on how to measure and pick a size'
                     rows={3}
                   />
                 </AdminOfferField>
 
                 <AdminOfferField
-                  label="Size rows"
-                  hint='One per line — format: Size | Fit notes (e.g. M | Bust 34–36 · Waist 28–30)'
+                  label='Size rows'
+                  hint='One per line - format: Size | Fit notes (e.g. M | Bust 34–36 · Waist 28–30)'
                 >
                   <textarea
-                    className={cn(adminOfferTextareaCls, "min-h-[140px] font-mono text-[13px]")}
+                    className={cn(
+                      adminOfferTextareaCls,
+                      "min-h-[140px] font-mono text-[13px]",
+                    )}
                     value={sizeGuideRowsText}
                     onChange={(e) => setSizeGuideRowsText(e.target.value)}
-                    placeholder={"S | Bust 32–34 · Waist 26–28\nM | Bust 34–36 · Waist 28–30"}
+                    placeholder={
+                      "S | Bust 32–34 · Waist 26–28\nM | Bust 34–36 · Waist 28–30"
+                    }
                     rows={6}
                   />
                 </AdminOfferField>
 
-                <AdminOfferField label="Tips" hint="One tip per line (max 6)">
+                <AdminOfferField label='Tips' hint='One tip per line (max 6)'>
                   <textarea
                     className={cn(adminOfferTextareaCls, "min-h-[88px]")}
                     value={sizeGuideTipsText}
                     onChange={(e) => setSizeGuideTipsText(e.target.value)}
-                    placeholder={"Measure over light innerwear.\nSize up for a relaxed fit."}
+                    placeholder={
+                      "Measure over light innerwear.\nSize up for a relaxed fit."
+                    }
                     rows={3}
                   />
                 </AdminOfferField>
@@ -1467,32 +1544,37 @@ export default function ProductFormModal({
         />
 
         <AdminOfferSection
-          title="Product specs table"
-          description="Keys & values on the product page — Fabric row syncs from dropdown above"
+          title='Product specs table'
+          description='Keys & values on the product page - Fabric row syncs from dropdown above'
           icon={List}
-          variant="muted"
+          variant='muted'
         >
           <ProductDetailsBulkFields
             keysText={detailsKeysText}
             valuesText={detailsValuesText}
             onKeysChange={setDetailsKeysText}
             onValuesChange={setDetailsValuesText}
-            textareaCls={cn(adminOfferTextareaCls, "min-h-[120px] font-mono text-[13px] leading-relaxed")}
+            textareaCls={cn(
+              adminOfferTextareaCls,
+              "min-h-[120px] font-mono text-[13px] leading-relaxed",
+            )}
           />
         </AdminOfferSection>
 
         <AdminOfferSection
-          title="SEO for Google India"
+          title='SEO for Google India'
           icon={Search}
-          variant="muted"
+          variant='muted'
           action={
             <button
-              type="button"
+              type='button'
               onClick={() => setShowSeo(!showSeo)}
-              className="text-xs font-medium text-brand-700 hover:text-brand-800 flex items-center gap-1"
+              className='text-xs font-medium text-brand-700 hover:text-brand-800 flex items-center gap-1'
             >
               {showSeo ? "Collapse" : "Expand"}
-              {showSeo ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {showSeo ?
+                <ChevronUp className='h-3.5 w-3.5' />
+              : <ChevronDown className='h-3.5 w-3.5' />}
             </button>
           }
         >
@@ -1505,12 +1587,12 @@ export default function ProductFormModal({
             category: form.category,
             isPremium: form.isPremium,
           }).score < 100 && (
-            <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-              SEO needs work — expand to fix
+            <p className='text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2'>
+              SEO needs work - expand to fix
             </p>
           )}
           {showSeo && (
-            <div className="space-y-3">
+            <div className='space-y-3'>
               <ProductSeoChecklist
                 name={form.name}
                 shortDescription={form.shortDescription}
@@ -1521,39 +1603,48 @@ export default function ProductFormModal({
                 isPremium={form.isPremium}
                 onApplySuggestion={(patch) => {
                   if (patch.seoTitle) set("seoTitle", patch.seoTitle);
-                  if (patch.seoDescription) set("seoDescription", patch.seoDescription);
-                  toast.success("SEO suggestions applied — review and save.");
+                  if (patch.seoDescription)
+                    set("seoDescription", patch.seoDescription);
+                  toast.success("SEO suggestions applied - review and save.");
                 }}
               />
-              <AdminOfferField label="SEO title" hint={`${form.seoTitle.length}/70 · brand added in Google`}>
+              <AdminOfferField
+                label='SEO title'
+                hint={`${form.seoTitle.length}/70 · brand added in Google`}
+              >
                 <input
                   className={adminOfferInputCls}
                   value={form.seoTitle}
                   onChange={(e) => set("seoTitle", e.target.value)}
-                  placeholder="Buy Handpainted Kalamkari Silk Saree Online in India"
+                  placeholder='Buy Handpainted Kalamkari Silk Saree Online in India'
                   maxLength={70}
                 />
               </AdminOfferField>
-              <AdminOfferField label="SEO description">
+              <AdminOfferField label='SEO description'>
                 <textarea
                   className={cn(adminOfferTextareaCls, "min-h-[80px]")}
                   value={form.seoDescription}
                   onChange={(e) => set("seoDescription", e.target.value)}
                   rows={3}
-                  placeholder="120–160 chars: fabric, occasion, delivery, returns"
+                  placeholder='120–160 chars: fabric, occasion, delivery, returns'
                   maxLength={160}
                 />
                 <p
                   className={cn(
                     "text-[11px] mt-1",
-                    form.seoDescription.length >= 120 ? "text-emerald-600" : "text-amber-600",
+                    form.seoDescription.length >= 120 ?
+                      "text-emerald-600"
+                    : "text-amber-600",
                   )}
                 >
                   {form.seoDescription.length}/160
-                  {form.seoDescription.length > 0 && form.seoDescription.length < 120 ?
-                    " — add more for better click-through"
+                  {(
+                    form.seoDescription.length > 0 &&
+                    form.seoDescription.length < 120
+                  ) ?
+                    " - add more for better click-through"
                   : form.seoDescription.length >= 120 ?
-                    " — good length"
+                    " - good length"
                   : ""}
                 </p>
               </AdminOfferField>

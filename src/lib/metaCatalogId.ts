@@ -5,7 +5,7 @@ export type MetaCatalogVariantRef = {
 };
 
 /**
- * Canonical catalog item id — must match `/api/feed` `<g:id>` and pixel `content_ids`.
+ * Canonical catalog item id - must match `/api/feed` `<g:id>` and pixel `content_ids`.
  * Prefers variant SKU; falls back to `{productId}_{variantId}` then product id alone.
  */
 export function getMetaCatalogItemId(

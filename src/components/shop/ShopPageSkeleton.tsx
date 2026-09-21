@@ -10,7 +10,7 @@ interface ShopProductsSkeletonProps {
   showDesktopToolbar?: boolean;
 }
 
-/** Product grid shimmer only — header, filters, and category strips stay visible. */
+/** Product grid shimmer only - header, filters, and category strips stay visible. */
 export default function ShopProductsSkeleton({
   count = SHOP_INITIAL_SKELETON_COUNT,
   showDesktopToolbar = true,
@@ -18,10 +18,10 @@ export default function ShopProductsSkeleton({
   return (
     <>
       {showDesktopToolbar ?
-        <div className="mb-6 flex flex-col gap-4">
-          <div className="hidden items-center justify-between border-b border-gray-100 pb-4 lg:flex">
-            <Skeleton className="h-3 w-20 rounded" />
-            <Skeleton className="h-4 w-28 rounded" />
+        <div className='mb-6 flex flex-col gap-4'>
+          <div className='hidden items-center justify-between border-b border-gray-100 pb-4 lg:flex'>
+            <Skeleton className='h-3 w-20 rounded' />
+            <Skeleton className='h-4 w-28 rounded' />
           </div>
         </div>
       : null}

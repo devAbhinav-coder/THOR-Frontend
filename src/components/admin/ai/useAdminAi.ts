@@ -59,13 +59,13 @@ export function useAdminAiStatus() {
 export function aiErrorMessage(err: unknown): string {
   const msg = (err as { message?: string })?.message;
   if (msg?.includes("503") || msg?.toLowerCase().includes("not configured")) {
-    return "Blog AI off — backend .env mein GEMINI_API_KEY add karo.";
+    return "Blog AI off - backend .env mein GEMINI_API_KEY add karo.";
   }
   if (msg?.includes("429") || msg?.toLowerCase().includes("rate limit")) {
-    return "AI rate limit — 30-60 sec wait karo, phir Regenerate dabao.";
+    return "AI rate limit - 30-60 sec wait karo, phir Regenerate dabao.";
   }
   if (msg?.includes("502") || msg?.toLowerCase().includes("blog draft fail")) {
-    return "Draft empty aaya — thoda wait karke Regenerate try karo.";
+    return "Draft empty aaya - thoda wait karke Regenerate try karo.";
   }
   return msg || "AI request failed.";
 }

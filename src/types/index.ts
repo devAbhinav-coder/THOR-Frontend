@@ -2,11 +2,16 @@ export interface User {
   _id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin';
+  role: "user" | "admin" | "staff";
+  adminPermissions?: string[];
   emailVerified?: boolean;
   phone?: string;
   avatar?: string;
   adminNote?: string;
+  offlineLead?: boolean;
+  displayEmail?: string | null;
+  displayPhone?: string | null;
+  isPosGuest?: boolean;
   addresses: Address[];
   isActive: boolean;
   createdAt: string;
@@ -17,6 +22,10 @@ export interface OfflineCustomerLead {
   email: string;
   phone: string;
   name: string;
+  /** Set when email is a real inbox (not POS placeholder). */
+  displayEmail?: string | null;
+  /** e.g. +91 98765 43210 */
+  displayPhone?: string | null;
   lastOfflineOrderAt?: string;
   offlineOrderCount?: number;
   createdAt?: string;
@@ -175,7 +184,15 @@ export interface CartItem {
 export interface Cart {
   _id: string;
   items: CartItem[];
-  coupon?: string | { _id: string; code: string; discountType?: string; discountValue?: number; appliedDiscount?: number };
+  coupon?:
+    | string
+    | {
+        _id: string;
+        code: string;
+        discountType?: string;
+        discountValue?: number;
+        appliedDiscount?: number;
+      };
   subtotal: number;
   promotionDiscount?: number;
   couponDiscount?: number;
@@ -244,37 +261,37 @@ export interface OrderItem {
 }
 
 export type OrderStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'processing'
-  | 'shipped'
-  | 'delivered'
-  | 'cancelled'
-  | 'refunded';
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "refunded";
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
-/** Admin POS / stall recording — POST /admin/orders/offline */
+/** Admin POS / stall recording - POST /admin/orders/offline */
 export interface AdminCreateOfflineOrderBody {
   customerName: string;
   email?: string;
   phone?: string;
-  orderSource: 'stall' | 'personal_contact';
-  fulfillment: 'delhivery' | 'offline_handover';
-  paymentMethod: 'offline_upi' | 'offline_cash';
+  orderSource: "stall" | "personal_contact";
+  fulfillment: "delhivery" | "offline_handover";
+  paymentMethod: "offline_upi" | "offline_cash";
   shippingAddress?: AdminChannelOrderShippingAddress;
   lineItems: AdminChannelOrderLineItem[];
   notes?: string;
 }
 
-/** Admin B2B wholesale sale — POST /admin/orders/b2b */
+/** Admin B2B wholesale sale - POST /admin/orders/b2b */
 export interface AdminCreateB2bOrderBody {
   customerName: string;
   email?: string;
   phone?: string;
-  orderSource?: 'b2b';
-  fulfillment: 'delhivery' | 'offline_handover';
-  paymentMethod: 'offline_upi' | 'offline_cash';
+  orderSource?: "b2b";
+  fulfillment: "delhivery" | "offline_handover";
+  paymentMethod: "offline_upi" | "offline_cash";
   shippingAddress?: AdminChannelOrderShippingAddress;
   lineItems: AdminChannelOrderLineItem[];
   notes?: string;
@@ -299,7 +316,7 @@ type AdminChannelOrderShippingAddress = {
 
 type AdminChannelOrderLineItem =
   | {
-      type: 'catalog';
+      type: "catalog";
       productId: string;
       variantSku: string;
       quantity: number;
@@ -307,7 +324,7 @@ type AdminChannelOrderLineItem =
       unitCost?: number;
     }
   | {
-      type: 'manual';
+      type: "manual";
       categoryId?: string;
       title?: string;
       quantity: number;
@@ -422,10 +439,10 @@ export interface Order {
   shippingAddress: Address;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  paymentMethod: 'razorpay' | 'cod' | 'offline_upi' | 'offline_cash';
+  paymentMethod: "razorpay" | "cod" | "offline_upi" | "offline_cash";
   offlineMeta?: {
-    source: 'stall' | 'personal_contact' | 'b2b';
-    fulfillment: 'delhivery' | 'offline_handover';
+    source: "stall" | "personal_contact" | "b2b";
+    fulfillment: "delhivery" | "offline_handover";
     createdByAdmin?: string;
   };
   b2bMeta?: {
@@ -444,7 +461,7 @@ export interface Order {
   tax: number;
   total: number;
   coupon?: string | { _id: string; code: string };
-  productType?: 'standard' | 'custom';
+  productType?: "standard" | "custom";
   customRequestId?: string;
   invoice?: {
     isGenerated: boolean;
@@ -472,7 +489,12 @@ export interface Order {
       boxCount?: number;
       chargeableWeightGm?: number;
     };
-    trackScansSnapshot?: { status?: string; time?: string; location?: string; detail?: string }[];
+    trackScansSnapshot?: {
+      status?: string;
+      time?: string;
+      location?: string;
+      detail?: string;
+    }[];
     rtoDetected?: boolean;
   };
   shippingCarrier?: string;
@@ -481,7 +503,7 @@ export interface Order {
   shippedAt?: string;
   deliveredAt?: string;
   createdAt: string;
-  /** Returns / refunds — populated when customer or admin uses return flow */
+  /** Returns / refunds - populated when customer or admin uses return flow */
   returnStatus?: string;
   returnRequest?: {
     reason?: string;
@@ -500,7 +522,11 @@ export interface Order {
   };
 }
 
-export type ReviewStatus = 'visible' | 'hidden' | 'flagged' | 'pending_moderation';
+export type ReviewStatus =
+  | "visible"
+  | "hidden"
+  | "flagged"
+  | "pending_moderation";
 
 export interface Review {
   _id: string;
@@ -511,7 +537,7 @@ export interface Review {
   comment: string;
   images?: { url: string; publicId: string }[];
   isVerifiedPurchase: boolean;
-  source?: 'purchase' | 'share_link' | 'invite';
+  source?: "purchase" | "share_link" | "invite";
   helpfulVotes: string[];
   helpfulCount?: number;
   status?: ReviewStatus;
@@ -538,9 +564,9 @@ export interface Testimonial {
   };
   /** Paired product review (share-link / offline invite). */
   linkedReviewId?: string;
-  sourceKind?: 'story' | 'review';
-  status?: 'pending' | 'approved' | 'rejected';
-  source?: 'public_link' | 'admin';
+  sourceKind?: "story" | "review";
+  status?: "pending" | "approved" | "rejected";
+  source?: "public_link" | "admin";
   isActive?: boolean;
   showOnHome?: boolean;
   sortOrder?: number;
@@ -548,7 +574,11 @@ export interface Testimonial {
   updatedAt?: string;
 }
 
-export type PromoScopeType = 'all' | 'categories' | 'subcategories' | 'products';
+export type PromoScopeType =
+  | "all"
+  | "categories"
+  | "subcategories"
+  | "products";
 
 export interface Coupon {
   _id: string;
@@ -558,7 +588,7 @@ export interface Coupon {
   imageUrl?: string;
   imagePublicId?: string;
   showOnStorefront?: boolean;
-  discountType: 'percentage' | 'flat' | 'fixed';
+  discountType: "percentage" | "flat" | "fixed";
   discountValue: number;
   minOrderAmount?: number;
   maxDiscountAmount?: number;
@@ -568,7 +598,7 @@ export interface Coupon {
   startDate?: string;
   expiryDate: string;
   isActive: boolean;
-  eligibilityType?: 'all' | 'first_order' | 'returning';
+  eligibilityType?: "all" | "first_order" | "returning";
   minCompletedOrders?: number;
   maxCompletedOrders?: number;
   scopeType?: PromoScopeType;
@@ -588,7 +618,7 @@ export interface PublicCoupon {
   description?: string;
   displayTitle: string;
   imageUrl?: string | null;
-  discountType: 'percentage' | 'flat' | 'fixed';
+  discountType: "percentage" | "flat" | "fixed";
   discountValue: number;
   minOrderAmount?: number;
   maxDiscountAmount?: number | null;
@@ -602,7 +632,7 @@ export interface SaleCampaign {
   name: string;
   description?: string;
   badgeText?: string;
-  discountType: 'percentage' | 'flat' | 'fixed';
+  discountType: "percentage" | "flat" | "fixed";
   discountValue: number;
   maxDiscountPerItem?: number;
   imageUrl?: string;
@@ -620,7 +650,7 @@ export interface SaleCampaign {
   updatedAt?: string;
 }
 
-export type PromotionType = 'bogo' | 'flat' | 'percentage';
+export type PromotionType = "bogo" | "flat" | "percentage";
 
 export interface Promotion {
   _id: string;
@@ -677,7 +707,7 @@ export interface PublicSale {
   name: string;
   description?: string;
   badgeText: string;
-  discountType: 'percentage' | 'flat' | 'fixed';
+  discountType: "percentage" | "flat" | "fixed";
   discountValue: number;
   imageUrl?: string | null;
   startDate: string;
@@ -686,7 +716,7 @@ export interface PublicSale {
 }
 
 export interface ApiResponse<T> {
-  status: 'success' | 'error' | 'fail';
+  status: "success" | "error" | "fail";
   message?: string;
   data?: T;
   token?: string;
@@ -802,6 +832,10 @@ export interface DashboardAnalytics {
     revenueGrowth: number | null;
     totalPdpViews?: number;
     productsWithViews?: number;
+    /** Paid catalog line units (excludes offline manual). */
+    catalogUnitsSold?: number;
+    /** catalogUnitsSold ÷ total PDP views (store-wide). */
+    storefrontConversionPercent?: number;
     firstTimeBuyers?: number;
     totalSiteVisits?: number;
     siteVisitsToday?: number;
@@ -864,13 +898,38 @@ export interface DashboardAnalytics {
     totalActiveProducts: number;
     totalUnits: number;
   };
-  outOfStockProducts?: { _id: string; name: string; totalStock: number; category: string }[];
-  lowStockOnlyProducts?: { _id: string; name: string; totalStock: number; category: string }[];
-  lowStockProducts: { _id: string; name: string; totalStock: number; category: string }[];
+  outOfStockProducts?: {
+    _id: string;
+    name: string;
+    totalStock: number;
+    category: string;
+  }[];
+  lowStockOnlyProducts?: {
+    _id: string;
+    name: string;
+    totalStock: number;
+    category: string;
+  }[];
+  lowStockProducts: {
+    _id: string;
+    name: string;
+    totalStock: number;
+    category: string;
+  }[];
   recentOrders: Order[];
   ordersByStatus: { _id: string; count: number }[];
-  revenueByMonth: { _id: { year: number; month: number }; revenue: number; orders: number }[];
-  topProducts: { _id: string; name: string; image: string; totalSold: number; revenue: number }[];
+  revenueByMonth: {
+    _id: { year: number; month: number };
+    revenue: number;
+    orders: number;
+  }[];
+  topProducts: {
+    _id: string;
+    name: string;
+    image: string;
+    totalSold: number;
+    revenue: number;
+  }[];
   topViewedProducts: {
     _id: string;
     name: string;
@@ -1001,7 +1060,6 @@ export interface CategoryProfitRow {
   marginPercent: number;
 }
 
-
 export interface StorefrontLink {
   label: string;
   href: string;
@@ -1021,7 +1079,11 @@ export interface HeroSlide {
   isActive?: boolean;
 }
 
-export type HomeGiftShopLinkMode = 'gifting' | 'product' | 'coming_soon' | 'custom';
+export type HomeGiftShopLinkMode =
+  | "gifting"
+  | "product"
+  | "coming_soon"
+  | "custom";
 
 export interface HomeGiftShowcaseCard {
   title?: string;
@@ -1038,7 +1100,7 @@ export interface HomeGiftShowcaseCard {
   directProductPath?: string;
   giftButtonText?: string;
   giftButtonLink?: string;
-  accent?: 'rose' | 'amber' | 'sage';
+  accent?: "rose" | "amber" | "sage";
 }
 
 export interface HomeGiftShowcase {
@@ -1057,7 +1119,7 @@ export interface HomeEditorialGalleryTile {
   alt?: string;
 }
 
-/** Home — editorial image grid below mid-page promo hero */
+/** Home - editorial image grid below mid-page promo hero */
 export interface HomeEditorialGallery {
   eyebrow?: string;
   title?: string;
@@ -1128,7 +1190,7 @@ export interface StorefrontSettings {
     textColor?: "light" | "dark";
     isActive?: boolean;
   };
-  /** Home — Premium Edit showcase (above blog) */
+  /** Home - Premium Edit showcase (above blog) */
   homePremiumShowcase?: {
     image?: string;
     imagePublicId?: string;
@@ -1139,7 +1201,7 @@ export interface StorefrontSettings {
     linkUrl?: string;
     isActive?: boolean;
   };
-  /** Home — “Explore Our House” Sale & Gifting category cards */
+  /** Home - “Explore Our House” Sale & Gifting category cards */
   homeExploreHouse?: HomeExploreHouse;
   giftingHeroBanners?: Array<{
     title?: string;
@@ -1159,9 +1221,9 @@ export interface StorefrontSettings {
     ctaLink?: string;
     isActive?: boolean;
   }>;
-  /** Home — above Why Choose Us */
+  /** Home - above Why Choose Us */
   homeGiftShowcase?: HomeGiftShowcase;
-  /** Home — editorial gallery below promo hero */
+  /** Home - editorial gallery below promo hero */
   homeEditorialGallery?: HomeEditorialGallery;
   footer: {
     description?: string;
@@ -1176,7 +1238,7 @@ export interface StorefrontSettings {
     categoryLimit?: number;
   };
   premiumAudienceBanners?: Array<{
-    audience: 'all' | 'women' | 'men' | 'kids' | 'couple';
+    audience: "all" | "women" | "men" | "kids" | "couple";
     image?: string;
     imagePublicId?: string;
     title?: string;
@@ -1202,6 +1264,8 @@ export interface StorefrontSettings {
     text?: string;
     linkText?: string;
   };
+  /** Mongo `updatedAt` - stable home JSON-LD `dateModified` (not per-request). */
+  updatedAt?: string;
 }
 
 export type BlogImageLayout =
@@ -1212,7 +1276,7 @@ export type BlogImageLayout =
   | "inline"
   | "split";
 
-/** Where the image appears — admin controls placement. */
+/** Where the image appears - admin controls placement. */
 export type BlogImagePlacement = "cover" | "article" | "gallery";
 
 export interface BlogImage {
@@ -1259,7 +1323,11 @@ export interface Blog {
   updatedAt: string;
 }
 
-export type BlogContentPlanStatus = "planned" | "drafted" | "published" | "skipped";
+export type BlogContentPlanStatus =
+  | "planned"
+  | "drafted"
+  | "published"
+  | "skipped";
 
 export interface BlogContentPlan {
   _id: string;
@@ -1269,7 +1337,9 @@ export interface BlogContentPlan {
   plannedDate: string;
   status: BlogContentPlanStatus;
   notes?: string;
-  blog?: { _id: string; title: string; slug: string; isPublished?: boolean } | string;
+  blog?:
+    | { _id: string; title: string; slug: string; isPublished?: boolean }
+    | string;
   createdBy?: { name: string };
   createdAt: string;
   updatedAt: string;
@@ -1301,9 +1371,17 @@ export interface GiftingRequest {
   items: GiftingRequestItem[];
   recipientMessage?: string;
   customizationNote?: string;
-  packagingPreference: 'standard' | 'premium' | 'luxury';
+  packagingPreference: "standard" | "premium" | "luxury";
   referenceImages?: { url: string; publicId: string }[];
-  status: 'new' | 'price_quoted' | 'approved_by_user' | 'rejected_by_user' | 'cancelled' | 'contacted' | 'confirmed' | 'rejected';
+  status:
+    | "new"
+    | "price_quoted"
+    | "approved_by_user"
+    | "rejected_by_user"
+    | "cancelled"
+    | "contacted"
+    | "confirmed"
+    | "rejected";
   proposedPrice?: number;
   quotedPrice?: number;
   deliveryTime?: string;

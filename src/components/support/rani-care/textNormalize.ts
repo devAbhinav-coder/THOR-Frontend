@@ -1,4 +1,4 @@
-/** Normalize free-text for intent matching — typos, spacing, casual shorthand */
+/** Normalize free-text for intent matching - typos, spacing, casual shorthand */
 export function normalizeForIntent(input: string): string {
   let q = input
     .toLowerCase()
@@ -10,12 +10,18 @@ export function normalizeForIntent(input: string): string {
     [/\b(helo|hlw|hii+|heyy+|hy+)\b/g, "hi"],
     [/\b(thnks|thnx|thanx|thanku|dhanyavaad|shukriya)\b/g, "thanks"],
     [/\b(plz|pls|plis|krdo|kardo)\b/g, "please"],
-    [/\b(cancell?ation|cancell?|cancle|cncl|cancel karo|band karo)\b/g, "cancel"],
+    [
+      /\b(cancell?ation|cancell?|cancle|cncl|cancel karo|band karo)\b/g,
+      "cancel",
+    ],
     // Common typos: orr / ordr / oders → order; mra / mre → mera
     [/\b(mra|mre|mera|mere|meri)\b/g, "mera"],
     [/\b(ordre?s?|odrer|ordeer|orr|ordr|oders?|odr|order)\b/g, "order"],
     [/\b(mera order|mere order|meri order)\b/g, "my order"],
-    [/\b(delivry|delivary|delievery|delevery|dilevery|delivery)\b/g, "delivery"],
+    [
+      /\b(delivry|delivary|delievery|delevery|dilevery|delivery)\b/g,
+      "delivery",
+    ],
     [/\b(ship+ing|shippment|shipment|bhej|bhejna|bhejoge)\b/g, "shipping"],
     // kihar / kha / khr → kahan; kabhi kabhi typo-heavy Hinglish
     [/\b(kihar|khr|khaa?n?|kaha|kahan|kidhar|kidhr)\b/g, "kahan"],
@@ -52,7 +58,8 @@ export function fuzzyHas(text: string, keywords: string[]): boolean {
   for (const kw of keywords) {
     if (text.includes(kw)) return true;
     for (const w of words) {
-      if (w.length >= 3 && kw.length >= 3 && levenshtein(w, kw) <= 1) return true;
+      if (w.length >= 3 && kw.length >= 3 && levenshtein(w, kw) <= 1)
+        return true;
     }
   }
   return false;
@@ -67,9 +74,7 @@ function levenshtein(a: string, b: string): number {
     let prev = i;
     for (let j = 1; j <= b.length; j++) {
       const cur =
-        a[i - 1] === b[j - 1] ?
-          row[j]
-        : 1 + Math.min(row[j], row[j - 1], prev);
+        a[i - 1] === b[j - 1] ? row[j] : 1 + Math.min(row[j], row[j - 1], prev);
       row[j - 1] = prev;
       prev = cur;
     }

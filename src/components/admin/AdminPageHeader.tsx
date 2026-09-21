@@ -13,7 +13,7 @@ type AdminPageHeaderProps = {
 };
 
 /**
- * Consistent page title block for admin — typography + spacing aligned app-wide.
+ * Consistent page title block for admin - typography + spacing aligned app-wide.
  */
 export default function AdminPageHeader({
   title,
@@ -26,27 +26,31 @@ export default function AdminPageHeader({
     <div
       className={cn(
         "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4",
-        className
+        className,
       )}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2 gap-y-1">
-          <h1 className="text-xl sm:text-2xl font-serif font-bold text-gray-900 tracking-tight">
+      <div className='min-w-0 flex-1'>
+        <div className='flex flex-wrap items-center gap-2 gap-y-1'>
+          <h1 className='text-xl sm:text-2xl font-serif font-bold text-gray-900 tracking-tight'>
             {title}
           </h1>
-          {badge ? (
-            <span className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-700 ring-1 ring-brand-100">
+          {badge ?
+            <span className='inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-700 ring-1 ring-brand-100'>
               {badge}
             </span>
-          ) : null}
+          : null}
         </div>
-        {description ? (
-          <p className="text-gray-500 text-sm mt-1.5 max-w-2xl leading-relaxed">{description}</p>
-        ) : null}
+        {description ?
+          <p className='text-gray-500 text-sm mt-1.5 max-w-2xl leading-relaxed'>
+            {description}
+          </p>
+        : null}
       </div>
-      {actions ? (
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-2 sm:justify-end">{actions}</div>
-      ) : null}
+      {actions ?
+        <div className='flex flex-shrink-0 flex-wrap items-center gap-2 sm:justify-end'>
+          {actions}
+        </div>
+      : null}
     </div>
   );
 }

@@ -40,7 +40,7 @@ function unbindScroll() {
   window.removeEventListener("scroll", onWindowScroll);
 }
 
-/** One shared window scroll listener — subscribers share a single RAF read per frame. */
+/** One shared window scroll listener - subscribers share a single RAF read per frame. */
 export function subscribeWindowScroll(listener: ScrollListener): () => void {
   scrollListeners.add(listener);
   bindScroll();

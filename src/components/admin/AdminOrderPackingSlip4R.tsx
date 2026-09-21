@@ -20,11 +20,11 @@ const SELLER_NAME = "The House of Rani";
 const SELLER_ADDRESS =
   "E-1006, Amrapali Princely Estate, Sector 76, Near Sector 76 Metro Station, Noida, Uttar Pradesh 201301";
 
-/** Footer — full-width row under products; duplicate city names removed. */
+/** Footer - full-width row under products; duplicate city names removed. */
 const RETURN_ADDRESS_TEXT =
   "E-1006, Amrapali Princely Estate, Sector 76, Noida, Uttar Pradesh 201301, India";
 
-/** Physical 4×6" label — preview & print use the same numbers (CSS `in` = print units). */
+/** Physical 4×6" label - preview & print use the same numbers (CSS `in` = print units). */
 const LABEL_PAGE = {
   /** Full sheet */
   w: "4in",
@@ -90,16 +90,16 @@ function drawOrderBarcode(canvas: HTMLCanvasElement | null, raw: string) {
   }
 }
 
-/** 4×6" (4R) PDF page — same as Delhivery `pdf_size=4R` */
+/** 4×6" (4R) PDF page - same as Delhivery `pdf_size=4R` */
 const PDF_4R_IN = { w: 4, h: 6 } as const;
-/** Same as LABEL_PAGE.margin — inset for label on PDF page */
+/** Same as LABEL_PAGE.margin - inset for label on PDF page */
 const PDF_MARGIN_IN = 0.125;
 const PDF_INNER = {
   w: PDF_4R_IN.w - 2 * PDF_MARGIN_IN,
   h: PDF_4R_IN.h - 2 * PDF_MARGIN_IN,
 } as const;
 
-/** Injected into print window — same logical size as preview (4×6 in). */
+/** Injected into print window - same logical size as preview (4×6 in). */
 const PRINT_STYLES = `
   @page {
     size: 101.6mm 152.4mm;
@@ -128,7 +128,7 @@ const PRINT_STYLES = `
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  /* One slip block — same width as on-screen preview */
+  /* One slip block - same width as on-screen preview */
   [data-packing-slip-root] {
     width: ${LABEL_SLIP.w} !important;
     min-width: ${LABEL_SLIP.w} !important;
@@ -191,10 +191,10 @@ function slipInrItem(n: number): string {
   }).format(n);
 }
 
-/** Rough routing hint (e.g. GAY/MMH) — display only; not from courier API */
+/** Rough routing hint (e.g. GAY/MMH) - display only; not from courier API */
 function routingHint(order: Order): string {
   const a = order.shippingAddress;
-  if (!a?.city || !a?.state) return "—";
+  if (!a?.city || !a?.state) return "-";
   const left = a.city.replace(/\s/g, "").slice(0, 3).toUpperCase();
   const right = a.state.replace(/\s/g, "").slice(0, 3).toUpperCase();
   return `${left}/${right}`;
@@ -414,7 +414,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
   }, [order.orderNumber, order._id]);
 
   /**
-   * 4×6" (4R) PDF — same physical size as Delhivery `pdf_size=4R`.
+   * 4×6" (4R) PDF - same physical size as Delhivery `pdf_size=4R`.
    * Captures the white label (not the grey chrome) at fixed 3.75in width, full height,
    * so html2canvas does not clip and layout matches print.
    */
@@ -525,7 +525,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
         order._id?.slice(-8) ||
         "order";
       pdf.save(`packing-slip-4R-${raw}.pdf`);
-      toast.success("4×6 (4R) PDF downloaded — full label, nothing cropped");
+      toast.success("4×6 (4R) PDF downloaded - full label, nothing cropped");
     } catch {
       toast.error("Could not build PDF. Use Print packing slip instead.");
     } finally {
@@ -541,7 +541,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
     if (!node) return;
     const w = window.open("", "_blank", "noopener,noreferrer");
     if (!w) return;
-    /** cloneNode does not copy canvas pixels — swap to data-URL images so print matches screen */
+    /** cloneNode does not copy canvas pixels - swap to data-URL images so print matches screen */
     const clone = node.cloneNode(true) as HTMLElement;
     const origCanvases = node.querySelectorAll("canvas[data-barcode]");
     const cloneCanvases = clone.querySelectorAll("canvas[data-barcode]");
@@ -573,7 +573,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
   }, [order.orderNumber]);
 
   const a = order.shippingAddress;
-  const pin = a?.pincode?.trim() || "—";
+  const pin = a?.pincode?.trim() || "-";
   const shipMode = resolveShipMode(order);
   const paymentKind = order.paymentMethod === "cod" ? "COD" : "Pre-paid";
   const when =
@@ -582,19 +582,19 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
     order.statusHistory?.find((s) => s.status === "shipped")?.timestamp ||
     order.createdAt;
 
-  const recipient = a?.name?.trim() || "—";
+  const recipient = a?.name?.trim() || "-";
   const addrBody = useMemo(() => {
-    if (!a) return "—";
+    if (!a) return "-";
     const bits: string[] = [];
     if (a.house) bits.push(a.house);
     if (a.street) bits.push(a.street);
     if (a.landmark) bits.push(`Near ${a.landmark}`);
-    return bits.length ? bits.join(", ") : "—";
+    return bits.length ? bits.join(", ") : "-";
   }, [a]);
 
-  /** Bold cluster line — second-image style (city + state). */
+  /** Bold cluster line - second-image style (city + state). */
   const cityStateBold =
-    a?.city && a?.state ? `${a.city} (${a.state})` : a?.city || a?.state || "—";
+    a?.city && a?.state ? `${a.city} (${a.state})` : a?.city || a?.state || "-";
   const phone = a?.phone?.trim();
 
   const route = routingHint(order);
@@ -613,7 +613,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
 
   return (
     <div className='space-y-2 w-full min-w-0'>
-      {/* Visual 4×6" “sheet” — same aspect as print; slip is exactly the printable inset */}
+      {/* Visual 4×6" “sheet” - same aspect as print; slip is exactly the printable inset */}
       <div
         className='mx-auto rounded-sm border border-slate-300 bg-slate-200/80 shadow-inner'
         style={{
@@ -793,7 +793,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
                       lineHeight: 1.3,
                     }}
                   >
-                    Phone: {phone || "—"}
+                    Phone: {phone || "-"}
                   </div>
                   <div
                     style={{
@@ -821,7 +821,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
                       lineHeight: 1.25,
                     }}
                   >
-                    PIN — {pin}
+                    PIN - {pin}
                   </div>
                 </td>
                 <td
@@ -874,7 +874,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
                       paddingBottom: 2,
                     }}
                   >
-                    Date: {when ? formatSlipDate(when) : "—"}
+                    Date: {when ? formatSlipDate(when) : "-"}
                   </div>
                 </td>
               </tr>
@@ -1005,7 +1005,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
                 </td>
               </tr>
 
-              {/* Return — full width below all barcodes */}
+              {/* Return - full width below all barcodes */}
               <tr>
                 <td
                   colSpan={2}
@@ -1079,7 +1079,7 @@ export default function AdminOrderPackingSlip4R({ order, awb }: Props) {
         </button>
         {/* <p className="text-[10px] text-gray-500 w-full text-center leading-snug">
           <span className="font-semibold text-gray-700">Download PDF (matches preview)</span> saves a true{' '}
-          <span className="font-semibold text-gray-700">4×6 in (4R)</span> file — same size as Delhivery{' '}
+          <span className="font-semibold text-gray-700">4×6 in (4R)</span> file - same size as Delhivery{' '}
           <code className="text-[9px] bg-slate-100 px-1 rounded">pdf_size=4R</code>. White label area is fitted inside the page; long orders shrink to fit.{' '}
           <span className="font-semibold text-gray-700">Delhivery PDF</span> above is their template. Print at 100% scale.
         </p> */}

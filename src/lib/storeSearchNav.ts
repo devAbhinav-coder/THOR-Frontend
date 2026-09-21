@@ -7,7 +7,7 @@ export type StoreSearchScope = "shop" | "gifting";
 
 const EMPTY_HREF: Record<StoreSearchScope, string> = {
   shop: "/shop",
-  gifting: "/gifting",
+  gifting: "/premium",
 };
 
 function appendPriceParams(
@@ -22,7 +22,7 @@ function appendPriceParams(
   }
 }
 
-/** Builds `/shop?search=` or `/gifting?search=` with smart price params when parsed. */
+/** Builds `/shop?search=` or `/premium?search=` with smart price params when parsed. */
 export function buildStoreSearchHref(
   scope: StoreSearchScope,
   query: string,
@@ -35,5 +35,5 @@ export function buildStoreSearchHref(
   params.set("search", q);
   appendPriceParams(params, intent);
   const qs = params.toString();
-  return scope === "gifting" ? `/gifting?${qs}` : `/shop?${qs}`;
+  return scope === "gifting" ? `/premium?${qs}` : `/shop?${qs}`;
 }

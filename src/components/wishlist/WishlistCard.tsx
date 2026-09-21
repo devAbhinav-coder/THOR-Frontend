@@ -27,7 +27,11 @@ function priceLabel(price: number): string {
   return formatPrice(price).replace("₹", "₹ ");
 }
 
-function WishlistCardInner({ product, className, onRemoved }: WishlistCardProps) {
+function WishlistCardInner({
+  product,
+  className,
+  onRemoved,
+}: WishlistCardProps) {
   const [primaryImageError, setPrimaryImageError] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -123,7 +127,9 @@ function WishlistCardInner({ product, className, onRemoved }: WishlistCardProps)
       try {
         const resolved = await resolveProductForBag();
         if (!resolved) {
-          toast.error("Could not add to bag — open the product to choose options");
+          toast.error(
+            "Could not add to bag - open the product to choose options",
+          );
           router.push(productHref);
           return;
         }
@@ -192,87 +198,86 @@ function WishlistCardInner({ product, className, onRemoved }: WishlistCardProps)
         className,
       )}
     >
-      <div className="relative aspect-[2/3] overflow-hidden bg-gray-100">
+      <div className='relative aspect-[2/3] overflow-hidden bg-gray-100'>
         <Link
           href={productHref}
-          className="absolute inset-0 z-0 block"
+          className='absolute inset-0 z-0 block'
           aria-label={`View ${product.name}`}
         >
-          {showPrimaryImage ? (
+          {showPrimaryImage ?
             <Image
               src={primaryUrl}
               alt={product.name}
               fill
               loader={cloudinaryLoader}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
-              loading="lazy"
+              sizes='(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw'
+              loading='lazy'
               quality={75}
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              className='object-cover transition-transform duration-700 group-hover:scale-105'
               onError={() => setPrimaryImageError(true)}
             />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-              <ShoppingBag className="h-10 w-10 text-gray-300" aria-hidden />
+          : <div className='absolute inset-0 flex items-center justify-center bg-gray-50'>
+              <ShoppingBag className='h-10 w-10 text-gray-300' aria-hidden />
             </div>
-          )}
+          }
         </Link>
 
         {product.isFeatured && !isOutOfStock && (
-          <span className="pointer-events-none absolute left-2 top-2 z-[1] bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-white sm:left-4 sm:top-4 sm:px-3 sm:py-1 sm:text-[10px]">
+          <span className='pointer-events-none absolute left-2 top-2 z-[1] bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-white sm:left-4 sm:top-4 sm:px-3 sm:py-1 sm:text-[10px]'>
             Limited Edition
           </span>
         )}
 
-        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-end bg-navy-900/20 p-4 opacity-0 backdrop-blur-[2px] transition-opacity duration-[400ms] group-hover:pointer-events-auto group-hover:opacity-100 sm:p-6">
+        <div className='pointer-events-none absolute inset-0 z-10 flex flex-col justify-end bg-navy-900/20 p-4 opacity-0 backdrop-blur-[2px] transition-opacity duration-[400ms] group-hover:pointer-events-auto group-hover:opacity-100 sm:p-6'>
           <button
-            type="button"
+            type='button'
             onClick={handleMoveToBag}
             disabled={isAdding || isOutOfStock}
-            className="pointer-events-auto w-full bg-navy-900 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-navy-800 disabled:cursor-not-allowed disabled:opacity-60 sm:py-4"
+            className='pointer-events-auto w-full bg-navy-900 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-navy-800 disabled:cursor-not-allowed disabled:opacity-60 sm:py-4'
           >
-            {isAdding
-              ? "Adding…"
-              : isOutOfStock
-                ? "Unavailable"
-                : needsCustomization
-                  ? "Customize"
-                  : "Move to Bag"}
+            {isAdding ?
+              "Adding…"
+            : isOutOfStock ?
+              "Unavailable"
+            : needsCustomization ?
+              "Customize"
+            : "Move to Bag"}
           </button>
           <button
-            type="button"
+            type='button'
             onClick={handleQuickView}
-            className="pointer-events-auto mt-2 w-full bg-white/90 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900 transition-colors hover:bg-white sm:mt-3 sm:py-4"
+            className='pointer-events-auto mt-2 w-full bg-white/90 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900 transition-colors hover:bg-white sm:mt-3 sm:py-4'
           >
             Quick View
           </button>
         </div>
 
         <button
-          type="button"
+          type='button'
           onClick={handleRemove}
           disabled={isRemoving}
-          className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/80 transition-colors hover:bg-white sm:right-4 sm:top-4 sm:h-10 sm:w-10"
+          className='absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/80 transition-colors hover:bg-white sm:right-4 sm:top-4 sm:h-10 sm:w-10'
           aria-label={`Remove ${product.name} from wishlist`}
         >
-          <X className="h-4 w-4 text-navy-900 sm:h-[18px] sm:w-[18px]" />
+          <X className='h-4 w-4 text-navy-900 sm:h-[18px] sm:w-[18px]' />
         </button>
       </div>
 
-      <div className="flex flex-col gap-0.5 pt-2 sm:gap-1 sm:pt-6">
-        <span className="line-clamp-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#c5a059] sm:text-[11px] sm:tracking-[0.16em]">
+      <div className='flex flex-col gap-0.5 pt-2 sm:gap-1 sm:pt-6'>
+        <span className='line-clamp-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#c5a059] sm:text-[11px] sm:tracking-[0.16em]'>
           {eyebrow}
         </span>
         <Link href={productHref}>
-          <h3 className="line-clamp-2 font-serif text-sm font-medium leading-snug text-navy-900 transition-colors hover:text-[#c5a059] sm:line-clamp-none sm:text-xl">
+          <h3 className='line-clamp-2 font-serif text-sm font-medium leading-snug text-navy-900 transition-colors hover:text-[#c5a059] sm:line-clamp-none sm:text-xl'>
             {product.name}
           </h3>
         </Link>
-        {blurb ? (
-          <p className="line-clamp-2 text-xs leading-relaxed text-gray-600 sm:text-sm">
+        {blurb ?
+          <p className='line-clamp-2 text-xs leading-relaxed text-gray-600 sm:text-sm'>
             {blurb}
           </p>
-        ) : null}
-        <p className="mt-0.5 text-sm font-semibold text-navy-900 sm:mt-2 sm:text-lg">
+        : null}
+        <p className='mt-0.5 text-sm font-semibold text-navy-900 sm:mt-2 sm:text-lg'>
           {priceLabel(product.price)}
         </p>
       </div>

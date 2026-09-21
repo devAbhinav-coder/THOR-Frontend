@@ -66,13 +66,16 @@ export function isAnythingElse(raw: string): boolean {
 }
 
 export function isGoodbye(raw: string): boolean {
-  return BYE_RE.test(normalizeForIntent(raw)) || NO_THANKS_RE.test(normalizeForIntent(raw));
+  return (
+    BYE_RE.test(normalizeForIntent(raw)) ||
+    NO_THANKS_RE.test(normalizeForIntent(raw))
+  );
 }
 
 const ABUSE_RE =
   /\b(fuck|fuk|fck|f\*+ck|stfu|shut up|bitch|bastard|asshole|dick|idiot|stupid|nonsense|useless|bekaar|bekar|bakwaas|bakwas|chutiya|chutiye|bhosdi|bhosda|madarchod|madarchd|mc|bc|bhenchod|behenchod|gaali|gali|randi|lund|gaand|gand|harami|kutte|kutta|kamina)\b/i;
 
-/** Profanity / abuse — handle gracefully instead of sending to the AI. */
+/** Profanity / abuse - handle gracefully instead of sending to the AI. */
 export function isAbuse(raw: string): boolean {
   return ABUSE_RE.test(raw) || ABUSE_RE.test(normalizeForIntent(raw));
 }

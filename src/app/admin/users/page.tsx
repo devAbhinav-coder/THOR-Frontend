@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import Image from "next/image";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   UserCheck,
@@ -39,8 +38,22 @@ import toast from "react-hot-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useAuthStore } from "@/store/useAuthStore";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import AdminUserAvatar from "@/components/admin/AdminUserAvatar";
+import {
+  directoryCustomerPhone,
+  directoryCustomerSubtitle,
+} from "@/lib/customerDirectoryDisplay";
 import AdminErrorState from "@/components/admin/AdminErrorState";
 import { AdminAiExplainButton } from "@/components/admin/ai";
+import AdminTeamAccessModal, {
+  type TeamAccessSubmit,
+} from "@/components/admin/AdminTeamAccessModal";
+import {
+  ADMIN_ACCESS_AREA_LABELS,
+  normalizeAdminPermissions,
+  teamRoleLabel,
+  type AdminAccessArea,
+} from "@/lib/adminAccess";
 
 type UserInsight = {
   user: User;
@@ -99,48 +112,31 @@ function tierBadge(segment: UserInsight["metrics"]["userSegment"]) {
   );
 }
 
-function UserAvatar({
-  user,
-  size = "md",
-}: {
-  user: User;
-  size?: "sm" | "md" | "lg";
-}) {
-  const dim =
-    size === "lg" ? "h-16 w-16 text-xl"
-    : size === "sm" ? "h-9 w-9 text-sm"
-    : "h-11 w-11 text-base";
-  return (
-    <div className='relative shrink-0'>
-      <div
-        className={cn(
-          "rounded-full bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-md",
-          dim,
-        )}
-      >
-        {user.avatar ?
-          <Image
-            src={user.avatar}
-            alt=''
-            width={64}
-            height={64}
-            className='h-full w-full object-cover'
-          />
-        : <span className='text-brand-700 font-bold'>
-            {user.name.charAt(0).toUpperCase()}
-          </span>
-        }
-      </div>
-      {user.adminNote && user.adminNote.trim().length > 0 && (
-        <span
-          className='absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-sm'
-          title='Has admin note'
-        >
-          <StickyNote className='h-2.5 w-2.5 text-amber-950' aria-hidden />
-        </span>
-      )}
-    </div>
-  );
+function offlineLeadEmail(row: OfflineCustomerLead): string | null {
+  if (row.displayEmail) return row.displayEmail;
+  const e = row.email?.trim().toLowerCase() ?? "";
+  if (!e || e.endsWith("@offline.local") || e.endsWith("@pos.lead.local")) {
+    return null;
+  }
+  if (e.endsWith("@review.local")) return null;
+  return row.email;
+}
+
+function staffAreaSummary(permissions: string[] | undefined): string {
+  const areas = normalizeAdminPermissions(permissions);
+  if (areas.length === 0) return "No areas assigned";
+  return areas
+    .map((a) => ADMIN_ACCESS_AREA_LABELS[a as AdminAccessArea])
+    .join(", ");
+}
+
+function offlineLeadPhone(row: OfflineCustomerLead): string | null {
+  if (row.displayPhone) return row.displayPhone;
+  const d = String(row.phone ?? "")
+    .replace(/\D/g, "")
+    .slice(-10);
+  if (!/^[6-9]\d{9}$/.test(d)) return null;
+  return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
 }
 
 function PaginationBar({
@@ -212,6 +208,10 @@ export default function AdminUsersPage() {
   const debouncedAdminSearch = useDebouncedValue(adminSearch.trim(), 300);
   const [userPage, setUserPage] = useState(1);
   const [adminPage, setAdminPage] = useState(1);
+  const [teamAccessTarget, setTeamAccessTarget] = useState<User | null>(null);
+  const [teamAccessMode, setTeamAccessMode] = useState<"create" | "edit">(
+    "create",
+  );
   const [offlinePage, setOfflinePage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -219,37 +219,66 @@ export default function AdminUsersPage() {
   const currentUserId = useAuthStore((s) => s.user?._id);
 
   // 1. Users (Customers) Query
-  const { data: usersRes, isLoading, isError: listError } = useQuery({
-    queryKey: ["admin-users", userPage],
+  const {
+    data: usersRes,
+    isLoading,
+    isError: listError,
+  } = useQuery({
+    queryKey: ["admin-users", userPage, debouncedSearch],
     queryFn: async () => {
-      const res = await adminApi.getUsers({ page: userPage, limit: 20, role: "user" });
+      const res = await adminApi.getUsers({
+        page: userPage,
+        limit: 20,
+        role: "user",
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      });
       return res;
     },
   });
   const users: User[] = usersRes?.data?.users || [];
-  const pagination = usersRes?.pagination || { currentPage: 1, totalPages: 1, total: 0 };
+  const pagination = usersRes?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+  };
 
   // 2. Admins Query
   const { data: adminsRes, isLoading: isLoadingAdmins } = useQuery({
     queryKey: ["admin-admins", adminPage],
     queryFn: async () => {
-      const res = await adminApi.getUsers({ page: adminPage, limit: 20, role: "admin" });
+      const res = await adminApi.getUsers({
+        page: adminPage,
+        limit: 20,
+        role: "team",
+      });
       return res;
     },
   });
   const admins: User[] = adminsRes?.data?.users || [];
-  const adminPagination = adminsRes?.pagination || { currentPage: 1, totalPages: 1, total: 0 };
+  const adminPagination = adminsRes?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+  };
 
   // 3. Offline Customers Query
   const { data: offlineRes, isLoading: loadingOffline } = useQuery({
     queryKey: ["admin-offline-customers", offlinePage],
     queryFn: async () => {
-      const res = await adminApi.getOfflineCustomers({ page: offlinePage, limit: 20 });
+      const res = await adminApi.getOfflineCustomers({
+        page: offlinePage,
+        limit: 20,
+      });
       return res;
     },
   });
-  const offlineCustomers: OfflineCustomerLead[] = (offlineRes?.data?.offlineCustomers as OfflineCustomerLead[]) || [];
-  const offlinePagination = offlineRes?.pagination || { currentPage: 1, totalPages: 1, total: 0 };
+  const offlineCustomers: OfflineCustomerLead[] =
+    (offlineRes?.data?.offlineCustomers as OfflineCustomerLead[]) || [];
+  const offlinePagination = offlineRes?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+  };
 
   // 4. Directory Stats Query
   const { data: directoryStats = null } = useQuery({
@@ -303,33 +332,61 @@ export default function AdminUsersPage() {
     mutationFn: (userId: string) => adminApi.toggleUserStatus(userId),
     onSuccess: (res) => {
       const { isActive } = res.data;
-      toast.success(isActive ? "Account activated" : "Account blocked / deactivated");
+      toast.success(
+        isActive ? "Account activated" : "Account blocked / deactivated",
+      );
       void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
-      void queryClient.invalidateQueries({ queryKey: ["admin-directory-stats"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-directory-stats"],
+      });
     },
     onError: () => toast.error("Failed to update account status"),
     onSettled: () => setStatusTogglingId(null),
   });
 
-  const promoteMutation = useMutation({
-    mutationFn: (userId: string) => adminApi.updateUserRole(userId, "admin"),
-    onSuccess: () => {
-      toast.success("User promoted to admin");
+  const teamAccessMutation = useMutation({
+    mutationFn: ({
+      userId,
+      payload,
+    }: {
+      userId: string;
+      payload: TeamAccessSubmit;
+    }) => {
+      if (payload.kind === "admin") {
+        return adminApi.updateUserRole(userId, { role: "admin" });
+      }
+      return adminApi.updateUserRole(userId, {
+        role: "staff",
+        adminPermissions: payload.adminPermissions,
+      });
+    },
+    onSuccess: (_data, vars) => {
+      toast.success(
+        vars.payload.kind === "admin" ?
+          "Full admin access granted"
+        : "Team access saved",
+      );
+      setTeamAccessTarget(null);
       void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
-      void queryClient.invalidateQueries({ queryKey: ["admin-directory-stats"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-directory-stats"],
+      });
     },
-    onError: () => toast.error("Failed to update user role"),
+    onError: () => toast.error("Failed to update team access"),
   });
 
   const demoteMutation = useMutation({
-    mutationFn: (userId: string) => adminApi.updateUserRole(userId, "user"),
+    mutationFn: (userId: string) =>
+      adminApi.updateUserRole(userId, { role: "user" }),
     onSuccess: () => {
       toast.success("Admin demoted to user");
       void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
-      void queryClient.invalidateQueries({ queryKey: ["admin-directory-stats"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-directory-stats"],
+      });
     },
     onError: () => toast.error("Failed to update user role"),
   });
@@ -351,13 +408,24 @@ export default function AdminUsersPage() {
     toggleStatusMutation.mutate(userId);
   };
 
-  const promoteToAdmin = (userId: string) => {
-    if (!confirm("Grant this customer admin access? They will be able to access this panel.")) return;
-    promoteMutation.mutate(userId);
+  const openTeamAccessCreate = (user: User) => {
+    setTeamAccessMode("create");
+    setTeamAccessTarget(user);
+  };
+
+  const openTeamAccessEdit = (user: User) => {
+    setTeamAccessMode("edit");
+    setTeamAccessTarget(user);
+  };
+
+  const submitTeamAccess = (payload: TeamAccessSubmit) => {
+    if (!teamAccessTarget) return;
+    teamAccessMutation.mutate({ userId: teamAccessTarget._id, payload });
   };
 
   const demoteToUser = (userId: string) => {
-    if (!confirm("Remove admin role? They will become a regular customer.")) return;
+    if (!confirm("Remove from team? They will become a regular customer."))
+      return;
     demoteMutation.mutate(userId);
   };
 
@@ -371,16 +439,13 @@ export default function AdminUsersPage() {
   };
   const savingNote = saveNoteMutation.isPending;
 
-  const filtered = useMemo(() => {
-    const q = debouncedSearch.toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.phone && u.phone.toLowerCase().includes(q)),
-    );
-  }, [users, debouncedSearch]);
+  const prevSearchRef = useRef(debouncedSearch);
+  useEffect(() => {
+    if (prevSearchRef.current !== debouncedSearch) {
+      prevSearchRef.current = debouncedSearch;
+      setUserPage(1);
+    }
+  }, [debouncedSearch]);
 
   const filteredAdmins = useMemo(() => {
     const q = debouncedAdminSearch.toLowerCase();
@@ -418,7 +483,7 @@ export default function AdminUsersPage() {
     {
       label: "Registered customers",
       value: userStats.totalUsers,
-      sub: "All time",
+      sub: "Website signups · no POS placeholders",
       icon: Users,
       accent: "from-brand-50 to-white border-brand-100/80",
       iconBg: "bg-brand-100 text-brand-700",
@@ -463,7 +528,7 @@ export default function AdminUsersPage() {
         <AdminPageHeader
           title='Users & team'
           badge='Directory'
-          description='Customers who shop with you, and admins who run the store. Block access, review spend, and keep internal notes — all in one place.'
+          description='Website shoppers and your admin team in one place. POS-only leads live in the offline section below - they are not counted as registered customers.'
           actions={
             <>
               <Button
@@ -523,10 +588,14 @@ export default function AdminUsersPage() {
         </div>
 
         {listError && !isLoading && users.length === 0 ?
-          <AdminErrorState onRetry={() => void queryClient.invalidateQueries({ queryKey: ["admin-users"] })} />
+          <AdminErrorState
+            onRetry={() =>
+              void queryClient.invalidateQueries({ queryKey: ["admin-users"] })
+            }
+          />
         : null}
 
-        {/* Offline / POS leads — one row per email until they sign up or link Google */}
+        {/* Offline / POS leads - one row per email until they sign up or link Google */}
         <section className='rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/50 via-white to-white shadow-[0_20px_50px_-28px_rgba(120,53,15,0.12)] overflow-hidden'>
           <div className='px-4 sm:px-6 py-5 border-b border-amber-100/80 bg-gradient-to-r from-amber-950/[0.03] via-white to-white'>
             <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3'>
@@ -538,11 +607,11 @@ export default function AdminUsersPage() {
                   <h2 className='font-serif text-lg font-bold text-gray-900 tracking-tight'>
                     Offline customers (POS)
                   </h2>
-                  {/* <p className="text-xs text-gray-600 mt-0.5 max-w-2xl">
-                    Emails from admin-recorded offline orders when no full account existed yet. One entry per email for
-                    campaigns. The row disappears after they complete sign-up (email OTP), set a password via reset, or
-                    use Google with the same email.
-                  </p> */}
+                  <p className='text-xs text-gray-600 mt-0.5 max-w-2xl'>
+                    Real emails from admin offline orders before a full website
+                    signup. One row per email for follow-up. Row drops off after
+                    OTP signup, password reset, or Google with the same email.
+                  </p>
                   <p className='text-[11px] text-amber-900/80 font-semibold mt-2'>
                     {offlinePagination.total.toLocaleString()} lead
                     {offlinePagination.total === 1 ? "" : "s"}
@@ -587,32 +656,46 @@ export default function AdminUsersPage() {
                       offline order for a new email.
                     </td>
                   </tr>
-                : offlineCustomers.map((row) => (
-                    <tr
-                      key={row.email}
-                      className='hover:bg-amber-50/30 transition-colors'
-                    >
-                      <td className='px-5 py-3.5 font-medium text-gray-900'>
-                        {row.name}
-                      </td>
-                      <td className='px-5 py-3.5'>
-                        <span className='text-gray-800 tabular-nums'>
-                          {row.email}
-                        </span>
-                      </td>
-                      <td className='px-5 py-3.5 text-gray-700 tabular-nums'>
-                        {row.phone}
-                      </td>
-                      <td className='px-5 py-3.5 text-gray-600 text-xs'>
-                        {row.lastOfflineOrderAt ?
-                          formatDate(row.lastOfflineOrderAt)
-                        : "—"}
-                      </td>
-                      <td className='px-5 py-3.5 text-right tabular-nums text-gray-800'>
-                        {row.offlineOrderCount ?? "—"}
-                      </td>
-                    </tr>
-                  ))
+                : offlineCustomers.map((row) => {
+                    const leadEmail = offlineLeadEmail(row);
+                    const leadPhone = offlineLeadPhone(row);
+                    return (
+                      <tr
+                        key={row.email}
+                        className='hover:bg-amber-50/30 transition-colors'
+                      >
+                        <td className='px-5 py-3.5 font-medium text-gray-900'>
+                          {row.name}
+                        </td>
+                        <td className='px-5 py-3.5'>
+                          {leadEmail ?
+                            <span className='text-gray-800 break-all'>
+                              {leadEmail}
+                            </span>
+                          : <span className='text-gray-400 text-xs'>
+                              No email
+                            </span>
+                          }
+                        </td>
+                        <td className='px-5 py-3.5 text-gray-700 tabular-nums'>
+                          {leadPhone ?
+                            leadPhone
+                          : <span className='text-gray-400 text-xs'>
+                              No phone
+                            </span>
+                          }
+                        </td>
+                        <td className='px-5 py-3.5 text-gray-600 text-xs'>
+                          {row.lastOfflineOrderAt ?
+                            formatDate(row.lastOfflineOrderAt)
+                          : "-"}
+                        </td>
+                        <td className='px-5 py-3.5 text-right tabular-nums text-gray-800'>
+                          {row.offlineOrderCount ?? "-"}
+                        </td>
+                      </tr>
+                    );
+                  })
                 }
               </tbody>
             </table>
@@ -628,26 +711,34 @@ export default function AdminUsersPage() {
                 No offline leads yet. Create an offline order for a new email to
                 add one.
               </p>
-            : offlineCustomers.map((row) => (
-                <div key={row.email} className='px-4 py-4 space-y-1'>
-                  <p className='font-semibold text-gray-900'>{row.name}</p>
-                  <p className='text-xs text-gray-600 flex items-center gap-1.5'>
-                    <Mail className='h-3.5 w-3.5 shrink-0 opacity-70' />
-                    {row.email}
-                  </p>
-                  <p className='text-xs text-gray-600 flex items-center gap-1.5'>
-                    <Phone className='h-3.5 w-3.5 shrink-0 opacity-70' />
-                    {row.phone}
-                  </p>
-                  <p className='text-[11px] text-gray-500'>
-                    Last:{" "}
-                    {row.lastOfflineOrderAt ?
-                      formatDate(row.lastOfflineOrderAt)
-                    : "—"}{" "}
-                    · POS orders: {row.offlineOrderCount ?? "—"}
-                  </p>
-                </div>
-              ))
+            : offlineCustomers.map((row) => {
+                const leadEmail = offlineLeadEmail(row);
+                const leadPhone = offlineLeadPhone(row);
+                return (
+                  <div key={row.email} className='px-4 py-4 space-y-1'>
+                    <p className='font-semibold text-gray-900'>{row.name}</p>
+                    {leadEmail ?
+                      <p className='text-xs text-gray-600 flex items-center gap-1.5'>
+                        <Mail className='h-3.5 w-3.5 shrink-0 opacity-70' />
+                        <span className='break-all'>{leadEmail}</span>
+                      </p>
+                    : null}
+                    {leadPhone ?
+                      <p className='text-xs text-gray-600 flex items-center gap-1.5'>
+                        <Phone className='h-3.5 w-3.5 shrink-0 opacity-70' />
+                        {leadPhone}
+                      </p>
+                    : null}
+                    <p className='text-[11px] text-gray-500'>
+                      Last:{" "}
+                      {row.lastOfflineOrderAt ?
+                        formatDate(row.lastOfflineOrderAt)
+                      : "-"}{" "}
+                      · POS orders: {row.offlineOrderCount ?? "-"}
+                    </p>
+                  </div>
+                );
+              })
             }
           </div>
 
@@ -672,10 +763,11 @@ export default function AdminUsersPage() {
                 </div>
                 <div>
                   <h2 className='font-serif text-lg font-bold text-gray-900 tracking-tight'>
-                    Team & admins
+                    Team & access
                   </h2>
                   <p className='text-xs text-gray-500 mt-0.5'>
-                    {adminPagination.total} accounts · search filters this page
+                    {adminPagination.total} accounts · full admin or custom
+                    areas
                   </p>
                 </div>
               </div>
@@ -701,7 +793,7 @@ export default function AdminUsersPage() {
             : filteredAdmins.length === 0 ?
               <p className='px-4 py-10 text-center text-sm text-gray-500'>
                 {admins.length === 0 ?
-                  "No admin accounts yet."
+                  "No team accounts yet."
                 : "No matches on this page."}
               </p>
             : filteredAdmins.map((user) => (
@@ -711,7 +803,12 @@ export default function AdminUsersPage() {
                 >
                   <div className='flex items-start justify-between gap-3'>
                     <div className='flex items-center gap-3 min-w-0'>
-                      <UserAvatar user={user} size='md' />
+                      <AdminUserAvatar
+                        name={user.name}
+                        avatar={user.avatar}
+                        adminNote={user.adminNote}
+                        size='md'
+                      />
                       <div className='min-w-0'>
                         <div className='flex items-center gap-2 flex-wrap'>
                           <p className='text-sm font-semibold text-gray-900 truncate'>
@@ -727,7 +824,13 @@ export default function AdminUsersPage() {
                           {user.email}
                         </p>
                         <p className='text-[11px] text-gray-400 mt-0.5 tabular-nums'>
-                          {user.phone || "—"}
+                          {user.phone || "-"}
+                        </p>
+                        <p className='text-[11px] text-brand-800/90 mt-1 leading-snug'>
+                          {teamRoleLabel(user.role)}
+                          {user.role === "staff" ?
+                            ` · ${staffAreaSummary(user.adminPermissions)}`
+                          : ""}
                         </p>
                       </div>
                     </div>
@@ -739,6 +842,15 @@ export default function AdminUsersPage() {
                     </Badge>
                   </div>
                   <div className='mt-3 flex flex-wrap gap-2'>
+                    <button
+                      type='button'
+                      onClick={() => openTeamAccessEdit(user)}
+                      disabled={user._id === currentUserId}
+                      className='inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-navy-900 bg-white border border-gray-200 hover:border-brand-300 transition-colors shadow-sm disabled:opacity-40'
+                    >
+                      <Shield className='h-3.5 w-3.5' />
+                      Edit access
+                    </button>
                     <button
                       type='button'
                       onClick={() => openUserInsights(user)}
@@ -795,7 +907,9 @@ export default function AdminUsersPage() {
             <table className='w-full text-sm'>
               <thead>
                 <tr className='bg-gray-50/95 text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-100'>
-                  <th className='text-left px-5 py-3.5 font-semibold'>Admin</th>
+                  <th className='text-left px-5 py-3.5 font-semibold'>
+                    Member
+                  </th>
                   <th className='text-left px-5 py-3.5 font-semibold'>Phone</th>
                   <th className='text-left px-5 py-3.5 font-semibold'>
                     Joined
@@ -824,7 +938,12 @@ export default function AdminUsersPage() {
                     >
                       <td className='px-5 py-3.5'>
                         <div className='flex items-center gap-3'>
-                          <UserAvatar user={user} size='sm' />
+                          <AdminUserAvatar
+                            name={user.name}
+                            avatar={user.avatar}
+                            adminNote={user.adminNote}
+                            size='sm'
+                          />
                           <div className='min-w-0'>
                             <div className='flex items-center gap-2'>
                               <p className='font-semibold text-gray-900 truncate'>
@@ -842,11 +961,17 @@ export default function AdminUsersPage() {
                             <p className='text-xs text-gray-400 truncate'>
                               {user.email}
                             </p>
+                            <p className='text-[11px] text-brand-800/90 mt-0.5 truncate max-w-[240px]'>
+                              {teamRoleLabel(user.role)}
+                              {user.role === "staff" ?
+                                ` · ${staffAreaSummary(user.adminPermissions)}`
+                              : ""}
+                            </p>
                           </div>
                         </div>
                       </td>
                       <td className='px-5 py-3.5 text-gray-600 tabular-nums'>
-                        {user.phone || "—"}
+                        {user.phone || "-"}
                       </td>
                       <td className='px-5 py-3.5 text-gray-500'>
                         {formatDate(user.createdAt)}
@@ -861,6 +986,14 @@ export default function AdminUsersPage() {
                       </td>
                       <td className='px-5 py-3.5'>
                         <div className='flex justify-end gap-1.5 flex-wrap'>
+                          <button
+                            type='button'
+                            onClick={() => openTeamAccessEdit(user)}
+                            disabled={user._id === currentUserId}
+                            className='inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-navy-900 border border-gray-200 hover:bg-brand-50 disabled:opacity-40'
+                          >
+                            Access
+                          </button>
                           <button
                             type='button'
                             onClick={() => openUserInsights(user)}
@@ -929,8 +1062,8 @@ export default function AdminUsersPage() {
                   Customers
                 </h2>
                 <p className='text-xs text-gray-500 mt-0.5'>
-                  {pagination.total} in directory · search filters this page
-                  only
+                  {pagination.total.toLocaleString()} accounts · website + POS
+                  (mobile) · search all only
                 </p>
               </div>
             </div>
@@ -952,27 +1085,37 @@ export default function AdminUsersPage() {
                   <div className='h-28 rounded-xl bg-gray-100 animate-pulse' />
                 </div>
               ))
-            : filtered.length === 0 ?
+            : users.length === 0 ?
               <p className='px-4 py-10 text-center text-sm text-gray-500'>
-                {users.length === 0 ?
-                  "No customers yet."
-                : "No matches on this page."}
+                {debouncedSearch ?
+                  "No customers match your search."
+                : "No website customers yet."}
               </p>
-            : filtered.map((user) => (
+            : users.map((user) => (
                 <div
                   key={user._id}
                   className='px-4 py-4 hover:bg-gray-50/80 transition-colors'
                 >
                   <div className='flex items-start justify-between gap-3'>
                     <div className='flex items-center gap-3 min-w-0'>
-                      <UserAvatar user={user} size='md' />
+                      <AdminUserAvatar
+                        name={user.name}
+                        avatar={user.avatar}
+                        adminNote={user.adminNote}
+                        size='md'
+                      />
                       <div className='min-w-0'>
                         <p className='text-sm font-semibold text-gray-900 truncate'>
                           {user.name}
                         </p>
                         <p className='text-xs text-gray-500 truncate'>
-                          {user.email}
+                          {directoryCustomerSubtitle(user)}
                         </p>
+                        {directoryCustomerPhone(user) ?
+                          <p className='text-[11px] text-gray-600 tabular-nums mt-0.5'>
+                            {directoryCustomerPhone(user)}
+                          </p>
+                        : null}
                         <p className='text-[11px] text-gray-400 mt-0.5'>
                           {formatDate(user.createdAt)}
                         </p>
@@ -1021,11 +1164,11 @@ export default function AdminUsersPage() {
                     </button>
                     <button
                       type='button'
-                      onClick={() => promoteToAdmin(user._id)}
+                      onClick={() => openTeamAccessCreate(user)}
                       className='inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-brand-800 bg-brand-50 border border-brand-200 hover:bg-brand-100/80 transition-colors'
                     >
                       <UserPlus className='h-3.5 w-3.5' />
-                      Make admin
+                      Add to team
                     </button>
                   </div>
                 </div>
@@ -1061,26 +1204,31 @@ export default function AdminUsersPage() {
                       </td>
                     </tr>
                   ))
-                : filtered.map((user) => (
+                : users.map((user) => (
                     <tr
                       key={user._id}
                       className='hover:bg-brand-50/15 transition-colors'
                     >
                       <td className='px-5 py-3.5'>
                         <div className='flex items-center gap-3'>
-                          <UserAvatar user={user} size='sm' />
+                          <AdminUserAvatar
+                            name={user.name}
+                            avatar={user.avatar}
+                            adminNote={user.adminNote}
+                            size='sm'
+                          />
                           <div className='min-w-0'>
                             <p className='font-semibold text-gray-900 truncate'>
                               {user.name}
                             </p>
                             <p className='text-xs text-gray-400 truncate'>
-                              {user.email}
+                              {directoryCustomerSubtitle(user)}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className='px-5 py-3.5 text-gray-600 tabular-nums'>
-                        {user.phone || "—"}
+                        {directoryCustomerPhone(user) ?? "-"}
                       </td>
                       <td className='px-5 py-3.5 text-gray-500'>
                         {formatDate(user.createdAt)}
@@ -1125,11 +1273,11 @@ export default function AdminUsersPage() {
                           </button>
                           <button
                             type='button'
-                            onClick={() => promoteToAdmin(user._id)}
+                            onClick={() => openTeamAccessCreate(user)}
                             className='inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-brand-800 border border-brand-200 hover:bg-brand-50'
                           >
                             <UserPlus className='h-3 w-3' />
-                            Admin
+                            Team
                           </button>
                         </div>
                       </td>
@@ -1166,7 +1314,12 @@ export default function AdminUsersPage() {
             <div className='px-5 sm:px-7 pt-6 pb-5 bg-gradient-to-br from-navy-950 via-navy-900 to-brand-900 text-white shrink-0'>
               <div className='flex items-start justify-between gap-3'>
                 <div className='flex items-center gap-4 min-w-0'>
-                  <UserAvatar user={selectedUser} size='lg' />
+                  <AdminUserAvatar
+                    name={selectedUser.name}
+                    avatar={selectedUser.avatar}
+                    adminNote={selectedUser.adminNote}
+                    size='lg'
+                  />
                   <div className='min-w-0'>
                     <p className='text-[11px] font-semibold uppercase tracking-wider text-white/60'>
                       Customer profile
@@ -1242,11 +1395,11 @@ export default function AdminUsersPage() {
                     ))}
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className='flex justify-end'>
                     <AdminAiExplainButton
-                      kind="user"
+                      kind='user'
                       userId={selectedUser._id}
-                      label="AI customer advice"
+                      label='AI customer advice'
                     />
                   </div>
 
@@ -1363,6 +1516,24 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      <AdminTeamAccessModal
+        open={teamAccessTarget !== null}
+        userName={teamAccessTarget?.name ?? ""}
+        mode={teamAccessMode}
+        initialRole={
+          (
+            teamAccessTarget?.role === "admin" ||
+            teamAccessTarget?.role === "staff"
+          ) ?
+            teamAccessTarget.role
+          : undefined
+        }
+        initialPermissions={teamAccessTarget?.adminPermissions}
+        onClose={() => setTeamAccessTarget(null)}
+        onSubmit={submitTeamAccess}
+        submitting={teamAccessMutation.isPending}
+      />
     </div>
   );
 }

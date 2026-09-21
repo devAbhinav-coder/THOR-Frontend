@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { Product } from '@/types';
-import { wishlistApi } from '@/lib/api';
-import { getQueryClient, WISHLIST_QUERY_KEY } from '@/lib/queryClient';
-import toast from 'react-hot-toast';
+import { create } from "zustand";
+import { Product } from "@/types";
+import { wishlistApi } from "@/lib/api";
+import { getQueryClient, WISHLIST_QUERY_KEY } from "@/lib/queryClient";
+import toast from "react-hot-toast";
 
 const toggleInFlight = new Set<string>();
 
@@ -25,7 +25,7 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
   syncWishlist: (products: Product[]) => {
     const map: Record<string, boolean> = {};
     (products || []).forEach((p) => {
-      const id = String(p._id || (p as unknown as { id?: string }).id || '');
+      const id = String(p._id || (p as unknown as { id?: string }).id || "");
       if (id) map[id] = true;
     });
     set({ wishlistSet: map, wishlistCount: Object.keys(map).length });
@@ -59,21 +59,27 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
 
     // Optimistically update React Query cache as well
     const qc = getQueryClient();
-    const previousProducts = qc.getQueryData<Product[]>(WISHLIST_QUERY_KEY) ?? [];
+    const previousProducts =
+      qc.getQueryData<Product[]>(WISHLIST_QUERY_KEY) ?? [];
     if (isIn) {
       qc.setQueryData<Product[]>(
         WISHLIST_QUERY_KEY,
         previousProducts.filter(
-          (p) => String(p._id || (p as unknown as { id?: string }).id) !== productId,
+          (p) =>
+            String(p._id || (p as unknown as { id?: string }).id) !== productId,
         ),
       );
     } else if (product) {
       if (
         !previousProducts.some(
-          (p) => String(p._id || (p as unknown as { id?: string }).id) === productId,
+          (p) =>
+            String(p._id || (p as unknown as { id?: string }).id) === productId,
         )
       ) {
-        qc.setQueryData<Product[]>(WISHLIST_QUERY_KEY, [...previousProducts, product]);
+        qc.setQueryData<Product[]>(WISHLIST_QUERY_KEY, [
+          ...previousProducts,
+          product,
+        ]);
       }
     }
 
@@ -81,22 +87,25 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
     try {
       await wishlistApi.toggle(productId);
       if (!silent) {
-        toast.success(isIn ? 'Removed from wishlist' : 'Added to wishlist', {
-          id: 'wishlist-toggle-toast',
+        toast.success(isIn ? "Removed from wishlist" : "Added to wishlist", {
+          id: "wishlist-toggle-toast",
           duration: 1200,
         });
       }
       await qc.invalidateQueries({ queryKey: WISHLIST_QUERY_KEY });
     } catch {
       // Rollback on failure
-      set({ wishlistSet: previousSet, wishlistCount: Object.keys(previousSet).length });
+      set({
+        wishlistSet: previousSet,
+        wishlistCount: Object.keys(previousSet).length,
+      });
       qc.setQueryData<Product[]>(WISHLIST_QUERY_KEY, previousProducts);
-      if (!silent) toast.error('Failed to update wishlist');
+      if (!silent) toast.error("Failed to update wishlist");
     } finally {
       toggleInFlight.delete(productId);
     }
   },
 }));
 
-/** Call once on client if needed — noop for in-memory wishlist store. */
+/** Call once on client if needed - noop for in-memory wishlist store. */
 export function rehydrateWishlistStore(): void {}

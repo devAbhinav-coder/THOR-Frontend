@@ -19,7 +19,7 @@ export interface PdpRelatedProductRowsProps {
 const PDP_CARD_CLASS =
   "w-[calc(50%-0.5rem)] shrink-0 snap-start sm:w-[calc(50%-0.75rem)] lg:w-[calc(25%-1.125rem)]";
 
-/** One card per product on PDP rows — pick the best shade thumbnail when multi-color. */
+/** One card per product on PDP rows - pick the best shade thumbnail when multi-color. */
 function pdpRowListingEntries(products: Product[]) {
   return products.slice(0, 12).map((product) => {
     const colors = getDistinctVariantColors(product);
@@ -37,12 +37,9 @@ function pdpRowListingEntries(products: Product[]) {
 }
 
 function ProductScrollRow({ products }: { products: Product[] }) {
-  const entries = useMemo(
-    () => pdpRowListingEntries(products),
-    [products],
-  );
+  const entries = useMemo(() => pdpRowListingEntries(products), [products]);
   return (
-    <HorizontalScrollRow innerClassName="gap-1 sm:gap-2">
+    <HorizontalScrollRow innerClassName='gap-1 sm:gap-2'>
       {entries.map((entry) => (
         <div key={entry.listKey} className={PDP_CARD_CLASS}>
           <ShopCollectionCard
@@ -81,7 +78,7 @@ export function PdpRelatedProductRows({
               </div>
               <Link
                 href={
-                  isGiftMarketingContext ? "/gifting" : (
+                  isGiftMarketingContext ? "/premium" : (
                     `${categoryPath}${product.fabric ? `?fabric=${encodeURIComponent(product.fabric)}` : ""}`
                   )
                 }
@@ -110,7 +107,7 @@ export function PdpRelatedProductRows({
                 </h2>
               </div>
               <Link
-                href={isGiftMarketingContext ? "/gifting" : "/shop"}
+                href={isGiftMarketingContext ? "/premium" : "/shop"}
                 className='shrink-0 text-[11px] font-medium uppercase tracking-[0.22em] text-navy-900 underline decoration-[#c5a059]/80 underline-offset-[6px] transition-colors hover:text-[#c5a059]'
               >
                 Explore All

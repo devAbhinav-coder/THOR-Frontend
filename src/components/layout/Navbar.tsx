@@ -7,7 +7,6 @@ import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  ShoppingBag,
   Heart,
   User,
   Menu,
@@ -35,8 +34,14 @@ import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
 import { queryKeys } from "@/lib/queryKeys";
 import NotificationBell from "@/components/layout/NotificationBell";
+import BagIcon from "@/components/icons/BagIcon";
+import ProfileAvatarImg from "@/components/shared/ProfileAvatarImg";
 import dynamic from "next/dynamic";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
+import {
+  defaultAdminHomeHref,
+  isAdminPanelUser,
+} from "@/lib/adminAccess";
 
 const NavProfileDropdown = dynamic(
   () => import("@/components/layout/NavProfileDropdown"),
@@ -120,7 +125,8 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
   const { itemCount } = useCartStore();
   const storeWishlistCount = useWishlistStore((s) => s.wishlistCount);
   const { data: wishlistProducts = [] } = useWishlistQuery();
-  const wishlistCount = storeWishlistCount > 0 ? storeWishlistCount : wishlistProducts.length;
+  const wishlistCount =
+    storeWishlistCount > 0 ? storeWishlistCount : wishlistProducts.length;
 
   const { data: categoriesData } = useQuery({
     queryKey: queryKeys.megaMenu,
@@ -128,6 +134,8 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
       const body = await navigationApi.getMegaMenu();
       return (body.data.categories || []) as unknown as MegaMenuCategory[];
     },
+    initialData:
+      initialNavCategories.length > 0 ? initialNavCategories : undefined,
     staleTime: 5 * 60 * 1000,
   });
   const navCategories = useMemo(() => {
@@ -329,7 +337,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
       {
         id: "cart",
         label: "Cart",
-        Icon: ShoppingBag,
+        Icon: BagIcon as LucideIcon,
         href: "/cart",
         activeKey: "cart",
         showCartBadge: true,
@@ -394,7 +402,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                     aria-hidden='true'
                   />
                 </button>
-                {/* Logo — left on mobile, desktop flow */}
+                {/* Logo - left on mobile, desktop flow */}
                 {isCheckoutFlow && (
                   <button
                     type='button'
@@ -419,7 +427,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                     "flex-shrink-0 flex items-center min-w-0 lg:flex-shrink-0",
                     isCheckoutFlow && "max-lg:hidden",
                   )}
-                  aria-label='The House of Rani — Home'
+                  aria-label='The House of Rani - Home'
                 >
                   <Image
                     src='/logo.png'
@@ -480,7 +488,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
 
               <div className='hidden lg:block flex-1 min-w-0 max-w-xl mx-2'>
                 <StoreSearchAutocomplete
-                  scope="shop"
+                  scope='shop'
                   variant='nav-dark'
                   searchInstance='desktop'
                   urlSearch={urlSearchForNav}
@@ -495,7 +503,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                   isCheckoutFlow && "max-lg:hidden",
                 )}
               >
-                {/* Wishlist — always visible; guests open login (badge when count > 0) */}
+                {/* Wishlist - always visible; guests open login (badge when count > 0) */}
                 <button
                   type='button'
                   onClick={handleWishlistPress}
@@ -519,7 +527,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                   )}
                   aria-label='Cart'
                 >
-                  <ShoppingBag className='h-5 w-5' strokeWidth={1.75} />
+                  <BagIcon className='h-5 w-5' strokeWidth={1.75} />
                   {itemCount > 0 && (
                     <span className={navBadgeCount}>
                       {itemCount > 9 ? "9+" : itemCount}
@@ -571,25 +579,12 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                       aria-haspopup='menu'
                     >
                       <div className={navAvatarRing}>
-                        {user?.avatar ?
-                          <Image
-                            src={user.avatar}
-                            alt=''
-                            width={32}
-                            height={32}
-                            loading='lazy'
-                            unoptimized
-                            className='h-full w-full object-cover'
-                          />
-                        : <span
-                            className='text-sm font-semibold text-white'
-                            aria-hidden='true'
-                          >
-                            {String(user?.name || "U")
-                              .charAt(0)
-                              .toUpperCase()}
-                          </span>
-                        }
+                        <ProfileAvatarImg
+                          name={user?.name || "User"}
+                          avatar={user?.avatar}
+                          resetKey={user?._id}
+                          initialsClassName='text-sm font-semibold text-white'
+                        />
                       </div>
                     </button>
 
@@ -605,6 +600,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                           email: user?.email,
                           avatar: user?.avatar,
                           role: user?.role,
+                          adminPermissions: user?.adminPermissions,
                         }}
                         onLogout={handleLogout}
                         onNavigate={userMenu.close}
@@ -635,7 +631,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
               )}
             </div>
 
-            {/* Mobile search — always open on shop listing; toggle on PDP and elsewhere */}
+            {/* Mobile search - always open on shop listing; toggle on PDP and elsewhere */}
             {!isCheckoutFlow && (persistMobileSearch || isSearchOpen) && (
               <div
                 id='mobile-search-panel'
@@ -670,7 +666,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
         </header>
       </div>
 
-      {/* Mobile drawer — above bottom tab bar */}
+      {/* Mobile drawer - above bottom tab bar */}
       {isMenuOpen && (
         <div
           id='mobile-nav-drawer'
@@ -820,17 +816,17 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
                       href='/cart'
                       className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/80 transition-colors hover:border-[#c5a059] hover:bg-navy-900 hover:text-[#c5a059]'
                     >
-                      <ShoppingBag
+                      <BagIcon
                         className='w-4 h-4 shrink-0 text-[#c5a059]/70'
                         strokeWidth={1.5}
                       />{" "}
                       Cart
                     </Link>
 
-                    {user?.role === "admin" && (
+                    {isAdminPanelUser(user ?? undefined) && (
                       <Link
                         onClick={() => setIsMenuOpen(false)}
-                        href='/admin'
+                        href={defaultAdminHomeHref(user ?? undefined)}
                         className='flex items-center gap-3 border-l-2 border-transparent px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c5a059] transition-colors hover:border-[#c5a059] hover:bg-navy-900'
                       >
                         <Shield className='w-4 h-4 shrink-0' /> Admin Panel
@@ -908,7 +904,7 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
         </div>
       )}
 
-      {/* Mobile bottom navigation — solid bg (no backdrop-blur / alpha bg: avoids “white bar” + invisible white icons on iOS/WebKit) */}
+      {/* Mobile bottom navigation - solid bg (no backdrop-blur / alpha bg: avoids “white bar” + invisible white icons on iOS/WebKit) */}
       {showMobileBottomNav && (
         <nav
           className='lg:hidden fixed bottom-0 inset-x-0 z-[90] box-border border-t border-navy-700 bg-navy-950 pb-[env(safe-area-inset-bottom,0px)] text-white shadow-[0_-8px_32px_rgba(20,25,47,0.55)] [color-scheme:dark]'

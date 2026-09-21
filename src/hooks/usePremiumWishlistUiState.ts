@@ -3,7 +3,7 @@ import { useClientMounted } from "./useClientMounted";
 
 const EMPTY_SLUGS: string[] = [];
 
-/** Slug heart state safe for SSR — waits for mount + persist rehydration. */
+/** Slug heart state safe for SSR - waits for mount + persist rehydration. */
 export function usePremiumWishlistUiState(slug: string): boolean {
   const mounted = useClientMounted();
   const hasHydrated = usePremiumWishlistStore((s) => s._hasHydrated);

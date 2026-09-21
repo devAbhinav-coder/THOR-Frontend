@@ -1,6 +1,6 @@
 /**
  * VAPID public keys are URL-safe base64; PushManager expects a Uint8Array.
- * Browser-only — call only in the client after `typeof window !== "undefined"`.
+ * Browser-only - call only in the client after `typeof window !== "undefined"`.
  */
 export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);

@@ -66,9 +66,17 @@ function buildMetadataFromBlog(blog: Blog, safeSlug: string, appUrl: string) {
       title: serpTitle,
       description,
       url: `${appUrl}/blog/${safeSlug}`,
-      images: image ?
-        [{ url: image, alt: fallbackTitle, width: 1200, height: 630 }]
-      : [{ url: `${appUrl}/ogimage.png`, alt: fallbackTitle, width: 1200, height: 630 }],
+      images:
+        image ?
+          [{ url: image, alt: fallbackTitle, width: 1200, height: 630 }]
+        : [
+            {
+              url: `${appUrl}/ogimage.png`,
+              alt: fallbackTitle,
+              width: 1200,
+              height: 630,
+            },
+          ],
       type: "article" as const,
       siteName: "The House of Rani",
       locale: "en_IN",
@@ -100,7 +108,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!apiUrl) {
     return {
       title: templatedPageTitle(fallbackTitle),
-      description: `Read ${fallbackTitle} on The House of Rani Journal — saree styling, ethnic wear tips, and celebration inspiration.`,
+      description: `Read ${fallbackTitle} on The House of Rani Journal - saree styling, ethnic wear tips, and celebration inspiration.`,
       alternates: { canonical: `/blog/${safeSlug}` },
     };
   }

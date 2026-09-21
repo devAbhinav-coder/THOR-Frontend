@@ -295,7 +295,9 @@ export default function AdminExpensesPage() {
 
   const invalidateExpenses = () => {
     void queryClient.invalidateQueries({ queryKey: ["admin-expenses"] });
-    void queryClient.invalidateQueries({ queryKey: ["admin-expenses-summary"] });
+    void queryClient.invalidateQueries({
+      queryKey: ["admin-expenses-summary"],
+    });
   };
 
   const voidMutation = useMutation({
@@ -382,7 +384,7 @@ export default function AdminExpensesPage() {
               },
               {
                 label: "Top category",
-                value: summary.byCategory[0]?.label ?? "—",
+                value: summary.byCategory[0]?.label ?? "-",
                 sub:
                   summary.byCategory[0] ?
                     formatPrice(summary.byCategory[0].total)
@@ -411,7 +413,7 @@ export default function AdminExpensesPage() {
                 <div>
                   <h2 className='font-bold text-gray-900'>Spend heatmap</h2>
                   <p className='text-xs text-gray-500'>
-                    Category × month — darker = higher spend
+                    Category × month - darker = higher spend
                   </p>
                 </div>
               </div>
@@ -527,11 +529,14 @@ export default function AdminExpensesPage() {
                     colSpan={6}
                     className='py-12 text-center text-gray-400 text-sm'
                   >
-                    No expenses yet — add shipping, packing, or ad spend above.
+                    No expenses yet - add shipping, packing, or ad spend above.
                   </td>
                 </tr>
               : expenses.map((e) => (
-                  <tr key={e._id} className='hover:bg-brand-50/50 transition-colors duration-200 group'>
+                  <tr
+                    key={e._id}
+                    className='hover:bg-brand-50/50 transition-colors duration-200 group'
+                  >
                     <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>
                       {formatDate(e.expenseDate)}
                     </td>
@@ -613,7 +618,7 @@ export default function AdminExpensesPage() {
         >
           Security audit
         </Link>{" "}
-        (operating_expense.* events) — not mixed with inventory stock log.
+        (operating_expense.* events) - not mixed with inventory stock log.
       </p>
 
       {showForm && (

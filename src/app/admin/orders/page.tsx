@@ -3,7 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Calendar,
   ChevronDown,
@@ -238,7 +243,9 @@ export default function AdminOrdersPage() {
         },
       );
       void queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
-      void queryClient.invalidateQueries({ queryKey: ["admin-orders-analytics"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-orders-analytics"],
+      });
     },
     onError: (err: unknown) => {
       const error = err as { message?: string };
@@ -268,7 +275,9 @@ export default function AdminOrdersPage() {
         toast.success(`Status updated to ${vars.payload.status}`);
       }
       void queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
-      void queryClient.invalidateQueries({ queryKey: ["admin-orders-analytics"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-orders-analytics"],
+      });
     },
     onError: (err: unknown) => {
       toast.error(
@@ -361,8 +370,12 @@ export default function AdminOrdersPage() {
       <div className='p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto space-y-8'>
         <AdminPageHeader
           title='Orders'
-          badge={pagination.total > 0 ? `${pagination.total.toLocaleString()} total` : undefined}
-          description='Fulfil, track, and update status — click any row for the full order.'
+          badge={
+            pagination.total > 0 ?
+              `${pagination.total.toLocaleString()} total`
+            : undefined
+          }
+          description='Fulfil, track, and update status - click any row for the full order.'
           actions={
             <>
               <Button
@@ -373,7 +386,9 @@ export default function AdminOrdersPage() {
                 onClick={handleRefreshList}
                 disabled={isRefreshing || isLoading}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
               <Link
@@ -402,7 +417,7 @@ export default function AdminOrdersPage() {
 
         {/* Stats: today pulse + month + pipeline */}
         <div className='grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4'>
-          {/* Revenue highlight — month */}
+          {/* Revenue highlight - month */}
           <div className='col-span-2 sm:col-span-2 xl:col-span-2 relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-shadow hover:shadow-md bg-gradient-to-br from-navy-900 to-navy-800 border-navy-700 text-white'>
             <div className='flex items-start justify-between gap-2'>
               <div>
@@ -410,13 +425,23 @@ export default function AdminOrdersPage() {
                   This Month
                 </p>
                 <p className='mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-white'>
-                  {analytics ? formatPrice(analytics.overview.monthRevenue) : "—"}
+                  {analytics ?
+                    formatPrice(analytics.overview.monthRevenue)
+                  : "-"}
                 </p>
                 <p className='mt-0.5 text-[11px] text-navy-400'>
                   {analytics?.overview.monthOrders || 0} orders
                   {analytics && analytics.overview.revenueGrowth != null && (
-                    <span className={cn('ml-1 font-semibold', analytics.overview.revenueGrowth >= 0 ? "text-emerald-400" : "text-amber-300")}>
-                      ({analytics.overview.revenueGrowth >= 0 ? "▲" : "▼"} {Math.abs(Math.round(analytics.overview.revenueGrowth))}%)
+                    <span
+                      className={cn(
+                        "ml-1 font-semibold",
+                        analytics.overview.revenueGrowth >= 0 ?
+                          "text-emerald-400"
+                        : "text-amber-300",
+                      )}
+                    >
+                      ({analytics.overview.revenueGrowth >= 0 ? "▲" : "▼"}{" "}
+                      {Math.abs(Math.round(analytics.overview.revenueGrowth))}%)
                     </span>
                   )}
                 </p>
@@ -435,10 +460,15 @@ export default function AdminOrdersPage() {
                   Today
                 </p>
                 <p className='mt-1.5 text-2xl font-bold text-gray-900 tabular-nums tracking-tight'>
-                  {analytics != null ? formatPrice(analytics.overview.revenueToday ?? 0) : '—'}
+                  {analytics != null ?
+                    formatPrice(analytics.overview.revenueToday ?? 0)
+                  : "-"}
                 </p>
                 <p className='mt-0.5 text-[11px] text-gray-500'>
-                  {analytics != null ? (analytics.overview.ordersToday ?? 0).toLocaleString() : '—'} orders today
+                  {analytics != null ?
+                    (analytics.overview.ordersToday ?? 0).toLocaleString()
+                  : "-"}{" "}
+                  orders today
                 </p>
               </div>
               <div className='h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 text-blue-700'>
@@ -466,7 +496,9 @@ export default function AdminOrdersPage() {
                 onClick={() => setStatusFilter(isSelected ? "" : status)}
                 className={cn(
                   "relative overflow-hidden rounded-2xl border p-4 text-left transition-all hover:shadow-md",
-                  isSelected ? "bg-white shadow-md ring-2 ring-brand-400 border-transparent scale-[1.02]" : "bg-gradient-to-br from-slate-50 to-white border-slate-200/80 shadow-sm",
+                  isSelected ?
+                    "bg-white shadow-md ring-2 ring-brand-400 border-transparent scale-[1.02]"
+                  : "bg-gradient-to-br from-slate-50 to-white border-slate-200/80 shadow-sm",
                 )}
               >
                 <div className='flex items-start justify-between gap-2'>
@@ -478,7 +510,13 @@ export default function AdminOrdersPage() {
                       {count}
                     </p>
                   </div>
-                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", meta.bg, meta.text)}>
+                  <div
+                    className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
+                      meta.bg,
+                      meta.text,
+                    )}
+                  >
                     {meta.icon}
                   </div>
                 </div>
@@ -487,729 +525,839 @@ export default function AdminOrdersPage() {
           })}
         </div>
 
-      {/* Order analytics: volume trend + status mix (no revenue chart here) */}
-      {analytics &&
-        (analytics.revenueByMonth.length > 0 ||
-          analytics.ordersByStatus.length > 0) && (
-          <OrdersInsightsPanel analytics={analytics} />
+        {/* Order analytics: volume trend + status mix (no revenue chart here) */}
+        {analytics &&
+          (analytics.revenueByMonth.length > 0 ||
+            analytics.ordersByStatus.length > 0) && (
+            <OrdersInsightsPanel analytics={analytics} />
+          )}
+
+        {ordersLoadError && !isLoading && (
+          <AdminErrorState
+            title='Couldn’t load orders'
+            message='Check your API connection and permissions, then try again.'
+            onRetry={() => void refetchOrders()}
+          />
         )}
 
-      {ordersLoadError && !isLoading && (
-        <AdminErrorState
-          title='Couldn’t load orders'
-          message='Check your API connection and permissions, then try again.'
-          onRetry={() => void refetchOrders()}
-        />
-      )}
-
-      {/* Filters + list */}
-      {!ordersLoadError && (
-        <section className='rounded-2xl border border-gray-200/80 bg-white shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] flex flex-col'>
-          <div className='sticky top-0 z-20 px-4 sm:px-6 py-4 border-b border-gray-100 bg-white/95 backdrop-blur-md flex flex-wrap items-center gap-3 shadow-sm rounded-t-2xl'>
-            <SearchField
-              value={search}
-              onChange={setSearch}
-              placeholder='Search order #, name or email…'
-              isLoading={search.trim() !== debouncedSearch}
-              className='flex-1 min-w-[200px]'
-              aria-label='Search orders'
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className='h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 font-medium text-gray-700'
-            >
-              <option value=''>All Statuses</option>
-              {ORDER_STATUSES.map((s) => (
-                <option key={s} value={s} className='capitalize'>{s}</option>
-              ))}
-            </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className='h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 font-medium text-gray-700'
-            >
-              <option value='newest'>Newest first</option>
-              <option value='oldest'>Oldest first</option>
-              <option value='value_high'>High → Low value</option>
-              <option value='value_low'>Low → High value</option>
-            </select>
-            <button
-              type='button'
-              onClick={() => setMissingManualCostFilter((v) => !v)}
-              className={cn(
-                'h-10 px-3 rounded-xl text-sm font-semibold border transition-colors',
-                missingManualCostFilter ?
-                  'bg-amber-100 border-amber-300 text-amber-900'
-                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50',
-              )}
-              title='Offline/B2B orders with manual category lines missing cost of goods'
-            >
-              Missing COGS
-            </button>
-            <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
-              {orders.length} / {pagination.total || orders.length} shown
-            </span>
-            <div className='ml-auto flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm'>
-              <button type='button' onClick={() => setViewMode('table')}
-                className={`h-9 w-9 grid place-items-center transition-colors ${viewMode === 'table' ? 'bg-navy-900 text-white' : 'text-gray-400 hover:bg-gray-50'}`}
-                title='Table view'><List className='h-4 w-4' /></button>
-              <button type='button' onClick={() => setViewMode('grid')}
-                className={`h-9 w-9 grid place-items-center transition-colors ${viewMode === 'grid' ? 'bg-navy-900 text-white' : 'text-gray-400 hover:bg-gray-50'}`}
-                title='Grid view'><LayoutGrid className='h-4 w-4' /></button>
-            </div>
-          </div>
-
-          <div className='px-4 sm:px-6 py-3 border-b border-gray-100 bg-gray-50/50'>
-            <RevenueChannelFilter
-              channel={channelFilter}
-              onChange={setChannelFilter}
-              disabled={isLoading}
-            />
-            {(channelFilter !== 'all' || missingManualCostFilter) && (
-              <p className='mt-2 text-[11px] text-gray-500'>
-                {channelFilter === 'online' && 'Website checkout orders only.'}
-                {channelFilter === 'offline' && 'Stall & personal POS sales only (excludes B2B).'}
-                {channelFilter === 'b2b' && 'Wholesale B2B orders only.'}
-                {missingManualCostFilter && (
-                  <>
-                    {channelFilter !== 'all' ? ' · ' : ''}
-                    Showing paid offline/B2B orders with manual lines missing cost of goods.
-                  </>
+        {/* Filters + list */}
+        {!ordersLoadError && (
+          <section className='rounded-2xl border border-gray-200/80 bg-white shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] flex flex-col'>
+            <div className='sticky top-0 z-20 px-4 sm:px-6 py-4 border-b border-gray-100 bg-white/95 backdrop-blur-md flex flex-wrap items-center gap-3 shadow-sm rounded-t-2xl'>
+              <SearchField
+                value={search}
+                onChange={setSearch}
+                placeholder='Search order #, name or email…'
+                isLoading={search.trim() !== debouncedSearch}
+                className='flex-1 min-w-[200px]'
+                aria-label='Search orders'
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className='h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 font-medium text-gray-700'
+              >
+                <option value=''>All Statuses</option>
+                {ORDER_STATUSES.map((s) => (
+                  <option key={s} value={s} className='capitalize'>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className='h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 font-medium text-gray-700'
+              >
+                <option value='newest'>Newest first</option>
+                <option value='oldest'>Oldest first</option>
+                <option value='value_high'>High → Low value</option>
+                <option value='value_low'>Low → High value</option>
+              </select>
+              <button
+                type='button'
+                onClick={() => setMissingManualCostFilter((v) => !v)}
+                className={cn(
+                  "h-10 px-3 rounded-xl text-sm font-semibold border transition-colors",
+                  missingManualCostFilter ?
+                    "bg-amber-100 border-amber-300 text-amber-900"
+                  : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50",
                 )}
-              </p>
-            )}
-          </div>
+                title='Offline/B2B orders with manual category lines missing cost of goods'
+              >
+                Missing COGS
+              </button>
+              <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
+                {orders.length} / {pagination.total || orders.length} shown
+              </span>
+              <div className='ml-auto flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm'>
+                <button
+                  type='button'
+                  onClick={() => setViewMode("table")}
+                  className={`h-9 w-9 grid place-items-center transition-colors ${viewMode === "table" ? "bg-navy-900 text-white" : "text-gray-400 hover:bg-gray-50"}`}
+                  title='Table view'
+                >
+                  <List className='h-4 w-4' />
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setViewMode("grid")}
+                  className={`h-9 w-9 grid place-items-center transition-colors ${viewMode === "grid" ? "bg-navy-900 text-white" : "text-gray-400 hover:bg-gray-50"}`}
+                  title='Grid view'
+                >
+                  <LayoutGrid className='h-4 w-4' />
+                </button>
+              </div>
+            </div>
 
-          {/* Tablet / desktop table */}
-          {viewMode === 'table' && (
-            <div className='hidden md:block overflow-x-auto overflow-y-hidden [scrollbar-width:thin]'>
-              <table className='w-full text-sm border-collapse min-w-[700px]'>
-                <thead>
-                  <tr className='bg-gradient-to-r from-gray-50/80 to-white text-[11px] text-gray-500 uppercase tracking-widest border-b border-gray-100 shadow-[0_1px_2px_rgba(0,0,0,0.02)]'>
-                    <th className='text-left px-5 py-4 font-bold'>Order #</th>
-                    <th className='text-left px-4 py-4 font-bold'>Customer</th>
-                    <th className='text-left px-4 py-4 font-bold'>Date</th>
-                    <th className='text-left px-4 py-4 font-bold'>Items</th>
-                    <th className='text-left px-4 py-4 font-bold'>Total</th>
-                    <th className='text-left px-4 py-4 font-bold'>Payment</th>
-                    <th className='text-left px-4 py-4 font-bold'>Status</th>
-                    <th className='text-left px-4 py-4 font-bold'>Action</th>
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-gray-50 bg-white'>
-                  {isLoading ?
-                    [...Array(5)].map((_, i) => (
-                      <tr key={i}>
-                        <td colSpan={8} className='px-5 py-4'>
-                          <div className='h-4 bg-gray-100 rounded-lg animate-pulse' />
-                        </td>
-                      </tr>
-                    ))
-                  : orders.map((order) => (
-                      <tr
-                        key={order._id}
-                        className='group hover:bg-brand-50/40 transition-all cursor-pointer hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent'
-                        onClick={() => {
-                          if (navigatingTo === order._id) return;
-                          setNavigatingTo(order._id);
-                          router.push(`/admin/orders/${encodeURIComponent(order._id)}`);
-                        }}
-                      >
-                        <td className='px-5 py-4'>
+            <div className='px-4 sm:px-6 py-3 border-b border-gray-100 bg-gray-50/50'>
+              <RevenueChannelFilter
+                channel={channelFilter}
+                onChange={setChannelFilter}
+                disabled={isLoading}
+              />
+              {(channelFilter !== "all" || missingManualCostFilter) && (
+                <p className='mt-2 text-[11px] text-gray-500'>
+                  {channelFilter === "online" &&
+                    "Website checkout orders only."}
+                  {channelFilter === "offline" &&
+                    "Stall & personal POS sales only (excludes B2B)."}
+                  {channelFilter === "b2b" && "Wholesale B2B orders only."}
+                  {missingManualCostFilter && (
+                    <>
+                      {channelFilter !== "all" ? " · " : ""}
+                      Showing paid offline/B2B orders with manual lines missing
+                      cost of goods.
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+
+            {/* Tablet / desktop table */}
+            {viewMode === "table" && (
+              <div className='hidden md:block overflow-x-auto overflow-y-hidden [scrollbar-width:thin]'>
+                <table className='w-full text-sm border-collapse min-w-[700px]'>
+                  <thead>
+                    <tr className='bg-gradient-to-r from-gray-50/80 to-white text-[11px] text-gray-500 uppercase tracking-widest border-b border-gray-100 shadow-[0_1px_2px_rgba(0,0,0,0.02)]'>
+                      <th className='text-left px-5 py-4 font-bold'>Order #</th>
+                      <th className='text-left px-4 py-4 font-bold'>
+                        Customer
+                      </th>
+                      <th className='text-left px-4 py-4 font-bold'>Date</th>
+                      <th className='text-left px-4 py-4 font-bold'>Items</th>
+                      <th className='text-left px-4 py-4 font-bold'>Total</th>
+                      <th className='text-left px-4 py-4 font-bold'>Payment</th>
+                      <th className='text-left px-4 py-4 font-bold'>Status</th>
+                      <th className='text-left px-4 py-4 font-bold'>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className='divide-y divide-gray-50 bg-white'>
+                    {isLoading ?
+                      [...Array(5)].map((_, i) => (
+                        <tr key={i}>
+                          <td colSpan={8} className='px-5 py-4'>
+                            <div className='h-4 bg-gray-100 rounded-lg animate-pulse' />
+                          </td>
+                        </tr>
+                      ))
+                    : orders.map((order) => (
+                        <tr
+                          key={order._id}
+                          className='group hover:bg-brand-50/40 transition-all cursor-pointer hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent'
+                          onClick={() => {
+                            if (navigatingTo === order._id) return;
+                            setNavigatingTo(order._id);
+                            router.push(
+                              `/admin/orders/${encodeURIComponent(order._id)}`,
+                            );
+                          }}
+                        >
+                          <td className='px-5 py-4'>
+                            <div className='flex items-center gap-2'>
+                              {navigatingTo === order._id && (
+                                <span className='h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin' />
+                              )}
+                              <p className='text-sm font-bold text-brand-600 group-hover:text-brand-700 transition-colors'>
+                                {order.orderNumber}
+                              </p>
+                              {(() => {
+                                const badge = orderChannelBadge(order);
+                                return badge ?
+                                    <span
+                                      className={cn(
+                                        "text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border",
+                                        badge.className,
+                                      )}
+                                    >
+                                      {badge.label}
+                                    </span>
+                                  : null;
+                              })()}
+                              {orderHasMissingManualLineCost(order) ?
+                                <span className='text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
+                                  COGS missing (
+                                  {countMissingManualLineCosts(order)})
+                                </span>
+                              : null}
+                              {(
+                                formatMarketingAttributionSummary(
+                                  order.marketingAttribution,
+                                )
+                              ) ?
+                                <p className='text-[10px] font-medium text-emerald-700 truncate max-w-[140px]'>
+                                  {formatMarketingAttributionSummary(
+                                    order.marketingAttribution,
+                                  )}
+                                </p>
+                              : null}
+                            </div>
+                          </td>
+                          <td className='px-4 py-4'>
+                            <p className='text-sm font-semibold text-gray-900 leading-tight'>
+                              {typeof order.user === "object" ?
+                                (order.user?.name ?? "-")
+                              : "-"}
+                            </p>
+                            <p className='text-[11px] text-gray-400 mt-0.5 truncate max-w-[160px]'>
+                              {typeof order.user === "object" ?
+                                order.user?.email
+                              : ""}
+                            </p>
+                          </td>
+                          <td className='px-4 py-4 text-sm text-gray-500 whitespace-nowrap'>
+                            {formatDate(order.createdAt)}
+                          </td>
+                          <td className='px-4 py-4'>
+                            <span className='inline-flex items-center justify-center h-6 min-w-[1.5rem] rounded-lg bg-gray-100 text-xs font-bold text-gray-600 px-2'>
+                              {(order.items ?? []).length}
+                            </span>
+                          </td>
+                          <td className='px-4 py-4 text-sm font-bold text-gray-900'>
+                            {formatPrice(order.total)}
+                          </td>
+                          <td className='px-4 py-4'>
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize ring-1 ring-inset",
+                                order.paymentStatus === "paid" ?
+                                  "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                                : order.paymentStatus === "failed" ?
+                                  "bg-red-50 text-red-700 ring-red-200"
+                                : "bg-amber-50 text-amber-700 ring-amber-200",
+                              )}
+                            >
+                              {order.paymentStatus === "paid" ?
+                                "✓"
+                              : order.paymentStatus === "failed" ?
+                                "✕"
+                              : "○"}{" "}
+                              {order.paymentStatus}
+                            </span>
+                          </td>
+                          <td className='px-4 py-4'>
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize shadow-sm",
+                                getOrderStatusColor(order.status),
+                              )}
+                            >
+                              {STATUS_META[order.status]?.icon}
+                              {order.status}
+                            </span>
+                          </td>
+                          <td
+                            className='px-4 py-4'
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className='flex items-center gap-2'>
+                              <div className='relative group/btn inline-block'>
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  disabled={updatingOrder === order._id}
+                                  className='text-xs h-8 px-3 rounded-lg border-gray-200 hover:border-brand-300 hover:bg-brand-50'
+                                >
+                                  {updatingOrder === order._id ?
+                                    <span className='h-3 w-3 rounded-full border-2 border-gray-400 border-t-gray-800 animate-spin' />
+                                  : <>
+                                      <span>Update</span>
+                                      <ChevronDown className='h-3 w-3 ml-1' />
+                                    </>
+                                  }
+                                </Button>
+                                <div className='absolute right-0 top-full mt-1 bg-white shadow-2xl rounded-xl py-1.5 min-w-[150px] opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all z-20 border border-gray-100'>
+                                  {getNextStatuses(order.status).map(
+                                    (status) => (
+                                      <button
+                                        key={status}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          updateStatus(order._id, status);
+                                        }}
+                                        className={cn(
+                                          "flex items-center gap-2 w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize transition-colors rounded-lg mx-1 w-[calc(100%-8px)]",
+                                          STATUS_META[status]?.text,
+                                        )}
+                                      >
+                                        {STATUS_META[status]?.icon}
+                                        {status}
+                                      </button>
+                                    ),
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteOrder(order._id);
+                                }}
+                                className='p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50'
+                                title='Delete Order'
+                              >
+                                <Trash2 className='h-4 w-4' />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    }
+                    {isLoadingMore && (
+                      <>
+                        {[...Array(3)].map((_, i) => (
+                          <tr key={`load-more-table-${i}`}>
+                            <td colSpan={8} className='px-5 py-4'>
+                              <div className='h-4 w-full animate-pulse rounded bg-gray-100' />
+                            </td>
+                          </tr>
+                        ))}
+                      </>
+                    )}
+                    {!isLoading &&
+                      !isLoadingMore &&
+                      !hasMore &&
+                      orders.length > 0 && (
+                        <tr>
+                          <td
+                            colSpan={8}
+                            className='px-5 py-6 text-center text-xs font-semibold text-gray-500'
+                          >
+                            You’ve reached the end of the orders list.
+                          </td>
+                        </tr>
+                      )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {viewMode === "grid" && (
+              <div className='hidden md:grid grid-cols-2 xl:grid-cols-3 gap-4 p-4'>
+                {isLoading ?
+                  [...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className='h-48 rounded-2xl bg-gray-100 animate-pulse'
+                    />
+                  ))
+                : orders.map((order) => (
+                    <div
+                      key={order._id}
+                      className='rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-brand-300 overflow-hidden group flex flex-col'
+                    >
+                      <div className='p-4 border-b border-gray-50 flex items-start justify-between gap-2 bg-gradient-to-r from-gray-50/40 to-white'>
+                        <div className='min-w-0'>
                           <div className='flex items-center gap-2'>
                             {navigatingTo === order._id && (
-                              <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
+                              <span className='h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin' />
                             )}
-                            <p className='text-sm font-bold text-brand-600 group-hover:text-brand-700 transition-colors'>{order.orderNumber}</p>
+                            <p className='text-sm font-bold text-gray-900 group-hover:text-brand-600 transition-colors'>
+                              {order.orderNumber}
+                            </p>
                             {(() => {
                               const badge = orderChannelBadge(order);
                               return badge ?
-                                  <span className={cn("text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border", badge.className)}>
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border",
+                                      badge.className,
+                                    )}
+                                  >
                                     {badge.label}
                                   </span>
                                 : null;
                             })()}
                             {orderHasMissingManualLineCost(order) ?
                               <span className='text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
-                                COGS missing ({countMissingManualLineCosts(order)})
+                                COGS missing
                               </span>
                             : null}
-                            {formatMarketingAttributionSummary(order.marketingAttribution) ?
-                              <p className='text-[10px] font-medium text-emerald-700 truncate max-w-[140px]'>
-                                {formatMarketingAttributionSummary(order.marketingAttribution)}
-                              </p>
-                            : null}
                           </div>
-                        </td>
-                        <td className='px-4 py-4'>
-                          <p className='text-sm font-semibold text-gray-900 leading-tight'>
-                            {typeof order.user === 'object' ? (order.user?.name ?? '—') : '—'}
+                          <p className='text-xs text-gray-500 mt-0.5 truncate'>
+                            {typeof order.user === "object" ?
+                              (order.user?.name ?? "-")
+                            : "-"}
                           </p>
-                          <p className='text-[11px] text-gray-400 mt-0.5 truncate max-w-[160px]'>
-                            {typeof order.user === 'object' ? order.user?.email : ''}
-                          </p>
-                        </td>
-                        <td className='px-4 py-4 text-sm text-gray-500 whitespace-nowrap'>{formatDate(order.createdAt)}</td>
-                        <td className='px-4 py-4'>
-                          <span className='inline-flex items-center justify-center h-6 min-w-[1.5rem] rounded-lg bg-gray-100 text-xs font-bold text-gray-600 px-2'>
-                            {(order.items ?? []).length}
-                          </span>
-                        </td>
-                        <td className='px-4 py-4 text-sm font-bold text-gray-900'>{formatPrice(order.total)}</td>
-                        <td className='px-4 py-4'>
-                          <span className={cn('inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize ring-1 ring-inset',
-                            order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                            : order.paymentStatus === 'failed' ? 'bg-red-50 text-red-700 ring-red-200'
-                            : 'bg-amber-50 text-amber-700 ring-amber-200')}>
-                            {order.paymentStatus === 'paid' ? '✓' : order.paymentStatus === 'failed' ? '✕' : '○'} {order.paymentStatus}
-                          </span>
-                        </td>
-                        <td className='px-4 py-4'>
-                          <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full capitalize shadow-sm', getOrderStatusColor(order.status))}>
-                            {STATUS_META[order.status]?.icon}
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className='px-4 py-4' onClick={(e) => e.stopPropagation()}>
-                          <div className='flex items-center gap-2'>
-                            <div className='relative group/btn inline-block'>
-                              <Button variant='outline' size='sm' disabled={updatingOrder === order._id}
-                                className='text-xs h-8 px-3 rounded-lg border-gray-200 hover:border-brand-300 hover:bg-brand-50'>
-                                {updatingOrder === order._id
-                                  ? <span className='h-3 w-3 rounded-full border-2 border-gray-400 border-t-gray-800 animate-spin' />
-                                  : <><span>Update</span><ChevronDown className='h-3 w-3 ml-1' /></>}
-                              </Button>
-                              <div className='absolute right-0 top-full mt-1 bg-white shadow-2xl rounded-xl py-1.5 min-w-[150px] opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all z-20 border border-gray-100'>
-                                {getNextStatuses(order.status).map((status) => (
-                                  <button key={status}
-                                    onClick={(e) => { e.stopPropagation(); updateStatus(order._id, status); }}
-                                    className={cn('flex items-center gap-2 w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize transition-colors rounded-lg mx-1 w-[calc(100%-8px)]', STATUS_META[status]?.text)}>
-                                    {STATUS_META[status]?.icon}{status}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteOrder(order._id);
-                              }}
-                              className='p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50'
-                              title='Delete Order'
-                            >
-                              <Trash2 className='h-4 w-4' />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  }
-                  {isLoadingMore && (
-                    <>
-                      {[...Array(3)].map((_, i) => (
-                        <tr key={`load-more-table-${i}`}>
-                          <td colSpan={8} className='px-5 py-4'>
-                            <div className='h-4 w-full animate-pulse rounded bg-gray-100' />
-                          </td>
-                        </tr>
-                      ))}
-                    </>
-                  )}
-                  {!isLoading &&
-                    !isLoadingMore &&
-                    !hasMore &&
-                    orders.length > 0 && (
-                      <tr>
-                        <td
-                          colSpan={8}
-                          className='px-5 py-6 text-center text-xs font-semibold text-gray-500'
-                        >
-                          You’ve reached the end of the orders list.
-                        </td>
-                      </tr>
-                    )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {viewMode === "grid" && (
-            <div className='hidden md:grid grid-cols-2 xl:grid-cols-3 gap-4 p-4'>
-              {isLoading ?
-                [...Array(6)].map((_, i) => (
-                  <div
-                    key={i}
-                    className='h-48 rounded-2xl bg-gray-100 animate-pulse'
-                  />
-                ))
-              : orders.map((order) => (
-                  <div
-                    key={order._id}
-                    className='rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-brand-300 overflow-hidden group flex flex-col'
-                  >
-                    <div className='p-4 border-b border-gray-50 flex items-start justify-between gap-2 bg-gradient-to-r from-gray-50/40 to-white'>
-                      <div className='min-w-0'>
-                        <div className='flex items-center gap-2'>
-                          {navigatingTo === order._id && (
-                            <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
-                          )}
-                          <p className='text-sm font-bold text-gray-900 group-hover:text-brand-600 transition-colors'>
-                            {order.orderNumber}
-                          </p>
-                          {(() => {
-                            const badge = orderChannelBadge(order);
-                            return badge ?
-                                <span className={cn("text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border", badge.className)}>
-                                  {badge.label}
-                                </span>
-                              : null;
-                          })()}
-                          {orderHasMissingManualLineCost(order) ?
-                            <span className='text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
-                              COGS missing
-                            </span>
-                          : null}
                         </div>
-                        <p className='text-xs text-gray-500 mt-0.5 truncate'>
-                          {typeof order.user === "object" ?
-                            (order.user?.name ?? "—")
-                          : "—"}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          "shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg capitalize shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]",
-                          getOrderStatusColor(order.status),
-                        )}
-                      >
-                        {order.status}
-                      </span>
-                    </div>
-                    <div className='p-4 text-xs text-gray-500 space-y-2 flex-1'>
-                      <div className="flex justify-between items-center">
-                        <span>Date</span>
-                        <span className='text-gray-900 font-medium'>
-                          {formatDate(order.createdAt)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Items</span>
-                        <span className='text-gray-900 font-medium'>
-                          {(order.items ?? []).length}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Total</span>
-                        <span className='text-gray-900 font-bold'>
-                          {formatPrice(order.total)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Payment</span>
                         <span
                           className={cn(
-                            "font-bold capitalize",
-                            order.paymentStatus === "paid" ? "text-green-700"
-                            : order.paymentStatus === "failed" ? "text-red-700"
-                            : "text-amber-700",
+                            "shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg capitalize shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]",
+                            getOrderStatusColor(order.status),
                           )}
                         >
-                          {order.paymentStatus}
+                          {order.status}
                         </span>
                       </div>
-                    </div>
-                    
-                    <div className="px-4 pb-4 mt-auto space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/orders/${encodeURIComponent(order._id)}`}
-                          onClick={() => setNavigatingTo(order._id)}
-                          className='flex-1 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2 text-sm font-bold text-gray-900 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 shadow-sm hover:shadow'
-                        >
-                          {navigatingTo === order._id ? (
-                            <span className="h-4 w-4 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin" />
-                          ) : (
-                            <>
-                              View details
-                              <ChevronRight
-                                className='h-4 w-4 shrink-0 opacity-70'
-                                aria-hidden
-                              />
-                            </>
-                          )}
-                        </Link>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteOrder(order._id);
-                          }}
-                          className='h-9 w-9 flex shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm'
-                          title='Delete Order'
-                        >
-                          <Trash2 className='h-4 w-4' />
-                        </button>
-                      </div>
-                      <div className='pt-3 border-t border-gray-100'>
-                        <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2'>
-                          Change status
-                        </p>
-                        <div className='flex flex-wrap gap-1.5'>
-                          {getNextStatuses(order.status).map((status) => (
-                            <button
-                              key={status}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateStatus(order._id, status);
-                              }}
-                              disabled={updatingOrder === order._id}
-                              className={cn(
-                                "px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm disabled:opacity-50 uppercase tracking-tighter",
-                                STATUS_META[status]?.bg || "bg-gray-50",
-                                STATUS_META[status]?.text || "text-gray-600",
-                                "border-transparent hover:border-gray-200",
-                              )}
-                            >
-                              {status.replace(/_/g, " ")}
-                            </button>
-                          ))}
+                      <div className='p-4 text-xs text-gray-500 space-y-2 flex-1'>
+                        <div className='flex justify-between items-center'>
+                          <span>Date</span>
+                          <span className='text-gray-900 font-medium'>
+                            {formatDate(order.createdAt)}
+                          </span>
                         </div>
+                        <div className='flex justify-between items-center'>
+                          <span>Items</span>
+                          <span className='text-gray-900 font-medium'>
+                            {(order.items ?? []).length}
+                          </span>
+                        </div>
+                        <div className='flex justify-between items-center'>
+                          <span>Total</span>
+                          <span className='text-gray-900 font-bold'>
+                            {formatPrice(order.total)}
+                          </span>
+                        </div>
+                        <div className='flex justify-between items-center'>
+                          <span>Payment</span>
+                          <span
+                            className={cn(
+                              "font-bold capitalize",
+                              order.paymentStatus === "paid" ? "text-green-700"
+                              : order.paymentStatus === "failed" ?
+                                "text-red-700"
+                              : "text-amber-700",
+                            )}
+                          >
+                            {order.paymentStatus}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className='px-4 pb-4 mt-auto space-y-3'>
+                        <div className='flex items-center gap-2'>
+                          <Link
+                            href={`/admin/orders/${encodeURIComponent(order._id)}`}
+                            onClick={() => setNavigatingTo(order._id)}
+                            className='flex-1 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2 text-sm font-bold text-gray-900 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 shadow-sm hover:shadow'
+                          >
+                            {navigatingTo === order._id ?
+                              <span className='h-4 w-4 shrink-0 rounded-full border-2 border-brand-600 border-t-transparent animate-spin' />
+                            : <>
+                                View details
+                                <ChevronRight
+                                  className='h-4 w-4 shrink-0 opacity-70'
+                                  aria-hidden
+                                />
+                              </>
+                            }
+                          </Link>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteOrder(order._id);
+                            }}
+                            className='h-9 w-9 flex shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm'
+                            title='Delete Order'
+                          >
+                            <Trash2 className='h-4 w-4' />
+                          </button>
+                        </div>
+                        <div className='pt-3 border-t border-gray-100'>
+                          <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2'>
+                            Change status
+                          </p>
+                          <div className='flex flex-wrap gap-1.5'>
+                            {getNextStatuses(order.status).map((status) => (
+                              <button
+                                key={status}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(order._id, status);
+                                }}
+                                disabled={updatingOrder === order._id}
+                                className={cn(
+                                  "px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm disabled:opacity-50 uppercase tracking-tighter",
+                                  STATUS_META[status]?.bg || "bg-gray-50",
+                                  STATUS_META[status]?.text || "text-gray-600",
+                                  "border-transparent hover:border-gray-200",
+                                )}
+                              >
+                                {status.replace(/_/g, " ")}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                }
+                {isLoadingMore &&
+                  [...Array(3)].map((_, i) => (
+                    <div
+                      key={`load-more-grid-${i}`}
+                      className='h-48 rounded-2xl bg-gray-100 animate-pulse'
+                    />
+                  ))}
+                {!isLoading &&
+                  !isLoadingMore &&
+                  !hasMore &&
+                  orders.length > 0 && (
+                    <div className='col-span-full text-center text-xs font-semibold text-gray-500 py-1'>
+                      You’ve reached the end of the orders list.
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {/* Mobile cards */}
+            <div className='md:hidden divide-y divide-gray-50'>
+              {isLoading ?
+                [...Array(4)].map((_, i) => (
+                  <div key={i} className='p-4 space-y-2 animate-pulse'>
+                    <div className='flex gap-3'>
+                      <div className='h-14 w-11 rounded-xl bg-gray-100' />
+                      <div className='flex-1 space-y-2'>
+                        <div className='h-4 bg-gray-100 rounded w-2/3' />
+                        <div className='h-3 bg-gray-100 rounded w-1/2' />
                       </div>
                     </div>
                   </div>
                 ))
+              : orders.map((order) => {
+                  const lineItems = order.items ?? [];
+                  const firstLine = lineItems[0];
+                  return (
+                    <div key={order._id} className='p-4'>
+                      <div
+                        className='flex items-start gap-3 cursor-pointer'
+                        onClick={() =>
+                          router.push(
+                            `/admin/orders/${encodeURIComponent(order._id)}`,
+                          )
+                        }
+                      >
+                        {/* Product thumbnail */}
+                        <OrderLineThumbnail
+                          image={firstLine?.image}
+                          name={firstLine?.name}
+                          isOfflineManual={
+                            firstLine?.isOfflineManual ||
+                            firstLine?.slug === "offline-manual-item"
+                          }
+                          className='h-14 w-11 rounded-xl'
+                          sizes='44px'
+                        />
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center justify-between gap-2 flex-wrap'>
+                            <div className='flex items-center gap-1.5 flex-wrap'>
+                              <p className='text-sm font-semibold text-gray-900'>
+                                {order.orderNumber}
+                              </p>
+                              {(() => {
+                                const badge = orderChannelBadge(order);
+                                return badge ?
+                                    <span
+                                      className={cn(
+                                        "text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border",
+                                        badge.className,
+                                      )}
+                                    >
+                                      {badge.label}
+                                    </span>
+                                  : null;
+                              })()}
+                              {orderHasMissingManualLineCost(order) ?
+                                <span className='text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
+                                  COGS missing
+                                </span>
+                              : null}
+                            </div>
+                            <span
+                              className={cn(
+                                "text-xs font-semibold px-2.5 py-1 rounded-full capitalize flex-shrink-0",
+                                getOrderStatusColor(order.status),
+                              )}
+                            >
+                              {order.status}
+                            </span>
+                          </div>
+                          <p className='text-xs text-gray-500 mt-0.5'>
+                            {typeof order.user === "object" ?
+                              order.user?.name
+                            : "-"}
+                          </p>
+                          <div className='flex items-center justify-between mt-1'>
+                            <p className='text-sm font-bold text-gray-900'>
+                              {formatPrice(order.total)}
+                            </p>
+                            <p className='text-xs text-gray-400'>
+                              {formatDate(order.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className='mt-3 pt-3 border-t border-gray-100 space-y-3'>
+                        <div className='flex items-center justify-between'>
+                          <p className='text-xs text-gray-500'>
+                            {lineItems.length} item
+                            {lineItems.length !== 1 ? "s" : ""} · Payment:{" "}
+                            <span className='font-semibold'>
+                              {order.paymentStatus}
+                            </span>
+                          </p>
+                          <button
+                            onClick={() =>
+                              router.push(
+                                `/admin/orders/${encodeURIComponent(order._id)}`,
+                              )
+                            }
+                            className='text-xs font-bold text-brand-600'
+                          >
+                            View Details
+                          </button>
+                        </div>
+                        <div>
+                          <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5'>
+                            Change Status
+                          </p>
+                          <div className='flex flex-wrap gap-1.5'>
+                            {getNextStatuses(order.status).map((status) => (
+                              <button
+                                key={status}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(order._id, status);
+                                }}
+                                disabled={updatingOrder === order._id}
+                                className={cn(
+                                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all disabled:opacity-50 uppercase tracking-tighter",
+                                  STATUS_META[status]?.bg,
+                                  STATUS_META[status]?.text,
+                                  "border-transparent",
+                                )}
+                              >
+                                {status.replace(/_/g, " ")}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
               }
               {isLoadingMore &&
-                [...Array(3)].map((_, i) => (
+                [...Array(2)].map((_, i) => (
                   <div
-                    key={`load-more-grid-${i}`}
-                    className='h-48 rounded-2xl bg-gray-100 animate-pulse'
-                  />
+                    key={`load-more-mobile-${i}`}
+                    className='p-4 space-y-2 animate-pulse'
+                  >
+                    <div className='flex gap-3'>
+                      <div className='h-14 w-11 rounded-xl bg-gray-100' />
+                      <div className='flex-1 space-y-2'>
+                        <div className='h-4 bg-gray-100 rounded w-2/3' />
+                        <div className='h-3 bg-gray-100 rounded w-1/2' />
+                      </div>
+                    </div>
+                  </div>
                 ))}
               {!isLoading &&
                 !isLoadingMore &&
                 !hasMore &&
                 orders.length > 0 && (
-                  <div className='col-span-full text-center text-xs font-semibold text-gray-500 py-1'>
+                  <div className='py-3 text-center text-xs font-semibold text-gray-500'>
                     You’ve reached the end of the orders list.
                   </div>
                 )}
             </div>
-          )}
 
-          {/* Mobile cards */}
-          <div className='md:hidden divide-y divide-gray-50'>
-            {isLoading ?
-              [...Array(4)].map((_, i) => (
-                <div key={i} className='p-4 space-y-2 animate-pulse'>
-                  <div className='flex gap-3'>
-                    <div className='h-14 w-11 rounded-xl bg-gray-100' />
-                    <div className='flex-1 space-y-2'>
-                      <div className='h-4 bg-gray-100 rounded w-2/3' />
-                      <div className='h-3 bg-gray-100 rounded w-1/2' />
-                    </div>
-                  </div>
+            {!isLoading && orders.length === 0 && (
+              <div className='py-16 flex flex-col items-center gap-3 text-center'>
+                <div className='h-14 w-14 rounded-2xl bg-gray-100 flex items-center justify-center'>
+                  <Package className='h-7 w-7 text-gray-300' />
                 </div>
-              ))
-            : orders.map((order) => {
-                const lineItems = order.items ?? [];
-                const firstLine = lineItems[0];
-                return (
-                  <div key={order._id} className='p-4'>
-                    <div
-                      className='flex items-start gap-3 cursor-pointer'
-                      onClick={() =>
-                        router.push(
-                          `/admin/orders/${encodeURIComponent(order._id)}`,
-                        )
-                      }
-                    >
-                      {/* Product thumbnail */}
-                      <OrderLineThumbnail
-                        image={firstLine?.image}
-                        name={firstLine?.name}
-                        isOfflineManual={
-                          firstLine?.isOfflineManual ||
-                          firstLine?.slug === "offline-manual-item"
-                        }
-                        className="h-14 w-11 rounded-xl"
-                        sizes="44px"
-                      />
-                      <div className='flex-1 min-w-0'>
-                        <div className='flex items-center justify-between gap-2 flex-wrap'>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className='text-sm font-semibold text-gray-900'>
-                              {order.orderNumber}
-                            </p>
-                            {(() => {
-                              const badge = orderChannelBadge(order);
-                              return badge ?
-                                  <span className={cn("text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border", badge.className)}>
-                                    {badge.label}
-                                  </span>
-                                : null;
-                            })()}
-                            {orderHasMissingManualLineCost(order) ?
-                              <span className='text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
-                                COGS missing
-                              </span>
-                            : null}
-                          </div>
-                          <span
-                            className={cn(
-                              "text-xs font-semibold px-2.5 py-1 rounded-full capitalize flex-shrink-0",
-                              getOrderStatusColor(order.status),
-                            )}
-                          >
-                            {order.status}
-                          </span>
-                        </div>
-                        <p className='text-xs text-gray-500 mt-0.5'>
-                          {typeof order.user === "object" ?
-                            order.user?.name
-                          : "—"}
-                        </p>
-                        <div className='flex items-center justify-between mt-1'>
-                          <p className='text-sm font-bold text-gray-900'>
-                            {formatPrice(order.total)}
-                          </p>
-                          <p className='text-xs text-gray-400'>
-                            {formatDate(order.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className='mt-3 pt-3 border-t border-gray-100 space-y-3'>
-                      <div className='flex items-center justify-between'>
-                        <p className='text-xs text-gray-500'>
-                          {lineItems.length} item
-                          {lineItems.length !== 1 ? "s" : ""} · Payment:{" "}
-                          <span className='font-semibold'>
-                            {order.paymentStatus}
-                          </span>
-                        </p>
-                        <button
-                          onClick={() =>
-                            router.push(
-                              `/admin/orders/${encodeURIComponent(order._id)}`,
-                            )
-                          }
-                          className='text-xs font-bold text-brand-600'
-                        >
-                          View Details
-                        </button>
-                      </div>
-                      <div>
-                        <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5'>
-                          Change Status
-                        </p>
-                        <div className='flex flex-wrap gap-1.5'>
-                          {getNextStatuses(order.status).map((status) => (
-                            <button
-                              key={status}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateStatus(order._id, status);
-                              }}
-                              disabled={updatingOrder === order._id}
-                              className={cn(
-                                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all disabled:opacity-50 uppercase tracking-tighter",
-                                STATUS_META[status]?.bg,
-                                STATUS_META[status]?.text,
-                                "border-transparent",
-                              )}
-                            >
-                              {status.replace(/_/g, " ")}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            }
-            {isLoadingMore &&
-              [...Array(2)].map((_, i) => (
-                <div
-                  key={`load-more-mobile-${i}`}
-                  className='p-4 space-y-2 animate-pulse'
-                >
-                  <div className='flex gap-3'>
-                    <div className='h-14 w-11 rounded-xl bg-gray-100' />
-                    <div className='flex-1 space-y-2'>
-                      <div className='h-4 bg-gray-100 rounded w-2/3' />
-                      <div className='h-3 bg-gray-100 rounded w-1/2' />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            {!isLoading && !isLoadingMore && !hasMore && orders.length > 0 && (
-              <div className='py-3 text-center text-xs font-semibold text-gray-500'>
-                You’ve reached the end of the orders list.
+                <p className='text-sm font-semibold text-gray-500'>
+                  No orders match your filters
+                </p>
+                <p className='text-xs text-gray-400'>
+                  Try adjusting the status filter or search query
+                </p>
+                {statusFilter && (
+                  <button
+                    onClick={() => setStatusFilter("")}
+                    className='mt-1 text-xs font-bold text-brand-600 hover:underline'
+                  >
+                    Clear filter
+                  </button>
+                )}
               </div>
             )}
-          </div>
+            <div ref={loadMoreRef} className='h-px' aria-hidden />
+          </section>
+        )}
 
-          {!isLoading && orders.length === 0 && (
-            <div className='py-16 flex flex-col items-center gap-3 text-center'>
-              <div className='h-14 w-14 rounded-2xl bg-gray-100 flex items-center justify-center'>
-                <Package className='h-7 w-7 text-gray-300' />
+        {/* Tracking modal */}
+        {trackingOpenFor && (
+          <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm'>
+            <div
+              className='absolute inset-0'
+              onClick={() => setTrackingOpenFor(null)}
+            />
+            <div className='relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden'>
+              <div className='bg-gradient-to-br from-indigo-600 to-indigo-800 p-5 sm:p-6'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15'>
+                    <Truck className='h-5 w-5 text-white' />
+                  </div>
+                  <div>
+                    <p className='text-[10px] font-bold uppercase tracking-widest text-indigo-200'>
+                      Shipping
+                    </p>
+                    <h3 className='text-lg font-bold text-white leading-tight'>
+                      Add tracking details
+                    </h3>
+                  </div>
+                </div>
+                <p className='text-xs text-indigo-200 mt-2 ml-[52px]'>
+                  Customers will see this in their order details page.
+                </p>
               </div>
-              <p className='text-sm font-semibold text-gray-500'>No orders match your filters</p>
-              <p className='text-xs text-gray-400'>Try adjusting the status filter or search query</p>
-              {statusFilter && (
-                <button onClick={() => setStatusFilter('')} className='mt-1 text-xs font-bold text-brand-600 hover:underline'>Clear filter</button>
-              )}
-            </div>
-          )}
-          <div ref={loadMoreRef} className='h-px' aria-hidden />
-        </section>
-      )}
-
-      {/* Tracking modal */}
-      {trackingOpenFor && (
-        <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm'>
-          <div className='absolute inset-0' onClick={() => setTrackingOpenFor(null)} />
-          <div className='relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden'>
-            <div className='bg-gradient-to-br from-indigo-600 to-indigo-800 p-5 sm:p-6'>
-              <div className='flex items-center gap-3'>
-                <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15'>
-                  <Truck className='h-5 w-5 text-white' />
+              <div className='p-4 sm:p-5 space-y-3'>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
+                    Courier
+                  </label>
+                  <input
+                    value={trackingForm.shippingCarrier}
+                    onChange={(e) => {
+                      setTrackingErrors((p) => ({
+                        ...p,
+                        shippingCarrier: undefined,
+                      }));
+                      setTrackingForm((p) => ({
+                        ...p,
+                        shippingCarrier: e.target.value,
+                      }));
+                    }}
+                    placeholder='e.g. Delhivery, BlueDart, FedEx'
+                    className={cn(
+                      "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
+                      trackingErrors.shippingCarrier ?
+                        "border-red-300 bg-red-50/40"
+                      : "border-gray-200",
+                    )}
+                  />
+                  {trackingErrors.shippingCarrier && (
+                    <p className='text-xs text-red-600 mt-1'>
+                      {trackingErrors.shippingCarrier}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <p className='text-[10px] font-bold uppercase tracking-widest text-indigo-200'>Shipping</p>
-                  <h3 className='text-lg font-bold text-white leading-tight'>Add tracking details</h3>
+                  <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
+                    Tracking / AWB number
+                  </label>
+                  <input
+                    value={trackingForm.trackingNumber}
+                    onChange={(e) => {
+                      setTrackingErrors((p) => ({
+                        ...p,
+                        trackingNumber: undefined,
+                      }));
+                      setTrackingForm((p) => ({
+                        ...p,
+                        trackingNumber: e.target.value,
+                      }));
+                    }}
+                    placeholder='e.g. 1234567890'
+                    className={cn(
+                      "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
+                      trackingErrors.trackingNumber ?
+                        "border-red-300 bg-red-50/40"
+                      : "border-gray-200",
+                    )}
+                  />
+                  {trackingErrors.trackingNumber && (
+                    <p className='text-xs text-red-600 mt-1'>
+                      {trackingErrors.trackingNumber}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
+                    Tracking URL (optional)
+                  </label>
+                  <input
+                    value={trackingForm.trackingUrl}
+                    onChange={(e) => {
+                      setTrackingErrors((p) => ({
+                        ...p,
+                        trackingUrl: undefined,
+                      }));
+                      setTrackingForm((p) => ({
+                        ...p,
+                        trackingUrl: e.target.value,
+                      }));
+                    }}
+                    placeholder='https://...'
+                    className={cn(
+                      "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
+                      trackingErrors.trackingUrl ?
+                        "border-red-300 bg-red-50/40"
+                      : "border-gray-200",
+                    )}
+                  />
+                  {trackingErrors.trackingUrl && (
+                    <p className='text-xs text-red-600 mt-1'>
+                      {trackingErrors.trackingUrl}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
+                    Note (optional)
+                  </label>
+                  <input
+                    value={trackingForm.note}
+                    onChange={(e) =>
+                      setTrackingForm((p) => ({ ...p, note: e.target.value }))
+                    }
+                    placeholder='e.g. Dispatched from warehouse'
+                    className='w-full h-11 px-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+                  />
                 </div>
               </div>
-              <p className='text-xs text-indigo-200 mt-2 ml-[52px]'>Customers will see this in their order details page.</p>
-            </div>
-            <div className='p-4 sm:p-5 space-y-3'>
-              <div>
-                <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-                  Courier
-                </label>
-                <input
-                  value={trackingForm.shippingCarrier}
-                  onChange={(e) => {
-                    setTrackingErrors((p) => ({
-                      ...p,
-                      shippingCarrier: undefined,
-                    }));
-                    setTrackingForm((p) => ({
-                      ...p,
-                      shippingCarrier: e.target.value,
-                    }));
-                  }}
-                  placeholder='e.g. Delhivery, BlueDart, FedEx'
-                  className={cn(
-                    "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
-                    trackingErrors.shippingCarrier ?
-                      "border-red-300 bg-red-50/40"
-                    : "border-gray-200",
-                  )}
-                />
-                {trackingErrors.shippingCarrier && (
-                  <p className='text-xs text-red-600 mt-1'>
-                    {trackingErrors.shippingCarrier}
-                  </p>
-                )}
+              <div className='p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex gap-3'>
+                <Button
+                  variant='outline'
+                  className='flex-1 rounded-xl'
+                  onClick={() => setTrackingOpenFor(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant='brand'
+                  className='flex-1 rounded-xl'
+                  loading={updatingOrder === trackingOpenFor}
+                  onClick={submitShipped}
+                >
+                  Mark Shipped
+                </Button>
               </div>
-              <div>
-                <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-                  Tracking / AWB number
-                </label>
-                <input
-                  value={trackingForm.trackingNumber}
-                  onChange={(e) => {
-                    setTrackingErrors((p) => ({
-                      ...p,
-                      trackingNumber: undefined,
-                    }));
-                    setTrackingForm((p) => ({
-                      ...p,
-                      trackingNumber: e.target.value,
-                    }));
-                  }}
-                  placeholder='e.g. 1234567890'
-                  className={cn(
-                    "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
-                    trackingErrors.trackingNumber ?
-                      "border-red-300 bg-red-50/40"
-                    : "border-gray-200",
-                  )}
-                />
-                {trackingErrors.trackingNumber && (
-                  <p className='text-xs text-red-600 mt-1'>
-                    {trackingErrors.trackingNumber}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-                  Tracking URL (optional)
-                </label>
-                <input
-                  value={trackingForm.trackingUrl}
-                  onChange={(e) => {
-                    setTrackingErrors((p) => ({
-                      ...p,
-                      trackingUrl: undefined,
-                    }));
-                    setTrackingForm((p) => ({
-                      ...p,
-                      trackingUrl: e.target.value,
-                    }));
-                  }}
-                  placeholder='https://...'
-                  className={cn(
-                    "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
-                    trackingErrors.trackingUrl ?
-                      "border-red-300 bg-red-50/40"
-                    : "border-gray-200",
-                  )}
-                />
-                {trackingErrors.trackingUrl && (
-                  <p className='text-xs text-red-600 mt-1'>
-                    {trackingErrors.trackingUrl}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-                  Note (optional)
-                </label>
-                <input
-                  value={trackingForm.note}
-                  onChange={(e) =>
-                    setTrackingForm((p) => ({ ...p, note: e.target.value }))
-                  }
-                  placeholder='e.g. Dispatched from warehouse'
-                  className='w-full h-11 px-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-                />
-              </div>
-            </div>
-            <div className='p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex gap-3'>
-              <Button
-                variant='outline'
-                className='flex-1 rounded-xl'
-                onClick={() => setTrackingOpenFor(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant='brand'
-                className='flex-1 rounded-xl'
-                loading={updatingOrder === trackingOpenFor}
-                onClick={submitShipped}
-              >
-                Mark Shipped
-              </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

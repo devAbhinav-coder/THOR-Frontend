@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Phase-0 scroll baseline audit — static checks for known jank / blank-page causes.
+ * Phase-0 scroll baseline audit - static checks for known jank / blank-page causes.
  * Run: npm run scroll:audit
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -32,15 +32,20 @@ function read(rel) {
 
 const files = walk(SRC);
 const fileContents = new Map(
-  files.map((p) => [relative(ROOT, p).replace(/\\/g, "/"), readFileSync(p, "utf8")]),
+  files.map((p) => [
+    relative(ROOT, p).replace(/\\/g, "/"),
+    readFileSync(p, "utf8"),
+  ]),
 );
 
 // --- Check 1: dead sticky pin hook (refs unused in ShopFilterBar) ---
-const filterBar = fileContents.get("src/components/shop/ShopFilterBar.tsx") ?? "";
+const filterBar =
+  fileContents.get("src/components/shop/ShopFilterBar.tsx") ?? "";
 if (filterBar.includes("useShopFilterStickyPin")) {
   const refsUsed =
     filterBar.includes("sentinelRef") &&
-    (filterBar.includes("ref={sentinelRef}") || filterBar.includes("ref={toolbarRef}"));
+    (filterBar.includes("ref={sentinelRef}") ||
+      filterBar.includes("ref={toolbarRef}"));
   if (!refsUsed) {
     findings.push({
       id: "dead-sticky-pin",
@@ -55,13 +60,15 @@ if (filterBar.includes("useShopFilterStickyPin")) {
 }
 
 // --- Check 2: shop cards missing Lenis scroll-hover guard ---
-const shopCard = fileContents.get("src/components/shop/ShopCollectionCard.tsx") ?? "";
+const shopCard =
+  fileContents.get("src/components/shop/ShopCollectionCard.tsx") ?? "";
 if (shopCard && !shopCard.includes("card-hover-zoom")) {
   findings.push({
     id: "shop-card-hover-guard",
     severity: "medium",
     area: "desktop shop scroll",
-    message: "ShopCollectionCard image lacks card-hover-zoom (Lenis scroll transform freeze).",
+    message:
+      "ShopCollectionCard image lacks card-hover-zoom (Lenis scroll transform freeze).",
   });
 } else if (shopCard.includes("card-hover-zoom")) {
   passes.push("shop-card-hover-guard present");
@@ -78,7 +85,8 @@ if (!overscrollMobileSafe && /overscroll-behavior-y:\s*none/.test(globals)) {
     id: "overscroll-none",
     severity: "medium",
     area: "mobile blank on pull-down",
-    message: "body uses overscroll-behavior-y: none globally — known iOS Safari blank-gap risk.",
+    message:
+      "body uses overscroll-behavior-y: none globally - known iOS Safari blank-gap risk.",
   });
 } else if (overscrollMobileSafe) {
   passes.push("overscroll split mobile/desktop");
@@ -87,31 +95,41 @@ if (!overscrollMobileSafe && /overscroll-behavior-y:\s*none/.test(globals)) {
 // --- Check 4: navbar transform hide ---
 const navStyles = fileContents.get("src/lib/navbarStyles.ts") ?? "";
 const navUsesTransformHide =
-  navStyles.includes("-translate-y-full") || navStyles.includes("will-change-transform");
+  navStyles.includes("-translate-y-full") ||
+  navStyles.includes("will-change-transform");
 if (navUsesTransformHide) {
   findings.push({
     id: "nav-transform-hide",
     severity: "medium",
     area: "mobile blank on scroll-up",
-    message: "Navbar uses sticky + translate hide — WebKit compositor repaint risk.",
+    message:
+      "Navbar uses sticky + translate hide - WebKit compositor repaint risk.",
   });
-} else if (navStyles.includes("max-h-0") || navStyles.includes("max-h-[12rem]")) {
+} else if (
+  navStyles.includes("max-h-0") ||
+  navStyles.includes("max-h-[12rem]")
+) {
   passes.push("nav collapse hide (no transform)");
 }
 
 const navbar = fileContents.get("src/components/layout/Navbar.tsx") ?? "";
-if (navbar.includes("!showCommerceMobileShell") && navbar.includes("navAutoHideEnabled")) {
+if (
+  navbar.includes("!showCommerceMobileShell") &&
+  navbar.includes("navAutoHideEnabled")
+) {
   passes.push("commerce nav auto-hide disabled");
 }
 
 // --- Check 5: body scroll lock safety on route change ---
-const smooth = fileContents.get("src/components/providers/SmoothScroll.tsx") ?? "";
+const smooth =
+  fileContents.get("src/components/providers/SmoothScroll.tsx") ?? "";
 if (!smooth.includes("forceUnlockBodyScroll")) {
   findings.push({
     id: "body-lock-safety",
     severity: "high",
     area: "mobile frozen/blank page",
-    message: "No forceUnlockBodyScroll on route change — body can stay position:fixed after modals.",
+    message:
+      "No forceUnlockBodyScroll on route change - body can stay position:fixed after modals.",
   });
 } else {
   passes.push("body-lock route safety present");
@@ -131,7 +149,11 @@ for (const [rel, content] of fileContents) {
   ) {
     continue;
   }
-  if (!rel.includes("hooks/") && !rel.includes("components/") && !rel.includes("providers/")) {
+  if (
+    !rel.includes("hooks/") &&
+    !rel.includes("components/") &&
+    !rel.includes("providers/")
+  ) {
     continue;
   }
   for (const re of listenerPatterns) {
@@ -152,7 +174,8 @@ findings.push({
 
 // --- Check 7: Lenis scoped to marketing paths ---
 const scrollSurface = fileContents.get("src/lib/scrollSurface.ts") ?? "";
-const smoothScroll = fileContents.get("src/components/providers/SmoothScroll.tsx") ?? "";
+const smoothScroll =
+  fileContents.get("src/components/providers/SmoothScroll.tsx") ?? "";
 if (
   scrollSurface.includes("isLenisMarketingPath") &&
   smoothScroll.includes("shouldEnableLenisSmoothScrollForPath")
@@ -163,7 +186,8 @@ if (
     id: "lenis-global",
     severity: "info",
     area: "desktop jank",
-    message: "Lenis still enabled globally on desktop — scope to marketing pages in Phase 3.",
+    message:
+      "Lenis still enabled globally on desktop - scope to marketing pages in Phase 3.",
   });
 }
 

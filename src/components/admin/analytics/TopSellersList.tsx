@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { decodeHtmlEntities } from '@/lib/decodeHtmlEntities';
 import { formatPrice } from '@/lib/utils';
 import type { DashboardAnalytics } from '@/types';
 
@@ -36,7 +37,9 @@ export default function TopSellersList({ products }: { products: Product[] }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {decodeHtmlEntities(p.name)}
+                </p>
                 <p className="text-sm font-bold tabular-nums shrink-0">{formatPrice(p.revenue)}</p>
               </div>
               <div className="flex items-center gap-2">

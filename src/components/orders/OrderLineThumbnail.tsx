@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { Package, PenLine } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { Package, PenLine } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   isUsableOrderLineImage,
   OFFLINE_MANUAL_LINE_PLACEHOLDER_PATH,
-} from '@/lib/offlineOrder';
+} from "@/lib/offlineOrder";
 
 type OrderLineThumbnailProps = {
   image?: string | null;
@@ -20,7 +20,7 @@ type OrderLineThumbnailProps = {
 
 function normalizeThumbnailSrc(image: string): string {
   const url = image.trim();
-  if (url.startsWith('/')) return url;
+  if (url.startsWith("/")) return url;
   return url;
 }
 
@@ -29,7 +29,7 @@ export default function OrderLineThumbnail({
   name,
   isOfflineManual,
   className,
-  sizes = '56px',
+  sizes = "56px",
   onClick,
 }: OrderLineThumbnailProps) {
   const [loadFailed, setLoadFailed] = useState(false);
@@ -45,35 +45,35 @@ export default function OrderLineThumbnail({
   return (
     <div
       className={cn(
-        'relative overflow-hidden bg-gray-50 border border-gray-200 flex-shrink-0',
-        onClick && showImage && 'cursor-pointer',
+        "relative overflow-hidden bg-gray-50 border border-gray-200 flex-shrink-0",
+        onClick && showImage && "cursor-pointer",
         className,
       )}
       onClick={showImage ? onClick : undefined}
-      role={showImage && onClick ? 'button' : undefined}
+      role={showImage && onClick ? "button" : undefined}
     >
       {showImage ?
         <Image
           src={normalizeThumbnailSrc(image!)}
-          alt={name || 'Product'}
+          alt={name || "Product"}
           fill
           sizes={sizes}
-          className="object-cover"
+          className='object-cover'
           onError={() => setLoadFailed(true)}
         />
-      : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400">
-          <Icon className="h-5 w-5" aria-hidden />
-          <span className="sr-only">{name || 'Line item'}</span>
+      : <div className='absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400'>
+          <Icon className='h-5 w-5' aria-hidden />
+          <span className='sr-only'>{name || "Line item"}</span>
         </div>
       }
     </div>
   );
 }
 
-/** Local fashion placeholder — always loads (same-origin SVG). */
+/** Local fashion placeholder - always loads (same-origin SVG). */
 export function OfflineLinePlaceholderThumbnail({
   className,
-  sizes = '44px',
+  sizes = "44px",
 }: {
   className?: string;
   sizes?: string;
@@ -81,16 +81,16 @@ export function OfflineLinePlaceholderThumbnail({
   return (
     <div
       className={cn(
-        'relative overflow-hidden bg-[#fdf8f3] border border-gray-200 flex-shrink-0',
+        "relative overflow-hidden bg-[#fdf8f3] border border-gray-200 flex-shrink-0",
         className,
       )}
     >
       <Image
         src={OFFLINE_MANUAL_LINE_PLACEHOLDER_PATH}
-        alt="Fashion line"
+        alt='Fashion line'
         fill
         sizes={sizes}
-        className="object-cover"
+        className='object-cover'
       />
     </div>
   );

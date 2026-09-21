@@ -7,10 +7,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import {
-  TURNSTILE_ACTION,
-  resolveTurnstileSiteKey,
-} from "@/lib/turnstile";
+import { TURNSTILE_ACTION, resolveTurnstileSiteKey } from "@/lib/turnstile";
 
 declare global {
   interface Window {
@@ -84,7 +81,9 @@ function loadTurnstileScript(): Promise<void> {
   if (scriptPromise) return scriptPromise;
 
   scriptPromise = new Promise<void>((resolve, reject) => {
-    const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+    const existing = document.getElementById(
+      SCRIPT_ID,
+    ) as HTMLScriptElement | null;
     if (existing) {
       if (window.turnstile) {
         resolve();
@@ -144,7 +143,7 @@ function scrubOrphanTurnstileOverlays(keepHost: HTMLElement | null) {
 }
 
 /**
- * Cloudflare Turnstile — deferred execute so auth modal open stays smooth on mobile.
+ * Cloudflare Turnstile - deferred execute so auth modal open stays smooth on mobile.
  */
 export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
   function TurnstileField({ onToken, className }, ref) {
@@ -176,9 +175,7 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
         retryCountRef.current = 0;
         pending.resolve(token.trim());
       } else {
-        pending.reject(
-          new Error("Security check failed. Please try again."),
-        );
+        pending.reject(new Error("Security check failed. Please try again."));
       }
     }, []);
 
@@ -221,7 +218,7 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
             ) {
               retryCountRef.current += 1;
               try {
-                // Only reset after a prior execute — reset-before-first-run
+                // Only reset after a prior execute - reset-before-first-run
                 // surfaces Cloudflare's "Turnstile challenge failed" UI.
                 if (everExecutedRef.current) {
                   window.turnstile.reset(widgetIdRef.current);
@@ -295,9 +292,7 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
             if (pendingRef.current?.promise === promise) {
               pendingRef.current = null;
             }
-            reject(
-              new Error("Security check timed out. Please try again."),
-            );
+            reject(new Error("Security check timed out. Please try again."));
           }, 45_000);
 
           pendingRef.current = { promise, resolve, reject, timer };
@@ -325,9 +320,9 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
                 pendingRef.current = null;
               }
               reject(
-                err instanceof Error ?
-                  err
-                : new Error("Security check failed. Please try again."),
+                err instanceof Error ? err : (
+                  new Error("Security check failed. Please try again.")
+                ),
               );
             }
           })();
@@ -378,7 +373,7 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(
       <div
         ref={hostRef}
         className={className ?? "flex justify-center min-h-[0px] py-0.5"}
-        aria-label="Security verification"
+        aria-label='Security verification'
       />
     );
   },

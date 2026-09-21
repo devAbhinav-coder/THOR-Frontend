@@ -6,7 +6,7 @@ import type {
 
 export type PremiumProductView = PremiumProduct & {
   _id: string;
-  /** Catalog `Product.slug` — used for view counting & cart identity. */
+  /** Catalog `Product.slug` - used for view counting & cart identity. */
   catalogSlug: string;
   variants: Product["variants"];
   totalStock: number;
@@ -28,6 +28,10 @@ export type PremiumProductView = PremiumProduct & {
   tags?: string[];
   seoTitle?: string;
   seoDescription?: string;
+  isCustomizable?: boolean;
+  isGiftable?: boolean;
+  minOrderQty?: number;
+  customFields?: Product["customFields"];
 };
 
 function defaultEditorialOpen(p: Product): PremiumEditorialPanel {
@@ -50,7 +54,8 @@ function defaultEditorialClose(p: Product): PremiumEditorialPanel {
       { label: "Craft", value: p.fabric || "Handloom" },
       {
         label: "Hours",
-        value: p.weaveHours ? `${p.weaveHours}+ hours handloom` : "Artisan woven",
+        value:
+          p.weaveHours ? `${p.weaveHours}+ hours handloom` : "Artisan woven",
       },
     ],
     note: p.description.slice(0, 220),
@@ -78,7 +83,10 @@ export function mapApiProductToPremiumView(p: Product): PremiumProductView {
     saleCampaignId: p.saleCampaignId,
     saleBadge: p.saleBadge,
     heroImage,
-    images: imageUrls.length > 0 ? imageUrls : heroImage ? [heroImage] : [],
+    images:
+      imageUrls.length > 0 ? imageUrls
+      : heroImage ? [heroImage]
+      : [],
     description: p.description,
     shortDescription: p.shortDescription,
     category: p.category,
@@ -100,6 +108,10 @@ export function mapApiProductToPremiumView(p: Product): PremiumProductView {
     totalStock: p.totalStock ?? 0,
     isActive: p.isActive !== false,
     effectivePrice: p.effectivePrice,
+    isCustomizable: p.isCustomizable,
+    isGiftable: p.isGiftable,
+    minOrderQty: p.minOrderQty,
+    customFields: p.customFields,
   };
 }
 

@@ -25,15 +25,21 @@ export function botMessage(
 }
 
 export function userMessage(text: string): ChatMessage {
-  return { id: `u_${Date.now()}_${Math.random().toString(36).slice(2)}`, sender: "user", text, timestamp: Date.now() };
+  return {
+    id: `u_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    sender: "user",
+    text,
+    timestamp: Date.now(),
+  };
 }
 
 export function summarizeOrder(o: Order): OrderSummary {
   const names = (o.items || []).map((i) => i.name).filter(Boolean);
   const preview =
-    names.length === 0
-      ? "Items in order"
-      : names.slice(0, 2).join(" · ") + (names.length > 2 ? ` +${names.length - 2} more` : "");
+    names.length === 0 ?
+      "Items in order"
+    : names.slice(0, 2).join(" · ") +
+      (names.length > 2 ? ` +${names.length - 2} more` : "");
 
   const canCancel = o.status === "pending" || o.status === "confirmed";
 
@@ -63,7 +69,7 @@ function payMethodLabel(o: Order): string {
     case "offline_cash":
       return "Cash";
     default:
-      return "—";
+      return "-";
   }
 }
 
@@ -79,15 +85,16 @@ function itemLines(o: Order): string[] {
 }
 
 export function formatOrderDetailText(o: Order): string {
-  const trackingLine = o.trackingNumber
-    ? `Tracking: ${o.trackingNumber}${o.shippingCarrier ? ` · ${o.shippingCarrier}` : ""}`
+  const trackingLine =
+    o.trackingNumber ?
+      `Tracking: ${o.trackingNumber}${o.shippingCarrier ? ` · ${o.shippingCarrier}` : ""}`
     : "Tracking: not assigned yet (appears after dispatch).";
 
   const lines = [
     `📦 Order ${o.orderNumber}`,
     `Placed: ${formatDate(o.createdAt)}`,
     `Status: ${titleCase(o.status)}`,
-    `Payment: ${payMethodLabel(o)} · ${titleCase(o.paymentStatus || "—")}`,
+    `Payment: ${payMethodLabel(o)} · ${titleCase(o.paymentStatus || "-")}`,
     `Total: ${formatPrice(o.total)}`,
     trackingLine,
     "",
@@ -98,13 +105,13 @@ export function formatOrderDetailText(o: Order): string {
   return lines.join("\n");
 }
 
-/** Compact facts (no status/tracking sentence) — used when a headline blurb
+/** Compact facts (no status/tracking sentence) - used when a headline blurb
  *  already states the status, to avoid repeating everything. */
 export function formatOrderFacts(o: Order): string {
   const lines = [
     `📦 ${o.orderNumber}`,
     `Placed: ${formatDate(o.createdAt)}`,
-    `Payment: ${payMethodLabel(o)} · ${titleCase(o.paymentStatus || "—")}`,
+    `Payment: ${payMethodLabel(o)} · ${titleCase(o.paymentStatus || "-")}`,
     `Total: ${formatPrice(o.total)}`,
     "",
     "Items:",

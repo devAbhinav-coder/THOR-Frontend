@@ -1,7 +1,7 @@
 import type { Product, ProductImage } from "@/types";
 import { normProductColor } from "@/lib/productColorImages";
 
-/** Images for PDP gallery — ONLY the selected color. No cross-color or untagged bleed. */
+/** Images for PDP gallery - ONLY the selected color. No cross-color or untagged bleed. */
 export function resolvePdpImages(
   product: Pick<Product, "images">,
   selectedColor?: string,
@@ -16,7 +16,9 @@ export function resolvePdpImages(
     return all.filter((img) => !normProductColor(img.color));
   }
 
-  const forColor = all.filter((img) => normProductColor(img.color) === colorKey);
+  const forColor = all.filter(
+    (img) => normProductColor(img.color) === colorKey,
+  );
   if (forColor.length > 0) return forColor;
 
   const untagged = all.filter((img) => !normProductColor(img.color));
@@ -25,7 +27,7 @@ export function resolvePdpImages(
   return all;
 }
 
-/** Shop card — strict: only this color's image, no cross-color fallback. */
+/** Shop card - strict: only this color's image, no cross-color fallback. */
 export function resolveShopCardImage(
   product: Pick<Product, "images">,
   displayColor: string,

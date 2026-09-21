@@ -2,10 +2,12 @@ import type { Order } from "@/types";
 
 export type AdminOrderChannel = "online" | "offline" | "b2b";
 
-/** Filter for admin orders/revenue lists — all channels or one. */
+/** Filter for admin orders/revenue lists - all channels or one. */
 export type OrderChannelFilter = "all" | AdminOrderChannel;
 
-export function orderSalesChannel(order: Pick<Order, "offlineMeta">): AdminOrderChannel {
+export function orderSalesChannel(
+  order: Pick<Order, "offlineMeta">,
+): AdminOrderChannel {
   if (!order.offlineMeta) return "online";
   if (order.offlineMeta.source === "b2b") return "b2b";
   return "offline";

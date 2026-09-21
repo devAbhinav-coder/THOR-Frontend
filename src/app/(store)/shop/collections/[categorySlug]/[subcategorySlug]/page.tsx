@@ -32,13 +32,19 @@ interface SubcollectionDetails {
   subcategory: SubCategory;
 }
 
-async function fetchSubcollectionDetails(catSlug: string, subSlug: string): Promise<SubcollectionDetails | null> {
+async function fetchSubcollectionDetails(
+  catSlug: string,
+  subSlug: string,
+): Promise<SubcollectionDetails | null> {
   const apiBase = await getBuildSafeApiBase();
   if (!apiBase) return null;
   try {
-    const res = await fetch(`${apiBase}/collections/${encodeURIComponent(catSlug)}/${encodeURIComponent(subSlug)}`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetch(
+      `${apiBase}/collections/${encodeURIComponent(catSlug)}/${encodeURIComponent(subSlug)}`,
+      {
+        next: { revalidate: 3600 },
+      },
+    );
     if (!res.ok) return null;
     const body = await res.json();
     return body.data as SubcollectionDetails;
@@ -47,14 +53,19 @@ async function fetchSubcollectionDetails(catSlug: string, subSlug: string): Prom
   }
 }
 
-function hasAnyFilters(sp: Record<string, string | string[] | undefined>): boolean {
+function hasAnyFilters(
+  sp: Record<string, string | string[] | undefined>,
+): boolean {
   return Object.values(sp).some((v) => {
     if (typeof v === "string") return Boolean(v.trim());
     return Array.isArray(v) ? v.length > 0 : false;
   });
 }
 
-async function fetchTopSubcollectionProducts(catSlug: string, subSlug: string): Promise<Product[]> {
+async function fetchTopSubcollectionProducts(
+  catSlug: string,
+  subSlug: string,
+): Promise<Product[]> {
   const apiBase = await getBuildSafeApiBase();
   if (!apiBase) return [];
   try {
@@ -78,17 +89,20 @@ export async function generateMetadata({
   searchParams: SearchParamsInput;
 }): Promise<Metadata> {
   const [p, sp] = await Promise.all([params, searchParams]);
-  const details = await fetchSubcollectionDetails(p.categorySlug, p.subcategorySlug);
-  
+  const details = await fetchSubcollectionDetails(
+    p.categorySlug,
+    p.subcategorySlug,
+  );
+
   const fallbackCatName = humanizeSlug(p.categorySlug);
   const fallbackSubName = humanizeSlug(p.subcategorySlug);
-  
+
   const categoryName = details?.category?.name || fallbackCatName;
   const subcategoryName = details?.subcategory?.name || fallbackSubName;
 
   const basePath = `/shop/collections/${encodeURIComponent(p.categorySlug)}/${encodeURIComponent(p.subcategorySlug)}`;
   const filtered = hasAnyFilters(sp);
-  
+
   // Use category page SEO as fallback, but prefix with subcategory
   const fallbackSeo = resolveCategoryPageSeo(categoryName, p.categorySlug);
   const title = buildSubcategoryPageTitle(
@@ -101,10 +115,13 @@ export async function generateMetadata({
     categoryName,
     details?.subcategory?.metaDescription,
   );
-  const ogImage = details?.subcategory?.heroBannerImage?.url || details?.subcategory?.image || `${SITE_URL}/ogimage.png`;
+  const ogImage =
+    details?.subcategory?.heroBannerImage?.url ||
+    details?.subcategory?.image ||
+    `${SITE_URL}/ogimage.png`;
   const ogTitle = resolveSerpTitleString(
     title,
-    `${subcategoryName} ${categoryName} — Shop Online India`,
+    `${subcategoryName} ${categoryName} - Shop Online India`,
   );
 
   return {
@@ -132,7 +149,14 @@ export async function generateMetadata({
       type: "website",
       siteName: "The House of Rani",
       locale: "en_IN",
-      images: [{ url: ogImage, width: 1200, height: 630, alt: `${subcategoryName} | The House of Rani` }],
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: `${subcategoryName} | The House of Rani`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -151,24 +175,29 @@ export default async function ShopSubcategoryPage({
   searchParams: SearchParamsInput;
 }) {
   const [p, sp] = await Promise.all([params, searchParams]);
-  const details = await fetchSubcollectionDetails(p.categorySlug, p.subcategorySlug);
+  const details = await fetchSubcollectionDetails(
+    p.categorySlug,
+    p.subcategorySlug,
+  );
   const fallbackCatName = humanizeSlug(p.categorySlug);
   const fallbackSubName = humanizeSlug(p.subcategorySlug);
-  
+
   const categoryName = details?.category?.name || fallbackCatName;
   const subcategoryName = details?.subcategory?.name || fallbackSubName;
 
   const filtered = hasAnyFilters(sp);
-  const products = filtered ? [] : await fetchTopSubcollectionProducts(p.categorySlug, p.subcategorySlug);
+  const products =
+    filtered ?
+      []
+    : await fetchTopSubcollectionProducts(p.categorySlug, p.subcategorySlug);
   const canonicalPath = `/shop/collections/${encodeURIComponent(p.categorySlug)}/${encodeURIComponent(p.subcategorySlug)}`;
   const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
 
   const subcategoryLd =
-    filtered ?
-      null
-    : {
+    filtered ? null : (
+      {
         "@context": "https://schema.org",
         "@graph": [
           {
@@ -296,7 +325,8 @@ export default async function ShopSubcategoryPage({
             ]
           : []),
         ],
-      };
+      }
+    );
 
   const heroBanner = details?.subcategory?.heroBannerImage?.url;
 
@@ -309,20 +339,20 @@ export default async function ShopSubcategoryPage({
         />
       )}
       {!filtered && heroBanner && (
-        <div className="w-full flex flex-col items-center">
-          <div className="w-full max-w-7xl mx-auto mb-12 relative aspect-[21/9] md:aspect-[3/1] bg-rose-50 overflow-hidden md:rounded-2xl">
+        <div className='w-full flex flex-col items-center'>
+          <div className='w-full max-w-7xl mx-auto mb-12 relative aspect-[21/9] md:aspect-[3/1] bg-rose-50 overflow-hidden md:rounded-2xl'>
             <Image
               src={heroBanner}
               alt={`${subcategoryName} ${categoryName} collection`}
               fill
-              className="object-cover"
-              sizes="(max-width: 1280px) 100vw, 1280px"
+              className='object-cover'
+              sizes='(max-width: 1280px) 100vw, 1280px'
               priority
             />
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
-               <p className="text-3xl md:text-5xl font-serif text-white text-center px-4 drop-shadow-md">
-                 {subcategoryName} {categoryName}
-               </p>
+            <div className='absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none'>
+              <p className='text-3xl md:text-5xl font-serif text-white text-center px-4 drop-shadow-md'>
+                {subcategoryName} {categoryName}
+              </p>
             </div>
           </div>
         </div>

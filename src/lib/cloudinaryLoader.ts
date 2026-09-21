@@ -73,9 +73,10 @@ export default function cloudinaryLoader({
   const after = restSegments.slice(1);
   if (after.length === 0) return src;
 
-  // Build the auto-transform — width is from next/image's srcset generator.
+  // Build the auto-transform - width is from next/image's srcset generator.
   const w = Math.max(16, Math.round(width));
-  const q = quality && quality > 0 && quality <= 100 ? `q_${quality}` : "q_auto";
+  const q =
+    quality && quality > 0 && quality <= 100 ? `q_${quality}` : "q_auto";
   const autoTransform = `f_auto,${q},w_${w},c_limit,dpr_auto`;
 
   // Merge with any existing transformation block instead of clobbering it.

@@ -7,7 +7,7 @@ import {
 
 export const SHOP_SALE_HREF = "/shop/collections?onSale=true";
 export const PREMIUM_HREF = PREMIUM_COLLECTION_HREF;
-/** @deprecated Use PREMIUM_HREF — gifting removed from storefront nav */
+/** @deprecated Use PREMIUM_HREF - gifting removed from storefront nav */
 export const GIFTING_HREF = PREMIUM_COLLECTION_HREF;
 
 export const SHOP_SALE_CARD = {
@@ -32,9 +32,13 @@ export function resolveSaleCardImage(
 }
 
 export function resolveSaleCard(
-  exploreHouse?: Pick<HomeExploreHouse, "saleImage" | "saleName" | "saleSubtitle"> | null,
+  exploreHouse?: Pick<
+    HomeExploreHouse,
+    "saleImage" | "saleName" | "saleSubtitle"
+  > | null,
 ) {
-  const name = String(exploreHouse?.saleName || "").trim() || SHOP_SALE_CARD.name;
+  const name =
+    String(exploreHouse?.saleName || "").trim() || SHOP_SALE_CARD.name;
   const subtitle =
     String(exploreHouse?.saleSubtitle || "").trim() || SHOP_SALE_CARD.subtitle;
   return {
@@ -73,7 +77,9 @@ export function resolvePremiumCard(
 
 /** @deprecated Use resolvePremiumCard */
 export function resolveGiftingCard(
-  _categories?: Array<Pick<Category, "image" | "name" | "slug" | "isGiftCategory">>,
+  _categories?: Array<
+    Pick<Category, "image" | "name" | "slug" | "isGiftCategory">
+  >,
   exploreHouse?: Pick<
     HomeExploreHouse,
     "giftingImage" | "giftingName" | "giftingSubtitle"
@@ -84,6 +90,8 @@ export function resolveGiftingCard(
 
 /** @deprecated Use resolvePremiumCardImage */
 export const resolveGiftingCardImage = (
-  _categories?: Array<Pick<Category, "image" | "name" | "slug" | "isGiftCategory">>,
+  _categories?: Array<
+    Pick<Category, "image" | "name" | "slug" | "isGiftCategory">
+  >,
   exploreHouse?: Pick<HomeExploreHouse, "giftingImage"> | null,
 ) => resolvePremiumCardImage(exploreHouse);

@@ -30,7 +30,7 @@ const STEPS: { id: Phase; label: string }[] = [
 ];
 
 /**
- * Post-checkout transition — matches cart/checkout heritage empty-state UI.
+ * Post-checkout transition - matches cart/checkout heritage empty-state UI.
  */
 export default function OrderPlacementSuccessOverlay({
   orderId,
@@ -104,8 +104,7 @@ export default function OrderPlacementSuccessOverlay({
   const description =
     isConfirmed ?
       "Thank you for your purchase. We are taking you to your order details."
-    : orderId ?
-      "Securing your payment and reserving your heritage piece…"
+    : orderId ? "Securing your payment and reserving your heritage piece…"
     : "Please wait while we prepare and place your order…";
 
   const statusLabel =
@@ -116,10 +115,10 @@ export default function OrderPlacementSuccessOverlay({
   return (
     <div
       className={heritageOverlayVeil}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="order-success-title"
-      aria-describedby="order-success-desc"
+      role='dialog'
+      aria-modal='true'
+      aria-labelledby='order-success-title'
+      aria-describedby='order-success-desc'
       aria-busy={!isConfirmed}
     >
       <div
@@ -132,30 +131,28 @@ export default function OrderPlacementSuccessOverlay({
         )}
       >
         <div
-          className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-navy-900 via-[#c5a059] to-navy-900"
+          className='absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-navy-900 via-[#c5a059] to-navy-900'
           aria-hidden
         />
 
         <nav
-          className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1"
-          aria-label="Order progress"
+          className='mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1'
+          aria-label='Order progress'
         >
           {STEPS.map((step, index) => {
             const isActive = phase === step.id;
             const isDone = step.id === "processing" && isConfirmed;
             return (
-              <div key={step.id} className="flex items-center gap-2">
+              <div key={step.id} className='flex items-center gap-2'>
                 {index > 0 ?
-                  <span className="text-gray-300" aria-hidden>
+                  <span className='text-gray-300' aria-hidden>
                     ·
                   </span>
                 : null}
                 <span
                   className={cn(
                     "text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors sm:text-[11px]",
-                    isActive || isDone ?
-                      "text-navy-900"
-                    : "text-gray-400",
+                    isActive || isDone ? "text-navy-900" : "text-gray-400",
                   )}
                 >
                   <span
@@ -182,17 +179,17 @@ export default function OrderPlacementSuccessOverlay({
         >
           {isConfirmed ?
             <Check
-              className="h-7 w-7 text-[#c5a059]"
+              className='h-7 w-7 text-[#c5a059]'
               strokeWidth={2}
               aria-hidden
             />
           : orderId ?
             <Loader2
-              className="h-7 w-7 animate-spin text-navy-900 motion-reduce:animate-none"
+              className='h-7 w-7 animate-spin text-navy-900 motion-reduce:animate-none'
               aria-hidden
             />
           : <ShoppingBag
-              className="h-7 w-7 text-[#c5a059]"
+              className='h-7 w-7 text-[#c5a059]'
               strokeWidth={1.25}
               aria-hidden
             />
@@ -201,18 +198,21 @@ export default function OrderPlacementSuccessOverlay({
 
         <p className={heritageOverlayEyebrow}>The House of Rani</p>
 
-        <h2 id="order-success-title" className={cn(heritageOverlayTitle, "mt-3")}>
+        <h2
+          id='order-success-title'
+          className={cn(heritageOverlayTitle, "mt-3")}
+        >
           {title}
         </h2>
 
-        <div className="gold-divider mx-auto my-5 w-16 sm:my-6" aria-hidden />
+        <div className='gold-divider mx-auto my-5 w-16 sm:my-6' aria-hidden />
 
-        <p id="order-success-desc" className={heritageOverlayBody}>
+        <p id='order-success-desc' className={heritageOverlayBody}>
           {description}
         </p>
 
-        <div className="mx-auto mt-8 max-w-xs">
-          <div className="h-1 w-full overflow-hidden bg-gray-100">
+        <div className='mx-auto mt-8 max-w-xs'>
+          <div className='h-1 w-full overflow-hidden bg-gray-100'>
             <div
               className={cn(
                 "h-full bg-gradient-to-r from-navy-900 via-[#c5a059] to-navy-900",
@@ -225,15 +225,14 @@ export default function OrderPlacementSuccessOverlay({
                 width:
                   isConfirmed ? "100%"
                   : barFill ?
-                    orderId ?
-                      "72%"
+                    orderId ? "72%"
                     : "45%"
                   : "0%",
                 transitionDuration: `${barMs}ms`,
               }}
             />
           </div>
-          <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+          <p className='mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400'>
             {statusLabel}
           </p>
         </div>

@@ -25,9 +25,9 @@ export function NavigationProgress() {
   const navGenerationRef = useRef(0);
   const completingRef = useRef(false);
   const activeRef = useRef(false);
-  const trackerRef = useRef<ReturnType<typeof createNavigationRscTracker> | null>(
-    null,
-  );
+  const trackerRef = useRef<ReturnType<
+    typeof createNavigationRscTracker
+  > | null>(null);
 
   const search = searchParams.toString();
 
@@ -73,7 +73,7 @@ export function NavigationProgress() {
     }
   };
 
-  /** Route committed — wait for paint + transition fetch before hiding the bar. */
+  /** Route committed - wait for paint + transition fetch before hiding the bar. */
   useEffect(() => {
     if (skipNextRouteClear.current) {
       skipNextRouteClear.current = false;
@@ -136,11 +136,11 @@ export function NavigationProgress() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-[200] h-1 overflow-hidden bg-navy-900/15"
+      className='pointer-events-none fixed inset-x-0 top-0 z-[200] h-1 overflow-hidden bg-navy-900/15'
       aria-busy
-      aria-label="Loading page"
+      aria-label='Loading page'
     >
-      <div className="h-full w-2/5 max-w-[200px] bg-gradient-to-r from-brand-600 to-brand-400 shadow-[0_0_12px_rgba(197,160,89,0.45)] animate-nav-indeterminate" />
+      <div className='h-full w-2/5 max-w-[200px] bg-gradient-to-r from-brand-600 to-brand-400 shadow-[0_0_12px_rgba(197,160,89,0.45)] animate-nav-indeterminate' />
     </div>
   );
 }

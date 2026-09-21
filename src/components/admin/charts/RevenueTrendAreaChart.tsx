@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useMemo, useId, type ReactNode } from 'react';
+import { useEffect, useState, useMemo, useId, type ReactNode } from "react";
 import {
   ComposedChart,
   Area,
@@ -10,13 +10,26 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from 'recharts';
-import type { TooltipProps } from 'recharts';
-import { TrendingUp } from 'lucide-react';
-import { formatPrice, cn } from '@/lib/utils';
-import type { MonthPoint } from '@/components/admin/MonthlyRevenueChart';
+} from "recharts";
+import type { TooltipProps } from "recharts";
+import { TrendingUp } from "lucide-react";
+import { formatPrice, cn } from "@/lib/utils";
+import type { MonthPoint } from "@/components/admin/MonthlyRevenueChart";
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 function formatAxisRupee(v: number) {
   if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)}Cr`;
@@ -36,25 +49,25 @@ type Row = { name?: string; tick?: string; revenue?: number; orders?: number };
 
 function RevenueTooltip({ active, payload }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
-  const rev = payload.find((p) => p.dataKey === 'revenue');
-  const ord = payload.find((p) => p.dataKey === 'orders');
-  const revenueVal = typeof rev?.value === 'number' ? rev.value : 0;
-  const orderVal = typeof ord?.value === 'number' ? ord.value : 0;
+  const rev = payload.find((p) => p.dataKey === "revenue");
+  const ord = payload.find((p) => p.dataKey === "orders");
+  const revenueVal = typeof rev?.value === "number" ? rev.value : 0;
+  const orderVal = typeof ord?.value === "number" ? ord.value : 0;
   const row = payload[0]?.payload as Row | undefined;
-  const heading = row?.name ?? '';
+  const heading = row?.name ?? "";
 
   return (
-    <div className="rounded-xl border border-gray-200/90 bg-white px-3.5 py-2.5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.25)]">
-      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-        <span className="text-blue-600" aria-hidden>
-          <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+    <div className='rounded-xl border border-gray-200/90 bg-white px-3.5 py-2.5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.25)]'>
+      <div className='flex items-center gap-2 text-sm font-semibold text-gray-900'>
+        <span className='text-blue-600' aria-hidden>
+          <TrendingUp className='h-3.5 w-3.5' strokeWidth={2.5} />
         </span>
         <span>
           {heading} {formatCompactRupee(revenueVal)}
         </span>
       </div>
-      <p className="mt-1 text-[11px] text-gray-500">
-        gross · {orderVal} {orderVal === 1 ? 'order' : 'orders'}
+      <p className='mt-1 text-[11px] text-gray-500'>
+        gross · {orderVal} {orderVal === 1 ? "order" : "orders"}
       </p>
     </div>
   );
@@ -78,17 +91,17 @@ export function RevenueTrendAreaChart({
   subtitle?: string;
   /** e.g. “Hover chart for details” aligned top-right */
   titleRight?: ReactNode;
-  /** Smoother spline (“mountain”) curves — uses natural interpolation */
+  /** Smoother spline (“mountain”) curves - uses natural interpolation */
   smooth?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
-  const uid = useId().replace(/:/g, '');
+  const uid = useId().replace(/:/g, "");
   const gradId = `adminRevFill-${uid}`;
   const strokeGradId = `adminRevStroke-${uid}`;
 
   useEffect(() => setMounted(true), []);
 
-  const curve = smooth ? 'natural' : 'monotone';
+  const curve = smooth ? "natural" : "monotone";
 
   const chartData = useMemo(
     () =>
@@ -108,7 +121,10 @@ export function RevenueTrendAreaChart({
   if (!mounted) {
     return (
       <div
-        className={cn('w-full rounded-2xl bg-gradient-to-br from-blue-50/80 to-slate-50 animate-pulse', className)}
+        className={cn(
+          "w-full rounded-2xl bg-gradient-to-br from-blue-50/80 to-slate-50 animate-pulse",
+          className,
+        )}
         style={{ height }}
       />
     );
@@ -118,7 +134,7 @@ export function RevenueTrendAreaChart({
     return (
       <div
         className={cn(
-          'flex items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 text-sm text-gray-500',
+          "flex items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 text-sm text-gray-500",
           className,
         )}
         style={{ height }}
@@ -129,60 +145,78 @@ export function RevenueTrendAreaChart({
   }
 
   return (
-    <div className={cn('w-full', className)}>
+    <div className={cn("w-full", className)}>
       {(title || subtitle || titleRight) && (
-        <div className="mb-4 flex items-start justify-between gap-3 px-0.5">
-          <div className="min-w-0">
+        <div className='mb-4 flex items-start justify-between gap-3 px-0.5'>
+          <div className='min-w-0'>
             {title && (
-              <h3 className="font-serif text-lg font-bold tracking-tight text-gray-900 md:text-xl">{title}</h3>
+              <h3 className='font-serif text-lg font-bold tracking-tight text-gray-900 md:text-xl'>
+                {title}
+              </h3>
             )}
-            {subtitle && <p className="mt-1 text-xs leading-relaxed text-gray-500">{subtitle}</p>}
+            {subtitle && (
+              <p className='mt-1 text-xs leading-relaxed text-gray-500'>
+                {subtitle}
+              </p>
+            )}
           </div>
-          {titleRight ? <div className="shrink-0 pt-0.5 text-right">{titleRight}</div> : null}
+          {titleRight ?
+            <div className='shrink-0 pt-0.5 text-right'>{titleRight}</div>
+          : null}
         </div>
       )}
-      <div className="flex w-full flex-col" style={{ height }}>
-        <div className="min-h-0 w-full flex-1">
-          <ResponsiveContainer width="100%" height="100%">
+      <div className='flex w-full flex-col' style={{ height }}>
+        <div className='min-h-0 w-full flex-1'>
+          <ResponsiveContainer width='100%' height='100%'>
             <ComposedChart
               data={chartData}
-              margin={{ top: 12, right: showOrdersLine ? 4 : 10, left: 0, bottom: 4 }}
+              margin={{
+                top: 12,
+                right: showOrdersLine ? 4 : 10,
+                left: 0,
+                bottom: 4,
+              }}
             >
               <defs>
                 {/* Dark at top (near line) → light / clear at bottom */}
-                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#14192f" stopOpacity={0.72} />
-                  <stop offset="28%" stopColor="#c5a059" stopOpacity={0.45} />
-                  <stop offset="55%" stopColor="#d1ad68" stopOpacity={0.2} />
-                  <stop offset="82%" stopColor="#e8d4a8" stopOpacity={0.08} />
-                  <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+                <linearGradient id={gradId} x1='0' y1='0' x2='0' y2='1'>
+                  <stop offset='0%' stopColor='#14192f' stopOpacity={0.72} />
+                  <stop offset='28%' stopColor='#c5a059' stopOpacity={0.45} />
+                  <stop offset='55%' stopColor='#d1ad68' stopOpacity={0.2} />
+                  <stop offset='82%' stopColor='#e8d4a8' stopOpacity={0.08} />
+                  <stop offset='100%' stopColor='#ffffff' stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#14192f" />
-                  <stop offset="100%" stopColor="#c5a059" />
+                <linearGradient id={strokeGradId} x1='0' y1='0' x2='1' y2='0'>
+                  <stop offset='0%' stopColor='#14192f' />
+                  <stop offset='100%' stopColor='#c5a059' />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="2 6" stroke="#e7e5e4" vertical={false} strokeOpacity={0.95} />
+              <CartesianGrid
+                strokeDasharray='2 6'
+                stroke='#e7e5e4'
+                vertical={false}
+                strokeOpacity={0.95}
+              />
               <XAxis
-                dataKey="tick"
-                tick={{ fill: '#78716c', fontSize: 10 }}
-                axisLine={{ stroke: '#e7e5e4' }}
+                dataKey='tick'
+                tick={{ fill: "#78716c", fontSize: 10 }}
+                axisLine={{ stroke: "#e7e5e4" }}
                 tickLine={false}
-                interval="preserveStartEnd"
+                interval='preserveStartEnd'
               />
               <YAxis
-                yAxisId="left"
+                yAxisId='left'
                 tickFormatter={formatAxisRupee}
-                tick={{ fill: '#78716c', fontSize: 11 }}
+                tick={{ fill: "#78716c", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={52}
               />
               {showOrdersLine && (
                 <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={{ fill: '#78716c', fontSize: 11 }}
+                  yAxisId='right'
+                  orientation='right'
+                  tick={{ fill: "#78716c", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   width={32}
@@ -191,51 +225,75 @@ export function RevenueTrendAreaChart({
               )}
               <Tooltip
                 content={<RevenueTooltip />}
-                cursor={{ stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '4 4' }}
+                cursor={{
+                  stroke: "#3b82f6",
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
+                }}
               />
               <Area
-                yAxisId="left"
-                type={curve as 'natural' | 'monotone'}
-                dataKey="revenue"
-                name="Gross (paid + refunded)"
+                yAxisId='left'
+                type={curve as "natural" | "monotone"}
+                dataKey='revenue'
+                name='Gross (paid + refunded)'
                 stroke={`url(#${strokeGradId})`}
                 strokeWidth={2}
                 fill={`url(#${gradId})`}
                 dot={false}
-                activeDot={{ r: 5, fill: '#14192f', stroke: '#fff', strokeWidth: 2 }}
+                activeDot={{
+                  r: 5,
+                  fill: "#14192f",
+                  stroke: "#fff",
+                  strokeWidth: 2,
+                }}
                 isAnimationActive
               />
               {showOrdersLine && (
                 <Line
-                  yAxisId="right"
-                  type={curve as 'natural' | 'monotone'}
-                  dataKey="orders"
-                  name="Order count"
-                  stroke="#c5a059"
+                  yAxisId='right'
+                  type={curve as "natural" | "monotone"}
+                  dataKey='orders'
+                  name='Order count'
+                  stroke='#c5a059'
                   strokeWidth={2.25}
-                  dot={{ r: 3.5, fill: '#ffffff', stroke: '#c5a059', strokeWidth: 2 }}
-                  activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#d1ad68' }}
+                  dot={{
+                    r: 3.5,
+                    fill: "#ffffff",
+                    stroke: "#c5a059",
+                    strokeWidth: 2,
+                  }}
+                  activeDot={{
+                    r: 5,
+                    strokeWidth: 2,
+                    fill: "#fff",
+                    stroke: "#d1ad68",
+                  }}
                   opacity={0.95}
                 />
               )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-stone-100/90 pt-3 text-[11px] text-stone-600">
-          <span className="inline-flex items-center gap-2">
+        <div className='flex shrink-0 flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-stone-100/90 pt-3 text-[11px] text-stone-600'>
+          <span className='inline-flex items-center gap-2'>
             <span
-              className="h-2.5 w-5 rounded-sm bg-gradient-to-b from-navy-900 via-brand-500 to-white shadow-sm ring-1 ring-brand-200/60"
+              className='h-2.5 w-5 rounded-sm bg-gradient-to-b from-navy-900 via-brand-500 to-white shadow-sm ring-1 ring-brand-200/60'
               aria-hidden
             />
-            <span className="font-medium text-stone-700">Gross (paid + refunded)</span>
+            <span className='font-medium text-stone-700'>
+              Gross (paid + refunded)
+            </span>
           </span>
           {showOrdersLine && (
-            <span className="inline-flex items-center gap-2">
-              <span className="relative inline-flex h-3 w-7 items-center" aria-hidden>
-                <span className="h-0.5 w-full rounded-full bg-brand-400" />
-                <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand-400 bg-white shadow-sm" />
+            <span className='inline-flex items-center gap-2'>
+              <span
+                className='relative inline-flex h-3 w-7 items-center'
+                aria-hidden
+              >
+                <span className='h-0.5 w-full rounded-full bg-brand-400' />
+                <span className='absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand-400 bg-white shadow-sm' />
               </span>
-              <span className="font-medium text-stone-700">Order count</span>
+              <span className='font-medium text-stone-700'>Order count</span>
             </span>
           )}
         </div>

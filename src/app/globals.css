@@ -72,7 +72,7 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     overflow-x: clip;
-    /* Native overscroll on touch — avoids iOS blank gap above content (Phase 2). */
+    /* Native overscroll on touch - avoids iOS blank gap above content (Phase 2). */
     overscroll-behavior-y: auto;
   }
 
@@ -171,7 +171,7 @@
     );
   }
 
-  /* Checkout empty cart — soft motion */
+  /* Checkout empty cart - soft motion */
   @keyframes checkout-empty-float {
     0%,
     100% {
@@ -235,7 +235,7 @@
     }
   }
 
-  /* Google OAuth — single button, full width, centered (no double wrapper border) */
+  /* Google OAuth - single button, full width, centered (no double wrapper border) */
   .auth-google-slot {
     display: flex;
     justify-content: center;
@@ -260,7 +260,7 @@
     max-width: 100% !important;
   }
 
-  /* Opacity + transform only — `filter: blur` can inflate paint cost and
+  /* Opacity + transform only - `filter: blur` can inflate paint cost and
      contribute to jank / CLS on low-end devices during the hero entrance. */
   @keyframes hero-text-in {
     0% {
@@ -321,7 +321,7 @@
     }
   }
 
-  /* react-hot-toast — heritage editorial micro-interaction */
+  /* react-hot-toast - heritage editorial micro-interaction */
   @keyframes slideIn {
     from {
       opacity: 0;
@@ -356,7 +356,7 @@
     }
   }
 
-  /* Rani Care composer — no inner scrollbar arrows on textarea */
+  /* Rani Care composer - no inner scrollbar arrows on textarea */
   textarea.rani-composer-input {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -367,7 +367,7 @@
     height: 0;
   }
 
-  /* Rani Care — respect reduced motion (animations use motion-reduce: too) */
+  /* Rani Care - respect reduced motion (animations use motion-reduce: too) */
   @media (prefers-reduced-motion: reduce) {
     [data-rani-care] *,
     .animate-rani-panel-in,
@@ -430,7 +430,7 @@ html.lenis body {
   outline-offset: 2px;
 }
 
-/* About page — marquee + motion */
+/* About page - marquee + motion */
 @keyframes about-marquee {
   0% {
     transform: translateX(0);
@@ -451,7 +451,7 @@ html.lenis body {
   }
 }
 
-/* About page — CSS reveals (Lenis-friendly, no GSAP scrub) */
+/* About page - CSS reveals (Lenis-friendly, no GSAP scrub) */
 .about-page [data-about-reveal],
 .about-page [data-about-reveal-scale] {
   opacity: 0;
@@ -482,7 +482,7 @@ html.lenis body {
   }
 }
 
-/* Home sections — scroll reveal */
+/* Home sections - scroll reveal */
 [data-home-reveal] {
   opacity: 0;
   transform: translate3d(0, 22px, 0);
@@ -513,7 +513,7 @@ html.lenis body {
   background: linear-gradient(90deg, transparent, #c5a059, transparent);
 }
 
-/* Shop — expandable luxury filter panel */
+/* Shop - expandable luxury filter panel */
 .luxury-filter-transition {
   transition: max-height 0.5s cubic-bezier(0, 1, 0, 1);
 }
@@ -528,7 +528,7 @@ html.lenis body {
   }
 }
 
-/* Shop — dual-handle price range slider */
+/* Shop - dual-handle price range slider */
 .shop-price-range {
   --shop-price-gold: #c5a059;
   --thumb-size: 18px;
@@ -643,7 +643,7 @@ html.lenis body {
   }
 }
 
-/* Drop cap — classic template, first text block only */
+/* Drop cap - classic template, first text block only */
 .journal-template-classic .journal-article-lead p:first-of-type::first-letter {
   float: left;
   font-family: var(--font-playfair), Georgia, serif;
@@ -654,7 +654,9 @@ html.lenis body {
   color: #031632;
 }
 
-.journal-template-classic .journal-article-body:not(.journal-article-lead) p:first-of-type::first-letter {
+.journal-template-classic
+  .journal-article-body:not(.journal-article-lead)
+  p:first-of-type::first-letter {
   float: none;
   font-size: inherit;
   line-height: inherit;
@@ -777,7 +779,7 @@ html.lenis body {
   font-style: italic;
 }
 
-/* Inline toolbar styles — size, color, font (editor → preview → live site) */
+/* Inline toolbar styles - size, color, font (editor → preview → live site) */
 .journal-article-body span[style] {
   line-height: inherit;
 }
@@ -982,7 +984,7 @@ html.lenis body {
   margin: 2rem 0;
 }
 
-/* Inline marks — font size, color, font family from toolbar */
+/* Inline marks - font size, color, font family from toolbar */
 .blog-rich-editor .ProseMirror span[style],
 .ProseMirror.blog-rich-editor span[style] {
   line-height: inherit;

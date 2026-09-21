@@ -34,7 +34,7 @@ export type ColorSizeRow = {
   stock: number;
   price?: number;
   costPrice?: number;
-  /** True when admin typed SKU by hand — size/color changes won't overwrite it. */
+  /** True when admin typed SKU by hand - size/color changes won't overwrite it. */
   skuManual?: boolean;
 };
 
@@ -69,12 +69,16 @@ function generateSku(colorName = "", size = "Free Size"): string {
 }
 
 /** Auto SKUs look like SKU-COLOR-SIZE-xxxxx (from generateSku). */
-function isLikelyAutoSku(sku: string, colorName: string, size: string): boolean {
+function isLikelyAutoSku(
+  sku: string,
+  colorName: string,
+  size: string,
+): boolean {
   const s = sku.trim();
   if (!s) return true;
   const { colorPart, sizePart } = skuParts(colorName, size);
   if (s.startsWith(`SKU-${colorPart}-${sizePart}-`)) return true;
-  // Same color, any size segment — still treat as auto so size edits refresh SKU.
+  // Same color, any size segment - still treat as auto so size edits refresh SKU.
   return new RegExp(
     `^SKU-${colorPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-[^-]+-[a-z0-9]+$`,
     "i",
@@ -122,7 +126,9 @@ export function emptyColorGroup(): ColorVariantGroup {
   };
 }
 
-function newColorGroupFromTemplate(groups: ColorVariantGroup[]): ColorVariantGroup {
+function newColorGroupFromTemplate(
+  groups: ColorVariantGroup[],
+): ColorVariantGroup {
   const template = groups[0];
   if (!template) return emptyColorGroup();
   return {
@@ -141,7 +147,9 @@ function stableGroupId(colorKey: string, index: number): string {
   return `cg-${slug}-${index}`;
 }
 
-export function colorGroupsFromProduct(product: Product | null): ColorVariantGroup[] {
+export function colorGroupsFromProduct(
+  product: Product | null,
+): ColorVariantGroup[] {
   if (!product?.variants?.length) return [emptyColorGroup()];
 
   const byColor = new Map<string, ColorVariantGroup>();
@@ -178,9 +186,7 @@ export function colorGroupsFromProduct(product: Product | null): ColorVariantGro
     });
   }
 
-  let groups = colorOrder
-    .map((key) => byColor.get(key)!)
-    .filter(Boolean);
+  let groups = colorOrder.map((key) => byColor.get(key)!).filter(Boolean);
 
   const assignedIds = new Set(
     groups.flatMap((g) => g.existingImages.map((img) => img.publicId)),
@@ -194,7 +200,9 @@ export function colorGroupsFromProduct(product: Product | null): ColorVariantGro
   return groups.length ? groups : [emptyColorGroup()];
 }
 
-export function flattenColorGroups(groups: ColorVariantGroup[]): ProductVariant[] {
+export function flattenColorGroups(
+  groups: ColorVariantGroup[],
+): ProductVariant[] {
   const out: ProductVariant[] = [];
   for (const g of groups) {
     const colorName = g.color.trim();
@@ -246,7 +254,7 @@ export function buildImagesMetaFromGroups(
   return meta;
 }
 
-/** Admin save guard — every color group with media must have a name. */
+/** Admin save guard - every color group with media must have a name. */
 export function validateColorGroupsForSave(
   groups: ColorVariantGroup[],
 ): string | null {
@@ -254,7 +262,7 @@ export function validateColorGroupsForSave(
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       if (!g.color.trim()) {
-        return `Color ${i + 1}: color name likho (e.g. Red, Navy) — har shade alag hona chahiye.`;
+        return `Color ${i + 1}: color name likho (e.g. Red, Navy) - har shade alag hona chahiye.`;
       }
     }
   }
@@ -262,12 +270,12 @@ export function validateColorGroupsForSave(
     const g = groups[i];
     const hasMedia = g.existingImages.length + g.newFiles.length > 0;
     if (hasMedia && !g.color.trim()) {
-      return `Color ${i + 1}: is color ke photos hain — pehle color name daalo.`;
+      return `Color ${i + 1}: is color ke photos hain - pehle color name daalo.`;
     }
   }
   const names = groups.map((g) => normProductColor(g.color)).filter(Boolean);
   if (new Set(names).size !== names.length) {
-    return "Do colors ka same naam nahi ho sakta — alag alag names use karo.";
+    return "Do colors ka same naam nahi ho sakta - alag alag names use karo.";
   }
   return null;
 }
@@ -281,10 +289,13 @@ type Props = {
   onChange: (groups: ColorVariantGroup[]) => void;
   suggestedColors?: string[];
   productId?: string;
-  /** Base product sell price — blank variant sell inherits this on save. */
+  /** Base product sell price - blank variant sell inherits this on save. */
   baseSellPrice?: string;
   untaggedImageCount?: number;
-  onDeleteExistingImage?: (publicId: string, groupId: string) => void | Promise<void>;
+  onDeleteExistingImage?: (
+    publicId: string,
+    groupId: string,
+  ) => void | Promise<void>;
 };
 
 function patchFromColorName(
@@ -297,13 +308,17 @@ function patchFromColorName(
   const guessed = guessHexFromColorName(color);
   return {
     color,
-    kind: multi ? "multicolor" : group.kind === "multicolor" && !multi ? "solid" : group.kind,
-    colorCode: multi ?
-      VARIANT_MULTICOLOR_MARKER
-    : guessed ||
-      (group.colorCode === VARIANT_MULTICOLOR_MARKER ?
-        "#8b4513"
-      : toColorPickerValue(group.colorCode, color)),
+    kind:
+      multi ? "multicolor"
+      : group.kind === "multicolor" && !multi ? "solid"
+      : group.kind,
+    colorCode:
+      multi ?
+        VARIANT_MULTICOLOR_MARKER
+      : guessed ||
+        (group.colorCode === VARIANT_MULTICOLOR_MARKER ?
+          "#8b4513"
+        : toColorPickerValue(group.colorCode, color)),
     existingImages: group.existingImages.map((img) => ({
       ...img,
       color: color || img.color,
@@ -404,7 +419,7 @@ function ColorNameCombobox({
         })}
         {filtered.length === 0 ?
           <p className='text-[10px] text-gray-400'>
-            No match — naya color name save ho jayega
+            No match - naya color name save ho jayega
           </p>
         : null}
       </div>
@@ -476,7 +491,7 @@ export default function ProductColorVariantEditor({
       {untaggedCount > 0 ?
         <p className='rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900'>
           <strong>{untaggedCount} photo(s)</strong> abhi kisi color se linked
-          nahi hain — pehle wale group mein dikhengi. Har color ke section mein
+          nahi hain - pehle wale group mein dikhengi. Har color ke section mein
           sahi photos hon, phir <strong>Save</strong> karo taaki Brown sirf
           Brown pe rahe.
         </p>
@@ -487,13 +502,15 @@ export default function ProductColorVariantEditor({
             Colors &amp; Sizes <span className='text-brand-500'>*</span>
           </h3>
           <p className='mt-1 max-w-xl text-xs leading-relaxed text-gray-500'>
-            Catalog se color chip choose karo ya naya type karo — swatch auto
+            Catalog se color chip choose karo ya naya type karo - swatch auto
             update hoga. Multicolor pe rainbow swatch dikhega.
           </p>
         </div>
         <button
           type='button'
-          onClick={() => onChange([...groups, newColorGroupFromTemplate(groups)])}
+          onClick={() =>
+            onChange([...groups, newColorGroupFromTemplate(groups)])
+          }
           className='inline-flex shrink-0 items-center gap-1.5 self-start rounded-full bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-100'
         >
           <Plus className='h-3.5 w-3.5' /> Add color
@@ -509,322 +526,334 @@ export default function ProductColorVariantEditor({
           variantSwatchBackground(
             group.color,
             isMulti ? VARIANT_MULTICOLOR_MARKER : group.colorCode,
-          ) ??
-          (isMulti ? MULTICOLOR_SWATCH_BG : undefined);
+          ) ?? (isMulti ? MULTICOLOR_SWATCH_BG : undefined);
 
         return (
-        <div
-          key={group.id}
-          className='space-y-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm'
-        >
-          <div className='flex items-center justify-between gap-2'>
-            <span className='text-[11px] font-bold uppercase tracking-wider text-gray-400'>
-              Color {groupIndex + 1}
-            </span>
-            {groups.length > 1 ?
-              <button
-                type='button'
-                onClick={() => onChange(groups.filter((g) => g.id !== group.id))}
-                className='text-gray-400 hover:text-red-500'
-                aria-label='Remove color'
-              >
-                <Trash2 className='h-4 w-4' />
-              </button>
-            : null}
-          </div>
-
-          <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
-            <div>
-              <label className='mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
-                Color name
-              </label>
-              <ColorNameCombobox
-                value={group.color}
-                suggestions={suggestedColors}
-                onChange={(color) => {
-                  const guessed = guessHexFromColorName(color);
-                  const multi = isMulticolorLabel(color);
-                  updateGroup(group.id, {
-                    color,
-                    ...(multi ?
-                      {
-                        kind: "multicolor" as const,
-                        colorCode: VARIANT_MULTICOLOR_MARKER,
-                      }
-                    : group.kind === "solid" && guessed ?
-                      { colorCode: guessed }
-                    : null),
-                    existingImages: group.existingImages.map((img) => ({
-                      ...img,
-                      color: color.trim() || img.color,
-                    })),
-                    sizes: group.sizes.map((row) => ({
-                      ...row,
-                      sku: skuForSizeOrColorChange(row, color, row.size),
-                    })),
-                  });
-                }}
-                onCommit={(color) => applyColorName(group.id, color)}
-              />
-            </div>
-            <div>
-              <label className='mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
-                Swatch
-              </label>
-              <div className='flex items-center gap-2'>
-                <select
-                  className={cn(inputCls, "w-32 shrink-0")}
-                  value={isMulti ? "multicolor" : "solid"}
-                  onChange={(e) =>
-                    setSwatchKind(
-                      group.id,
-                      e.target.value as "solid" | "multicolor",
-                    )
+          <div
+            key={group.id}
+            className='space-y-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm'
+          >
+            <div className='flex items-center justify-between gap-2'>
+              <span className='text-[11px] font-bold uppercase tracking-wider text-gray-400'>
+                Color {groupIndex + 1}
+              </span>
+              {groups.length > 1 ?
+                <button
+                  type='button'
+                  onClick={() =>
+                    onChange(groups.filter((g) => g.id !== group.id))
                   }
+                  className='text-gray-400 hover:text-red-500'
+                  aria-label='Remove color'
                 >
-                  <option value='solid'>Solid</option>
-                  <option value='multicolor'>Multicolor</option>
-                </select>
-                {!isMulti ?
-                  <input
-                    type='color'
-                    className='h-10 w-14 cursor-pointer rounded-lg border border-gray-200'
-                    value={toColorPickerValue(group.colorCode, group.color)}
-                    onChange={(e) =>
-                      updateGroup(group.id, {
-                        kind: "solid",
-                        colorCode: e.target.value,
-                      })
-                    }
-                    title='Pick swatch color'
-                  />
-                : null}
-                <span
-                  className='inline-flex h-10 w-10 shrink-0 rounded-full border border-gray-200 shadow-sm'
-                  style={{ background: previewBg }}
-                  title={isMulti ? "Multicolor" : group.color || "Swatch"}
-                  aria-hidden
-                />
-              </div>
-              {isMulti ?
-                <p className='mt-1 text-[10px] text-gray-400'>
-                  Multicolor / print — storefront pe rainbow swatch dikhega
-                </p>
+                  <Trash2 className='h-4 w-4' />
+                </button>
               : null}
             </div>
-          </div>
 
-          <div>
-            <label className='mb-2 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
-              Photos for this color
-            </label>
-            {groups.length > 1 && !group.color.trim() ?
-              <p className='mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800'>
-                Pehle upar <strong>color name</strong> likho (e.g. Red), phir
-                is color ki photos upload karo — warna galat color pe save ho
-                sakti hain.
-              </p>
-            : null}
-            <div
-              className={cn(
-                groups.length > 1 &&
-                  !group.color.trim() &&
-                  "pointer-events-none opacity-45",
-              )}
-            >
-            <ImageUploader
-              key={group.id}
-              maxFiles={7}
-              aspectRatio='3:4'
-              maxSizeMB={UPLOAD_MAX_MB.product}
-              existingImages={group.existingImages.map((i) => i.url)}
-              onChange={(files) => updateGroup(group.id, { newFiles: files })}
-              onRemoveExisting={
-                productId && onDeleteExistingImage ?
-                  (index) => {
-                    const img = group.existingImages[index];
-                    if (img?.publicId) {
-                      void onDeleteExistingImage(img.publicId, group.id);
-                    }
-                  }
-                : undefined
-              }
-            />
-            {group.newFiles.length > 0 ?
-              <p className='mt-1.5 text-[11px] font-medium text-emerald-600'>
-                {group.newFiles.length} new photo
-                {group.newFiles.length === 1 ? "" : "s"} ready — save to upload
-                {group.color.trim() ?
-                  ` for ${group.color.trim()}`
-                : ""}
-              </p>
-            : null}
-            </div>
-          </div>
-
-          <div className='space-y-2'>
-            <div className='flex items-center justify-between'>
-              <label className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
-                Sizes, prices &amp; stock
-              </label>
-              <button
-                type='button'
-                onClick={() => {
-                  const nextSize = nextUnusedProductSize(
-                    group.sizes.map((r) => r.size),
-                  );
-                  updateGroup(group.id, {
-                    sizes: [
-                      ...group.sizes,
-                      emptySizeRow(group.color, nextSize),
-                    ],
-                  });
-                }}
-                className='text-xs font-medium text-brand-600 hover:text-brand-700'
-              >
-                + Add size
-              </button>
-            </div>
-            {group.sizes.map((row, rowIndex) => {
-              const presetSize = isPresetProductSize(row.size);
-              const selectValue = presetSize ? row.size : "__custom__";
-              return (
-              <div
-                key={`${group.id}-size-${rowIndex}`}
-                className='grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3 sm:grid-cols-5'
-              >
-                <div className='space-y-1'>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+              <div>
+                <label className='mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Color name
+                </label>
+                <ColorNameCombobox
+                  value={group.color}
+                  suggestions={suggestedColors}
+                  onChange={(color) => {
+                    const guessed = guessHexFromColorName(color);
+                    const multi = isMulticolorLabel(color);
+                    updateGroup(group.id, {
+                      color,
+                      ...(multi ?
+                        {
+                          kind: "multicolor" as const,
+                          colorCode: VARIANT_MULTICOLOR_MARKER,
+                        }
+                      : group.kind === "solid" && guessed ?
+                        { colorCode: guessed }
+                      : null),
+                      existingImages: group.existingImages.map((img) => ({
+                        ...img,
+                        color: color.trim() || img.color,
+                      })),
+                      sizes: group.sizes.map((row) => ({
+                        ...row,
+                        sku: skuForSizeOrColorChange(row, color, row.size),
+                      })),
+                    });
+                  }}
+                  onCommit={(color) => applyColorName(group.id, color)}
+                />
+              </div>
+              <div>
+                <label className='mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Swatch
+                </label>
+                <div className='flex items-center gap-2'>
                   <select
-                    className={inputCls}
-                    value={selectValue}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const sizes = [...group.sizes];
-                      if (val === "__custom__") {
-                        sizes[rowIndex] = {
-                          ...row,
-                          size: presetSize ? "" : row.size,
-                        };
-                      } else {
-                        sizes[rowIndex] = {
-                          ...row,
-                          size: val,
-                          sku: skuForSizeOrColorChange(row, group.color, val),
-                        };
-                      }
-                      updateGroup(group.id, { sizes });
-                    }}
+                    className={cn(inputCls, "w-32 shrink-0")}
+                    value={isMulti ? "multicolor" : "solid"}
+                    onChange={(e) =>
+                      setSwatchKind(
+                        group.id,
+                        e.target.value as "solid" | "multicolor",
+                      )
+                    }
                   >
-                    {PRODUCT_SIZES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                    <option value='__custom__'>Custom size…</option>
+                    <option value='solid'>Solid</option>
+                    <option value='multicolor'>Multicolor</option>
                   </select>
-                  {!presetSize ?
+                  {!isMulti ?
+                    <input
+                      type='color'
+                      className='h-10 w-14 cursor-pointer rounded-lg border border-gray-200'
+                      value={toColorPickerValue(group.colorCode, group.color)}
+                      onChange={(e) =>
+                        updateGroup(group.id, {
+                          kind: "solid",
+                          colorCode: e.target.value,
+                        })
+                      }
+                      title='Pick swatch color'
+                    />
+                  : null}
+                  <span
+                    className='inline-flex h-10 w-10 shrink-0 rounded-full border border-gray-200 shadow-sm'
+                    style={{ background: previewBg }}
+                    title={isMulti ? "Multicolor" : group.color || "Swatch"}
+                    aria-hidden
+                  />
+                </div>
+                {isMulti ?
+                  <p className='mt-1 text-[10px] text-gray-400'>
+                    Multicolor / print - storefront pe rainbow swatch dikhega
+                  </p>
+                : null}
+              </div>
+            </div>
+
+            <div>
+              <label className='mb-2 block text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                Photos for this color
+              </label>
+              {groups.length > 1 && !group.color.trim() ?
+                <p className='mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800'>
+                  Pehle upar <strong>color name</strong> likho (e.g. Red), phir
+                  is color ki photos upload karo - warna galat color pe save ho
+                  sakti hain.
+                </p>
+              : null}
+              <div
+                className={cn(
+                  groups.length > 1 &&
+                    !group.color.trim() &&
+                    "pointer-events-none opacity-45",
+                )}
+              >
+                <ImageUploader
+                  key={group.id}
+                  maxFiles={7}
+                  aspectRatio='3:4'
+                  maxSizeMB={UPLOAD_MAX_MB.product}
+                  existingImages={group.existingImages.map((i) => i.url)}
+                  onChange={(files) =>
+                    updateGroup(group.id, { newFiles: files })
+                  }
+                  onRemoveExisting={
+                    productId && onDeleteExistingImage ?
+                      (index) => {
+                        const img = group.existingImages[index];
+                        if (img?.publicId) {
+                          void onDeleteExistingImage(img.publicId, group.id);
+                        }
+                      }
+                    : undefined
+                  }
+                />
+                {group.newFiles.length > 0 ?
+                  <p className='mt-1.5 text-[11px] font-medium text-emerald-600'>
+                    {group.newFiles.length} new photo
+                    {group.newFiles.length === 1 ? "" : "s"} ready - save to
+                    upload
+                    {group.color.trim() ? ` for ${group.color.trim()}` : ""}
+                  </p>
+                : null}
+              </div>
+            </div>
+
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between'>
+                <label className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Sizes, prices &amp; stock
+                </label>
+                <button
+                  type='button'
+                  onClick={() => {
+                    const nextSize = nextUnusedProductSize(
+                      group.sizes.map((r) => r.size),
+                    );
+                    updateGroup(group.id, {
+                      sizes: [
+                        ...group.sizes,
+                        emptySizeRow(group.color, nextSize),
+                      ],
+                    });
+                  }}
+                  className='text-xs font-medium text-brand-600 hover:text-brand-700'
+                >
+                  + Add size
+                </button>
+              </div>
+              {group.sizes.map((row, rowIndex) => {
+                const presetSize = isPresetProductSize(row.size);
+                const selectValue = presetSize ? row.size : "__custom__";
+                return (
+                  <div
+                    key={`${group.id}-size-${rowIndex}`}
+                    className='grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3 sm:grid-cols-5'
+                  >
+                    <div className='space-y-1'>
+                      <select
+                        className={inputCls}
+                        value={selectValue}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const sizes = [...group.sizes];
+                          if (val === "__custom__") {
+                            sizes[rowIndex] = {
+                              ...row,
+                              size: presetSize ? "" : row.size,
+                            };
+                          } else {
+                            sizes[rowIndex] = {
+                              ...row,
+                              size: val,
+                              sku: skuForSizeOrColorChange(
+                                row,
+                                group.color,
+                                val,
+                              ),
+                            };
+                          }
+                          updateGroup(group.id, { sizes });
+                        }}
+                      >
+                        {PRODUCT_SIZES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                        <option value='__custom__'>Custom size…</option>
+                      </select>
+                      {!presetSize ?
+                        <input
+                          className={inputCls}
+                          placeholder='Custom size'
+                          value={row.size}
+                          onChange={(e) => {
+                            const sizes = [...group.sizes];
+                            const size = e.target.value;
+                            sizes[rowIndex] = {
+                              ...row,
+                              size,
+                              sku: skuForSizeOrColorChange(
+                                row,
+                                group.color,
+                                size,
+                              ),
+                            };
+                            updateGroup(group.id, { sizes });
+                          }}
+                        />
+                      : null}
+                    </div>
                     <input
                       className={inputCls}
-                      placeholder='Custom size'
-                      value={row.size}
+                      placeholder='SKU *'
+                      value={row.sku}
                       onChange={(e) => {
                         const sizes = [...group.sizes];
-                        const size = e.target.value;
                         sizes[rowIndex] = {
                           ...row,
-                          size,
-                          sku: skuForSizeOrColorChange(row, group.color, size),
+                          sku: e.target.value,
+                          skuManual: true,
                         };
                         updateGroup(group.id, { sizes });
                       }}
                     />
-                  : null}
-                </div>
-                <input
-                  className={inputCls}
-                  placeholder='SKU *'
-                  value={row.sku}
-                  onChange={(e) => {
-                    const sizes = [...group.sizes];
-                    sizes[rowIndex] = {
-                      ...row,
-                      sku: e.target.value,
-                      skuManual: true,
-                    };
-                    updateGroup(group.id, { sizes });
-                  }}
-                />
-                <input
-                  type='number'
-                  min={0}
-                  className={inputCls}
-                  placeholder='Stock'
-                  value={row.stock}
-                  onChange={(e) => {
-                    const sizes = [...group.sizes];
-                    sizes[rowIndex] = {
-                      ...row,
-                      stock: Math.max(0, Number(e.target.value) || 0),
-                    };
-                    updateGroup(group.id, { sizes });
-                  }}
-                />
-                <input
-                  type='number'
-                  min={0}
-                  className={inputCls}
-                  placeholder={
-                    baseSellHint != null ?
-                      `Sell (default ₹${baseSellHint})`
-                    : 'Sell ₹'
-                  }
-                  value={row.price ?? ""}
-                  onChange={(e) => {
-                    const sizes = [...group.sizes];
-                    const val = e.target.value;
-                    sizes[rowIndex] = {
-                      ...row,
-                      price: val ? Number(val) : undefined,
-                    };
-                    updateGroup(group.id, { sizes });
-                  }}
-                />
-                <div className='flex items-center gap-1'>
-                  <input
-                    type='number'
-                    min={0}
-                    className={inputCls}
-                    placeholder='Cost ₹'
-                    value={row.costPrice ?? ""}
-                    onChange={(e) => {
-                      const sizes = [...group.sizes];
-                      const val = e.target.value;
-                      sizes[rowIndex] = {
-                        ...row,
-                        costPrice: val ? Number(val) : undefined,
-                      };
-                      updateGroup(group.id, { sizes });
-                    }}
-                  />
-                  {group.sizes.length > 1 ?
-                    <button
-                      type='button'
-                      onClick={() =>
-                        updateGroup(group.id, {
-                          sizes: group.sizes.filter((_, i) => i !== rowIndex),
-                        })
+                    <input
+                      type='number'
+                      min={0}
+                      className={inputCls}
+                      placeholder='Stock'
+                      value={row.stock}
+                      onChange={(e) => {
+                        const sizes = [...group.sizes];
+                        sizes[rowIndex] = {
+                          ...row,
+                          stock: Math.max(0, Number(e.target.value) || 0),
+                        };
+                        updateGroup(group.id, { sizes });
+                      }}
+                    />
+                    <input
+                      type='number'
+                      min={0}
+                      className={inputCls}
+                      placeholder={
+                        baseSellHint != null ?
+                          `Sell (default ₹${baseSellHint})`
+                        : "Sell ₹"
                       }
-                      className='shrink-0 p-2 text-gray-400 hover:text-red-500'
-                    >
-                      <Trash2 className='h-4 w-4' />
-                    </button>
-                  : null}
-                </div>
-              </div>
-            );
-            })}
+                      value={row.price ?? ""}
+                      onChange={(e) => {
+                        const sizes = [...group.sizes];
+                        const val = e.target.value;
+                        sizes[rowIndex] = {
+                          ...row,
+                          price: val ? Number(val) : undefined,
+                        };
+                        updateGroup(group.id, { sizes });
+                      }}
+                    />
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min={0}
+                        className={inputCls}
+                        placeholder='Cost ₹'
+                        value={row.costPrice ?? ""}
+                        onChange={(e) => {
+                          const sizes = [...group.sizes];
+                          const val = e.target.value;
+                          sizes[rowIndex] = {
+                            ...row,
+                            costPrice: val ? Number(val) : undefined,
+                          };
+                          updateGroup(group.id, { sizes });
+                        }}
+                      />
+                      {group.sizes.length > 1 ?
+                        <button
+                          type='button'
+                          onClick={() =>
+                            updateGroup(group.id, {
+                              sizes: group.sizes.filter(
+                                (_, i) => i !== rowIndex,
+                              ),
+                            })
+                          }
+                          className='shrink-0 p-2 text-gray-400 hover:text-red-500'
+                        >
+                          <Trash2 className='h-4 w-4' />
+                        </button>
+                      : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
         );
       })}
 

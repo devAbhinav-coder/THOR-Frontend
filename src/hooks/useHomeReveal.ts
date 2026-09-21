@@ -8,7 +8,7 @@ import {
 
 const REVEAL_SELECTOR = "[data-home-reveal]";
 
-/** Lightweight scroll reveals for home sections — no GSAP, reduced-motion safe. */
+/** Lightweight scroll reveals for home sections - no GSAP, reduced-motion safe. */
 export function useHomeReveal(rootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const root = rootRef.current;

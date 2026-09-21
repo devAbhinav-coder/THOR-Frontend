@@ -8,7 +8,7 @@ function readPublicApiUrl(): string {
     const url = z.string().url().parse(raw);
     /**
      * TLS is required in production for any remote host.
-     * localhost / 127.0.0.1 are exempt — traffic never leaves the machine,
+     * localhost / 127.0.0.1 are exempt - traffic never leaves the machine,
      * so http:// is safe and useful for local `npm start` testing.
      */
     const isLocalhost =
@@ -32,11 +32,12 @@ function readPublicApiUrl(): string {
   );
 }
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL
-  ? z.string().url().parse(process.env.NEXT_PUBLIC_APP_URL)
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ?
+    z.string().url().parse(process.env.NEXT_PUBLIC_APP_URL)
   : undefined;
 
-/** Validated public env — safe to import from client or server bundles. */
+/** Validated public env - safe to import from client or server bundles. */
 export const env = {
   NEXT_PUBLIC_API_URL: readPublicApiUrl(),
   NEXT_PUBLIC_APP_URL: appUrl,

@@ -8,12 +8,12 @@ export type ProductSeoContext = {
   price?: number | null;
 };
 
-/** Root layout uses `template: "%s | The House of Rani"` — use absolute when the full SERP title is intentional. */
+/** Root layout uses `template: "%s | The House of Rani"` - use absolute when the full SERP title is intentional. */
 export function absolutePageTitle(title: string): Metadata["title"] {
   return { absolute: title };
 }
 
-/** Segment only — Next.js appends `| The House of Rani` via root metadata template. */
+/** Segment only - Next.js appends `| The House of Rani` via root metadata template. */
 export function templatedPageTitle(segment: string): string {
   return segment.trim();
 }
@@ -49,9 +49,9 @@ export function resolveSerpTitleString(
   }
   if (fallbackSegment?.trim()) {
     const segment = fallbackSegment.trim();
-    return segment.includes(BRAND_NAME) ?
-        segment
-      : `${segment} | ${BRAND_NAME}`;
+    return segment.includes(BRAND_NAME) ? segment : (
+        `${segment} | ${BRAND_NAME}`
+      );
   }
   return BRAND_NAME;
 }
@@ -68,7 +68,7 @@ function productAttributeHint(context?: ProductSeoContext): string {
   const parts = [context?.fabric, context?.subcategory, context?.category]
     .map((v) => v?.trim())
     .filter(Boolean) as string[];
-  return parts.length ? ` — ${parts.join(" · ")}` : "";
+  return parts.length ? ` - ${parts.join(" · ")}` : "";
 }
 
 export function buildProductPageTitle(
@@ -112,7 +112,7 @@ export function buildProductMetaDescription(
     typeof context?.price === "number" && context.price > 0 ?
       ` from ${formatInr(context.price)}`
     : "";
-  const attrBit = attrs.length ? ` — ${attrs.join(" · ")}` : "";
+  const attrBit = attrs.length ? ` - ${attrs.join(" · ")}` : "";
 
   return `Shop ${name}${attrBit}${priceBit} at The House of Rani. Premium Indian ethnic wear with free delivery over ₹1,099 and 5-day returns across India.`.slice(
     0,

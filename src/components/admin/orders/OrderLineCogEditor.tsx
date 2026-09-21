@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { AlertTriangle, Check, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { adminApi } from '@/lib/api';
-import { formatPrice, cn } from '@/lib/utils';
-import { isManualLineMissingCost } from '@/lib/offlineOrder';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from "react";
+import { AlertTriangle, Check, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
+import { adminApi } from "@/lib/api";
+import { formatPrice, cn } from "@/lib/utils";
+import { isManualLineMissingCost } from "@/lib/offlineOrder";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   orderId: string;
@@ -30,12 +30,12 @@ export default function OrderLineCogEditor({
     costAtSale,
   });
   const [value, setValue] = useState(
-    costAtSale != null && costAtSale > 0 ? String(costAtSale) : '',
+    costAtSale != null && costAtSale > 0 ? String(costAtSale) : "",
   );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setValue(costAtSale != null && costAtSale > 0 ? String(costAtSale) : '');
+    setValue(costAtSale != null && costAtSale > 0 ? String(costAtSale) : "");
   }, [costAtSale]);
 
   const parsed = Number(value);
@@ -43,25 +43,31 @@ export default function OrderLineCogEditor({
   const revenue = unitPrice * quantity;
   const cogs = Number.isFinite(unitCost) ? unitCost * quantity : 0;
   const profit = revenue - cogs;
-  const margin = revenue > 0 && Number.isFinite(unitCost) ? (profit / revenue) * 100 : 0;
+  const margin =
+    revenue > 0 && Number.isFinite(unitCost) ? (profit / revenue) * 100 : 0;
 
   const handleSave = async () => {
     if (!Number.isFinite(unitCost)) {
-      toast.error('Enter a valid cost of goods per unit.');
+      toast.error("Enter a valid cost of goods per unit.");
       return;
     }
     setSaving(true);
     try {
-      const res = await adminApi.updateOrderLineCostAtSale(orderId, lineIndex, unitCost);
+      const res = await adminApi.updateOrderLineCostAtSale(
+        orderId,
+        lineIndex,
+        unitCost,
+      );
       const saved =
-        (res.data as { costAtSale?: number } | undefined)?.costAtSale ?? unitCost;
+        (res.data as { costAtSale?: number } | undefined)?.costAtSale ??
+        unitCost;
       onSaved(saved);
-      toast.success('Cost of goods saved');
+      toast.success("Cost of goods saved");
     } catch (err: unknown) {
       const message =
-        err && typeof err === 'object' && 'message' in err ?
+        err && typeof err === "object" && "message" in err ?
           String((err as { message?: string }).message)
-        : 'Could not save cost of goods';
+        : "Could not save cost of goods";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -71,10 +77,10 @@ export default function OrderLineCogEditor({
   return (
     <div
       className={cn(
-        'mt-3 rounded-xl border p-3 space-y-2',
+        "mt-3 rounded-xl border p-3 space-y-2",
         missing ?
-          'border-amber-200 bg-amber-50/70'
-        : 'border-emerald-200 bg-emerald-50/50',
+          "border-amber-200 bg-amber-50/70"
+        : "border-emerald-200 bg-emerald-50/50",
       )}
     >
       <div className='flex items-start gap-2'>
@@ -89,7 +95,8 @@ export default function OrderLineCogEditor({
             : null}
           </p>
           <p className='text-[10px] text-gray-500 mt-0.5'>
-            Manual category line — enter purchase cost so revenue reports stay accurate.
+            Manual category line - enter purchase cost so revenue reports stay
+            accurate.
           </p>
         </div>
       </div>
@@ -119,14 +126,17 @@ export default function OrderLineCogEditor({
         >
           {saving ?
             <Loader2 className='h-4 w-4 animate-spin' />
-          : 'Save COGS'}
+          : "Save COGS"}
         </Button>
       </div>
 
       {Number.isFinite(unitCost) ?
         <p className='text-[11px] text-gray-600'>
-          Line: revenue {formatPrice(revenue)} · COGS {formatPrice(cogs)} · profit{' '}
-          <span className='font-semibold text-emerald-800'>{formatPrice(profit)}</span>
+          Line: revenue {formatPrice(revenue)} · COGS {formatPrice(cogs)} ·
+          profit{" "}
+          <span className='font-semibold text-emerald-800'>
+            {formatPrice(profit)}
+          </span>
           {revenue > 0 ?
             <span className='text-gray-400'> ({margin.toFixed(0)}%)</span>
           : null}

@@ -6,11 +6,11 @@ import {
   authMutedCopy,
 } from "@/lib/authHeritageTheme";
 
-/** Standalone /auth pages — full dark heritage card. */
+/** Standalone /auth pages - full dark heritage card. */
 export const AUTH_PAGE_SHELL =
   "rounded-none border border-navy-700/80 bg-navy-900 p-5 shadow-2xl sm:p-8";
 
-/** Modal — flat on cream panel; AuthField handles inputs. */
+/** Modal - flat on cream panel; AuthField handles inputs. */
 export const AUTH_MODAL_FIELD = "w-full";
 
 export function authFormWrap(embedded?: boolean) {

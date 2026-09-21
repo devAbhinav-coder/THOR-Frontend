@@ -115,7 +115,7 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
     if (product.isCustomizable && !isAuthenticated) {
       toast.error("Please log in to submit a custom gift request.");
       onClose();
-      router.push(loginUrlWithRedirect("/gifting"));
+      router.push(loginUrlWithRedirect("/shop"));
       return;
     }
 
@@ -220,7 +220,7 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
               We'll review your request and send you a quote within 24 hours via email and in-app notification.
             </p>
             <Link
-              href="/dashboard/gifting"
+              href="/dashboard"
               onClick={onClose}
               className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl font-semibold hover:bg-brand-700 transition-colors"
             >

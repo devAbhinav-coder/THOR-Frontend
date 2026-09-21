@@ -9,7 +9,7 @@ export function isLowInStockVariant(stock: number): boolean {
   return stock > 0 && stock < LOW_STOCK_ALERT_EXCLUSIVE_MAX;
 }
 
-/** Admin list: total units across variants — warn below threshold (excluding 0 = use out-of-stock styling). */
+/** Admin list: total units across variants - warn below threshold (excluding 0 = use out-of-stock styling). */
 export function isLowInventoryTotal(total: number): boolean {
   return total > 0 && total < LOW_STOCK_ALERT_EXCLUSIVE_MAX;
 }

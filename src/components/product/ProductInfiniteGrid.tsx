@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type RefCallback, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefCallback,
+  type RefObject,
+} from "react";
 import { ProductCardSkeleton } from "@/components/ui/SkeletonLoader";
 
 type ProductInfiniteGridProps<T> = {
@@ -13,9 +20,11 @@ type ProductInfiniteGridProps<T> = {
   hasNextPage: boolean;
   pageSize: number;
   loadMoreSkeletonCount?: number;
-  /** Increment when sentinel fires — shows tail skeletons before network starts. */
+  /** Increment when sentinel fires - shows tail skeletons before network starts. */
   loadMoreSignal?: number;
-  sentinelRef: RefObject<HTMLDivElement | null> | RefCallback<HTMLDivElement | null>;
+  sentinelRef:
+    | RefObject<HTMLDivElement | null>
+    | RefCallback<HTMLDivElement | null>;
   renderSkeleton?: () => ReactNode;
   endMessage?: string;
 };
@@ -49,7 +58,7 @@ export function ProductInfiniteGrid<T>({
     itemCountRef.current = items.length;
   }, [items.length]);
 
-  /** Sentinel fired — reserve tail space immediately (before isFetchingNextPage flips). */
+  /** Sentinel fired - reserve tail space immediately (before isFetchingNextPage flips). */
   useEffect(() => {
     if (loadMoreSignal <= 0) return;
     baselineCountRef.current = itemCountRef.current;
@@ -63,7 +72,7 @@ export function ProductInfiniteGrid<T>({
     setTailSkeletons(true);
   }, [isFetchingNextPage]);
 
-  /** New items appended — drop tail skeletons. */
+  /** New items appended - drop tail skeletons. */
   useEffect(() => {
     if (!tailSkeletons) return;
     if (items.length > baselineCountRef.current) {
@@ -71,14 +80,14 @@ export function ProductInfiniteGrid<T>({
     }
   }, [items.length, tailSkeletons]);
 
-  /** Filter reset / shorter list — clear stale tail state. */
+  /** Filter reset / shorter list - clear stale tail state. */
   useEffect(() => {
     if (items.length < baselineCountRef.current) {
       setTailSkeletons(false);
     }
   }, [items.length]);
 
-  /** Fetch finished with no growth (error or end) — release tail quickly. */
+  /** Fetch finished with no growth (error or end) - release tail quickly. */
   useEffect(() => {
     if (!tailSkeletons || isFetchingNextPage) return;
 
@@ -120,7 +129,7 @@ export function ProductInfiniteGrid<T>({
             <Skeleton key={`initial-${i}`} />
           ))
         : dedupedItems.map((item) => (
-            <div key={getItemKey(item)} className="h-full min-h-0">
+            <div key={getItemKey(item)} className='h-full min-h-0'>
               {renderItem(item)}
             </div>
           ))
@@ -133,18 +142,14 @@ export function ProductInfiniteGrid<T>({
       </div>
 
       {(hasNextPage || showTailSkeletons) && (
-        <div
-          ref={sentinelRef}
-          className="h-px w-full shrink-0"
-          aria-hidden
-        />
+        <div ref={sentinelRef} className='h-px w-full shrink-0' aria-hidden />
       )}
 
       {!hasNextPage && !showTailSkeletons && items.length > 0 && endMessage ?
         <p
           data-nosnippet
-          className="mt-8 text-center text-sm text-gray-500"
-          aria-hidden="true"
+          className='mt-8 text-center text-sm text-gray-500'
+          aria-hidden='true'
         >
           {endMessage}
         </p>

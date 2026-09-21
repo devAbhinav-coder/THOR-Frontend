@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-/** True on laptop/desktop with mouse — false on touch-first phones. */
+/** True on laptop/desktop with mouse - false on touch-first phones. */
 export function useFinePointerHover(): boolean {
   const [enabled, setEnabled] = useState(false);
 

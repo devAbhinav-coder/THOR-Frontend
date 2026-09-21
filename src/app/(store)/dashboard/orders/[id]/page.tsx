@@ -41,7 +41,7 @@ const EMOTIONAL_MESSAGES = [
   },
   {
     heading: "Your voice matters 🙏",
-    sub: "Real experiences from real customers — that's what makes us better every day.",
+    sub: "Real experiences from real customers - that's what makes us better every day.",
   },
 ];
 
@@ -97,9 +97,7 @@ function CustomGiftDetails({
             <Gift className='h-5 w-5 text-gold-600' />
           </div>
           <div>
-            <p className='font-bold text-gray-900 text-sm'>
-              Your custom order
-            </p>
+            <p className='font-bold text-gray-900 text-sm'>Your custom order</p>
             <p className='text-xs text-gold-700 mt-0.5'>
               Custom specifications & personalization details
             </p>
@@ -167,7 +165,7 @@ function CustomGiftDetails({
                               {a.label}
                             </p>
                             <p className='text-xs font-semibold text-gray-900 mt-0.5'>
-                              {a.value || "—"}
+                              {a.value || "-"}
                             </p>
                           </div>
                         ),
@@ -177,7 +175,6 @@ function CustomGiftDetails({
               </div>
             ))}
           </div>
-
         </div>
       )}
     </div>
@@ -241,8 +238,12 @@ export default function OrderDetailPage() {
   const invalidateOrderCaches = () => {
     void queryClient.invalidateQueries({ queryKey: ["order", orderId] });
     void queryClient.invalidateQueries({ queryKey: ["my-orders"] });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard-recent-orders"] });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard-orders-summary"] });
+    void queryClient.invalidateQueries({
+      queryKey: ["dashboard-recent-orders"],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["dashboard-orders-summary"],
+    });
   };
 
   const { data: reviewEligibility = {} } = useQuery({
@@ -546,7 +547,7 @@ export default function OrderDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 animate-pulse">
+      <div className='space-y-4 animate-pulse'>
         {[...Array(3)].map((_, i) => (
           <div
             key={i}
@@ -559,11 +560,13 @@ export default function OrderDetailPage() {
 
   if (!order) {
     return (
-      <div className="bg-account-surface-container-lowest border border-account-outline-variant/30 p-12 text-center">
-        <Package className="h-10 w-10 text-account-outline-variant mx-auto mb-3" />
-        <h3 className="font-serif text-xl text-account-primary mb-2">Order not found</h3>
-        <Button asChild variant="brand" size="sm">
-          <Link href="/dashboard/orders">View All Orders</Link>
+      <div className='bg-account-surface-container-lowest border border-account-outline-variant/30 p-12 text-center'>
+        <Package className='h-10 w-10 text-account-outline-variant mx-auto mb-3' />
+        <h3 className='font-serif text-xl text-account-primary mb-2'>
+          Order not found
+        </h3>
+        <Button asChild variant='brand' size='sm'>
+          <Link href='/dashboard/orders'>View All Orders</Link>
         </Button>
       </div>
     );
@@ -614,23 +617,24 @@ export default function OrderDetailPage() {
                   "Return completed. Refund details are below if applicable.",
               };
               return (
-                <div className="bg-amber-50 border border-amber-200 p-5 flex gap-3 items-start">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-serif text-lg text-amber-900 capitalize">
+                <div className='bg-amber-50 border border-amber-200 p-5 flex gap-3 items-start'>
+                  <AlertCircle className='h-5 w-5 text-amber-600 mt-0.5 shrink-0' />
+                  <div className='flex-1'>
+                    <h3 className='font-serif text-lg text-amber-900 capitalize'>
                       Return Status: {rs}
                     </h3>
-                    <p className="text-sm text-amber-800 mt-1">
+                    <p className='text-sm text-amber-800 mt-1'>
                       {returnCopy[rs] ?? "We will update you on your return."}
                     </p>
                     {order.refundData && (
-                      <div className="mt-3 bg-white/70 p-3 border border-amber-100">
-                        <p className="text-sm font-semibold text-amber-900">
-                          Refund Processed: {formatPrice(order.refundData.amount)}
+                      <div className='mt-3 bg-white/70 p-3 border border-amber-100'>
+                        <p className='text-sm font-semibold text-amber-900'>
+                          Refund Processed:{" "}
+                          {formatPrice(order.refundData.amount)}
                         </p>
-                        <p className="text-xs text-amber-800">
+                        <p className='text-xs text-amber-800'>
                           Method:{" "}
-                          <span className="capitalize">
+                          <span className='capitalize'>
                             {refundMethodLabel(String(order.refundData.method))}
                           </span>
                         </p>
@@ -643,7 +647,9 @@ export default function OrderDetailPage() {
           : null
         }
         customGiftSection={
-          order.productType === "custom" ? <CustomGiftDetails order={order} /> : null
+          order.productType === "custom" ?
+            <CustomGiftDetails order={order} />
+          : null
         }
         reviewEligibility={reviewEligibility}
         reviewedItems={reviewedItems}
@@ -676,8 +682,8 @@ export default function OrderDetailPage() {
               <div className='flex items-center justify-between gap-3 mb-3'>
                 <h2 className='text-lg sm:text-xl font-bold text-gray-900'>
                   {returnModalStep === 1 ?
-                    "Return — reason"
-                  : "Return — refund"}
+                    "Return - reason"
+                  : "Return - refund"}
                 </h2>
                 <span className='text-[11px] font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full'>
                   Step {returnModalStep} of 2
@@ -699,7 +705,7 @@ export default function OrderDetailPage() {
               </div>
               <p className='text-sm text-gray-500 mt-2'>
                 {returnModalStep === 1 ?
-                  "Tell us why you’re returning — then add refund details in the next step."
+                  "Tell us why you’re returning - then add refund details in the next step."
                 : order.paymentMethod === "razorpay" ?
                   "Your refund goes back to your original payment method."
                 : "Choose how we should send your refund for this COD order."}
@@ -830,7 +836,7 @@ export default function OrderDetailPage() {
                     </div>
                   : <>
                       <p className='text-xs text-gray-600 leading-relaxed'>
-                        Cash on delivery — enter where we should send your
+                        Cash on delivery - enter where we should send your
                         refund.
                       </p>
                       <div className='flex flex-col sm:flex-row gap-2'>

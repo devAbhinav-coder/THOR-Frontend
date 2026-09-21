@@ -10,10 +10,7 @@ import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { isPostCheckoutAuthGuardActive } from "@/lib/checkoutSuccessGuard";
 import { unwrapAxios, parseApiResponse } from "@/lib/parseApi";
 import * as schemas from "@/lib/api-schemas";
-import {
-  isAuthPublicRequest,
-  isAuthMeRequest,
-} from "@/lib/authRequestPaths";
+import { isAuthPublicRequest, isAuthMeRequest } from "@/lib/authRequestPaths";
 import type {
   AdminCreateOfflineOrderBody,
   AdminCreateB2bOrderBody,
@@ -36,7 +33,8 @@ export const api: AxiosInstance = axios.create({
 
 const STOREFRONT_SETTINGS_CLIENT_CACHE_MS = 45_000;
 type StorefrontSettingsResponse = schemas.StorefrontSettingsApiEnvelope;
-let storefrontSettingsInFlight: Promise<StorefrontSettingsResponse> | null = null;
+let storefrontSettingsInFlight: Promise<StorefrontSettingsResponse> | null =
+  null;
 let storefrontSettingsCache: {
   expiresAt: number;
   value: StorefrontSettingsResponse;
@@ -44,7 +42,7 @@ let storefrontSettingsCache: {
 
 /**
  * Instance default is `application/json`, so axios `transformRequest` would run
- * `JSON.stringify(formDataToJSON(data))` on FormData and drop binary parts — uploads
+ * `JSON.stringify(formDataToJSON(data))` on FormData and drop binary parts - uploads
  * (storefront hero, products, etc.) never reach multer. Clear Content-Type so the
  * browser/XHR layer sets multipart with a proper boundary.
  */
@@ -60,14 +58,17 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
     const status = error.response?.status;
     const isTimeout =
       error.code === "ECONNABORTED" ||
       (typeof error.message === "string" &&
         error.message.toLowerCase().includes("timeout"));
-    const message = isTimeout
-      ? "Request timed out. Please try again."
+    const message =
+      isTimeout ?
+        "Request timed out. Please try again."
       : error.response?.data?.message || "Something went wrong";
 
     if (
@@ -103,11 +104,18 @@ api.interceptors.response.use(
         Math.ceil(retryAfterRaw)
       : undefined;
 
-    return Promise.reject({ message, status: error.response?.status, retryAfter });
+    return Promise.reject({
+      message,
+      status: error.response?.status,
+      retryAfter,
+    });
   },
 );
 
-async function del204(label: string, promise: Promise<AxiosResponse<unknown>>): Promise<void> {
+async function del204(
+  label: string,
+  promise: Promise<AxiosResponse<unknown>>,
+): Promise<void> {
   const res = await promise;
   if (res.status === 204) return;
   parseApiResponse(label, res.data, schemas.nullDataSuccess);
@@ -126,13 +134,30 @@ type WithTurnstile<T> = T & { turnstileToken?: string };
 
 export const authApi = {
   signupStart: (
-    data: WithTurnstile<{ name: string; email: string; password: string; phone: string }>,
+    data: WithTurnstile<{
+      name: string;
+      email: string;
+      password: string;
+      phone: string;
+    }>,
   ) =>
-    unwrapAxios("auth.signupStart", api.post("/auth/signup/start", data), schemas.authMessage),
+    unwrapAxios(
+      "auth.signupStart",
+      api.post("/auth/signup/start", data),
+      schemas.authMessage,
+    ),
   signupVerify: (data: WithTurnstile<{ email: string; otp: string }>) =>
-    unwrapAxios("auth.signupVerify", api.post("/auth/signup/verify", data), schemas.authWithUser),
+    unwrapAxios(
+      "auth.signupVerify",
+      api.post("/auth/signup/verify", data),
+      schemas.authWithUser,
+    ),
   login: (data: WithTurnstile<{ email: string; password: string }>) =>
-    unwrapAxios("auth.login", api.post("/auth/login", data), schemas.authLoginResponse),
+    unwrapAxios(
+      "auth.login",
+      api.post("/auth/login", data),
+      schemas.authLoginResponse,
+    ),
   verifyAdmin2FA: (data: { pendingToken: string; code: string }) =>
     unwrapAxios(
       "auth.verifyAdmin2FA",
@@ -158,17 +183,40 @@ export const authApi = {
   resetPassword: (
     data: WithTurnstile<{ email: string; otp: string; newPassword: string }>,
   ) =>
-    unwrapAxios("auth.resetPassword", api.post("/auth/reset-password", data), schemas.authResetPassword),
+    unwrapAxios(
+      "auth.resetPassword",
+      api.post("/auth/reset-password", data),
+      schemas.authResetPassword,
+    ),
   sendOtp: (
     data: WithTurnstile<
-      | { type: "signup"; email: string; name: string; password: string; phone: string }
+      | {
+          type: "signup";
+          email: string;
+          name: string;
+          password: string;
+          phone: string;
+        }
       | { type: "login"; email: string }
       | { type: "forgot_password"; email: string }
     >,
-  ) => unwrapAxios("auth.sendOtp", api.post("/auth/send-otp", data), schemas.authMessage),
+  ) =>
+    unwrapAxios(
+      "auth.sendOtp",
+      api.post("/auth/send-otp", data),
+      schemas.authMessage,
+    ),
   resendOtp: (
-    data: WithTurnstile<{ email: string; type: "signup" | "login" | "forgot_password" }>,
-  ) => unwrapAxios("auth.resendOtp", api.post("/auth/resend-otp", data), schemas.authMessage),
+    data: WithTurnstile<{
+      email: string;
+      type: "signup" | "login" | "forgot_password";
+    }>,
+  ) =>
+    unwrapAxios(
+      "auth.resendOtp",
+      api.post("/auth/resend-otp", data),
+      schemas.authMessage,
+    ),
   verifyOtpSignup: (data: WithTurnstile<{ email: string; otp: string }>) =>
     unwrapAxios(
       "auth.verifyOtpSignup",
@@ -189,7 +237,9 @@ export const authApi = {
         { ...data, type: "forgot_password" },
         {
           headers: {
-            "Idempotency-Key": getForgotPasswordVerifyIdempotencyKey(data.email),
+            "Idempotency-Key": getForgotPasswordVerifyIdempotencyKey(
+              data.email,
+            ),
           },
         },
       ),
@@ -204,7 +254,11 @@ export const authApi = {
       schemas.authResetPassword,
     ),
   getSessions: () =>
-    unwrapAxios("auth.getSessions", api.get("/auth/sessions"), schemas.authSessionsList),
+    unwrapAxios(
+      "auth.getSessions",
+      api.get("/auth/sessions"),
+      schemas.authSessionsList,
+    ),
   revokeSession: (sessionId: string) =>
     unwrapAxios(
       "auth.revokeSession",
@@ -223,38 +277,94 @@ export const authApi = {
       api.post("/auth/sessions/revoke-all"),
       schemas.authLogout,
     ),
-  logout: () => unwrapAxios("auth.logout", api.post("/auth/logout"), schemas.authLogout),
+  logout: () =>
+    unwrapAxios("auth.logout", api.post("/auth/logout"), schemas.authLogout),
   getMe: () => unwrapAxios("auth.getMe", api.get("/auth/me"), schemas.authMe),
   updateMe: (data: FormData) =>
-    unwrapAxios("auth.updateMe", api.patch("/auth/update-me", data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.authMe),
+    unwrapAxios(
+      "auth.updateMe",
+      api.patch("/auth/update-me", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+      schemas.authMe,
+    ),
   updatePassword: (data: { currentPassword: string; newPassword: string }) =>
-    unwrapAxios("auth.updatePassword", api.patch("/auth/update-password", data), schemas.authWithUser),
-  deleteMe: () => unwrapAxios("auth.deleteMe", api.delete("/auth/delete-me"), schemas.authMessage),
+    unwrapAxios(
+      "auth.updatePassword",
+      api.patch("/auth/update-password", data),
+      schemas.authWithUser,
+    ),
+  deleteMe: () =>
+    unwrapAxios(
+      "auth.deleteMe",
+      api.delete("/auth/delete-me"),
+      schemas.authMessage,
+    ),
   addAddress: (data: object) =>
-    unwrapAxios("auth.addAddress", api.post("/auth/addresses", data), schemas.authAddresses),
+    unwrapAxios(
+      "auth.addAddress",
+      api.post("/auth/addresses", data),
+      schemas.authAddresses,
+    ),
   removeAddress: (addressId: string) =>
-    unwrapAxios("auth.removeAddress", api.delete(`/auth/addresses/${addressId}`), schemas.authAddresses),
+    unwrapAxios(
+      "auth.removeAddress",
+      api.delete(`/auth/addresses/${addressId}`),
+      schemas.authAddresses,
+    ),
 };
 
 export const productApi = {
   getAll: (params?: Record<string, string | number>) =>
-    unwrapAxios("products.getAll", api.get("/products", { params }), schemas.productsPaginated),
+    unwrapAxios(
+      "products.getAll",
+      api.get("/products", { params }),
+      schemas.productsPaginated,
+    ),
   // Advanced search endpoints
   search: (params?: Record<string, string | number>) =>
-    unwrapAxios("products.search", api.get("/products/search", { params }), schemas.productsPaginated),
+    unwrapAxios(
+      "products.search",
+      api.get("/products/search", { params }),
+      schemas.productsPaginated,
+    ),
   autocomplete: (query: string, limit = 5) =>
-    unwrapAxios("products.autocomplete", api.get("/products/autocomplete", { params: { q: query, limit } }), schemas.autocompleteResponse),
+    unwrapAxios(
+      "products.autocomplete",
+      api.get("/products/autocomplete", { params: { q: query, limit } }),
+      schemas.autocompleteResponse,
+    ),
   getSearchSuggestions: (query: string) =>
-    unwrapAxios("products.searchSuggestions", api.get("/products/suggestions", { params: { q: query } }), schemas.searchSuggestionsResponse),
+    unwrapAxios(
+      "products.searchSuggestions",
+      api.get("/products/suggestions", { params: { q: query } }),
+      schemas.searchSuggestionsResponse,
+    ),
   getTrendingSearches: (limit = 10) =>
-    unwrapAxios("products.trendingSearches", api.get("/products/trending", { params: { limit } }), schemas.trendingSearchesResponse),
+    unwrapAxios(
+      "products.trendingSearches",
+      api.get("/products/trending", { params: { limit } }),
+      schemas.trendingSearchesResponse,
+    ),
   // Existing endpoints
   recordView: (slug: string) =>
-    unwrapAxios("products.recordView", api.post(`/products/${encodeURIComponent(slug)}/view`), schemas.viewCount),
+    unwrapAxios(
+      "products.recordView",
+      api.post(`/products/${encodeURIComponent(slug)}/view`),
+      schemas.viewCount,
+    ),
   getBySlug: (slug: string) =>
-    unwrapAxios("products.getBySlug", api.get(`/products/${slug}`), schemas.productSingle),
+    unwrapAxios(
+      "products.getBySlug",
+      api.get(`/products/${slug}`),
+      schemas.productSingle,
+    ),
   getFeatured: () =>
-    unwrapAxios("products.featured", api.get("/products/featured"), schemas.productsFeatured),
+    unwrapAxios(
+      "products.featured",
+      api.get("/products/featured"),
+      schemas.productsFeatured,
+    ),
   getByCategory: (category: string, params?: Record<string, string | number>) =>
     unwrapAxios(
       "products.byCategory",
@@ -302,12 +412,15 @@ export const productApi = {
       }),
       schemas.productSingle,
     ),
-  delete: (id: string) => del204("products.delete", api.delete(`/admin/writes/products/${id}`)),
+  delete: (id: string) =>
+    del204("products.delete", api.delete(`/admin/writes/products/${id}`)),
   deleteImage: (id: string, publicId: string) =>
     unwrapAxios(
       "products.deleteImage",
-      api.delete(`/admin/writes/products/${id}/images/${encodeURIComponent(publicId)}`),
-      schemas.productSingle
+      api.delete(
+        `/admin/writes/products/${id}/images/${encodeURIComponent(publicId)}`,
+      ),
+      schemas.productSingle,
     ),
 };
 
@@ -333,36 +446,67 @@ export const cartApi = {
       "cart.add",
       api.post(
         "/cart/add",
-        { ...data, ...(opts?.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}) },
+        {
+          ...data,
+          ...(opts?.idempotencyKey ?
+            { idempotencyKey: opts.idempotencyKey }
+          : {}),
+        },
         cartIdempotencyConfig(opts?.idempotencyKey),
       ),
       schemas.cartPayload,
     ),
-  update: (cartItemId: string, quantity: number, opts?: { idempotencyKey?: string }) =>
+  update: (
+    cartItemId: string,
+    quantity: number,
+    opts?: { idempotencyKey?: string },
+  ) =>
     unwrapAxios(
       "cart.update",
       api.patch(
         `/cart/item/${cartItemId}`,
-        { quantity, ...(opts?.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}) },
+        {
+          quantity,
+          ...(opts?.idempotencyKey ?
+            { idempotencyKey: opts.idempotencyKey }
+          : {}),
+        },
         cartIdempotencyConfig(opts?.idempotencyKey),
       ),
       schemas.cartPayload,
     ),
   remove: (cartItemId: string) =>
-    unwrapAxios("cart.remove", api.delete(`/cart/item/${cartItemId}`), schemas.cartPayload),
-  clear: () => unwrapAxios("cart.clear", api.delete("/cart"), schemas.cartClear),
+    unwrapAxios(
+      "cart.remove",
+      api.delete(`/cart/item/${cartItemId}`),
+      schemas.cartPayload,
+    ),
+  clear: () =>
+    unwrapAxios("cart.clear", api.delete("/cart"), schemas.cartClear),
   applyCoupon: (couponCode: string, opts?: { idempotencyKey?: string }) =>
     unwrapAxios(
       "cart.applyCoupon",
       api.post(
         "/cart/apply-coupon",
-        { couponCode, ...(opts?.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}) },
+        {
+          couponCode,
+          ...(opts?.idempotencyKey ?
+            { idempotencyKey: opts.idempotencyKey }
+          : {}),
+        },
         cartIdempotencyConfig(opts?.idempotencyKey),
       ),
       schemas.cartPayload,
     ),
-  removeCoupon: () => unwrapAxios("cart.removeCoupon", api.delete("/cart/coupon"), schemas.cartPayload),
-  previewPromotion: (items: Array<{ productId: string; price: number; quantity: number }>) =>
+  removeCoupon: () =>
+    unwrapAxios(
+      "cart.removeCoupon",
+      api.delete("/cart/coupon"),
+      schemas.cartPayload,
+    ),
+  previewPromotion: (
+    items: Array<{ productId: string; price: number; quantity: number }>,
+  ) =>
     unwrapAxios(
       "cart.previewPromotion",
       api.post("/cart/promotion-preview", { items }),
@@ -381,7 +525,9 @@ export const cartApi = {
   uploadCustomFieldImage: (data: FormData) =>
     unwrapAxios(
       "cart.customFieldImage",
-      api.post("/cart/custom-field-image", data, { headers: { "Content-Type": "multipart/form-data" } }),
+      api.post("/cart/custom-field-image", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
       schemas.successMessageData,
     ),
 };
@@ -391,21 +537,37 @@ export const orderApi = {
     unwrapAxios(
       "orders.create",
       api.post("/orders", data, {
-        headers: opts?.idempotencyKey ? { "Idempotency-Key": opts.idempotencyKey } : {},
+        headers:
+          opts?.idempotencyKey ?
+            { "Idempotency-Key": opts.idempotencyKey }
+          : {},
       }),
       schemas.orderCreateResponse,
     ),
   verifyPayment: (data: object) =>
-    unwrapAxios("orders.verifyPayment", api.post("/orders/verify-payment", data), schemas.orderSingle),
+    unwrapAxios(
+      "orders.verifyPayment",
+      api.post("/orders/verify-payment", data),
+      schemas.orderSingle,
+    ),
   getMyOrders: (params?: object) =>
-    unwrapAxios("orders.myOrders", api.get("/orders/my-orders", { params }), schemas.ordersMyList),
+    unwrapAxios(
+      "orders.myOrders",
+      api.get("/orders/my-orders", { params }),
+      schemas.ordersMyList,
+    ),
   getMyOrdersSummary: () =>
     unwrapAxios(
       "orders.myOrdersSummary",
       api.get("/orders/my-orders/summary"),
       schemas.ordersMySummary,
     ),
-  getById: (id: string) => unwrapAxios("orders.getById", api.get(`/orders/${id}`), schemas.orderSingle),
+  getById: (id: string) =>
+    unwrapAxios(
+      "orders.getById",
+      api.get(`/orders/${id}`),
+      schemas.orderSingle,
+    ),
   preparePayment: (orderId: string) =>
     unwrapAxios(
       "orders.preparePayment",
@@ -413,18 +575,50 @@ export const orderApi = {
       schemas.orderPreparePayment,
     ),
   cancel: (id: string, reason?: string) =>
-    unwrapAxios("orders.cancel", api.patch(`/orders/${id}/cancel`, { reason }), schemas.orderSingle),
-  requestReturn: (id: string, reason: string, note?: string, refundMethod?: string, userBankDetails?: Record<string, string>) =>
-    unwrapAxios("orders.requestReturn", api.post(`/orders/${id}/return`, { reason, note, refundMethod, userBankDetails }), schemas.orderSingle),
+    unwrapAxios(
+      "orders.cancel",
+      api.patch(`/orders/${id}/cancel`, { reason }),
+      schemas.orderSingle,
+    ),
+  requestReturn: (
+    id: string,
+    reason: string,
+    note?: string,
+    refundMethod?: string,
+    userBankDetails?: Record<string, string>,
+  ) =>
+    unwrapAxios(
+      "orders.requestReturn",
+      api.post(`/orders/${id}/return`, {
+        reason,
+        note,
+        refundMethod,
+        userBankDetails,
+      }),
+      schemas.orderSingle,
+    ),
 };
 
 export const reviewApi = {
-  getFeatured: () => unwrapAxios("reviews.featured", api.get("/reviews/featured"), schemas.reviewsFeatured),
+  getFeatured: () =>
+    unwrapAxios(
+      "reviews.featured",
+      api.get("/reviews/featured"),
+      schemas.reviewsFeatured,
+    ),
   getProductReviews: (productId: string, params?: object) =>
-    unwrapAxios("reviews.product", api.get(`/reviews/product/${productId}`, { params }), schemas.reviewsProduct),
+    unwrapAxios(
+      "reviews.product",
+      api.get(`/reviews/product/${productId}`, { params }),
+      schemas.reviewsProduct,
+    ),
   canReview: (productId: string) =>
-    unwrapAxios("reviews.canReview", api.get(`/reviews/product/${productId}/can-review`), schemas.canReview),
-  /** Share-link / QR — no login. Pending until admin approves. */
+    unwrapAxios(
+      "reviews.canReview",
+      api.get(`/reviews/product/${productId}/can-review`),
+      schemas.canReview,
+    ),
+  /** Share-link / QR - no login. Pending until admin approves. */
   submitPublic: (data: FormData) =>
     unwrapAxios(
       "reviews.submitPublic",
@@ -437,16 +631,37 @@ export const reviewApi = {
   create: (productId: string, data: FormData) =>
     unwrapAxios(
       "reviews.create",
-      api.post(`/reviews/product/${productId}`, data, { headers: { "Content-Type": "multipart/form-data" } }),
+      api.post(`/reviews/product/${productId}`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
       schemas.reviewSingle,
     ),
   update: (id: string, data: object) =>
-    unwrapAxios("reviews.update", api.patch(`/reviews/${id}`, data), schemas.reviewSingle),
-  delete: (id: string) => del204("reviews.delete", api.delete(`/reviews/${id}`)),
+    unwrapAxios(
+      "reviews.update",
+      api.patch(`/reviews/${id}`, data),
+      schemas.reviewSingle,
+    ),
+  delete: (id: string) =>
+    del204("reviews.delete", api.delete(`/reviews/${id}`)),
   voteHelpful: (id: string) =>
-    unwrapAxios("reviews.vote", api.patch(`/reviews/${id}/helpful`), schemas.reviewVote),
-  report: (id: string, data: { reason: "spam" | "abusive" | "misleading" | "other"; details?: string }) =>
-    unwrapAxios("reviews.report", api.patch(`/reviews/${id}/report`, data), schemas.successMessageData),
+    unwrapAxios(
+      "reviews.vote",
+      api.patch(`/reviews/${id}/helpful`),
+      schemas.reviewVote,
+    ),
+  report: (
+    id: string,
+    data: {
+      reason: "spam" | "abusive" | "misleading" | "other";
+      details?: string;
+    },
+  ) =>
+    unwrapAxios(
+      "reviews.report",
+      api.patch(`/reviews/${id}/report`, data),
+      schemas.successMessageData,
+    ),
 };
 
 export const reviewInviteApi = {
@@ -469,8 +684,12 @@ export const reviewInviteApi = {
 
 export const testimonialApi = {
   getPublic: () =>
-    unwrapAxios("testimonials.public", api.get("/testimonials"), schemas.testimonialsList),
-  /** Share-link form — no auth required */
+    unwrapAxios(
+      "testimonials.public",
+      api.get("/testimonials"),
+      schemas.testimonialsList,
+    ),
+  /** Share-link form - no auth required */
   submitPublic: (data: FormData) =>
     unwrapAxios(
       "testimonials.submit",
@@ -481,7 +700,11 @@ export const testimonialApi = {
       schemas.successData,
     ),
   getAdminAll: () =>
-    unwrapAxios("testimonials.admin", api.get("/testimonials/admin"), schemas.testimonialsList),
+    unwrapAxios(
+      "testimonials.admin",
+      api.get("/testimonials/admin"),
+      schemas.testimonialsList,
+    ),
   create: (data: FormData) =>
     unwrapAxios(
       "testimonials.create",
@@ -501,21 +724,46 @@ export const testimonialApi = {
       schemas.successData,
     ),
   approve: (id: string) =>
-    unwrapAxios("testimonials.approve", api.patch(`/admin/writes/testimonials/${id}/approve`), schemas.successData),
+    unwrapAxios(
+      "testimonials.approve",
+      api.patch(`/admin/writes/testimonials/${id}/approve`),
+      schemas.successData,
+    ),
   reject: (id: string) =>
-    unwrapAxios("testimonials.reject", api.patch(`/admin/writes/testimonials/${id}/reject`), schemas.successData),
-  delete: (id: string) => del204("testimonials.delete", api.delete(`/admin/writes/testimonials/${id}`)),
+    unwrapAxios(
+      "testimonials.reject",
+      api.patch(`/admin/writes/testimonials/${id}/reject`),
+      schemas.successData,
+    ),
+  delete: (id: string) =>
+    del204(
+      "testimonials.delete",
+      api.delete(`/admin/writes/testimonials/${id}`),
+    ),
 };
 
 export const wishlistApi = {
-  get: () => unwrapAxios("wishlist.get", api.get("/wishlist"), schemas.wishlistGet),
+  get: () =>
+    unwrapAxios("wishlist.get", api.get("/wishlist"), schemas.wishlistGet),
   toggle: (productId: string) =>
-    unwrapAxios("wishlist.toggle", api.post(`/wishlist/${productId}`), schemas.wishlistToggle),
+    unwrapAxios(
+      "wishlist.toggle",
+      api.post(`/wishlist/${productId}`),
+      schemas.wishlistToggle,
+    ),
 };
 
 export const couponApi = {
-  validate: (code: string, orderAmount: number, items?: Array<{ productId: string; price: number; quantity: number }>) =>
-    unwrapAxios("coupons.validate", api.post("/coupons/validate", { code, orderAmount, items }), schemas.couponValidate),
+  validate: (
+    code: string,
+    orderAmount: number,
+    items?: Array<{ productId: string; price: number; quantity: number }>,
+  ) =>
+    unwrapAxios(
+      "coupons.validate",
+      api.post("/coupons/validate", { code, orderAmount, items }),
+      schemas.couponValidate,
+    ),
   getEligible: (
     orderAmount: number,
     items?: Array<{ productId: string; price: number; quantity: number }>,
@@ -531,110 +779,217 @@ export const couponApi = {
       schemas.couponEligible,
     ),
   getPublic: () =>
-    unwrapAxios("coupons.public", api.get("/coupons/public"), schemas.couponsPublicList),
+    unwrapAxios(
+      "coupons.public",
+      api.get("/coupons/public"),
+      schemas.couponsPublicList,
+    ),
   create: (data: object | FormData) =>
     unwrapAxios(
       "coupons.create",
-      data instanceof FormData
-        ? api.post("/admin/writes/coupons", data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.post("/admin/writes/coupons", data),
+      data instanceof FormData ?
+        api.post("/admin/writes/coupons", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+      : api.post("/admin/writes/coupons", data),
       schemas.successData,
     ),
-  getAll: () => unwrapAxios("coupons.getAll", api.get("/coupons"), schemas.couponsAdminList),
+  getAll: () =>
+    unwrapAxios(
+      "coupons.getAll",
+      api.get("/coupons"),
+      schemas.couponsAdminList,
+    ),
   update: (id: string, data: object | FormData) =>
     unwrapAxios(
       "coupons.update",
-      data instanceof FormData
-        ? api.patch(`/admin/writes/coupons/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.patch(`/admin/writes/coupons/${id}`, data),
+      data instanceof FormData ?
+        api.patch(`/admin/writes/coupons/${id}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+      : api.patch(`/admin/writes/coupons/${id}`, data),
       schemas.successData,
     ),
   archive: (id: string) =>
-    unwrapAxios("coupons.archive", api.patch(`/admin/writes/coupons/${id}/archive`), schemas.successData),
-  delete: (id: string) => del204("coupons.delete", api.delete(`/admin/writes/coupons/${id}`)),
+    unwrapAxios(
+      "coupons.archive",
+      api.patch(`/admin/writes/coupons/${id}/archive`),
+      schemas.successData,
+    ),
+  delete: (id: string) =>
+    del204("coupons.delete", api.delete(`/admin/writes/coupons/${id}`)),
 };
 
 export const saleCampaignApi = {
   getPublic: () =>
-    unwrapAxios("sales.public", api.get("/sales/public"), schemas.salesPublicList),
-  getAll: () => unwrapAxios("sales.getAll", api.get("/sales"), schemas.saleCampaignsList),
-  getById: (id: string) => unwrapAxios("sales.getById", api.get(`/sales/${id}`), schemas.successData),
+    unwrapAxios(
+      "sales.public",
+      api.get("/sales/public"),
+      schemas.salesPublicList,
+    ),
+  getAll: () =>
+    unwrapAxios("sales.getAll", api.get("/sales"), schemas.saleCampaignsList),
+  getById: (id: string) =>
+    unwrapAxios("sales.getById", api.get(`/sales/${id}`), schemas.successData),
   create: (data: object | FormData) =>
     unwrapAxios(
       "sales.create",
-      data instanceof FormData
-        ? api.post("/admin/writes/sales", data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.post("/admin/writes/sales", data),
+      data instanceof FormData ?
+        api.post("/admin/writes/sales", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+      : api.post("/admin/writes/sales", data),
       schemas.successData,
     ),
   update: (id: string, data: object | FormData) =>
     unwrapAxios(
       "sales.update",
-      data instanceof FormData
-        ? api.patch(`/admin/writes/sales/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.patch(`/admin/writes/sales/${id}`, data),
+      data instanceof FormData ?
+        api.patch(`/admin/writes/sales/${id}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+      : api.patch(`/admin/writes/sales/${id}`, data),
       schemas.successData,
     ),
   archive: (id: string) =>
-    unwrapAxios("sales.archive", api.patch(`/admin/writes/sales/${id}/archive`), schemas.successData),
-  delete: (id: string) => del204("sales.delete", api.delete(`/admin/writes/sales/${id}`)),
+    unwrapAxios(
+      "sales.archive",
+      api.patch(`/admin/writes/sales/${id}/archive`),
+      schemas.successData,
+    ),
+  delete: (id: string) =>
+    del204("sales.delete", api.delete(`/admin/writes/sales/${id}`)),
   preview: (data: object) =>
-    unwrapAxios("sales.preview", api.post("/sales/preview", data), schemas.successData),
+    unwrapAxios(
+      "sales.preview",
+      api.post("/sales/preview", data),
+      schemas.successData,
+    ),
 };
 
 export const promotionApi = {
   getPublic: () =>
-    unwrapAxios("promotions.public", api.get("/promotions/public"), schemas.promotionsPublicList),
+    unwrapAxios(
+      "promotions.public",
+      api.get("/promotions/public"),
+      schemas.promotionsPublicList,
+    ),
   getAll: () =>
-    unwrapAxios("promotions.getAll", api.get("/promotions"), schemas.promotionsAdminList),
+    unwrapAxios(
+      "promotions.getAll",
+      api.get("/promotions"),
+      schemas.promotionsAdminList,
+    ),
   getById: (id: string) =>
-    unwrapAxios("promotions.getById", api.get(`/promotions/${id}`), schemas.successData),
+    unwrapAxios(
+      "promotions.getById",
+      api.get(`/promotions/${id}`),
+      schemas.successData,
+    ),
   create: (data: object | FormData) =>
     unwrapAxios(
       "promotions.create",
-      data instanceof FormData
-        ? api.post("/admin/writes/promotions", data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.post("/admin/writes/promotions", data),
+      data instanceof FormData ?
+        api.post("/admin/writes/promotions", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+      : api.post("/admin/writes/promotions", data),
       schemas.successData,
     ),
   update: (id: string, data: object | FormData) =>
     unwrapAxios(
       "promotions.update",
-      data instanceof FormData
-        ? api.patch(`/admin/writes/promotions/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
-        : api.patch(`/admin/writes/promotions/${id}`, data),
+      data instanceof FormData ?
+        api.patch(`/admin/writes/promotions/${id}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+      : api.patch(`/admin/writes/promotions/${id}`, data),
       schemas.successData,
     ),
   archive: (id: string) =>
-    unwrapAxios("promotions.archive", api.patch(`/admin/writes/promotions/${id}/archive`), schemas.successData),
-  delete: (id: string) => del204("promotions.delete", api.delete(`/admin/writes/promotions/${id}`)),
+    unwrapAxios(
+      "promotions.archive",
+      api.patch(`/admin/writes/promotions/${id}/archive`),
+      schemas.successData,
+    ),
+  delete: (id: string) =>
+    del204("promotions.delete", api.delete(`/admin/writes/promotions/${id}`)),
   preview: (data: object) =>
-    unwrapAxios("promotions.preview", api.post("/promotions/preview", data), schemas.successData),
+    unwrapAxios(
+      "promotions.preview",
+      api.post("/promotions/preview", data),
+      schemas.successData,
+    ),
 };
 
 export const categoryApi = {
   getAll: (params?: { active?: boolean }) =>
-    unwrapAxios("categories.getAll", api.get("/categories", { params }), schemas.categoriesList),
-  getStats: () => unwrapAxios("categories.stats", api.get("/categories/stats"), schemas.categoryStats),
-  getById: (id: string) => unwrapAxios("categories.getById", api.get(`/categories/${id}`), schemas.categorySingle),
-  getSubcategories: (categorySlug: string) => 
-    unwrapAxios("categories.getSubcategories", api.get(`/categories/slug/${categorySlug}/subcategories`), schemas.subcategoriesList),
+    unwrapAxios(
+      "categories.getAll",
+      api.get("/categories", { params }),
+      schemas.categoriesList,
+    ),
+  getStats: () =>
+    unwrapAxios(
+      "categories.stats",
+      api.get("/categories/stats"),
+      schemas.categoryStats,
+    ),
+  getById: (id: string) =>
+    unwrapAxios(
+      "categories.getById",
+      api.get(`/categories/${id}`),
+      schemas.categorySingle,
+    ),
+  getSubcategories: (categorySlug: string) =>
+    unwrapAxios(
+      "categories.getSubcategories",
+      api.get(`/categories/slug/${categorySlug}/subcategories`),
+      schemas.subcategoriesList,
+    ),
 };
 
 export const navigationApi = {
   getMegaMenu: () =>
-    unwrapAxios("navigation.megaMenu", api.get("/navigation/mega-menu"), schemas.megaMenu),
+    unwrapAxios(
+      "navigation.megaMenu",
+      api.get("/navigation/mega-menu"),
+      schemas.megaMenu,
+    ),
 };
 
 export const collectionApi = {
   getCollection: (catSlug: string) =>
-    unwrapAxios("collections.getCollection", api.get(`/collections/${catSlug}`), schemas.looseDataResponse),
-  getCollectionProducts: (catSlug: string, params?: Record<string, string | number>) =>
-    unwrapAxios("collections.getProducts", api.get(`/collections/${catSlug}/products`, { params }), schemas.productsPaginated),
+    unwrapAxios(
+      "collections.getCollection",
+      api.get(`/collections/${catSlug}`),
+      schemas.looseDataResponse,
+    ),
+  getCollectionProducts: (
+    catSlug: string,
+    params?: Record<string, string | number>,
+  ) =>
+    unwrapAxios(
+      "collections.getProducts",
+      api.get(`/collections/${catSlug}/products`, { params }),
+      schemas.productsPaginated,
+    ),
   getSubcollection: (catSlug: string, subSlug: string) =>
-    unwrapAxios("collections.getSubcollection", api.get(`/collections/${catSlug}/${subSlug}`), schemas.looseDataResponse),
-  getSubcollectionProducts: (catSlug: string, subSlug: string, params?: Record<string, string | number>) =>
-    unwrapAxios("collections.getSubcollectionProducts", api.get(`/collections/${catSlug}/${subSlug}/products`, { params }), schemas.productsPaginated),
+    unwrapAxios(
+      "collections.getSubcollection",
+      api.get(`/collections/${catSlug}/${subSlug}`),
+      schemas.looseDataResponse,
+    ),
+  getSubcollectionProducts: (
+    catSlug: string,
+    subSlug: string,
+    params?: Record<string, string | number>,
+  ) =>
+    unwrapAxios(
+      "collections.getSubcollectionProducts",
+      api.get(`/collections/${catSlug}/${subSlug}/products`, { params }),
+      schemas.productsPaginated,
+    ),
 };
 
 export const storefrontApi = {
@@ -679,34 +1034,44 @@ export const storefrontApi = {
     };
   }) =>
     unwrapAxios(
-      'storefront.visit',
-      api.post('/storefront/visit', data),
+      "storefront.visit",
+      api.post("/storefront/visit", data),
       schemas.storeVisitRecorded,
     ),
   recordOfferEvent: (data: {
-    eventType: 'popup_impression' | 'popup_dismiss' | 'popup_cta_click' | 'coupon_copy';
-    offerKind: 'coupon' | 'sale' | 'promotion';
+    eventType:
+      | "popup_impression"
+      | "popup_dismiss"
+      | "popup_cta_click"
+      | "coupon_copy";
+    offerKind: "coupon" | "sale" | "promotion";
     offerId?: string;
     offerLabel?: string;
     sessionKey: string;
     path?: string;
   }) =>
     unwrapAxios(
-      'storefront.offerEvent',
-      api.post('/storefront/offer-event', data),
+      "storefront.offerEvent",
+      api.post("/storefront/offer-event", data),
       schemas.looseDataResponse,
     ),
   getShippingEstimate: (pin: string) =>
     unwrapAxios(
-      'storefront.shippingEstimate',
-      api.get('/storefront/shipping/estimate', { params: { pin } }),
+      "storefront.shippingEstimate",
+      api.get("/storefront/shipping/estimate", { params: { pin } }),
       schemas.shippingEstimate,
     ),
 };
 
 export const adminApi = {
-  getProducts: (params?: Record<string, string | number | boolean | undefined>) =>
-    unwrapAxios("admin.products", api.get("/admin/products", { params }), schemas.productsPaginated),
+  getProducts: (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) =>
+    unwrapAxios(
+      "admin.products",
+      api.get("/admin/products", { params }),
+      schemas.productsPaginated,
+    ),
   getProductById: (id: string) =>
     unwrapAxios(
       "admin.productById",
@@ -731,22 +1096,49 @@ export const adminApi = {
       api.get("/admin/writes/products/premium-hero/signature"),
       schemas.successData,
     ),
-  searchProducts: (params?: Record<string, string | number | boolean | undefined>) =>
-    unwrapAxios("admin.products.search", api.get("/admin/products/search", { params }), schemas.productsPaginated),
-  getAnalytics: () => unwrapAxios("admin.analytics", api.get("/admin/analytics"), schemas.adminAnalytics),
+  searchProducts: (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) =>
+    unwrapAxios(
+      "admin.products.search",
+      api.get("/admin/products/search", { params }),
+      schemas.productsPaginated,
+    ),
+  getAnalytics: () =>
+    unwrapAxios(
+      "admin.analytics",
+      api.get("/admin/analytics"),
+      schemas.adminAnalytics,
+    ),
   getRevenueSummary: (params: {
     period: string;
     year?: number;
     month?: number;
     channel?: RevenueChannelFilter;
   }) =>
-    unwrapAxios("admin.revenueSummary", api.get("/admin/revenue/summary", { params }), schemas.adminAnalytics),
+    unwrapAxios(
+      "admin.revenueSummary",
+      api.get("/admin/revenue/summary", { params }),
+      schemas.adminAnalytics,
+    ),
   getAuditLogs: (params?: Record<string, string | number>) =>
-    unwrapAxios("admin.auditLogs", api.get("/admin/security/audit", { params }), schemas.adminAuditLogsList),
+    unwrapAxios(
+      "admin.auditLogs",
+      api.get("/admin/security/audit", { params }),
+      schemas.adminAuditLogsList,
+    ),
   getOrders: (params?: object) =>
-    unwrapAxios("admin.orders", api.get("/admin/orders", { params }), schemas.adminOrdersList),
+    unwrapAxios(
+      "admin.orders",
+      api.get("/admin/orders", { params }),
+      schemas.adminOrdersList,
+    ),
   getOrderDetails: (id: string) =>
-    unwrapAxios("admin.orderDetail", api.get(`/admin/orders/${id}`), schemas.adminOrderDetail),
+    unwrapAxios(
+      "admin.orderDetail",
+      api.get(`/admin/orders/${id}`),
+      schemas.adminOrderDetail,
+    ),
   createReviewInvite: (orderId: string) =>
     unwrapAxios(
       "admin.reviewInvite.create",
@@ -768,9 +1160,17 @@ export const adminApi = {
   deleteOrder: (id: string) =>
     del204("admin.deleteOrder", api.delete(`/admin/orders/${id}`)),
   createOfflineOrder: (data: AdminCreateOfflineOrderBody) =>
-    unwrapAxios("admin.createOfflineOrder", api.post("/admin/orders/offline", data), schemas.adminOrderDetail),
+    unwrapAxios(
+      "admin.createOfflineOrder",
+      api.post("/admin/orders/offline", data),
+      schemas.adminOrderDetail,
+    ),
   createB2bOrder: (data: AdminCreateB2bOrderBody) =>
-    unwrapAxios("admin.createB2bOrder", api.post("/admin/orders/b2b", data), schemas.adminOrderDetail),
+    unwrapAxios(
+      "admin.createB2bOrder",
+      api.post("/admin/orders/b2b", data),
+      schemas.adminOrderDetail,
+    ),
   updateOrderStatus: (
     id: string,
     payload: {
@@ -780,15 +1180,30 @@ export const adminApi = {
       trackingNumber?: string;
       trackingUrl?: string;
     },
-  ) => unwrapAxios("admin.orderStatus", api.patch(`/admin/orders/${id}/status`, payload), schemas.adminOrderDetail),
-  updateOrderLineCostAtSale: (orderId: string, lineIndex: number, costAtSale: number) =>
+  ) =>
+    unwrapAxios(
+      "admin.orderStatus",
+      api.patch(`/admin/orders/${id}/status`, payload),
+      schemas.adminOrderDetail,
+    ),
+  updateOrderLineCostAtSale: (
+    orderId: string,
+    lineIndex: number,
+    costAtSale: number,
+  ) =>
     unwrapAxios(
       "admin.orderLineCostAtSale",
-      api.patch(`/admin/orders/${orderId}/items/${lineIndex}/cost-at-sale`, { costAtSale }),
+      api.patch(`/admin/orders/${orderId}/items/${lineIndex}/cost-at-sale`, {
+        costAtSale,
+      }),
       schemas.successData,
     ),
   generateOrderInvoice: (id: string) =>
-    unwrapAxios("admin.generateInvoice", api.post(`/admin/orders/${id}/generate-invoice`), schemas.successMessageData),
+    unwrapAxios(
+      "admin.generateInvoice",
+      api.post(`/admin/orders/${id}/generate-invoice`),
+      schemas.successMessageData,
+    ),
   createTaxInvoiceFromOrder: (orderId: string) =>
     unwrapAxios(
       "admin.createTaxInvoiceFromOrder",
@@ -801,7 +1216,10 @@ export const adminApi = {
       api.get(`/admin/orders/${orderId}/tax-invoice`),
       schemas.adminOrderTaxInvoice,
     ),
-  listB2bOrdersPendingTaxInvoice: (params?: { search?: string; limit?: number }) =>
+  listB2bOrdersPendingTaxInvoice: (params?: {
+    search?: string;
+    limit?: number;
+  }) =>
     unwrapAxios(
       "admin.listB2bOrdersPendingTaxInvoice",
       api.get("/admin/orders/b2b/pending-tax-invoice", { params }),
@@ -809,10 +1227,19 @@ export const adminApi = {
     ),
   processRefund: (
     id: string,
-    payload: { refundMethod?: string; amount: number; notes?: string }
-  ) => unwrapAxios("admin.processRefund", api.post(`/admin/orders/${id}/refund`, payload), schemas.adminOrderDetail),
+    payload: { refundMethod?: string; amount: number; notes?: string },
+  ) =>
+    unwrapAxios(
+      "admin.processRefund",
+      api.post(`/admin/orders/${id}/refund`, payload),
+      schemas.adminOrderDetail,
+    ),
   getUsers: (params?: object) =>
-    unwrapAxios("admin.users", api.get("/admin/users", { params }), schemas.adminUsersList),
+    unwrapAxios(
+      "admin.users",
+      api.get("/admin/users", { params }),
+      schemas.adminUsersList,
+    ),
   getOfflineCustomers: (params?: { page?: number; limit?: number }) =>
     unwrapAxios(
       "admin.offlineCustomers",
@@ -831,25 +1258,58 @@ export const adminApi = {
       schemas.adminNewsletterSubscribersList,
     ),
   getUserDirectoryStats: () =>
-    unwrapAxios("admin.userDirectoryStats", api.get("/admin/users/stats"), schemas.adminUserDirectoryStats),
+    unwrapAxios(
+      "admin.userDirectoryStats",
+      api.get("/admin/users/stats"),
+      schemas.adminUserDirectoryStats,
+    ),
   getUserInsights: (id: string) =>
-    unwrapAxios("admin.userInsights", api.get(`/admin/users/${id}/insights`), schemas.adminUserInsights),
+    unwrapAxios(
+      "admin.userInsights",
+      api.get(`/admin/users/${id}/insights`),
+      schemas.adminUserInsights,
+    ),
   toggleUserStatus: (id: string) =>
-    unwrapAxios("admin.toggleUser", api.patch(`/admin/users/${id}/toggle-status`), schemas.adminToggleUser),
+    unwrapAxios(
+      "admin.toggleUser",
+      api.patch(`/admin/users/${id}/toggle-status`),
+      schemas.adminToggleUser,
+    ),
   updateUserNote: (id: string, note: string) =>
-    unwrapAxios("admin.updateUserNote", api.patch(`/admin/users/${id}/note`, { note }), schemas.adminUpdateUserNote),
-  updateUserRole: (id: string, role: "user" | "admin") =>
+    unwrapAxios(
+      "admin.updateUserNote",
+      api.patch(`/admin/users/${id}/note`, { note }),
+      schemas.adminUpdateUserNote,
+    ),
+  updateUserRole: (
+    id: string,
+    payload:
+      | { role: "user" | "admin" }
+      | { role: "staff"; adminPermissions: string[] },
+  ) =>
     unwrapAxios(
       "admin.updateUserRole",
-      api.patch(`/admin/users/${id}/role`, { role }),
-      schemas.adminUpdateUserRole
+      api.patch(`/admin/users/${id}/role`, payload),
+      schemas.adminUpdateUserRole,
     ),
   getJobHealth: () =>
-    unwrapAxios("admin.jobHealth", api.get("/admin/jobs/health"), schemas.adminJobHealth),
+    unwrapAxios(
+      "admin.jobHealth",
+      api.get("/admin/jobs/health"),
+      schemas.adminJobHealth,
+    ),
   getTwoFactorStatus: () =>
-    unwrapAxios("admin.twoFactorStatus", api.get("/admin/security/2fa/status"), schemas.adminTwoFactorStatus),
+    unwrapAxios(
+      "admin.twoFactorStatus",
+      api.get("/admin/security/2fa/status"),
+      schemas.adminTwoFactorStatus,
+    ),
   setupTwoFactor: () =>
-    unwrapAxios("admin.twoFactorSetup", api.post("/admin/security/2fa/setup"), schemas.adminTwoFactorSetup),
+    unwrapAxios(
+      "admin.twoFactorSetup",
+      api.post("/admin/security/2fa/setup"),
+      schemas.adminTwoFactorSetup,
+    ),
   enableTwoFactor: (data: { secret: string; code: string }) =>
     unwrapAxios(
       "admin.twoFactorEnable",
@@ -875,10 +1335,19 @@ export const adminApi = {
       schemas.successMessageData,
     ),
   getReviews: (params?: object) =>
-    unwrapAxios("admin.reviews", api.get("/admin/reviews", { params }), schemas.adminReviewsList),
-  deleteReview: (id: string) => del204("admin.deleteReview", api.delete(`/admin/reviews/${id}`)),
+    unwrapAxios(
+      "admin.reviews",
+      api.get("/admin/reviews", { params }),
+      schemas.adminReviewsList,
+    ),
+  deleteReview: (id: string) =>
+    del204("admin.deleteReview", api.delete(`/admin/reviews/${id}`)),
   replyToReview: (id: string, text: string) =>
-    unwrapAxios("admin.replyReview", api.patch(`/admin/reviews/${id}/reply`, { text }), schemas.reviewSingle),
+    unwrapAxios(
+      "admin.replyReview",
+      api.patch(`/admin/reviews/${id}/reply`, { text }),
+      schemas.reviewSingle,
+    ),
   moderateReview: (id: string, action: "approve" | "hide" | "restore") =>
     unwrapAxios(
       "admin.moderateReview",
@@ -904,10 +1373,23 @@ export const adminApi = {
     ctaLink?: string;
     channels?: Array<"email" | "in_app" | "push" | "whatsapp">;
     includeOfflineLeads?: boolean;
-  }) => unwrapAxios("admin.email", api.post("/admin/emails/send", data), schemas.successMessageData),
+  }) =>
+    unwrapAxios(
+      "admin.email",
+      api.post("/admin/emails/send", data),
+      schemas.successMessageData,
+    ),
   getWhatsAppStatus: () =>
-    unwrapAxios("admin.whatsapp.status", api.get("/admin/whatsapp/status"), schemas.successData),
-  getWhatsAppLogs: (params?: { limit?: number; status?: string; category?: string }) =>
+    unwrapAxios(
+      "admin.whatsapp.status",
+      api.get("/admin/whatsapp/status"),
+      schemas.successData,
+    ),
+  getWhatsAppLogs: (params?: {
+    limit?: number;
+    status?: string;
+    category?: string;
+  }) =>
     unwrapAxios(
       "admin.whatsapp.logs",
       api.get("/admin/whatsapp/logs", { params }),
@@ -920,39 +1402,78 @@ export const adminApi = {
       schemas.successMessageData,
     ),
   getStorefrontSettings: () =>
-    unwrapAxios("admin.storefront.get", api.get("/admin/storefront/settings"), schemas.adminStorefront),
+    unwrapAxios(
+      "admin.storefront.get",
+      api.get("/admin/storefront/settings"),
+      schemas.adminStorefront,
+    ),
   updateStorefrontSettings: (data: object | FormData) =>
-    data instanceof FormData
-      ? unwrapAxios(
-          "admin.storefront.patch",
-          api.patch("/admin/storefront/settings", data, { headers: { "Content-Type": "multipart/form-data" } }),
-          schemas.adminStorefront,
-        )
-      : unwrapAxios("admin.storefront.patch", api.patch("/admin/storefront/settings", data), schemas.adminStorefront),
+    data instanceof FormData ?
+      unwrapAxios(
+        "admin.storefront.patch",
+        api.patch("/admin/storefront/settings", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+        schemas.adminStorefront,
+      )
+    : unwrapAxios(
+        "admin.storefront.patch",
+        api.patch("/admin/storefront/settings", data),
+        schemas.adminStorefront,
+      ),
   getCategories: (params?: object) =>
-    unwrapAxios("admin.categories", api.get("/admin/categories", { params }), schemas.adminCategoriesList),
+    unwrapAxios(
+      "admin.categories",
+      api.get("/admin/categories", { params }),
+      schemas.adminCategoriesList,
+    ),
   createCategory: (data: FormData) =>
     unwrapAxios(
       "admin.categories.create",
-      api.post("/admin/categories", data, { headers: { "Content-Type": "multipart/form-data" } }),
+      api.post("/admin/categories", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
       schemas.categorySingle,
     ),
   updateCategory: (id: string, data: FormData) =>
     unwrapAxios(
       "admin.categories.update",
-      api.patch(`/admin/categories/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }),
+      api.patch(`/admin/categories/${id}`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
       schemas.categorySingle,
     ),
-  deleteCategory: (id: string) => del204("admin.categories.delete", api.delete(`/admin/categories/${id}`)),
+  deleteCategory: (id: string) =>
+    del204("admin.categories.delete", api.delete(`/admin/categories/${id}`)),
   getSubcategories: (params?: object) =>
-    unwrapAxios("admin.subcategories", api.get("/admin/subcategories", { params }), schemas.subcategoriesList),
+    unwrapAxios(
+      "admin.subcategories",
+      api.get("/admin/subcategories", { params }),
+      schemas.subcategoriesList,
+    ),
   createSubcategory: (data: object) =>
-    unwrapAxios("admin.subcategories.create", api.post("/admin/subcategories", data), schemas.subcategorySingle),
+    unwrapAxios(
+      "admin.subcategories.create",
+      api.post("/admin/subcategories", data),
+      schemas.subcategorySingle,
+    ),
   updateSubcategory: (id: string, data: object) =>
-    unwrapAxios("admin.subcategories.update", api.patch(`/admin/subcategories/${id}`, data), schemas.subcategorySingle),
-  deleteSubcategory: (id: string) => del204("admin.subcategories.delete", api.delete(`/admin/subcategories/${id}`)),
+    unwrapAxios(
+      "admin.subcategories.update",
+      api.patch(`/admin/subcategories/${id}`, data),
+      schemas.subcategorySingle,
+    ),
+  deleteSubcategory: (id: string) =>
+    del204(
+      "admin.subcategories.delete",
+      api.delete(`/admin/subcategories/${id}`),
+    ),
   /* ── Sales invoices (B2B / bulk-order tax invoices) ── */
-  listSalesInvoices: (params?: { page?: number; limit?: number; search?: string }) =>
+  listSalesInvoices: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) =>
     unwrapAxios(
       "admin.invoices.list",
       api.get("/admin/invoices", { params }),
@@ -983,14 +1504,33 @@ export const adminApi = {
       schemas.successMessageData,
     ),
   getReturns: (params?: object) =>
-    unwrapAxios("admin.returns", api.get("/admin/returns", { params }), schemas.adminOrdersList),
+    unwrapAxios(
+      "admin.returns",
+      api.get("/admin/returns", { params }),
+      schemas.adminOrdersList,
+    ),
   getReturnsInsights: () =>
-    unwrapAxios("admin.returnsInsights", api.get("/admin/returns/insights"), schemas.adminReturnsInsights),
-  resolveReturn: (id: string, payload: { action: 'approve' | 'reject'; adminNote?: string }) =>
-    unwrapAxios("admin.resolveReturn", api.patch(`/admin/orders/${id}/return/resolve`, payload), schemas.adminOrderDetail),
+    unwrapAxios(
+      "admin.returnsInsights",
+      api.get("/admin/returns/insights"),
+      schemas.adminReturnsInsights,
+    ),
+  resolveReturn: (
+    id: string,
+    payload: { action: "approve" | "reject"; adminNote?: string },
+  ) =>
+    unwrapAxios(
+      "admin.resolveReturn",
+      api.patch(`/admin/orders/${id}/return/resolve`, payload),
+      schemas.adminOrderDetail,
+    ),
 
   getDelhiveryStatus: () =>
-    unwrapAxios("admin.delhiveryStatus", api.get("/admin/delhivery/status"), schemas.delhiveryStatus),
+    unwrapAxios(
+      "admin.delhiveryStatus",
+      api.get("/admin/delhivery/status"),
+      schemas.delhiveryStatus,
+    ),
   checkDelhiveryPin: (orderId: string) =>
     unwrapAxios(
       "admin.delhiveryPin",
@@ -1001,7 +1541,9 @@ export const adminApi = {
   checkDelhiveryServiceability: (pin: string) =>
     unwrapAxios(
       "admin.delhiveryServiceability",
-      api.get("/admin/delhivery/serviceability", { params: { pin: pin.replace(/\D/g, "").slice(0, 6) } }),
+      api.get("/admin/delhivery/serviceability", {
+        params: { pin: pin.replace(/\D/g, "").slice(0, 6) },
+      }),
       schemas.delhiveryServiceability,
     ),
   estimateDelhivery: (
@@ -1045,7 +1587,10 @@ export const adminApi = {
       schemas.adminDelhiveryTrackSync,
     ),
   /** JSON with S3 URL (e.g. integrations). Prefer downloadDelhiveryPackingSlipFile for browser. */
-  getDelhiveryPackingSlip: (orderId: string, params?: { pdf_size?: '4R' | 'A4' }) =>
+  getDelhiveryPackingSlip: (
+    orderId: string,
+    params?: { pdf_size?: "4R" | "A4" },
+  ) =>
     unwrapAxios(
       "admin.delhiveryPackingSlip",
       api.get(`/admin/orders/${orderId}/delhivery/packing-slip`, {
@@ -1054,26 +1599,32 @@ export const adminApi = {
       }),
       schemas.delhiveryPackingSlip,
     ),
-  /** Delhivery packing slip with pdf=false — JSON for custom layouts (Code 128, etc.). */
-  getDelhiveryPackingSlipJson: (orderId: string, params?: { pdf_size?: '4R' | 'A4' }) =>
+  /** Delhivery packing slip with pdf=false - JSON for custom layouts (Code 128, etc.). */
+  getDelhiveryPackingSlipJson: (
+    orderId: string,
+    params?: { pdf_size?: "4R" | "A4" },
+  ) =>
     unwrapAxios(
-      'admin.delhiveryPackingSlipJson',
+      "admin.delhiveryPackingSlipJson",
       api.get(`/admin/orders/${orderId}/delhivery/packing-slip/json`, {
         params: params?.pdf_size ? { pdf_size: params.pdf_size } : {},
         timeout: 120_000,
       }),
       schemas.delhiveryPackingSlipJson,
     ),
-  /** Proxied PDF bytes — same file every time; no wrong tab / tracking link. */
+  /** Proxied PDF bytes - same file every time; no wrong tab / tracking link. */
   downloadDelhiveryPackingSlipFile: async (
     orderId: string,
     params?: { pdf_size?: "4R" | "A4" },
   ): Promise<Blob> => {
-    const res = await api.get(`/admin/orders/${orderId}/delhivery/packing-slip/file`, {
-      params: params?.pdf_size ? { pdf_size: params.pdf_size } : {},
-      responseType: "blob",
-      timeout: 120_000,
-    });
+    const res = await api.get(
+      `/admin/orders/${orderId}/delhivery/packing-slip/file`,
+      {
+        params: params?.pdf_size ? { pdf_size: params.pdf_size } : {},
+        responseType: "blob",
+        timeout: 120_000,
+      },
+    );
     const blob = res.data as Blob;
     if (blob.type.includes("application/json")) {
       const text = await blob.text();
@@ -1090,54 +1641,145 @@ export const adminApi = {
   },
 };
 
-/** @see adminAiApi — AI calls live in a separate module to avoid Webpack/HMR dropping nested adminApi methods. */
+/** @see adminAiApi - AI calls live in a separate module to avoid Webpack/HMR dropping nested adminApi methods. */
 export { adminAiApi } from "@/lib/adminAiApi";
 
 export const inventoryApi = {
   getOverview: (params?: Record<string, string | number>) =>
-    unwrapAxios('inventory.overview', api.get('/admin/inventory', { params }), schemas.adminInventoryOverview),
+    unwrapAxios(
+      "inventory.overview",
+      api.get("/admin/inventory", { params }),
+      schemas.adminInventoryOverview,
+    ),
   exportRows: () =>
-    unwrapAxios('inventory.export', api.get('/admin/inventory/export'), schemas.successMessageData),
-  adjustStock: (productId: string, sku: string, payload: { delta: number; reason: string; note?: string; costPrice?: number; price?: number }) =>
-    unwrapAxios('inventory.adjustStock', api.patch(`/admin/inventory/products/${productId}/variants/${encodeURIComponent(sku)}/stock`, payload), schemas.successMessageData),
+    unwrapAxios(
+      "inventory.export",
+      api.get("/admin/inventory/export"),
+      schemas.successMessageData,
+    ),
+  adjustStock: (
+    productId: string,
+    sku: string,
+    payload: {
+      delta: number;
+      reason: string;
+      note?: string;
+      costPrice?: number;
+      price?: number;
+    },
+  ) =>
+    unwrapAxios(
+      "inventory.adjustStock",
+      api.patch(
+        `/admin/inventory/products/${productId}/variants/${encodeURIComponent(sku)}/stock`,
+        payload,
+      ),
+      schemas.successMessageData,
+    ),
   getLedger: (params?: Record<string, string | number>) =>
-    unwrapAxios('inventory.ledger', api.get('/admin/inventory/ledger', { params }), schemas.adminStockLedger),
+    unwrapAxios(
+      "inventory.ledger",
+      api.get("/admin/inventory/ledger", { params }),
+      schemas.adminStockLedger,
+    ),
   getValuation: () =>
-    unwrapAxios('inventory.valuation', api.get('/admin/inventory/valuation'), schemas.adminInventoryValuation),
+    unwrapAxios(
+      "inventory.valuation",
+      api.get("/admin/inventory/valuation"),
+      schemas.adminInventoryValuation,
+    ),
   listPurchaseInvoices: (params?: Record<string, string | number>) =>
-    unwrapAxios('inventory.purchaseInvoices', api.get('/admin/inventory/purchase-invoices', { params }), schemas.adminPurchaseInvoiceList),
+    unwrapAxios(
+      "inventory.purchaseInvoices",
+      api.get("/admin/inventory/purchase-invoices", { params }),
+      schemas.adminPurchaseInvoiceList,
+    ),
   getPurchaseInvoice: (id: string) =>
-    unwrapAxios('inventory.purchaseInvoice', api.get(`/admin/inventory/purchase-invoices/${id}`), schemas.adminPurchaseInvoiceSingle),
+    unwrapAxios(
+      "inventory.purchaseInvoice",
+      api.get(`/admin/inventory/purchase-invoices/${id}`),
+      schemas.adminPurchaseInvoiceSingle,
+    ),
   createPurchaseInvoice: (payload: Record<string, unknown>) =>
-    unwrapAxios('inventory.createPurchaseInvoice', api.post('/admin/inventory/purchase-invoices', payload), schemas.adminPurchaseInvoiceSingle),
+    unwrapAxios(
+      "inventory.createPurchaseInvoice",
+      api.post("/admin/inventory/purchase-invoices", payload),
+      schemas.adminPurchaseInvoiceSingle,
+    ),
   updatePurchaseInvoice: (id: string, payload: Record<string, unknown>) =>
-    unwrapAxios('inventory.updatePurchaseInvoice', api.put(`/admin/inventory/purchase-invoices/${id}`, payload), schemas.adminPurchaseInvoiceSingle),
+    unwrapAxios(
+      "inventory.updatePurchaseInvoice",
+      api.put(`/admin/inventory/purchase-invoices/${id}`, payload),
+      schemas.adminPurchaseInvoiceSingle,
+    ),
   deletePurchaseInvoice: (id: string) =>
-    del204('inventory.deletePurchaseInvoice', api.delete(`/admin/inventory/purchase-invoices/${id}`)),
-  getGstSummary: (params?: { year?: number; month?: string; quarter?: string }) =>
-    unwrapAxios('inventory.gstSummary', api.get('/admin/inventory/gst-summary', { params }), schemas.adminGstSummary),
+    del204(
+      "inventory.deletePurchaseInvoice",
+      api.delete(`/admin/inventory/purchase-invoices/${id}`),
+    ),
+  getGstSummary: (params?: {
+    year?: number;
+    month?: string;
+    quarter?: string;
+  }) =>
+    unwrapAxios(
+      "inventory.gstSummary",
+      api.get("/admin/inventory/gst-summary", { params }),
+      schemas.adminGstSummary,
+    ),
 };
 
 export const operatingExpensesApi = {
   list: (params?: Record<string, string | number>) =>
-    unwrapAxios('operatingExpenses.list', api.get('/admin/operating-expenses', { params }), schemas.adminOperatingExpenseList),
+    unwrapAxios(
+      "operatingExpenses.list",
+      api.get("/admin/operating-expenses", { params }),
+      schemas.adminOperatingExpenseList,
+    ),
   getSummary: (params?: { year?: number }) =>
-    unwrapAxios('operatingExpenses.summary', api.get('/admin/operating-expenses/summary', { params }), schemas.adminOperatingExpenseSummary),
+    unwrapAxios(
+      "operatingExpenses.summary",
+      api.get("/admin/operating-expenses/summary", { params }),
+      schemas.adminOperatingExpenseSummary,
+    ),
   create: (payload: Record<string, unknown>) =>
-    unwrapAxios('operatingExpenses.create', api.post('/admin/operating-expenses', payload), schemas.adminOperatingExpenseSingle),
+    unwrapAxios(
+      "operatingExpenses.create",
+      api.post("/admin/operating-expenses", payload),
+      schemas.adminOperatingExpenseSingle,
+    ),
   update: (id: string, payload: Record<string, unknown>) =>
-    unwrapAxios('operatingExpenses.update', api.put(`/admin/operating-expenses/${id}`, payload), schemas.adminOperatingExpenseSingle),
+    unwrapAxios(
+      "operatingExpenses.update",
+      api.put(`/admin/operating-expenses/${id}`, payload),
+      schemas.adminOperatingExpenseSingle,
+    ),
   void: (id: string) =>
-    del204('operatingExpenses.void', api.delete(`/admin/operating-expenses/${id}`)),
+    del204(
+      "operatingExpenses.void",
+      api.delete(`/admin/operating-expenses/${id}`),
+    ),
 };
 
 export const blogApi = {
-  getAll: (params?: Record<string, string | number | boolean>) => 
-    unwrapAxios("blogs.getAll", api.get("/blogs", { params }), schemas.blogsPaginated),
-  getBySlug: (slug: string) => 
-    unwrapAxios("blogs.getBySlug", api.get(`/blogs/${slug}`), schemas.blogSingle),
+  getAll: (params?: Record<string, string | number | boolean>) =>
+    unwrapAxios(
+      "blogs.getAll",
+      api.get("/blogs", { params }),
+      schemas.blogsPaginated,
+    ),
+  getBySlug: (slug: string) =>
+    unwrapAxios(
+      "blogs.getBySlug",
+      api.get(`/blogs/${slug}`),
+      schemas.blogSingle,
+    ),
   getRelated: (slug: string) =>
-    unwrapAxios("blogs.getRelated", api.get(`/blogs/${slug}/related`), schemas.blogsPaginated),
+    unwrapAxios(
+      "blogs.getRelated",
+      api.get(`/blogs/${slug}/related`),
+      schemas.blogsPaginated,
+    ),
   trackShopClick: (slug: string, productSlug?: string) =>
     unwrapAxios(
       "blogs.trackShopClick",
@@ -1145,13 +1787,29 @@ export const blogApi = {
       schemas.successData,
     ),
   getAnalytics: () =>
-    unwrapAxios("blogs.analytics", api.get("/blogs/admin/analytics"), schemas.looseDataResponse),
-  like: (id: string) => 
-    unwrapAxios("blogs.like", api.post(`/blogs/${id}/like`), schemas.successData),
-  addComment: (id: string, content: string) => 
-    unwrapAxios("blogs.addComment", api.post(`/blogs/${id}/comments`, { content }), schemas.successData),
-  getAdminAll: (params?: Record<string, string | number>) => 
-    unwrapAxios("blogs.getAdminAll", api.get("/blogs/admin/all", { params }), schemas.blogsPaginated),
+    unwrapAxios(
+      "blogs.analytics",
+      api.get("/blogs/admin/analytics"),
+      schemas.looseDataResponse,
+    ),
+  like: (id: string) =>
+    unwrapAxios(
+      "blogs.like",
+      api.post(`/blogs/${id}/like`),
+      schemas.successData,
+    ),
+  addComment: (id: string, content: string) =>
+    unwrapAxios(
+      "blogs.addComment",
+      api.post(`/blogs/${id}/comments`, { content }),
+      schemas.successData,
+    ),
+  getAdminAll: (params?: Record<string, string | number>) =>
+    unwrapAxios(
+      "blogs.getAdminAll",
+      api.get("/blogs/admin/all", { params }),
+      schemas.blogsPaginated,
+    ),
   create: (
     data: FormData,
     opts?: { onUploadProgress?: (percent: number) => void },
@@ -1185,19 +1843,29 @@ export const blogApi = {
       }),
       schemas.blogSingle,
     ),
-  delete: (id: string) => del204("blogs.delete", api.delete(`/admin/writes/blogs/${id}`)),
-  deleteImage: (id: string, publicId: string) => 
+  delete: (id: string) =>
+    del204("blogs.delete", api.delete(`/admin/writes/blogs/${id}`)),
+  deleteImage: (id: string, publicId: string) =>
     unwrapAxios(
       "blogs.deleteImage",
-      api.delete(`/admin/writes/blogs/${id}/images/${encodeURIComponent(publicId)}`),
+      api.delete(
+        `/admin/writes/blogs/${id}/images/${encodeURIComponent(publicId)}`,
+      ),
       schemas.successData,
     ),
-  deleteComment: (id: string, commentId: string) => 
-    unwrapAxios("blogs.deleteComment", api.delete(`/blogs/${id}/comments/${commentId}`), schemas.successData),
+  deleteComment: (id: string, commentId: string) =>
+    unwrapAxios(
+      "blogs.deleteComment",
+      api.delete(`/blogs/${id}/comments/${commentId}`),
+      schemas.successData,
+    ),
 };
 
 export const newsletterApi = {
-  subscribe: (email: string, source: "blog_listing" | "blog_detail" = "blog_listing") =>
+  subscribe: (
+    email: string,
+    source: "blog_listing" | "blog_detail" = "blog_listing",
+  ) =>
     unwrapAxios(
       "newsletter.subscribe",
       api.post("/newsletter/subscribe", { email, source }),
@@ -1207,9 +1875,17 @@ export const newsletterApi = {
 
 export const blogContentPlanApi = {
   getAll: (params?: Record<string, string>) =>
-    unwrapAxios("blogPlans.list", api.get("/admin/blog-content-plans", { params }), schemas.looseDataResponse),
+    unwrapAxios(
+      "blogPlans.list",
+      api.get("/admin/blog-content-plans", { params }),
+      schemas.looseDataResponse,
+    ),
   create: (body: Record<string, unknown>) =>
-    unwrapAxios("blogPlans.create", api.post("/admin/blog-content-plans", body), schemas.looseDataResponse),
+    unwrapAxios(
+      "blogPlans.create",
+      api.post("/admin/blog-content-plans", body),
+      schemas.looseDataResponse,
+    ),
   bulkCreate: (items: Record<string, unknown>[]) =>
     unwrapAxios(
       "blogPlans.bulk",
@@ -1217,32 +1893,69 @@ export const blogContentPlanApi = {
       schemas.looseDataResponse,
     ),
   update: (id: string, body: Record<string, unknown>) =>
-    unwrapAxios("blogPlans.update", api.patch(`/admin/blog-content-plans/${id}`, body), schemas.looseDataResponse),
-  delete: (id: string) => del204("blogPlans.delete", api.delete(`/admin/blog-content-plans/${id}`)),
+    unwrapAxios(
+      "blogPlans.update",
+      api.patch(`/admin/blog-content-plans/${id}`, body),
+      schemas.looseDataResponse,
+    ),
+  delete: (id: string) =>
+    del204("blogPlans.delete", api.delete(`/admin/blog-content-plans/${id}`)),
 };
 
 export const notificationApi = {
-  getAll: (params?: Record<string, string | number | boolean>) => 
-    unwrapAxios("notifications.getAll", api.get("/notifications", { params }), schemas.notificationsList),
-  markAsRead: (id: string) => 
-    unwrapAxios("notifications.markAsRead", api.patch(`/notifications/${id}/read`), schemas.notificationSingle),
-  markAllAsRead: () => 
-    unwrapAxios("notifications.markAllAsRead", api.patch("/notifications/mark-all-read"), schemas.successData),
-  clearAll: () => 
-    unwrapAxios("notifications.clearAll", api.delete("/notifications/clear-all"), schemas.successData),
+  getAll: (params?: Record<string, string | number | boolean>) =>
+    unwrapAxios(
+      "notifications.getAll",
+      api.get("/notifications", { params }),
+      schemas.notificationsList,
+    ),
+  markAsRead: (id: string) =>
+    unwrapAxios(
+      "notifications.markAsRead",
+      api.patch(`/notifications/${id}/read`),
+      schemas.notificationSingle,
+    ),
+  markAllAsRead: () =>
+    unwrapAxios(
+      "notifications.markAllAsRead",
+      api.patch("/notifications/mark-all-read"),
+      schemas.successData,
+    ),
+  clearAll: () =>
+    unwrapAxios(
+      "notifications.clearAll",
+      api.delete("/notifications/clear-all"),
+      schemas.successData,
+    ),
   getPushPublicKey: () =>
-    unwrapAxios("notifications.pushPublicKey", api.get("/notifications/push/public-key"), schemas.pushPublicKey),
+    unwrapAxios(
+      "notifications.pushPublicKey",
+      api.get("/notifications/push/public-key"),
+      schemas.pushPublicKey,
+    ),
   subscribePush: (subscription: PushSubscriptionJSON) =>
-    unwrapAxios("notifications.subscribePush", api.post("/notifications/push/subscribe", { subscription }), schemas.successData),
+    unwrapAxios(
+      "notifications.subscribePush",
+      api.post("/notifications/push/subscribe", { subscription }),
+      schemas.successData,
+    ),
   unsubscribePush: (endpoint: string) =>
-    unwrapAxios("notifications.unsubscribePush", api.post("/notifications/push/unsubscribe", { endpoint }), schemas.successData),
+    unwrapAxios(
+      "notifications.unsubscribePush",
+      api.post("/notifications/push/unsubscribe", { endpoint }),
+      schemas.successData,
+    ),
   sendTestPushToSelf: () =>
-    unwrapAxios("notifications.sendTestPushToSelf", api.post("/notifications/push/test-self"), schemas.successData),
+    unwrapAxios(
+      "notifications.sendTestPushToSelf",
+      api.post("/notifications/push/test-self"),
+      schemas.successData,
+    ),
   getPreferences: () =>
     unwrapAxios(
       "notifications.getPreferences",
       api.get("/notifications/preferences"),
-      schemas.notificationPreferencesResponse
+      schemas.notificationPreferencesResponse,
     ),
   updatePreferences: (body: {
     pushOptIn?: boolean;
@@ -1253,30 +1966,61 @@ export const notificationApi = {
     unwrapAxios(
       "notifications.updatePreferences",
       api.patch("/notifications/preferences", body),
-      schemas.notificationPreferencesResponse
+      schemas.notificationPreferencesResponse,
     ),
 };
 
+/** Customization / made-to-order quote requests (not the retired gifting catalog). */
 export const giftingApi = {
-  getProducts: (params?: Record<string, string | number>) => 
-    unwrapAxios("gifting.getProducts", api.get("/gifting/products", { params }), schemas.giftingProductsList),
-  getCategories: () => 
-    unwrapAxios("gifting.getCategories", api.get("/gifting/categories"), schemas.categoriesList),
   submitRequest: (data: FormData | Record<string, unknown>) =>
-    data instanceof FormData
-      ? unwrapAxios("gifting.submitRequest", api.post("/gifting/requests", data, { headers: { "Content-Type": "multipart/form-data" } }), schemas.giftingRequestSingle)
-      : unwrapAxios("gifting.submitRequest", api.post("/gifting/requests", data), schemas.giftingRequestSingle),
-  getMyRequests: (params?: Record<string, string | number>) => 
-    unwrapAxios("gifting.getMyRequests", api.get("/gifting/my-requests", { params }), schemas.giftingRequestsList),
-  getRequestById: (id: string) => 
-    unwrapAxios("gifting.getRequestById", api.get(`/gifting/requests/${id}`), schemas.giftingRequestSingle),
-  respondToQuote: (id: string, action: 'accept' | 'reject', shippingAddress?: Record<string, string>) =>
-    unwrapAxios("gifting.respondToQuote", api.post(`/gifting/requests/${id}/respond`, { action, shippingAddress }), schemas.giftingRequestSingle),
+    data instanceof FormData ?
+      unwrapAxios(
+        "gifting.submitRequest",
+        api.post("/gifting/requests", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+        schemas.giftingRequestSingle,
+      )
+    : unwrapAxios(
+        "gifting.submitRequest",
+        api.post("/gifting/requests", data),
+        schemas.giftingRequestSingle,
+      ),
+  getMyRequests: (params?: Record<string, string | number>) =>
+    unwrapAxios(
+      "gifting.getMyRequests",
+      api.get("/gifting/my-requests", { params }),
+      schemas.giftingRequestsList,
+    ),
+  getRequestById: (id: string) =>
+    unwrapAxios(
+      "gifting.getRequestById",
+      api.get(`/gifting/requests/${id}`),
+      schemas.giftingRequestSingle,
+    ),
+  respondToQuote: (
+    id: string,
+    action: "accept" | "reject",
+    shippingAddress?: Record<string, string>,
+  ) =>
+    unwrapAxios(
+      "gifting.respondToQuote",
+      api.post(`/gifting/requests/${id}/respond`, { action, shippingAddress }),
+      schemas.giftingRequestSingle,
+    ),
   // Admin
-  getRequests: (params?: Record<string, string | number>) => 
-    unwrapAxios("gifting.getRequests", api.get("/gifting/requests", { params }), schemas.giftingRequestsList),
-  updateRequest: (id: string, data: Record<string, unknown>) => 
-    unwrapAxios("gifting.updateRequest", api.patch(`/gifting/requests/${id}`, data), schemas.giftingRequestSingle),
+  getRequests: (params?: Record<string, string | number>) =>
+    unwrapAxios(
+      "gifting.getRequests",
+      api.get("/gifting/requests", { params }),
+      schemas.giftingRequestsList,
+    ),
+  updateRequest: (id: string, data: Record<string, unknown>) =>
+    unwrapAxios(
+      "gifting.updateRequest",
+      api.patch(`/gifting/requests/${id}`, data),
+      schemas.giftingRequestSingle,
+    ),
 };
 
 export const premiumApi = {
@@ -1296,7 +2040,11 @@ export const premiumApi = {
 
 export const raniCareApi = {
   getStatus: () =>
-    unwrapAxios("raniCare.status", api.get("/rani-care/status"), schemas.raniCareStatus),
+    unwrapAxios(
+      "raniCare.status",
+      api.get("/rani-care/status"),
+      schemas.raniCareStatus,
+    ),
   chat: (body: {
     message: string;
     isAuthenticated?: boolean;

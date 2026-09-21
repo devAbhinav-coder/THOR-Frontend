@@ -24,7 +24,10 @@ import { resolveFooterCuratorialLinks } from "@/lib/footerQuickLinks";
 import dynamic from "next/dynamic";
 import { requestOpenRaniCare } from "@/components/support/rani-care/chatStorage";
 
-const FooterContactDialog = dynamic(() => import("@/components/layout/FooterContactDialog"), { ssr: false });
+const FooterContactDialog = dynamic(
+  () => import("@/components/layout/FooterContactDialog"),
+  { ssr: false },
+);
 import { cn } from "@/lib/utils";
 import {
   footerAccentLine,
@@ -52,7 +55,7 @@ import {
   resolveFooterCategoryLimit,
 } from "@/lib/footerStyles";
 
-/** Official-style WhatsApp glyph — lucide has no brand mark. */
+/** Official-style WhatsApp glyph - lucide has no brand mark. */
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -83,7 +86,7 @@ const TRUST_SIGNALS = [
   { Icon: RotateCcw, label: "5-day easy returns" },
 ] as const;
 
-/** Legal strip — help links live under Concierge */
+/** Legal strip - help links live under Concierge */
 const POLICY_LINKS = [
   { label: "Return Policy", href: "/returns" },
   { label: "Terms", href: "/terms" },
@@ -181,7 +184,7 @@ function FooterSection({
 }
 
 type Props = {
-  /** Same SSR mega-menu snapshot as Navbar — keeps The Collection populated on first paint. */
+  /** Same SSR mega-menu snapshot as Navbar - keeps The Collection populated on first paint. */
   initialNavCategories?: MegaMenuCategory[];
 };
 
@@ -287,12 +290,12 @@ export default function Footer({ initialNavCategories = [] }: Props) {
 
       <div className={cn(footerContainer, "py-10 sm:py-14 lg:py-16")}>
         <div className='lg:grid lg:grid-cols-12 lg:items-start lg:gap-12 xl:gap-16'>
-          {/* Brand — always visible */}
+          {/* Brand - always visible */}
           <div className='mb-2 border-b border-white/[0.06] pb-8 lg:col-span-4 lg:mb-0 lg:border-0 lg:pb-0'>
             <div className='max-w-md'>
               <Link
                 href='/'
-                aria-label='The House of Rani — Home'
+                aria-label='The House of Rani - Home'
                 className='inline-block'
               >
                 <Image
@@ -305,7 +308,7 @@ export default function Footer({ initialNavCategories = [] }: Props) {
               </Link>
               <p className={cn(footerBrandDescription, "max-w-sm")}>
                 {footer?.description ||
-                  "Your destination for exquisite Indian ethnic wear. Curated sarees, salwar suits, and corsets — crafted with love and tradition."}
+                  "Your destination for exquisite Indian ethnic wear. Curated sarees, salwar suits, and corsets - crafted with love and tradition."}
               </p>
 
               <div className={footerContactRow}>
@@ -318,7 +321,10 @@ export default function Footer({ initialNavCategories = [] }: Props) {
                   </span>
                   <span className={footerContactText}>{contactPhone}</span>
                 </a>
-                <a href={`mailto:${contactEmail}`} className={footerContactLink}>
+                <a
+                  href={`mailto:${contactEmail}`}
+                  className={footerContactLink}
+                >
                   <span className={footerContactIcon} aria-hidden='true'>
                     <Mail className='h-3.5 w-3.5' strokeWidth={1.75} />
                   </span>
@@ -345,7 +351,7 @@ export default function Footer({ initialNavCategories = [] }: Props) {
             </div>
           </div>
 
-          {/* Link columns — accordion on mobile, open columns on desktop */}
+          {/* Link columns - accordion on mobile, open columns on desktop */}
           <div className='grid grid-cols-1 lg:col-span-8 lg:grid-cols-3 lg:gap-10 xl:gap-12'>
             <FooterSection title='The Collection' className='lg:col-span-1'>
               <ul className={footerLinkList}>

@@ -15,7 +15,7 @@ type Props = {
 };
 
 /**
- * Print-ready purchase bill (GSTR-2 style) — supplier as seller, your store as buyer.
+ * Print-ready purchase bill (GSTR-2 style) - supplier as seller, your store as buyer.
  */
 export default function PurchaseInvoiceDocument({
   invoice,
@@ -123,7 +123,7 @@ export default function PurchaseInvoiceDocument({
                     </p>
                   </td>
                   <td className='px-3 py-2 font-mono text-gray-600'>
-                    {l.hsn || "—"}
+                    {l.hsn || "-"}
                   </td>
                   <td className='px-3 py-2 text-right'>{l.quantity}</td>
                   <td className='px-3 py-2 text-right'>

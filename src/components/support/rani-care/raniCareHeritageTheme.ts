@@ -1,4 +1,4 @@
-/** Rani Care chat — heritage premium (navy + gold, square editorial). */
+/** Rani Care chat - heritage premium (navy + gold, square editorial). */
 export const raniGold = "#c5a059";
 export const raniGoldHover = "#b8924d";
 

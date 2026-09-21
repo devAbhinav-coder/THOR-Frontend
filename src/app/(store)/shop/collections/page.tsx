@@ -84,10 +84,11 @@ export async function generateMetadata({
 
   let title = baseTitle;
   if (onSale) title = "Sale Sarees, Salwar Suits & Corsets Online India";
-  else if (hasOffer) title = "Coupon Offers — Ethnic Wear Online India";
-  else if (featured) title = "Featured Sarees, Salwar Suits & Corsets Online India";
-  else if (cat) title = `${cat} — Shop Online India`;
-  else if (fabric) title = `${fabric} Collection — Shop Online India`;
+  else if (hasOffer) title = "Coupon Offers - Ethnic Wear Online India";
+  else if (featured)
+    title = "Featured Sarees, Salwar Suits & Corsets Online India";
+  else if (cat) title = `${cat} - Shop Online India`;
+  else if (fabric) title = `${fabric} Collection - Shop Online India`;
   else if (search) title = `Search: ${search}`;
 
   let description = baseDesc;
@@ -96,21 +97,21 @@ export async function generateMetadata({
       "Sale on sarees, salwar suits & corsets at The House of Rani. Special pricing, free delivery over ₹1,099, easy 5-day returns.";
   } else if (hasOffer) {
     description =
-      "Shop with active coupon offers at The House of Rani — apply a code at checkout for extra savings on ethnic wear.";
+      "Shop with active coupon offers at The House of Rani - apply a code at checkout for extra savings on ethnic wear.";
   } else if (cat) {
     description = clipMeta(
-      `Browse ${cat} at The House of Rani — premium ethnic wear with free delivery over ₹1,099 and easy 5-day returns.`,
+      `Browse ${cat} at The House of Rani - premium ethnic wear with free delivery over ₹1,099 and easy 5-day returns.`,
     );
   } else if (search) {
     description = clipMeta(
-      `Search results for "${search}" — sarees, salwar suits & corsets at The House of Rani. Free delivery across India.`,
+      `Search results for "${search}" - sarees, salwar suits & corsets at The House of Rani. Free delivery across India.`,
     );
   } else if (featured) {
     description =
       "Featured sarees, salwar suits & corsets at The House of Rani. Free delivery over ₹1,099 · 5-day returns · In stock.";
   } else if (fabric) {
     description = clipMeta(
-      `Shop ${fabric} styles — sarees, salwar suits & corsets at The House of Rani. Free delivery over ₹1,099.`,
+      `Shop ${fabric} styles - sarees, salwar suits & corsets at The House of Rani. Free delivery over ₹1,099.`,
     );
   }
 
@@ -147,7 +148,7 @@ export async function generateMetadata({
           url: ogImage,
           width: 1200,
           height: 630,
-          alt: "The House of Rani — Shop Sarees, Salwar Suits & Corsets",
+          alt: "The House of Rani - Shop Sarees, Salwar Suits & Corsets",
         },
       ],
     },
@@ -185,12 +186,10 @@ async function fetchCategories(): Promise<Category[]> {
     });
     if (!res.ok) return [];
     const json = await res.json();
-    const allCats = Array.isArray(json?.data?.categories)
-      ? json.data.categories
-      : [];
+    const allCats =
+      Array.isArray(json?.data?.categories) ? json.data.categories : [];
     return allCats.filter(
-      (c: Category) =>
-        c.name.toLowerCase() !== "gifting" && !c.isGiftCategory,
+      (c: Category) => c.name.toLowerCase() !== "gifting" && !c.isGiftCategory,
     );
   } catch {
     return [];
@@ -247,7 +246,7 @@ export default async function ShopPage({
             {
               "@type": "ItemList",
               "@id": `${SITE_URL}/shop/collections#itemlist`,
-              name: "All Products — The House of Rani",
+              name: "All Products - The House of Rani",
               url: `${SITE_URL}/shop/collections`,
               numberOfItems: products.length,
               itemListElement: products
@@ -358,7 +357,7 @@ export default async function ShopPage({
         />
       )}
       {!isFiltered && (
-        <div className="w-full">
+        <div className='w-full'>
           <CategoryCards
             categories={categoriesForCards}
             exploreHouseImages={storefrontSettings?.homeExploreHouse}

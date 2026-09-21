@@ -1,4 +1,4 @@
-/** Mirrors backend `orderRefundPolicy` — shipping + COD fees are not refunded on returns. */
+/** Mirrors backend `orderRefundPolicy` - shipping + COD fees are not refunded on returns. */
 
 export function getNonRefundableFeesInr(order: {
   shippingCharge?: number;

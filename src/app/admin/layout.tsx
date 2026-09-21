@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import ProfileAvatarImg from "@/components/shared/ProfileAvatarImg";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
@@ -49,6 +50,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  canAccessAdminHref,
+  defaultAdminHomeHref,
+  isAdminPanelUser,
+} from "@/lib/adminAccess";
 
 /** If persist never calls onRehydrateStorage (edge case), unblock admin shell */
 function useAuthHydrationFallback() {
@@ -64,7 +70,7 @@ function useAuthHydrationFallback() {
 type NavItem = { label: string; href: string; icon: LucideIcon };
 type NavSection = { title: string; items: NavItem[] };
 
-/** Grouped nav — easier scanning for owners (sell / grow / manage). */
+/** Grouped nav - easier scanning for owners (sell / grow / manage). */
 const navSections: NavSection[] = [
   {
     title: "Overview",
@@ -80,7 +86,11 @@ const navSections: NavSection[] = [
     title: "Catalog",
     items: [
       { label: "Categories", href: "/admin/categories", icon: LayoutGrid },
-      { label: "Subcategories", href: "/admin/subcategories", icon: LayoutGrid },
+      {
+        label: "Subcategories",
+        href: "/admin/subcategories",
+        icon: LayoutGrid,
+      },
       { label: "Products", href: "/admin/products", icon: Package },
       { label: "Inventory", href: "/admin/inventory", icon: Warehouse },
       { label: "Premium", href: "/admin/premium", icon: Crown },
@@ -189,8 +199,10 @@ function AdminSidebarNavLink({
       </span>
       <span
         className={cn(
-          'flex min-h-9 items-center truncate text-left text-[13px] font-semibold leading-none tracking-tight transition-all duration-300 ease-in-out whitespace-nowrap',
-          sidebarCollapsed ? 'opacity-0 max-w-0 ml-0 pointer-events-none' : 'opacity-100 max-w-[200px] ml-2 flex-1 min-w-0'
+          "flex min-h-9 items-center truncate text-left text-[13px] font-semibold leading-none tracking-tight transition-all duration-300 ease-in-out whitespace-nowrap",
+          sidebarCollapsed ?
+            "opacity-0 max-w-0 ml-0 pointer-events-none"
+          : "opacity-100 max-w-[200px] ml-2 flex-1 min-w-0",
         )}
       >
         {label}
@@ -201,18 +213,9 @@ function AdminSidebarNavLink({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{link}</TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
+      <TooltipContent side='right'>{label}</TooltipContent>
     </Tooltip>
   );
-}
-
-function adminInitials(name: string | undefined) {
-  if (!name?.trim()) return "?";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
 }
 
 function AdminAvatar({
@@ -222,39 +225,29 @@ function AdminAvatar({
 }: {
   name: string | undefined;
   avatarUrl: string | undefined;
-  /** e.g. h-12 w-12 — used for both ring container and image */
+  /** e.g. h-12 w-12 - used for both ring container and image */
   sizeClass: string;
 }) {
-  const initials = adminInitials(name);
-  const alt = name?.trim() ? `${name} — profile` : "Admin profile";
+  const alt = name?.trim() ? `${name} - profile` : "Admin profile";
   const initialsTextClass =
     sizeClass.includes("h-9") ? "text-[10px]" : "text-sm";
-  if (avatarUrl) {
-    return (
-      <div
-        className={`relative ${sizeClass} shrink-0 overflow-hidden rounded-2xl bg-gray-100 ring-2 ring-brand-200 shadow-sm`}
-      >
-        <Image
-          src={avatarUrl}
-          alt={alt}
-          fill
-          sizes='96px'
-          className='object-cover'
-        />
-      </div>
-    );
-  }
   return (
     <div
-      className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 ${initialsTextClass} font-bold tracking-tight text-slate-600 ring-2 ring-brand-200 shadow-sm`}
+      className={`relative flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 ring-2 ring-brand-200 shadow-sm`}
       aria-label={alt}
     >
-      {initials}
+      <ProfileAvatarImg
+        name={name || "Admin"}
+        avatar={avatarUrl}
+        resetKey={name}
+        imgClassName='h-full w-full object-cover'
+        initialsClassName={`${initialsTextClass} font-bold tracking-tight text-slate-600`}
+      />
     </div>
   );
 }
 
-/** Customer-facing site (/) — not admin Storefront settings */
+/** Customer-facing site (/) - not admin Storefront settings */
 const SHOP_SITE_CTA = "Go to website";
 
 const mobileQuickLinks = [
@@ -290,12 +283,29 @@ export default function AdminLayout({
     if (el) el.scrollTop = 0;
   }, [pathname]);
 
+  const visibleNavSections = useMemo(() => {
+    if (!user || user.role === "admin") return navSections;
+    return navSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          canAccessAdminHref(user, item.href),
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [user]);
+
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!isAuthenticated || user?.role !== "admin") {
+    if (!isAuthenticated || !isAdminPanelUser(user)) {
       router.push(loginUrlWithRedirect("/admin"));
+      return;
     }
-  }, [isAuthenticated, user, router, _hasHydrated]);
+    if (user?.role === "admin") return;
+    if (!canAccessAdminHref(user, pathname)) {
+      router.replace(defaultAdminHomeHref(user));
+    }
+  }, [isAuthenticated, user, router, _hasHydrated, pathname]);
 
   if (!_hasHydrated) {
     return (
@@ -309,89 +319,92 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAuthenticated || user?.role !== "admin") return null;
+  if (!isAuthenticated || !isAdminPanelUser(user)) return null;
 
   return (
     <TooltipProvider delayDuration={200}>
-    <div className='flex flex-col h-dvh max-h-dvh bg-[#FAF9F6] overflow-hidden overscroll-none'>
-      <BrowserNotificationPrompt />
-      {/* Mobile top bar */}
-      <div className='lg:hidden shrink-0 z-40 border-b border-gray-100 bg-[#FAF9F6] text-navy-900 shadow-sm sticky top-0'>
-        <div className='h-[3.25rem] px-3 flex items-center justify-between gap-2'>
-          <div className='flex min-w-0 flex-1 items-center gap-2'>
-            <Link
-              href='/admin'
-              className='relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-white/[0.08] ring-1 ring-white/15'
-              aria-label='Admin home'
-            >
-              <Image
-                src='/logo.png'
-                alt=''
-                width={32}
-                height={32}
-                className='h-full w-full object-contain p-0.5'
+      <div className='flex flex-col h-dvh max-h-dvh bg-[#FAF9F6] overflow-hidden overscroll-none'>
+        <BrowserNotificationPrompt />
+        {/* Mobile top bar */}
+        <div className='lg:hidden shrink-0 z-40 border-b border-gray-100 bg-[#FAF9F6] text-navy-900 shadow-sm sticky top-0'>
+          <div className='h-[3.25rem] px-3 flex items-center justify-between gap-2'>
+            <div className='flex min-w-0 flex-1 items-center gap-2'>
+              <Link
+                href='/admin'
+                className='relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-white/[0.08] ring-1 ring-white/15'
+                aria-label='Admin home'
+              >
+                <Image
+                  src='/logo.png'
+                  alt=''
+                  width={32}
+                  height={32}
+                  className='h-full w-full object-contain p-0.5'
+                />
+              </Link>
+              <AdminAvatar
+                name={user?.name}
+                avatarUrl={user?.avatar}
+                sizeClass='h-9 w-9'
               />
-            </Link>
-            <AdminAvatar
-              name={user?.name}
-              avatarUrl={user?.avatar}
-              sizeClass='h-9 w-9'
-            />
-            <div className='min-w-0'>
-              <h1 className='font-serif text-sm font-bold leading-tight tracking-tight text-navy-900'>
-                <span className='text-brand-600'>✦</span> Rani Admin
-              </h1>
-              <p className='truncate text-[10px] text-slate-500'>
-                {user?.name}
-              </p>
+              <div className='min-w-0'>
+                <h1 className='font-serif text-sm font-bold leading-tight tracking-tight text-navy-900'>
+                  <span className='text-brand-600'>✦</span> Rani Admin
+                </h1>
+                <p className='truncate text-[10px] text-slate-500'>
+                  {user?.name}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className='flex shrink-0 items-center gap-2'>
-            <Link
-              href='/'
-              prefetch
-              className='flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-700 ring-1 ring-gray-200 transition hover:bg-gray-50'
-              aria-label={SHOP_SITE_CTA}
-              title={SHOP_SITE_CTA}
-            >
-              <Store className='h-4 w-4' strokeWidth={2.25} />
-            </Link>
-            <NotificationBell variant="admin-mobile" />
-            <button
-              onClick={() => setIsMenuOpen(true)}
-              className='flex h-9 w-9 items-center justify-center rounded-xl bg-navy-900 text-white shadow-sm ring-1 ring-navy-800 transition hover:bg-navy-800'
-              aria-label='Toggle admin menu'
-            >
-              <Menu className='h-4 w-4' />
-            </button>
+            <div className='flex shrink-0 items-center gap-2'>
+              <Link
+                href='/'
+                prefetch
+                className='flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-700 ring-1 ring-gray-200 transition hover:bg-gray-50'
+                aria-label={SHOP_SITE_CTA}
+                title={SHOP_SITE_CTA}
+              >
+                <Store className='h-4 w-4' strokeWidth={2.25} />
+              </Link>
+              <NotificationBell variant='admin-mobile' />
+              <button
+                onClick={() => setIsMenuOpen(true)}
+                className='flex h-9 w-9 items-center justify-center rounded-xl bg-navy-900 text-white shadow-sm ring-1 ring-navy-800 transition hover:bg-navy-800'
+                aria-label='Toggle admin menu'
+              >
+                <Menu className='h-4 w-4' />
+              </button>
+            </div>
           </div>
         </div>
 
-      </div>
-      
-      {/* Slide-in Mobile Menu */}
-      <div 
-        className={cn(
-            "fixed inset-0 z-[100] transition-all duration-300 lg:hidden", 
-            isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        {/* Slide-in Mobile Menu */}
+        <div
+          className={cn(
+            "fixed inset-0 z-[100] transition-all duration-300 lg:hidden",
+            isMenuOpen ?
+              "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none",
           )}
         >
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-navy-900/40 backdrop-blur-sm"
+          <div
+            className='absolute inset-0 bg-navy-900/40 backdrop-blur-sm'
             onClick={() => setIsMenuOpen(false)}
           />
 
           {/* Drawer */}
-          <div 
+          <div
             className={cn(
               "absolute top-0 right-0 bottom-0 w-[280px] bg-[#FAF9F6] shadow-2xl flex flex-col transition-transform duration-300 ease-out",
-              isMenuOpen ? "translate-x-0" : "translate-x-full"
+              isMenuOpen ? "translate-x-0" : "translate-x-full",
             )}
           >
             {/* Header */}
             <div className='flex items-center justify-between p-4 border-b border-gray-100 bg-white'>
-              <span className='font-serif text-sm font-bold text-navy-900'>Menu</span>
+              <span className='font-serif text-sm font-bold text-navy-900'>
+                Menu
+              </span>
               <button
                 onClick={() => setIsMenuOpen(false)}
                 className='flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200'
@@ -421,7 +434,7 @@ export default function AdminLayout({
                   strokeWidth={2.25}
                 />
               </Link>
-              {navSections.map((section, sIdx) => (
+              {visibleNavSections.map((section, sIdx) => (
                 <div
                   key={section.title}
                   className={cn(
@@ -465,7 +478,7 @@ export default function AdminLayout({
                 </div>
               ))}
             </nav>
-            
+
             {/* Footer */}
             <div className='p-3 border-t border-gray-100 bg-white'>
               <button
@@ -478,115 +491,130 @@ export default function AdminLayout({
           </div>
         </div>
 
-      <div className='flex flex-1 min-h-0 w-full overflow-hidden'>
-        <aside
-          data-lenis-prevent
-          onMouseEnter={() => setSidebarHovered(true)}
-          onMouseLeave={() => setSidebarHovered(false)}
-          className={cn(
-            "relative z-20 hidden min-h-0 h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.07] bg-[#FAF9F6] transition-[width,min-width,max-width] duration-300 ease-in-out lg:flex",
-            sidebarCollapsed ?
-              "w-[76px] min-w-[76px] max-w-[76px]"
-            : "w-[272px] min-w-[272px] max-w-[272px]",
-          )}
-        >
-          {/* Ambient depth — soft gold / rose glow */}
-          <div
-            className='pointer-events-none absolute -right-20 -top-28 h-56 w-56 rounded-full bg-brand-400/[0.12] blur-3xl'
-            aria-hidden
-          />
-          <div
-            className='pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-rose-500/[0.08] blur-3xl'
-            aria-hidden
-          />
-          <div
-            className='pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-500/[0.04] to-transparent'
-            aria-hidden
-          />
-          <div
-            className='pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-brand-500/10 to-transparent'
-            aria-hidden
-          />
+        <div className='flex flex-1 min-h-0 w-full overflow-hidden'>
+          <aside
+            data-lenis-prevent
+            onMouseEnter={() => setSidebarHovered(true)}
+            onMouseLeave={() => setSidebarHovered(false)}
+            className={cn(
+              "relative z-20 hidden min-h-0 h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.07] bg-[#FAF9F6] transition-[width,min-width,max-width] duration-300 ease-in-out lg:flex",
+              sidebarCollapsed ?
+                "w-[76px] min-w-[76px] max-w-[76px]"
+              : "w-[272px] min-w-[272px] max-w-[272px]",
+            )}
+          >
+            {/* Ambient depth - soft gold / rose glow */}
+            <div
+              className='pointer-events-none absolute -right-20 -top-28 h-56 w-56 rounded-full bg-brand-400/[0.12] blur-3xl'
+              aria-hidden
+            />
+            <div
+              className='pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-rose-500/[0.08] blur-3xl'
+              aria-hidden
+            />
+            <div
+              className='pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-500/[0.04] to-transparent'
+              aria-hidden
+            />
+            <div
+              className='pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-brand-500/10 to-transparent'
+              aria-hidden
+            />
 
-          <div className='relative z-[1] border-b border-white/[0.06] px-2 pb-2 pt-2'>
-            {/*
+            <div className='relative z-[1] border-b border-white/[0.06] px-2 pb-2 pt-2'>
+              {/*
             Same profile strip height collapsed vs expanded → no vertical jump on hover.
             Tighter padding + items-center on expanded: avatar lines up with name block without a big empty band.
           */}
-            <div className='rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/[0.08] backdrop-blur-sm'>
-              <div className='flex min-h-[3.75rem] items-center gap-2.5'>
-                <div className='relative shrink-0 self-center'>
-                  <AdminAvatar
-                    name={user?.name}
-                    avatarUrl={user?.avatar}
-                    sizeClass='h-10 w-10'
-                  />
-                  <div className="absolute -top-1.5 -right-1.5 pointer-events-auto">
-                    <NotificationBell variant="admin-sidebar" align="right" />
-                  </div>
-                </div>
-                <div className={cn(
-                  'space-y-0.5 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap',
-                  sidebarCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[150px] flex-1'
-                )}>
-                  <div className='flex min-h-0 items-center gap-1'>
-                    <p className='min-w-0 truncate text-sm font-bold leading-tight tracking-tight text-navy-900'>
-                      {user?.name}
-                    </p>
-                    <BadgeCheck
-                      className='h-3.5 w-3.5 shrink-0 text-blue-400'
-                      strokeWidth={2.25}
-                      aria-label='Admin account'
+              <div className='rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/[0.08] backdrop-blur-sm'>
+                <div className='flex min-h-[3.75rem] items-center gap-2.5'>
+                  <div className='relative shrink-0 self-center'>
+                    <AdminAvatar
+                      name={user?.name}
+                      avatarUrl={user?.avatar}
+                      sizeClass='h-10 w-10'
                     />
+                    <div className='absolute -top-1.5 -right-1.5 pointer-events-auto'>
+                      <NotificationBell variant='admin-sidebar' align='right' />
+                    </div>
                   </div>
-                  <p className='truncate text-[10px] leading-snug text-slate-500'>
-                    {user?.email}
-                  </p>
+                  <div
+                    className={cn(
+                      "space-y-0.5 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap",
+                      sidebarCollapsed ?
+                        "opacity-0 max-w-0 pointer-events-none"
+                      : "opacity-100 max-w-[150px] flex-1",
+                    )}
+                  >
+                    <div className='flex min-h-0 items-center gap-1'>
+                      <p className='min-w-0 truncate text-sm font-bold leading-tight tracking-tight text-navy-900'>
+                        {user?.name}
+                      </p>
+                      <BadgeCheck
+                        className='h-3.5 w-3.5 shrink-0 text-blue-400'
+                        strokeWidth={2.25}
+                        aria-label='Admin account'
+                      />
+                    </div>
+                    <p className='truncate text-[10px] leading-snug text-slate-500'>
+                      {user?.email}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <Link
-                href='/'
-                prefetch
-                title={SHOP_SITE_CTA}
-                className={cn(
-                  "mt-1.5 flex h-9 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-sm font-bold text-brand-700 shadow-sm transition-all hover:bg-brand-100 active:scale-95 overflow-hidden duration-300",
-                  sidebarCollapsed ? "mx-auto w-9 p-0" : "w-full min-w-0 px-2.5",
-                )}
-              >
-                <Store
-                  className='h-3.5 w-3.5 shrink-0 text-brand-600'
-                  strokeWidth={2.25}
-                />
-                <span
+                <Link
+                  href='/'
+                  prefetch
+                  title={SHOP_SITE_CTA}
                   className={cn(
-                    'flex items-center text-[11px] font-bold tracking-widest text-navy-900/60 uppercase transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden',
-                    sidebarCollapsed ? 'opacity-0 max-w-0 ml-0 pointer-events-none' : 'opacity-100 max-w-[150px] ml-2'
+                    "mt-1.5 flex h-9 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-sm font-bold text-brand-700 shadow-sm transition-all hover:bg-brand-100 active:scale-95 overflow-hidden duration-300",
+                    sidebarCollapsed ? "mx-auto w-9 p-0" : (
+                      "w-full min-w-0 px-2.5"
+                    ),
                   )}
                 >
-                  {SHOP_SITE_CTA}
-                </span>
-                <ExternalLink
-                  className={cn(
-                    'h-3 w-3 shrink-0 text-brand-400 transition-all duration-300',
-                    sidebarCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[12px] ml-1.5'
-                  )}
-                  strokeWidth={2.25}
-                />
-              </Link>
+                  <Store
+                    className='h-3.5 w-3.5 shrink-0 text-brand-600'
+                    strokeWidth={2.25}
+                  />
+                  <span
+                    className={cn(
+                      "flex items-center text-[11px] font-bold tracking-widest text-navy-900/60 uppercase transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden",
+                      sidebarCollapsed ?
+                        "opacity-0 max-w-0 ml-0 pointer-events-none"
+                      : "opacity-100 max-w-[150px] ml-2",
+                    )}
+                  >
+                    {SHOP_SITE_CTA}
+                  </span>
+                  <ExternalLink
+                    className={cn(
+                      "h-3 w-3 shrink-0 text-brand-400 transition-all duration-300",
+                      sidebarCollapsed ?
+                        "opacity-0 max-w-0 ml-0"
+                      : "opacity-100 max-w-[12px] ml-1.5",
+                    )}
+                    strokeWidth={2.25}
+                  />
+                </Link>
+              </div>
             </div>
-          </div>
 
-          <nav
-            className="relative z-[1] flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-y px-2 space-y-2 transition-all duration-300"
-          >
-            {navSections.map((section, sIdx) => (
-                <div key={section.title} className={cn(sIdx > 0 && "pt-0.5", "flex flex-col")}>
+            <nav className='relative z-[1] flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-y px-2 space-y-2 transition-all duration-300'>
+              {visibleNavSections.map((section, sIdx) => (
+                <div
+                  key={section.title}
+                  className={cn(sIdx > 0 && "pt-0.5", "flex flex-col")}
+                >
                   {/* Section Title - Fade and Collapse */}
-                  <div className={cn(
-                    'flex items-center px-2 transition-all duration-300 ease-in-out overflow-hidden',
-                    sidebarCollapsed ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-[20px] mb-1.5'
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center px-2 transition-all duration-300 ease-in-out overflow-hidden",
+                      sidebarCollapsed ?
+                        "opacity-0 max-h-0 mb-0"
+                      : "opacity-100 max-h-[20px] mb-1.5",
+                    )}
+                  >
                     <span
                       className='h-4 w-0.5 shrink-0 rounded-full bg-gradient-to-b from-amber-400/90 to-gold-600/50'
                       aria-hidden
@@ -596,7 +624,7 @@ export default function AdminLayout({
                     </span>
                     <span className='h-px min-w-[0.75rem] flex-1 bg-gradient-to-r from-white/12 to-transparent ml-2' />
                   </div>
-                  
+
                   <div className='flex flex-col gap-0.5 pl-1'>
                     {section.items.map((item) => (
                       <AdminSidebarNavLink
@@ -610,39 +638,42 @@ export default function AdminLayout({
                     ))}
                   </div>
                 </div>
-              ))
-            }
-          </nav>
+              ))}
+            </nav>
 
-          <div className='relative z-[1] border-t border-gray-100 bg-white/40 px-2 py-2.5'>
-            <button
-              type='button'
-              onClick={logout}
-              title={sidebarCollapsed ? 'Sign out' : undefined}
-              className="rounded-xl border border-gray-100 bg-white font-medium text-slate-600 transition-all duration-300 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 shadow-sm active:scale-95 flex h-10 w-full items-center px-1.5 text-left text-xs leading-none overflow-hidden"
-            >
-              <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-transparent text-slate-400'>
-                <LogOut className='h-4 w-4' aria-hidden />
-              </span>
-              <span className={cn(
-                'flex min-h-9 items-center truncate font-bold transition-all duration-300 ease-in-out whitespace-nowrap',
-                sidebarCollapsed ? 'opacity-0 max-w-0 ml-0 pointer-events-none' : 'opacity-100 max-w-[200px] ml-2 flex-1 min-w-0'
-              )}>
-                Sign out
-              </span>
-            </button>
-          </div>
-        </aside>
+            <div className='relative z-[1] border-t border-gray-100 bg-white/40 px-2 py-2.5'>
+              <button
+                type='button'
+                onClick={logout}
+                title={sidebarCollapsed ? "Sign out" : undefined}
+                className='rounded-xl border border-gray-100 bg-white font-medium text-slate-600 transition-all duration-300 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 shadow-sm active:scale-95 flex h-10 w-full items-center px-1.5 text-left text-xs leading-none overflow-hidden'
+              >
+                <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-transparent text-slate-400'>
+                  <LogOut className='h-4 w-4' aria-hidden />
+                </span>
+                <span
+                  className={cn(
+                    "flex min-h-9 items-center truncate font-bold transition-all duration-300 ease-in-out whitespace-nowrap",
+                    sidebarCollapsed ?
+                      "opacity-0 max-w-0 ml-0 pointer-events-none"
+                    : "opacity-100 max-w-[200px] ml-2 flex-1 min-w-0",
+                  )}
+                >
+                  Sign out
+                </span>
+              </button>
+            </div>
+          </aside>
 
-        <main
-          ref={mainScrollRef}
-          data-lenis-prevent
-          className='relative z-10 flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y'
-        >
-          {children}
-        </main>
+          <main
+            ref={mainScrollRef}
+            data-lenis-prevent
+            className='relative z-10 flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y'
+          >
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
     </TooltipProvider>
   );
 }

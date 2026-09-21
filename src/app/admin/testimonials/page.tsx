@@ -1,17 +1,32 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
-import { Trash2, Star, Check, X, Copy, Download, Search, Package, QrCode, Share2 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { adminApi, testimonialApi } from '@/lib/api';
-import type { Testimonial } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { getSiteUrl } from '@/lib/siteUrl';
-import { cn } from '@/lib/utils';
-import { buildBrandedQrDataUrl, downloadDataUrl, shareInvite } from '@/lib/brandedQr';
-import { QRCode } from 'react-qrcode-logo';
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import {
+  Trash2,
+  Star,
+  Check,
+  X,
+  Copy,
+  Download,
+  Search,
+  Package,
+  QrCode,
+  Share2,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { adminApi, testimonialApi } from "@/lib/api";
+import type { Testimonial } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { getSiteUrl } from "@/lib/siteUrl";
+import { cn } from "@/lib/utils";
+import {
+  buildBrandedQrDataUrl,
+  downloadDataUrl,
+  shareInvite,
+} from "@/lib/brandedQr";
+import { QRCode } from "react-qrcode-logo";
 
 type ProductHit = {
   _id: string;
@@ -20,51 +35,62 @@ type ProductHit = {
   images?: { url: string }[];
 };
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function AdminTestimonialsPage() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [filter, setFilter] = useState<
+    "all" | "pending" | "approved" | "rejected"
+  >("pending");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [productQuery, setProductQuery] = useState('');
+  const [productQuery, setProductQuery] = useState("");
   const [productHits, setProductHits] = useState<ProductHit[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<ProductHit | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductHit | null>(
+    null,
+  );
   const [searching, setSearching] = useState(false);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [qrBusy, setQrBusy] = useState(false);
 
   // Connect QR States
-  const [connectQrBg, setConnectQrBg] = useState('#ffffff');
-  const [connectQrFg, setConnectQrFg] = useState('#1a2744');
-  const [connectQrStyle, setConnectQrStyle] = useState<'squares' | 'dots'>('dots');
+  const [connectQrBg, setConnectQrBg] = useState("#ffffff");
+  const [connectQrFg, setConnectQrFg] = useState("#1a2744");
+  const [connectQrStyle, setConnectQrStyle] = useState<"squares" | "dots">(
+    "dots",
+  );
   const [connectQrEyeRadius, setConnectQrEyeRadius] = useState(12);
   const [connectQrShowLogo, setConnectQrShowLogo] = useState(true);
 
   const downloadConnectQr = () => {
-    const canvas = document.getElementById('connect-qr-hq') as HTMLCanvasElement;
-    if (!canvas) return toast.error('QR canvas not found');
-    const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    const canvas = document.getElementById(
+      "connect-qr-hq",
+    ) as HTMLCanvasElement;
+    if (!canvas) return toast.error("QR canvas not found");
+    const pngUrl = canvas
+      .toDataURL("image/png")
+      .replace("image/png", "image/octet-stream");
     const downloadLink = document.createElement("a");
     downloadLink.href = pngUrl;
     downloadLink.download = "TheHouseOfRani-Connect.png";
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
-    toast.success('QR downloaded');
+    toast.success("QR downloaded");
   };
 
   const site = useMemo(() => getSiteUrl(), []);
   const storyUrl = `${site}/share-your-story`;
   // Prefer clean slug URL so customers never see a raw Mongo id
-  const productReviewUrl = selectedProduct
-    ? `${site}/share-your-story?product=${encodeURIComponent(
+  const productReviewUrl =
+    selectedProduct ?
+      `${site}/share-your-story?product=${encodeURIComponent(
         selectedProduct.slug || selectedProduct._id,
       )}`
     : null;
 
   const { data: items = [], isLoading: loading } = useQuery({
-    queryKey: ['admin-testimonials'],
+    queryKey: ["admin-testimonials"],
     queryFn: async () => {
       const res = await testimonialApi.getAdminAll();
       const list = res.data?.testimonials;
@@ -83,7 +109,7 @@ export default function AdminTestimonialsPage() {
         .searchProducts({
           q: productQuery.trim(),
           limit: 12,
-          simple: 'true',
+          simple: "true",
           isActive: true,
         })
         .then((res) => {
@@ -95,11 +121,13 @@ export default function AdminTestimonialsPage() {
     return () => window.clearTimeout(t);
   }, [productQuery]);
 
-  const pendingCount = items.filter((t) => (t.status || 'pending') === 'pending').length;
+  const pendingCount = items.filter(
+    (t) => (t.status || "pending") === "pending",
+  ).length;
 
   const visible = items.filter((t) => {
-    const status = t.status || (t.isActive ? 'approved' : 'pending');
-    if (filter === 'all') return true;
+    const status = t.status || (t.isActive ? "approved" : "pending");
+    if (filter === "all") return true;
     return status === filter;
   });
 
@@ -108,39 +136,49 @@ export default function AdminTestimonialsPage() {
       await navigator.clipboard.writeText(text);
       toast.success(ok);
     } catch {
-      toast.error('Could not copy');
+      toast.error("Could not copy");
     }
   };
 
-  const makeQr = async (url: string, title: string, subtitle: string, filename: string) => {
+  const makeQr = async (
+    url: string,
+    title: string,
+    subtitle: string,
+    filename: string,
+  ) => {
     setQrBusy(true);
     try {
       const dataUrl = await buildBrandedQrDataUrl(url, { title, subtitle });
       setQrPreview(dataUrl);
       downloadDataUrl(dataUrl, filename);
-      toast.success('QR downloaded');
+      toast.success("QR downloaded");
       return dataUrl;
     } catch {
-      toast.error('Could not generate QR');
+      toast.error("Could not generate QR");
       return null;
     } finally {
       setQrBusy(false);
     }
   };
 
-  const shareLink = async (url: string, label: string, qrDataUrl?: string | null) => {
+  const shareLink = async (
+    url: string,
+    label: string,
+    qrDataUrl?: string | null,
+  ) => {
     try {
       const mode = await shareInvite({
         url,
-        title: 'The House of Rani',
+        title: "The House of Rani",
         text: `${label}\n${url}`,
         qrDataUrl: qrDataUrl || qrPreview,
-        filename: 'THOR-share-QR.png',
+        filename: "THOR-share-QR.png",
       });
-      if (mode === 'native') toast.success('Shared');
-      else if (mode === 'whatsapp') toast.success('Opened WhatsApp');
+      if (mode === "native") toast.success("Shared");
+      else if (mode === "whatsapp") toast.success("Opened WhatsApp");
     } catch (err) {
-      if ((err as { name?: string })?.name !== 'AbortError') toast.error('Could not share');
+      if ((err as { name?: string })?.name !== "AbortError")
+        toast.error("Could not share");
     }
   };
 
@@ -148,30 +186,34 @@ export default function AdminTestimonialsPage() {
     mutationFn: (id: string) => testimonialApi.approve(id),
     onSuccess: (_, id) => {
       const item = items.find((t) => t._id === id);
-      toast.success(item?.product ? 'Approved — live on product & homepage' : 'Approved — live on homepage');
-      void queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] });
+      toast.success(
+        item?.product ?
+          "Approved - live on product & homepage"
+        : "Approved - live on homepage",
+      );
+      void queryClient.invalidateQueries({ queryKey: ["admin-testimonials"] });
     },
-    onError: () => toast.error('Approve failed'),
+    onError: () => toast.error("Approve failed"),
     onSettled: () => setBusyId(null),
   });
 
   const rejectMutation = useMutation({
     mutationFn: (id: string) => testimonialApi.reject(id),
     onSuccess: () => {
-      toast.success('Rejected');
-      void queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] });
+      toast.success("Rejected");
+      void queryClient.invalidateQueries({ queryKey: ["admin-testimonials"] });
     },
-    onError: () => toast.error('Reject failed'),
+    onError: () => toast.error("Reject failed"),
     onSettled: () => setBusyId(null),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => testimonialApi.delete(id),
     onSuccess: () => {
-      toast.success('Deleted');
-      void queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] });
+      toast.success("Deleted");
+      void queryClient.invalidateQueries({ queryKey: ["admin-testimonials"] });
     },
-    onError: () => toast.error('Delete failed'),
+    onError: () => toast.error("Delete failed"),
   });
 
   const approve = (id: string) => {
@@ -185,383 +227,479 @@ export default function AdminTestimonialsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Delete this story permanently?')) return;
+    if (!confirm("Delete this story permanently?")) return;
     deleteMutation.mutate(id);
   };
 
   return (
-    <div className="p-4 sm:p-6 xl:p-8 space-y-5">
-      <div className="bg-gradient-to-r from-navy-900 to-brand-700 rounded-2xl p-5 text-white">
-        <p className="text-xs uppercase tracking-widest text-white/70 font-semibold">Trust Builder</p>
-        <h1 className="text-2xl font-serif font-bold mt-1">Customer Stories</h1>
-        <p className="mt-1 text-sm text-white/80">
-          Share a link or QR with customers. Stories go live only after you approve.
+    <div className='p-4 sm:p-6 xl:p-8 space-y-5'>
+      <div className='bg-gradient-to-r from-navy-900 to-brand-700 rounded-2xl p-5 text-white'>
+        <p className='text-xs uppercase tracking-widest text-white/70 font-semibold'>
+          Trust Builder
+        </p>
+        <h1 className='text-2xl font-serif font-bold mt-1'>Customer Stories</h1>
+        <p className='mt-1 text-sm text-white/80'>
+          Share a link or QR with customers. Stories go live only after you
+          approve.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
         {/* Story-only */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Homepage story</p>
-          <p className="text-sm text-gray-600">Brand story for the homepage.</p>
-          <code className="block text-xs bg-gray-50 rounded-lg px-3 py-2 break-all text-navy-900">
+        <div className='rounded-2xl border border-gray-200 bg-white p-5 space-y-3 shadow-sm'>
+          <p className='text-xs font-semibold uppercase tracking-wide text-gray-400'>
+            Homepage story
+          </p>
+          <p className='text-sm text-gray-600'>Brand story for the homepage.</p>
+          <code className='block text-xs bg-gray-50 rounded-lg px-3 py-2 break-all text-navy-900'>
             {storyUrl}
           </code>
-          <div className="flex flex-wrap gap-2">
+          <div className='flex flex-wrap gap-2'>
             <Button
-              type="button"
-              variant="brand"
-              size="sm"
-              onClick={() => copyText(storyUrl, 'Story link copied')}
+              type='button'
+              variant='brand'
+              size='sm'
+              onClick={() => copyText(storyUrl, "Story link copied")}
             >
-              <Copy className="h-4 w-4 mr-1.5" /> Copy link
+              <Copy className='h-4 w-4 mr-1.5' /> Copy link
             </Button>
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => shareLink(storyUrl, 'Share your House of Rani story:')}
+              type='button'
+              variant='outline'
+              size='sm'
+              onClick={() =>
+                shareLink(storyUrl, "Share your House of Rani story:")
+              }
             >
-              <Share2 className="h-4 w-4 mr-1.5" /> Share
+              <Share2 className='h-4 w-4 mr-1.5' /> Share
             </Button>
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              type='button'
+              variant='outline'
+              size='sm'
               disabled={qrBusy}
               onClick={() =>
                 makeQr(
                   storyUrl,
-                  'The House of Rani',
-                  'Share your story',
-                  'THOR-story-QR.png',
+                  "The House of Rani",
+                  "Share your story",
+                  "THOR-story-QR.png",
                 )
               }
             >
-              <Download className="h-4 w-4 mr-1.5" /> Download QR
+              <Download className='h-4 w-4 mr-1.5' /> Download QR
             </Button>
           </div>
         </div>
 
         {/* Product-locked review + story */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <div className='rounded-2xl border border-gray-200 bg-white p-5 space-y-3 shadow-sm'>
+          <p className='text-xs font-semibold uppercase tracking-wide text-gray-400'>
             Product review + story
           </p>
-          <p className="text-sm text-gray-600">
-            Choose a product, then share the link. Approval publishes the review and updates ratings.
+          <p className='text-sm text-gray-600'>
+            Choose a product, then share the link. Approval publishes the review
+            and updates ratings.
           </p>
 
-          {selectedProduct ? (
-            <div className="flex items-center gap-3 rounded-xl border border-navy-900/10 bg-navy-50/40 px-3 py-2">
-              {selectedProduct.images?.[0]?.url ? (
+          {selectedProduct ?
+            <div className='flex items-center gap-3 rounded-xl border border-navy-900/10 bg-navy-50/40 px-3 py-2'>
+              {selectedProduct.images?.[0]?.url ?
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={selectedProduct.images[0].url}
-                  alt=""
-                  className="h-11 w-11 rounded-lg object-cover"
+                  alt=''
+                  className='h-11 w-11 rounded-lg object-cover'
                 />
-              ) : (
-                <Package className="h-5 w-5 text-gray-300" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-navy-900 truncate">{selectedProduct.name}</p>
+              : <Package className='h-5 w-5 text-gray-300' />}
+              <div className='min-w-0 flex-1'>
+                <p className='text-sm font-medium text-navy-900 truncate'>
+                  {selectedProduct.name}
+                </p>
               </div>
               <button
-                type="button"
-                className="text-xs text-brand-700 font-medium"
+                type='button'
+                className='text-xs text-brand-700 font-medium'
                 onClick={() => {
                   setSelectedProduct(null);
-                  setProductQuery('');
+                  setProductQuery("");
                 }}
               >
                 Change
               </button>
             </div>
-          ) : (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          : <div className='relative'>
+              <Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400' />
               <input
-                className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-sm"
+                className='w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-sm'
                 value={productQuery}
                 onChange={(e) => setProductQuery(e.target.value)}
-                placeholder="Search product…"
+                placeholder='Search product…'
               />
               {(searching || productHits.length > 0) && (
-                <div className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
-                  {searching && productHits.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-gray-400">Searching…</p>
-                  ) : null}
+                <div className='absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg'>
+                  {searching && productHits.length === 0 ?
+                    <p className='px-3 py-2 text-xs text-gray-400'>
+                      Searching…
+                    </p>
+                  : null}
                   {productHits.map((p) => (
                     <button
                       key={p._id}
-                      type="button"
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                      type='button'
+                      className='flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50'
                       onClick={() => {
                         setSelectedProduct(p);
                         setProductHits([]);
-                        setProductQuery('');
+                        setProductQuery("");
                       }}
                     >
-                      {p.images?.[0]?.url ? (
+                      {p.images?.[0]?.url ?
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.images[0].url} alt="" className="h-8 w-8 rounded object-cover" />
-                      ) : null}
-                      <span className="truncate">{p.name}</span>
+                        <img
+                          src={p.images[0].url}
+                          alt=''
+                          className='h-8 w-8 rounded object-cover'
+                        />
+                      : null}
+                      <span className='truncate'>{p.name}</span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
-          )}
+          }
 
-          {productReviewUrl ? (
+          {productReviewUrl ?
             <>
-              <code className="block text-xs bg-gray-50 rounded-lg px-3 py-2 break-all text-navy-900">
+              <code className='block text-xs bg-gray-50 rounded-lg px-3 py-2 break-all text-navy-900'>
                 {productReviewUrl}
               </code>
-              <div className="flex flex-wrap gap-2">
+              <div className='flex flex-wrap gap-2'>
                 <Button
-                  type="button"
-                  variant="brand"
-                  size="sm"
-                  onClick={() => copyText(productReviewUrl, 'Product review link copied')}
+                  type='button'
+                  variant='brand'
+                  size='sm'
+                  onClick={() =>
+                    copyText(productReviewUrl, "Product review link copied")
+                  }
                 >
-                  <Copy className="h-4 w-4 mr-1.5" /> Copy link
+                  <Copy className='h-4 w-4 mr-1.5' /> Copy link
                 </Button>
                 <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                  type='button'
+                  variant='outline'
+                  size='sm'
                   onClick={() =>
                     shareLink(
                       productReviewUrl,
-                      `Review ${selectedProduct?.name || 'your piece'} at The House of Rani:`,
+                      `Review ${selectedProduct?.name || "your piece"} at The House of Rani:`,
                     )
                   }
                 >
-                  <Share2 className="h-4 w-4 mr-1.5" /> Share
+                  <Share2 className='h-4 w-4 mr-1.5' /> Share
                 </Button>
                 <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                  type='button'
+                  variant='outline'
+                  size='sm'
                   disabled={qrBusy}
                   onClick={() =>
                     makeQr(
                       productReviewUrl,
-                      'The House of Rani',
-                      selectedProduct?.name || 'Product review',
-                      `THOR-review-${selectedProduct?._id || 'product'}.png`,
+                      "The House of Rani",
+                      selectedProduct?.name || "Product review",
+                      `THOR-review-${selectedProduct?._id || "product"}.png`,
                     )
                   }
                 >
-                  <QrCode className="h-4 w-4 mr-1.5" /> Download QR
+                  <QrCode className='h-4 w-4 mr-1.5' /> Download QR
                 </Button>
               </div>
             </>
-          ) : (
-            <p className="text-xs text-gray-400">Select a product to generate the link.</p>
-          )}
+          : <p className='text-xs text-gray-400'>
+              Select a product to generate the link.
+            </p>
+          }
         </div>
 
         {/* Connect Page QR Creator */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4 shadow-sm flex flex-col">
+        <div className='rounded-2xl border border-gray-200 bg-white p-5 space-y-4 shadow-sm flex flex-col'>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <p className='text-xs font-semibold uppercase tracking-wide text-gray-400'>
               Connect Links QR
             </p>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className='text-sm text-gray-600 mt-1'>
               Custom QR for your Connect page. Scan UI is fully premium.
             </p>
           </div>
-          
-          <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 rounded-xl p-3 border border-gray-100 min-h-[220px]">
-             <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100">
-               <QRCode
-                 id="connect-qr-preview"
-                 value={`${site}/connect`}
-                 bgColor={connectQrBg}
-                 fgColor={connectQrFg}
-                 qrStyle={connectQrStyle}
-                 eyeRadius={connectQrEyeRadius}
-                 logoImage={connectQrShowLogo ? "/favicon/web-app-manifest-512x512.png" : undefined}
-                 logoWidth={40}
-                 logoPadding={2}
-                 removeQrCodeBehindLogo={true}
-                 size={180}
-                 ecLevel="H"
-               />
-               
-               <div className="hidden">
-                 <QRCode
-                   id="connect-qr-hq"
-                   value={`${site}/connect`}
-                   bgColor={connectQrBg}
-                   fgColor={connectQrFg}
-                   qrStyle={connectQrStyle}
-                   eyeRadius={connectQrEyeRadius}
-                   logoImage={connectQrShowLogo ? "/favicon/web-app-manifest-512x512.png" : undefined}
-                   logoWidth={220}
-                   logoPadding={8}
-                   removeQrCodeBehindLogo={true}
-                   size={1024}
-                   ecLevel="H"
-                   quietZone={40}
-                 />
-               </div>
-             </div>
+
+          <div className='flex-1 flex flex-col items-center justify-center bg-gray-50 rounded-xl p-3 border border-gray-100 min-h-[220px]'>
+            <div className='bg-white p-2 rounded-xl shadow-sm border border-gray-100'>
+              <QRCode
+                id='connect-qr-preview'
+                value={`${site}/connect`}
+                bgColor={connectQrBg}
+                fgColor={connectQrFg}
+                qrStyle={connectQrStyle}
+                eyeRadius={connectQrEyeRadius}
+                logoImage={
+                  connectQrShowLogo ?
+                    "/favicon/web-app-manifest-512x512.png"
+                  : undefined
+                }
+                logoWidth={40}
+                logoPadding={2}
+                removeQrCodeBehindLogo={true}
+                size={180}
+                ecLevel='H'
+              />
+
+              <div className='hidden'>
+                <QRCode
+                  id='connect-qr-hq'
+                  value={`${site}/connect`}
+                  bgColor={connectQrBg}
+                  fgColor={connectQrFg}
+                  qrStyle={connectQrStyle}
+                  eyeRadius={connectQrEyeRadius}
+                  logoImage={
+                    connectQrShowLogo ?
+                      "/favicon/web-app-manifest-512x512.png"
+                    : undefined
+                  }
+                  logoWidth={220}
+                  logoPadding={8}
+                  removeQrCodeBehindLogo={true}
+                  size={1024}
+                  ecLevel='H'
+                  quietZone={40}
+                />
+              </div>
+            </div>
           </div>
-          
-          <div className="space-y-3 mt-auto">
-             <div className="grid grid-cols-2 gap-3">
-               <div>
-                  <label className="text-xs text-gray-500 font-medium mb-1 block">Dots Color</label>
-                  <input type="color" value={connectQrFg} onChange={(e) => setConnectQrFg(e.target.value)} className="w-full h-8 cursor-pointer rounded overflow-hidden" />
-               </div>
-               <div>
-                  <label className="text-xs text-gray-500 font-medium mb-1 block">Background</label>
-                  <input type="color" value={connectQrBg} onChange={(e) => setConnectQrBg(e.target.value)} className="w-full h-8 cursor-pointer rounded overflow-hidden" />
-               </div>
-             </div>
-             
-             <div className="grid grid-cols-3 gap-2">
-                <Button size="sm" variant={connectQrStyle === 'dots' ? 'brand' : 'outline'} className="text-[10px] h-7 px-1" onClick={() => setConnectQrStyle('dots')}>Dots</Button>
-                <Button size="sm" variant={connectQrStyle === 'squares' ? 'brand' : 'outline'} className="text-[10px] h-7 px-1" onClick={() => setConnectQrStyle('squares')}>Squares</Button>
-                <Button size="sm" variant={connectQrEyeRadius === 12 ? 'brand' : 'outline'} className="text-[10px] h-7 px-1" onClick={() => setConnectQrEyeRadius(connectQrEyeRadius === 12 ? 0 : 12)}>Round Eyes</Button>
-             </div>
-             
-             <label className="flex items-center gap-2 cursor-pointer mt-1">
-                <input type="checkbox" checked={connectQrShowLogo} onChange={(e) => setConnectQrShowLogo(e.target.checked)} className="rounded text-brand-600 focus:ring-brand-500" />
-                <span className="text-xs text-gray-600 font-medium">Center Icon (Favicon)</span>
-             </label>
-             
-             <Button variant="brand" className="w-full mt-2" onClick={downloadConnectQr}>
-                <Download className="w-4 h-4 mr-2" />
-                Download Custom QR
-             </Button>
+
+          <div className='space-y-3 mt-auto'>
+            <div className='grid grid-cols-2 gap-3'>
+              <div>
+                <label className='text-xs text-gray-500 font-medium mb-1 block'>
+                  Dots Color
+                </label>
+                <input
+                  type='color'
+                  value={connectQrFg}
+                  onChange={(e) => setConnectQrFg(e.target.value)}
+                  className='w-full h-8 cursor-pointer rounded overflow-hidden'
+                />
+              </div>
+              <div>
+                <label className='text-xs text-gray-500 font-medium mb-1 block'>
+                  Background
+                </label>
+                <input
+                  type='color'
+                  value={connectQrBg}
+                  onChange={(e) => setConnectQrBg(e.target.value)}
+                  className='w-full h-8 cursor-pointer rounded overflow-hidden'
+                />
+              </div>
+            </div>
+
+            <div className='grid grid-cols-3 gap-2'>
+              <Button
+                size='sm'
+                variant={connectQrStyle === "dots" ? "brand" : "outline"}
+                className='text-[10px] h-7 px-1'
+                onClick={() => setConnectQrStyle("dots")}
+              >
+                Dots
+              </Button>
+              <Button
+                size='sm'
+                variant={connectQrStyle === "squares" ? "brand" : "outline"}
+                className='text-[10px] h-7 px-1'
+                onClick={() => setConnectQrStyle("squares")}
+              >
+                Squares
+              </Button>
+              <Button
+                size='sm'
+                variant={connectQrEyeRadius === 12 ? "brand" : "outline"}
+                className='text-[10px] h-7 px-1'
+                onClick={() =>
+                  setConnectQrEyeRadius(connectQrEyeRadius === 12 ? 0 : 12)
+                }
+              >
+                Round Eyes
+              </Button>
+            </div>
+
+            <label className='flex items-center gap-2 cursor-pointer mt-1'>
+              <input
+                type='checkbox'
+                checked={connectQrShowLogo}
+                onChange={(e) => setConnectQrShowLogo(e.target.checked)}
+                className='rounded text-brand-600 focus:ring-brand-500'
+              />
+              <span className='text-xs text-gray-600 font-medium'>
+                Center Icon (Favicon)
+              </span>
+            </label>
+
+            <Button
+              variant='brand'
+              className='w-full mt-2'
+              onClick={downloadConnectQr}
+            >
+              <Download className='w-4 h-4 mr-2' />
+              Download Custom QR
+            </Button>
           </div>
         </div>
       </div>
 
-      {qrPreview ? (
-        <div className="flex justify-center">
+      {qrPreview ?
+        <div className='flex justify-center'>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrPreview} alt="QR preview" className="h-48 w-auto rounded-xl border shadow-sm" />
+          <img
+            src={qrPreview}
+            alt='QR preview'
+            className='h-48 w-auto rounded-xl border shadow-sm'
+          />
         </div>
-      ) : null}
+      : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div className='flex flex-wrap gap-2'>
           {(
             [
-              ['pending', `Pending (${pendingCount})`],
-              ['approved', 'Approved'],
-              ['rejected', 'Rejected'],
-              ['all', 'All'],
+              ["pending", `Pending (${pendingCount})`],
+              ["approved", "Approved"],
+              ["rejected", "Rejected"],
+              ["all", "All"],
             ] as const
           ).map(([key, label]) => (
             <button
               key={key}
-              type="button"
+              type='button'
               onClick={() => setFilter(key)}
               className={cn(
-                'rounded-full px-3 py-1.5 text-xs font-semibold',
-                filter === key ? 'bg-navy-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                "rounded-full px-3 py-1.5 text-xs font-semibold",
+                filter === key ?
+                  "bg-navy-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200",
               )}
             >
               {label}
             </button>
           ))}
         </div>
-        <p className="text-sm text-gray-500">{visible.length} shown</p>
+        <p className='text-sm text-gray-500'>{visible.length} shown</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-        {loading ? (
-          <div className="p-8 text-center text-gray-400">Loading...</div>
-        ) : visible.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            {filter === 'pending'
-              ? 'No pending stories. Share a link with customers to collect them.'
-              : 'Nothing here yet.'}
+      <div className='bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm'>
+        {loading ?
+          <div className='p-8 text-center text-gray-400'>Loading...</div>
+        : visible.length === 0 ?
+          <div className='p-12 text-center text-gray-500'>
+            {filter === "pending" ?
+              "No pending stories. Share a link with customers to collect them."
+            : "Nothing here yet."}
           </div>
-        ) : (
-          <ul className="divide-y divide-gray-50">
+        : <ul className='divide-y divide-gray-50'>
             {visible.map((t) => {
-              const status = t.status || (t.isActive ? 'approved' : 'pending');
+              const status = t.status || (t.isActive ? "approved" : "pending");
               return (
-                <li key={t._id} className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-start">
-                  <div className="flex gap-2 shrink-0">
+                <li
+                  key={t._id}
+                  className='p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-start'
+                >
+                  <div className='flex gap-2 shrink-0'>
                     {(t.images || []).slice(0, 3).map((img, i) => (
                       <div
                         key={`${t._id}-${i}`}
-                        className="relative h-16 w-16 overflow-hidden rounded-lg bg-gray-100"
+                        className='relative h-16 w-16 overflow-hidden rounded-lg bg-gray-100'
                       >
-                        <Image src={img.url} alt="" fill className="object-cover" sizes="64px" />
+                        <Image
+                          src={img.url}
+                          alt=''
+                          fill
+                          className='object-cover'
+                          sizes='64px'
+                        />
                       </div>
                     ))}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-navy-900">
-                        {t.isAnonymous || !t.displayName ? 'Anonymous' : t.displayName}
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <p className='font-medium text-navy-900'>
+                        {t.isAnonymous || !t.displayName ?
+                          "Anonymous"
+                        : t.displayName}
                       </p>
                       <Badge
                         variant={
-                          status === 'approved' ? 'success' : status === 'rejected' ? 'destructive' : 'secondary'
+                          status === "approved" ? "success"
+                          : status === "rejected" ?
+                            "destructive"
+                          : "secondary"
                         }
                       >
                         {status}
                       </Badge>
-                      <span className="inline-flex items-center gap-0.5 text-xs text-amber-600">
-                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      <span className='inline-flex items-center gap-0.5 text-xs text-amber-600'>
+                        <Star className='h-3 w-3 fill-amber-400 text-amber-400' />
                         {t.rating}
                       </span>
-                      {t.product?.name ? (
-                        <Badge variant="secondary" className="gap-1 font-normal">
-                          <Package className="h-3 w-3" />
+                      {t.product?.name ?
+                        <Badge
+                          variant='secondary'
+                          className='gap-1 font-normal'
+                        >
+                          <Package className='h-3 w-3' />
                           {t.product.name}
-                          {' · product review'}
+                          {" · product review"}
                         </Badge>
-                      ) : null}
+                      : null}
                     </div>
-                    <p className="mt-1 text-sm text-gray-600 line-clamp-3">{t.quote}</p>
+                    <p className='mt-1 text-sm text-gray-600 line-clamp-3'>
+                      {t.quote}
+                    </p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    {status === 'pending' ? (
+                  <div className='flex gap-2 shrink-0'>
+                    {status === "pending" ?
                       <>
                         <Button
-                          size="sm"
-                          variant="brand"
+                          size='sm'
+                          variant='brand'
                           disabled={busyId === t._id}
                           onClick={() => approve(t._id)}
                         >
-                          <Check className="h-4 w-4 mr-1" /> Approve
+                          <Check className='h-4 w-4 mr-1' /> Approve
                         </Button>
                         <Button
-                          size="sm"
-                          variant="outline"
+                          size='sm'
+                          variant='outline'
                           disabled={busyId === t._id}
                           onClick={() => reject(t._id)}
                         >
-                          <X className="h-4 w-4 mr-1" /> Reject
+                          <X className='h-4 w-4 mr-1' /> Reject
                         </Button>
                       </>
-                    ) : null}
+                    : null}
                     <button
-                      type="button"
-                      className="p-2 text-gray-400 hover:text-red-600"
+                      type='button'
+                      className='p-2 text-gray-400 hover:text-red-600'
                       onClick={() => handleDelete(t._id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className='h-4 w-4' />
                     </button>
                   </div>
                 </li>
               );
             })}
           </ul>
-        )}
+        }
       </div>
     </div>
   );

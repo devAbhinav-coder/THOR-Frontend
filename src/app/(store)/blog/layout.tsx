@@ -50,7 +50,7 @@ export const metadata: Metadata = {
         url: OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: "The House of Rani Journal — Saree Styling Stories",
+        alt: "The House of Rani Journal - Saree Styling Stories",
       },
     ],
   },
@@ -63,7 +63,11 @@ export const metadata: Metadata = {
   },
 };
 
-/** Listing layout — JSON-LD lives on blog/page.tsx to avoid duplicate schema on article URLs. */
-export default function BlogLayout({ children }: { children: React.ReactNode }) {
+/** Listing layout - JSON-LD lives on blog/page.tsx to avoid duplicate schema on article URLs. */
+export default function BlogLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return children;
 }

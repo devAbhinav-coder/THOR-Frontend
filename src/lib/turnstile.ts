@@ -1,4 +1,4 @@
-/** Existing Cloudflare Turnstile widget — do not rotate / recreate in production. */
+/** Existing Cloudflare Turnstile widget - do not rotate / recreate in production. */
 export const TURNSTILE_SITE_KEY_PROD =
   process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ||
   "0x4AAAAAAD8xzt2D6jkftCkc";
@@ -35,12 +35,12 @@ export function resolveTurnstileSiteKey(): string {
   return TURNSTILE_SITE_KEY_PROD;
 }
 
-/** @deprecated Prefer resolveTurnstileSiteKey() — kept for callers that need a static string. */
+/** @deprecated Prefer resolveTurnstileSiteKey() - kept for callers that need a static string. */
 export const TURNSTILE_SITE_KEY = TURNSTILE_SITE_KEY_PROD;
 
 export function isTurnstileConfigured(): boolean {
   return Boolean(resolveTurnstileSiteKey() || TURNSTILE_SITE_KEY_PROD);
 }
 
-/** Spin telemetry action — required on every production widget embed. */
+/** Spin telemetry action - required on every production widget embed. */
 export const TURNSTILE_ACTION = "turnstile-spin-v2";

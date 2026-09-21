@@ -7,14 +7,14 @@ type CategorySeoPreset = {
 };
 
 /**
- * India-first category SERP copy — slug keys from /shop/collections/[slug].
+ * India-first category SERP copy - slug keys from /shop/collections/[slug].
  * Unknown categories fall back to dynamic templates with ethnic-wear keywords.
  */
 const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
   sarees: {
-    title: "Premium Sarees Collection — Shop Online India",
+    title: "Premium Sarees Collection - Shop Online India",
     description:
-      "Shop premium sarees at The House of Rani — designer weaves, festive & bridal styles, free delivery over ₹1,099, 5-day returns.",
+      "Shop premium sarees at The House of Rani - designer weaves, festive & bridal styles, free delivery over ₹1,099, 5-day returns.",
     keywords: [
       "sarees online India",
       "buy sarees online",
@@ -26,32 +26,53 @@ const CATEGORY_PRESETS: Record<string, CategorySeoPreset> = {
   silk: {
     title: "Silk Sarees Online India",
     description:
-      "Browse silk sarees at The House of Rani — rich weaves for weddings, festivals, and celebrations. Pan-India delivery, easy returns, secure checkout.",
-    keywords: ["silk sarees online", "pure silk saree India", "wedding silk sarees", "festive silk sarees"],
+      "Browse silk sarees at The House of Rani - rich weaves for weddings, festivals, and celebrations. Pan-India delivery, easy returns, secure checkout.",
+    keywords: [
+      "silk sarees online",
+      "pure silk saree India",
+      "wedding silk sarees",
+      "festive silk sarees",
+    ],
   },
   cotton: {
     title: "Cotton Sarees Online India",
     description:
       "Lightweight cotton sarees for everyday and festive wear. Breathable fabrics, artisan prints, and trusted delivery from The House of Rani.",
-    keywords: ["cotton sarees online", "handloom cotton saree", "daily wear sarees India"],
+    keywords: [
+      "cotton sarees online",
+      "handloom cotton saree",
+      "daily wear sarees India",
+    ],
   },
   bridal: {
     title: "Bridal Sarees Online India",
     description:
       "Bridal sarees and wedding-ready drapes curated for your big day. Premium craftsmanship, pan-India shipping, and hassle-free returns.",
-    keywords: ["bridal sarees online", "wedding sarees India", "bridal ethnic wear online"],
+    keywords: [
+      "bridal sarees online",
+      "wedding sarees India",
+      "bridal ethnic wear online",
+    ],
   },
   kalamkari: {
     title: "Kalamkari Sarees Online India",
     description:
       "Hand-painted Kalamkari sarees with story-led motifs. Shop artisan ethnic wear with free delivery over ₹1,099 at The House of Rani.",
-    keywords: ["kalamkari sarees online", "handpainted sarees India", "artisan sarees"],
+    keywords: [
+      "kalamkari sarees online",
+      "handpainted sarees India",
+      "artisan sarees",
+    ],
   },
   festive: {
     title: "Festive Sarees Online India",
     description:
       "Festive sarees for Diwali, weddings, and celebrations. Curated ethnic wear with fast dispatch and easy 5-day returns.",
-    keywords: ["festive sarees India", "party wear sarees", "celebration sarees online"],
+    keywords: [
+      "festive sarees India",
+      "party wear sarees",
+      "celebration sarees online",
+    ],
   },
   "salwar-suits": {
     title: "Salwar Suits & Ethnic Sets Online India",
@@ -85,20 +106,24 @@ function matchPresetSlug(categoryName: string, slug: string): string {
   const normalized = toShopCategorySlug(slug || categoryName);
   if (CATEGORY_PRESETS[normalized]) return normalized;
   const name = categoryName.toLowerCase();
-  // Exact / whole-word-ish matches only — never map every "*saree*" slug to the generic sarees preset
+  // Exact / whole-word-ish matches only - never map every "*saree*" slug to the generic sarees preset
   // (that caused identical titles for Chanderi, Chiffon, Jamdani, etc. in Bing).
   if (normalized === "sarees" || normalized === "saree") return "sarees";
   if (name.includes("silk") && !name.includes("cotton")) return "silk";
   if (name.includes("cotton")) return "cotton";
   if (name.includes("bridal") || name.includes("wedding")) return "bridal";
-  if (name.includes("kalamkari") || name.includes("handpaint")) return "kalamkari";
+  if (name.includes("kalamkari") || name.includes("handpaint"))
+    return "kalamkari";
   if (name.includes("festive") || name.includes("party")) return "festive";
   if (name.includes("salwar")) return "salwar-suits";
   if (name.includes("corset")) return "corsets";
   return normalized;
 }
 
-export function resolveCategoryPageSeo(categoryName: string, slug: string): CategorySeoPreset {
+export function resolveCategoryPageSeo(
+  categoryName: string,
+  slug: string,
+): CategorySeoPreset {
   const key = matchPresetSlug(categoryName, slug);
   const preset = CATEGORY_PRESETS[key];
   if (preset) return preset;
@@ -106,10 +131,9 @@ export function resolveCategoryPageSeo(categoryName: string, slug: string): Cate
   const name = categoryName.trim() || "Ethnic Wear";
   const isSareeLike = /saree|sari/i.test(name);
   return {
-    title: isSareeLike
-      ? `Buy ${name} Online India`
-      : `Shop ${name} Online India`,
-    description: `Shop ${name} at The House of Rani — premium Indian ethnic wear with pan-India delivery, free shipping over ₹1,099, and easy 5-day returns.`,
+    title:
+      isSareeLike ? `Buy ${name} Online India` : `Shop ${name} Online India`,
+    description: `Shop ${name} at The House of Rani - premium Indian ethnic wear with pan-India delivery, free shipping over ₹1,099, and easy 5-day returns.`,
     keywords: [
       `${name} online India`,
       `buy ${name} online`,

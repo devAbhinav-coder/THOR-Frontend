@@ -215,8 +215,7 @@ function parseAmount(match: RegExpExecArray): number | undefined {
   }
   const base = Number.parseFloat(match[1]);
   if (!Number.isFinite(base)) return undefined;
-  const mult =
-    match[2] && /^k|thousand$/i.test(match[2]) ? 1000 : 1;
+  const mult = match[2] && /^k|thousand$/i.test(match[2]) ? 1000 : 1;
   return Math.round(base * mult);
 }
 
@@ -329,7 +328,8 @@ function extractPrice(text: string): {
     PRICE_UNDER_RE.lastIndex = 0;
     PRICE_ABOVE_RE.lastIndex = 0;
 
-    const amountMatch = token.match(/^(\d+(?:\.\d+)?)(k|K)?$/) ??
+    const amountMatch =
+      token.match(/^(\d+(?:\.\d+)?)(k|K)?$/) ??
       token.match(/^₹?(\d+(?:\.\d+)?)(k|K)?$/);
     if (amountMatch) {
       let amount = Number.parseFloat(amountMatch[1]);
@@ -338,7 +338,9 @@ function extractPrice(text: string): {
       if (underCtx || next === "tak" || lower.endsWith("k")) {
         maxPrice = amount;
         if (lower.endsWith("k") && !amountMatch[2]) {
-          maxPrice = Math.round(Number.parseFloat(lower.replace(/k$/i, "")) * 1000);
+          maxPrice = Math.round(
+            Number.parseFloat(lower.replace(/k$/i, "")) * 1000,
+          );
         }
         if (["under", "below", "upto", "max", "tak"].includes(prev)) {
           kept.pop();
@@ -355,7 +357,8 @@ function extractPrice(text: string): {
     if (PRICE_UNDER_RE.test(token)) {
       PRICE_UNDER_RE.lastIndex = 0;
       const nextToken = segments[i + 1];
-      const m = nextToken?.match(/^(\d+(?:\.\d+)?)(k|K)?$/) ??
+      const m =
+        nextToken?.match(/^(\d+(?:\.\d+)?)(k|K)?$/) ??
         nextToken?.match(/^₹?(\d+(?:\.\d+)?)(k|K)?$/);
       if (m) {
         let amount = Number.parseFloat(m[1]);
@@ -475,7 +478,11 @@ function pickPhrases(text: string, phrases: string[]): string[] {
 function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
   const matrix: number[][] = Array.from({ length: b.length + 1 }, (_, j) =>
-    Array.from({ length: a.length + 1 }, (_, i) => (j === 0 ? i : i === 0 ? j : 0)),
+    Array.from({ length: a.length + 1 }, (_, i) =>
+      j === 0 ? i
+      : i === 0 ? j
+      : 0,
+    ),
   );
   for (let j = 1; j <= b.length; j++) {
     for (let i = 1; i <= a.length; i++) {
@@ -512,7 +519,9 @@ export function parseSearchQueryIntent(raw: unknown): ParsedSearchIntent {
   const correctedWords: string[] = [];
 
   for (const token of tokens) {
-    const { word, corrected } = correctToken(token.replace(/[^a-zA-Z0-9]/g, ""));
+    const { word, corrected } = correctToken(
+      token.replace(/[^a-zA-Z0-9]/g, ""),
+    );
     if (!word) continue;
     correctedWords.push(word);
     if (corrected) corrections.push(`${token} → ${word}`);
@@ -587,16 +596,13 @@ export function parseSearchQueryIntent(raw: unknown): ParsedSearchIntent {
 
   const displayParts: string[] = [];
   if (textQuery) {
-    displayParts.push(
-      textQuery
-        .split(/\s+/)
-        .map(titleCase)
-        .join(" "),
-    );
+    displayParts.push(textQuery.split(/\s+/).map(titleCase).join(" "));
   }
 
-  if (maxPrice !== undefined) displayParts.push(`Under ₹${maxPrice.toLocaleString("en-IN")}`);
-  if (minPrice !== undefined) displayParts.push(`Above ₹${minPrice.toLocaleString("en-IN")}`);
+  if (maxPrice !== undefined)
+    displayParts.push(`Under ₹${maxPrice.toLocaleString("en-IN")}`);
+  if (minPrice !== undefined)
+    displayParts.push(`Above ₹${minPrice.toLocaleString("en-IN")}`);
 
   const displayLabel = displayParts.join(" · ") || rawQuery;
   const normalizedRaw = rawQuery.trim().toLowerCase();
@@ -660,7 +666,7 @@ export function mergeSearchIntentWithFilters(
   fabrics: string[];
   /** Only explicitly provided categories (from URL params). Become hard MongoDB filters. */
   categories: string[];
-  /** Categories parsed from the search query text. Soft relevance boost only — NOT hard filters. */
+  /** Categories parsed from the search query text. Soft relevance boost only - NOT hard filters. */
   intentCategories: string[];
   minPrice?: number;
   maxPrice?: number;
@@ -691,9 +697,10 @@ export function mergeSearchIntentWithFilters(
     }
   }
 
-  const subcategorySet = new Set(
-    [...(intent.subcategories || []), ...(filters.subcategories || [])]
-  );
+  const subcategorySet = new Set([
+    ...(intent.subcategories || []),
+    ...(filters.subcategories || []),
+  ]);
 
   return {
     query: intent.textQuery || intent.rawQuery,

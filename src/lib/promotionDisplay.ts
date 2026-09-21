@@ -1,11 +1,11 @@
-import type {
-  ProductNearEligiblePromotion,
-  ProductPromotion,
-} from "@/types";
+import type { ProductNearEligiblePromotion, ProductPromotion } from "@/types";
 
-type PromoLike = ProductPromotion & { hintMessage?: string; progressHint?: string };
+type PromoLike = ProductPromotion & {
+  hintMessage?: string;
+  progressHint?: string;
+};
 
-/** Main ticker line — same treatment for BOGO, flat & percentage. */
+/** Main ticker line - same treatment for BOGO, flat & percentage. */
 export function promotionTickerHeadline(promo: PromoLike): string {
   const label = promo.label?.trim();
   const title = promo.displayTitle?.trim();
@@ -18,7 +18,7 @@ export function promotionTickerHeadline(promo: PromoLike): string {
   return label || title || "Special offer";
 }
 
-/** Secondary line — progress hint when qty/min not met, else description. */
+/** Secondary line - progress hint when qty/min not met, else description. */
 export function promotionTickerSubline(promo: PromoLike): string | undefined {
   const hint = (promo.hintMessage || promo.progressHint)?.trim();
   const desc = promo.description?.trim();

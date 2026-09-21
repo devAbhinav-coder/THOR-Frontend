@@ -11,7 +11,7 @@ export const metadata: Metadata = buildInfoPageMetadata({
   path: "/faq",
   title: FAQ_H1,
   description:
-    "FAQs on sarees, salwar suits & corsets — orders, India shipping, 5-day returns, sizing, and The Rani Premium Edit.",
+    "FAQs on sarees, salwar suits & corsets - orders, India shipping, 5-day returns, sizing, and The Rani Premium Edit.",
   priority: "support",
 });
 
@@ -22,11 +22,11 @@ const faqItems = [
   },
   {
     q: "Do you offer bridal and occasion collections?",
-    a: "Yes. We curate premium sarees, salwar suits, and corsets — including bridal-ready and festive options for weddings and celebrations.",
+    a: "Yes. We curate premium sarees, salwar suits, and corsets - including bridal-ready and festive options for weddings and celebrations.",
   },
   {
     q: "What is The Rani Premium Edit?",
-    a: "The Rani Premium Edit is our curated collection of hand painted sarees, pure silk sarees, Banarasi and Madhubani pieces, and couple hand painted sets — available at /premium.",
+    a: "The Rani Premium Edit is our curated collection of hand painted sarees, pure silk sarees, Banarasi and Madhubani pieces, and couple hand painted sets - available at /premium.",
   },
   {
     q: "What are your shipping timelines?",
@@ -99,12 +99,12 @@ export default function FaqPage() {
       />
       <LegalPageLayout
         title={FAQ_H1}
-        description='Quick answers about buying sarees, salwar suits, and corsets online — orders, shipping across India, returns, sizing, and The Rani Premium Edit at The House of Rani.'
+        description='Quick answers about buying sarees, salwar suits, and corsets online - orders, shipping across India, returns, sizing, and The Rani Premium Edit at The House of Rani.'
         lastUpdated='31 March 2026'
       >
         <h2>Common questions</h2>
         <FaqAccordion items={faqItems} />
-        <Separator className="my-8" />
+        <Separator className='my-8' />
         <h2>Need more help?</h2>
         <p>
           Explore policy pages for detailed information:{" "}

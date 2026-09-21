@@ -5,15 +5,15 @@ import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 
 export const metadata: Metadata = buildInfoPageMetadata({
   path: "/terms",
-  title: "Terms of Service — Shop Sarees & Ethnic Wear Online",
+  title: "Terms of Service - Shop Sarees & Ethnic Wear Online",
   description:
-    "Terms and conditions for shopping sarees and ethnic wear on The House of Rani — accounts, orders, payments, and purchases across India.",
+    "Terms and conditions for shopping sarees and ethnic wear on The House of Rani - accounts, orders, payments, and purchases across India.",
 });
 
 export default function TermsPage() {
   return (
     <LegalPageLayout
-      title='Terms of Service — Shop Sarees & Ethnic Wear Online'
+      title='Terms of Service - Shop Sarees & Ethnic Wear Online'
       description='These terms govern your use of our website and your purchase of products from The House of Rani. By accessing our site or placing an order, you agree to these terms.'
       lastUpdated='27 March 2026'
     >
@@ -47,7 +47,7 @@ export default function TermsPage() {
         change without notice until your order is confirmed. We reserve the
         right to refuse or cancel orders (including after payment) in cases of
         pricing errors, suspected fraud, stock unavailability, or legal
-        restrictions—typically with a refund of amounts paid for the cancelled
+        restrictions-typically with a refund of amounts paid for the cancelled
         portion.
       </p>
 
@@ -77,17 +77,17 @@ export default function TermsPage() {
 
       <h2>7. Returns, refunds, and cancellations</h2>
       <p>
-        Our return, refund, and cancellation rules—including eligibility, time
-        limits, fees, and how to request a return from your order—are set out
-        in our{" "}
+        Our return, refund, and cancellation rules-including eligibility, time
+        limits, fees, and how to request a return from your order-are set out in
+        our{" "}
         <Link
-          href="/returns"
-          className="text-brand-600 hover:underline font-medium"
+          href='/returns'
+          className='text-brand-600 hover:underline font-medium'
         >
           Return &amp; Cancellation Policy
         </Link>
-        . Custom or personalised items may be non-returnable unless defective
-        or as required by law. Your statutory rights under the Consumer Protection
+        . Custom or personalised items may be non-returnable unless defective or
+        as required by law. Your statutory rights under the Consumer Protection
         Act, 2019 and other applicable law remain unaffected where they apply.
       </p>
       <p>
@@ -170,7 +170,9 @@ export default function TermsPage() {
       <h2>15. Contact</h2>
       <p>
         For questions about these Terms or your order, email{" "}
-        <a href="mailto:support@thehouseofrani.com">support@thehouseofrani.com</a>
+        <a href='mailto:support@thehouseofrani.com'>
+          support@thehouseofrani.com
+        </a>
         . Please include your <strong>order number</strong> if your message
         relates to a purchase.
       </p>

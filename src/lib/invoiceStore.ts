@@ -1,12 +1,12 @@
 /**
- * Admin sales-invoice store — server-backed via `/api/admin/invoices`.
+ * Admin sales-invoice store - server-backed via `/api/admin/invoices`.
  *
  * Uses the shared `api` axios instance + `unwrapAxios` directly instead of
  * `adminApi.*` so save/list never hit "is not a function" from stale HMR /
  * partial module evaluation.
  *
  * Invoice response schemas come from `invoiceApiSchemas.ts` (Zod-only) so
- * `parseApiResponse` always receives a real schema — never `undefined`.
+ * `parseApiResponse` always receives a real schema - never `undefined`.
  */
 
 import { api } from "@/lib/api";
@@ -16,10 +16,7 @@ import {
 } from "@/lib/invoiceApiSchemas";
 import { successMessageData } from "@/lib/api-schemas";
 import { unwrapAxios } from "@/lib/parseApi";
-import type {
-  AdminSalesInvoice,
-  AdminSalesInvoiceWriteBody,
-} from "@/types";
+import type { AdminSalesInvoice, AdminSalesInvoiceWriteBody } from "@/types";
 
 /** Re-exported under the legacy name so existing imports keep working. */
 export type SavedInvoice = AdminSalesInvoice;

@@ -9,7 +9,7 @@
  */
 
 /** A Cloudinary transformation segment looks like `f_auto`, `q_auto:good`,
- *  `w_400`, `c_limit`, etc. — one or more comma-separated tokens, each
+ *  `w_400`, `c_limit`, etc. - one or more comma-separated tokens, each
  *  containing `_`. We use this to detect whether a URL already has them. */
 const TRANSFORM_SEGMENT_RE = /(^|,)([a-z]{1,3}_[^,/]+)(,|$)/i;
 
@@ -102,9 +102,8 @@ export function normalizeCloudinaryDeliveryUrl(
       const toAdd = autoTransform
         .split(",")
         .filter((t) => !existing.has(t.split("_")[0]!.toLowerCase()));
-      const merged = toAdd.length
-        ? `${firstAfter},${toAdd.join(",")}`
-        : firstAfter;
+      const merged =
+        toAdd.length ? `${firstAfter},${toAdd.join(",")}` : firstAfter;
       newPath = `/${cloud}/${resourceType}/${deliveryMode}/${merged}/${after
         .slice(1)
         .join("/")}`;

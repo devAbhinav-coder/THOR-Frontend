@@ -1,5 +1,5 @@
 /**
- * Admin AI endpoints — separate module so Webpack/HMR does not drop nested
+ * Admin AI endpoints - separate module so Webpack/HMR does not drop nested
  * methods on the large `adminApi` object (see comment in api.ts).
  */
 import { api } from "@/lib/api";
@@ -10,7 +10,11 @@ const AI_TIMEOUT = 60_000;
 
 export const adminAiApi = {
   getStatus: () =>
-    unwrapAxios("admin.ai.status", api.get("/admin/ai/status"), schemas.adminAiStatus),
+    unwrapAxios(
+      "admin.ai.status",
+      api.get("/admin/ai/status"),
+      schemas.adminAiStatus,
+    ),
 
   getDailyBrief: (force?: boolean) =>
     unwrapAxios(
@@ -90,7 +94,11 @@ export const adminAiApi = {
   draftReviewReply: (reviewId: string) =>
     unwrapAxios(
       "admin.ai.draftReview",
-      api.post(`/admin/ai/draft/review/${reviewId}`, {}, { timeout: AI_TIMEOUT }),
+      api.post(
+        `/admin/ai/draft/review/${reviewId}`,
+        {},
+        { timeout: AI_TIMEOUT },
+      ),
       schemas.adminAiReviewDraft,
     ),
 
@@ -105,7 +113,9 @@ export const adminAiApi = {
   }) =>
     unwrapAxios(
       "admin.ai.draftEmail",
-      api.post("/admin/ai/draft/marketing-email", body, { timeout: AI_TIMEOUT }),
+      api.post("/admin/ai/draft/marketing-email", body, {
+        timeout: AI_TIMEOUT,
+      }),
       schemas.adminAiMarketingDraft,
     ),
 
@@ -124,7 +134,9 @@ export const adminAiApi = {
   }) =>
     unwrapAxios(
       "admin.ai.draftPromotionTerms",
-      api.post("/admin/ai/draft/promotion-terms", body, { timeout: AI_TIMEOUT }),
+      api.post("/admin/ai/draft/promotion-terms", body, {
+        timeout: AI_TIMEOUT,
+      }),
       schemas.adminAiPromotionTermsDraft,
     ),
 

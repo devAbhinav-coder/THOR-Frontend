@@ -1,4 +1,4 @@
-/** Shared catalog attribute helpers — colors/fabrics for filters + admin. */
+/** Shared catalog attribute helpers - colors/fabrics for filters + admin. */
 
 export function catalogMatchKey(value: string | undefined | null): string {
   return String(value ?? "")
@@ -30,9 +30,7 @@ export function scoreCatalogLabel(label: string): number {
 }
 
 export function pickCanonicalLabel(candidates: string[]): string {
-  const cleaned = candidates
-    .map((c) => String(c || "").trim())
-    .filter(Boolean);
+  const cleaned = candidates.map((c) => String(c || "").trim()).filter(Boolean);
   if (!cleaned.length) return "";
 
   const spaced = cleaned.filter((c) => /\s/.test(c));

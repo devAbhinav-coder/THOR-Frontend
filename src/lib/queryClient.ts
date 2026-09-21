@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient } from "@tanstack/react-query";
 
 /**
  * Module-level QueryClient singleton.
@@ -7,9 +7,9 @@ import { QueryClient } from '@tanstack/react-query';
  */
 let queryClientInstance: QueryClient | null = null;
 
-/** Shared query keys — keep here so stores can import without circular hook deps. */
-export const CART_QUERY_KEY = ['cart'] as const;
-export const WISHLIST_QUERY_KEY = ['wishlist'] as const;
+/** Shared query keys - keep here so stores can import without circular hook deps. */
+export const CART_QUERY_KEY = ["cart"] as const;
+export const WISHLIST_QUERY_KEY = ["wishlist"] as const;
 
 export function getQueryClient(): QueryClient {
   if (!queryClientInstance) {

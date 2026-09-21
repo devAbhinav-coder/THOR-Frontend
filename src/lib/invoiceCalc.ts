@@ -42,7 +42,7 @@ export type InvoiceLine = {
   gstPct: number;
 };
 
-/** Per-row computed totals — re-derived on every render to stay correct. */
+/** Per-row computed totals - re-derived on every render to stay correct. */
 export type ComputedLine = {
   /** Final unit label (substitutes the `customUnit` text when unit === "custom"). */
   unitLabel: string;
@@ -86,7 +86,7 @@ export function emptyLine(id: string): InvoiceLine {
     id,
     description: "",
     hsn: "",
-    /** Default meter + 0% GST — typical offline fabric/B2B; admin sets GST when using a taxed mode. */
+    /** Default meter + 0% GST - typical offline fabric/B2B; admin sets GST when using a taxed mode. */
     unit: "mtr",
     customUnit: "",
     qty: 1,
@@ -97,8 +97,7 @@ export function emptyLine(id: string): InvoiceLine {
 }
 
 export function unitLabelFor(line: InvoiceLine): string {
-  if (line.unit === "custom")
-    return (line.customUnit ?? "").trim() || "unit";
+  if (line.unit === "custom") return (line.customUnit ?? "").trim() || "unit";
   const found = UNIT_OPTIONS.find((u) => u.value === line.unit);
   return found?.label ?? line.unit;
 }
@@ -253,7 +252,7 @@ export function rupeesInWords(amount: number): string {
   return `Rupees ${rupeesWords} and ${twoDigits(paise)} Paise Only`;
 }
 
-/* ── Currency display (with paise — different from formatPrice which floors) ── */
+/* ── Currency display (with paise - different from formatPrice which floors) ── */
 
 export function formatINRMoney(amount: number): string {
   const safe = safeNum(amount);
@@ -265,5 +264,8 @@ export function formatINRMoney(amount: number): string {
   }).format(safe);
 }
 
-/** Suggest a sensible default B2B GST tax invoice number — admin can overwrite. */
-export { suggestB2bTaxInvoiceNumber, suggestInvoiceNumber } from "./documentNumbers";
+/** Suggest a sensible default B2B GST tax invoice number - admin can overwrite. */
+export {
+  suggestB2bTaxInvoiceNumber,
+  suggestInvoiceNumber,
+} from "./documentNumbers";

@@ -12,7 +12,7 @@ export function couponDiscountShort(coupon: Coupon): string {
   return `${formatPrice(coupon.discountValue)} off`;
 }
 
-/** Main line shoppers should read first — admin description when set. */
+/** Main line shoppers should read first - admin description when set. */
 export function couponPrimaryLine(coupon: Coupon): string {
   const desc = coupon.description?.trim();
   if (desc) return desc;
@@ -34,7 +34,10 @@ export function couponShopperTerms(coupon: Coupon): string[] {
     terms.push(`Min. order ${formatPrice(minOrder)}`);
   }
 
-  if (coupon.discountType === "percentage" && (coupon.maxDiscountAmount ?? 0) > 0) {
+  if (
+    coupon.discountType === "percentage" &&
+    (coupon.maxDiscountAmount ?? 0) > 0
+  ) {
     terms.push(`Up to ${formatPrice(coupon.maxDiscountAmount!)} off`);
   }
 

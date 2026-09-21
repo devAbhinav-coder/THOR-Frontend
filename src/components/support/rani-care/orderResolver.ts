@@ -8,7 +8,12 @@ export type OrderPickPurpose = "track" | "cancel" | "return" | "general";
 
 export type OrderResolveResult =
   | { kind: "single"; orderId: string; intro: string }
-  | { kind: "pick"; orderIds: string[]; intro: string; purpose: OrderPickPurpose }
+  | {
+      kind: "pick";
+      orderIds: string[];
+      intro: string;
+      purpose: OrderPickPurpose;
+    }
   | { kind: "none"; intro: string }
   | { kind: "all" };
 
@@ -58,13 +63,23 @@ export function detectOrderAspect(query: string): OrderAspect {
   ) {
     return "eta";
   }
-  if (/\b(track|tracking|awb|waybill|courier|carrier|parcel|shipment)\b/.test(q)) {
+  if (
+    /\b(track|tracking|awb|waybill|courier|carrier|parcel|shipment)\b/.test(q)
+  ) {
     return "tracking";
   }
-  if (/\b(kya kya|what.*(items|products|ordered)|items|contents|kaunsa product|which product)\b/.test(q)) {
+  if (
+    /\b(kya kya|what.*(items|products|ordered)|items|contents|kaunsa product|which product)\b/.test(
+      q,
+    )
+  ) {
     return "items";
   }
-  if (/\b(total|kitne ka|kitna ka|price|cost|grand total|kitne rupees|kitne rupaye)\b/.test(q)) {
+  if (
+    /\b(total|kitne ka|kitna ka|price|cost|grand total|kitne rupees|kitne rupaye)\b/.test(
+      q,
+    )
+  ) {
     return "total";
   }
   if (/\b(status|kahan|where|state|update)\b/.test(q)) {
@@ -91,7 +106,7 @@ function paymentMethodLabel(order: Order): string {
     case "offline_cash":
       return "cash";
     default:
-      return "—";
+      return "-";
   }
 }
 
@@ -103,8 +118,8 @@ function formatPaymentAnswer(order: Order, hinglish: boolean): string {
 
   if (order.paymentStatus === "paid") {
     return hinglish ?
-        `Haan, order **${num}** ka payment **ho chuka** hai — ${total} (${method}).`
-      : `Yes, order **${num}** is **paid** — ${total} (${method}).`;
+        `Haan, order **${num}** ka payment **ho chuka** hai - ${total} (${method}).`
+      : `Yes, order **${num}** is **paid** - ${total} (${method}).`;
   }
   if (order.paymentStatus === "refunded") {
     return hinglish ?
@@ -119,8 +134,8 @@ function formatPaymentAnswer(order: Order, hinglish: boolean): string {
   // pending
   if (isCod) {
     return hinglish ?
-        `Order **${num}** **COD** hai — delivery ke waqt **${total}** cash dena hai (abhi payment pending).`
-      : `Order **${num}** is **COD** — pay **${total}** in cash at delivery (currently pending).`;
+        `Order **${num}** **COD** hai - delivery ke waqt **${total}** cash dena hai (abhi payment pending).`
+      : `Order **${num}** is **COD** - pay **${total}** in cash at delivery (currently pending).`;
   }
   return hinglish ?
       `Order **${num}** ka payment abhi **pending** hai (${total}, ${method}).`
@@ -146,13 +161,13 @@ function formatEtaAnswer(order: Order, hinglish: boolean): string {
   if (status === "shipped") {
     const etaLine =
       tat && tat > 0 ?
-        hinglish ?
-          `Estimated **${tat} business days** mein pahunch jayega.`
+        hinglish ? `Estimated **${tat} business days** mein pahunch jayega.`
         : `Estimated **${tat} business days** to arrive.`
       : hinglish ?
         `Dispatch ke baad aam taur par **3–10 business days** lagte hain.`
       : `After dispatch it usually takes **3–10 business days**.`;
-    const shipped = order.shippedAt ? ` (shipped ${formatDate(order.shippedAt)})` : "";
+    const shipped =
+      order.shippedAt ? ` (shipped ${formatDate(order.shippedAt)})` : "";
     return hinglish ?
         `Order **${num}** **ship** ho chuka hai${shipped}. ${etaLine}`
       : `Order **${num}** is **shipped**${shipped}. ${etaLine}`;
@@ -171,7 +186,10 @@ function formatItemsAnswer(order: Order, hinglish: boolean): string {
     .slice(0, 6)
     .map((i) => `• ${i.name} × ${i.quantity}`)
     .join("\n");
-  const more = (order.items?.length || 0) > 6 ? `\n• +${(order.items?.length || 0) - 6} more` : "";
+  const more =
+    (order.items?.length || 0) > 6 ?
+      `\n• +${(order.items?.length || 0) - 6} more`
+    : "";
   return hinglish ?
       `Order **${num}** mein ye items hain:\n${list}${more}`
     : `Order **${num}** contains:\n${list}${more}`;
@@ -311,7 +329,9 @@ function productHintFilter(orders: Order[], query: string): Order[] | null {
 
   const hits = orders.filter((o) => {
     const blob = (o.items || [])
-      .map((i) => `${i.name} ${i.variant?.color || ""} ${i.variant?.size || ""}`)
+      .map(
+        (i) => `${i.name} ${i.variant?.color || ""} ${i.variant?.size || ""}`,
+      )
       .join(" ")
       .toLowerCase();
     return words.some((w) => blob.includes(w));
@@ -360,17 +380,16 @@ export function formatTrackingBlurb(order: Order, hinglish: boolean): string {
         hinglish ?
           `Tracking: **${tracking}**${order.shippingCarrier ? ` (${order.shippingCarrier})` : ""}.`
         : `Tracking: **${tracking}**${order.shippingCarrier ? ` · ${order.shippingCarrier}` : ""}.`
-      : hinglish ?
-        "Tracking number jald update hoga."
+      : hinglish ? "Tracking number jald update hoga."
       : "Tracking will appear once the carrier scans the parcel.";
     return hinglish ?
-        `**${num}** ship ho chuka hai — ab courier ke paas hai.\n${track}`
+        `**${num}** ship ho chuka hai - ab courier ke paas hai.\n${track}`
       : `Order **${num}** is **shipped**.\n${track}`;
   }
   if (["pending", "confirmed", "processing"].includes(status)) {
     return hinglish ?
-        `**${num}** abhi **${status}** hai — dispatch hone par tracking milega. Aksar 1–3 business days mein ship hota hai.`
-      : `Order **${num}** is **${status}** — tracking appears after dispatch (usually 1–3 business days).`;
+        `**${num}** abhi **${status}** hai - dispatch hone par tracking milega. Aksar 1–3 business days mein ship hota hai.`
+      : `Order **${num}** is **${status}** - tracking appears after dispatch (usually 1–3 business days).`;
   }
   if (status === "cancelled") {
     return hinglish ?
@@ -378,8 +397,8 @@ export function formatTrackingBlurb(order: Order, hinglish: boolean): string {
       : `Order **${num}** was **cancelled**.`;
   }
   return hinglish ?
-      `**${num}** — status: **${status}**.`
-    : `Order **${num}** — status: **${status}**.`;
+      `**${num}** - status: **${status}**.`
+    : `Order **${num}** - status: **${status}**.`;
 }
 
 function buildPickIntro(
@@ -410,12 +429,12 @@ function buildPickIntro(
 
   if (hinglish) {
     if (purpose === "cancel") {
-      return `Aapke **${whenHi}${n} ${plural}** hain. Kaunsa **cancel** karna hai — neeche se chuno ya **1 / 2** bhejo.`;
+      return `Aapke **${whenHi}${n} ${plural}** hain. Kaunsa **cancel** karna hai - neeche se chuno ya **1 / 2** bhejo.`;
     }
     if (purpose === "return") {
-      return `Aapke **${whenHi}${n} ${plural}** hain. Kis order ka **return** karna hai — neeche chuno.`;
+      return `Aapke **${whenHi}${n} ${plural}** hain. Kis order ka **return** karna hai - neeche chuno.`;
     }
-    return `Aapke **${whenHi}${n} ${plural}** hain. **Kaunsa** dekhna hai — neeche chuno, ya **1 / 2** likh kar bhejo.`;
+    return `Aapke **${whenHi}${n} ${plural}** hain. **Kaunsa** dekhna hai - neeche chuno, ya **1 / 2** likh kar bhejo.`;
   }
 
   if (purpose === "cancel") {
@@ -468,7 +487,7 @@ export function resolveOrdersFromQuery(
   const byNumber = orderNumberFilter(orders, query);
   if (byNumber?.length === 1) return single(byNumber[0]);
 
-  // 2) Explicit day (kal / aaj / latest). If the day is empty, say so —
+  // 2) Explicit day (kal / aaj / latest). If the day is empty, say so -
   //    never fall back to dumping every order.
   const temporal = temporalFilter(orders, query);
   if (temporal !== null) {
@@ -495,7 +514,7 @@ export function resolveOrdersFromQuery(
     return pick(pool.slice(0, 6));
   }
 
-  // 4) Vague "where is my order / status" — answer the LATEST active order,
+  // 4) Vague "where is my order / status" - answer the LATEST active order,
   //    never dump the full history. User can tap "All orders" for more.
   const aspect = detectOrderAspect(query);
   const isVagueOrderQuestion =
@@ -520,7 +539,7 @@ export function resolveOrdersFromQuery(
     }
   }
 
-  // 5) Explicit "show all / my orders" list — caller will cap the display.
+  // 5) Explicit "show all / my orders" list - caller will cap the display.
   return { kind: "all" };
 }
 

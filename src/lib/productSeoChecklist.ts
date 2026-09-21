@@ -55,7 +55,7 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
   const suggestedDescription =
     name ?
       (isPremium ?
-        `Shop ${name} — ${fabricBit || ""}hand painted / pure silk saree with Banarasi or Madhubani craft. Couple sets in The Rani Premium Edit. Free delivery over ₹1,099.`
+        `Shop ${name} - ${fabricBit || ""}hand painted / pure silk saree with Banarasi or Madhubani craft. Couple sets in The Rani Premium Edit. Free delivery over ₹1,099.`
       : `Shop ${fabricBit}${categoryBit}${name} at The House of Rani. Premium Indian ethnic wear, free delivery over ₹1,099, easy 5-day returns across India.`
       )
         .replace(/\s+/g, " ")
@@ -68,7 +68,10 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
   items.push({
     id: "name",
     label: "Product name",
-    detail: name ? "Used in Google title and URL." : "Required before the product can rank.",
+    detail:
+      name ?
+        "Used in Google title and URL."
+      : "Required before the product can rank.",
     status: name ? "pass" : "fail",
   });
 
@@ -78,19 +81,20 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
     detail:
       seoTitle ?
         seoTitle.length > MAX_TITLE_LEN ?
-          `Long (${seoTitle.length} chars) — Google may truncate after ~60.`
+          `Long (${seoTitle.length} chars) - Google may truncate after ~60.`
         : seoTitle.length < MIN_TITLE_LEN ?
-          `Short (${seoTitle.length} chars) — add fabric, occasion, or “saree”.`
+          `Short (${seoTitle.length} chars) - add fabric, occasion, or “saree”.`
         : "Custom title set for search results."
       : name ?
         isPremium ?
-          `Empty — Google will use a Premium Edit title (hand painted / pure silk). Add a custom title for Banarasi, Madhubani, or couple-set keywords.`
-        : `Empty — Google will use: “Buy ${name} Online in India”. Add a custom title to target keywords.`
+          `Empty - Google will use a Premium Edit title (hand painted / pure silk). Add a custom title for Banarasi, Madhubani, or couple-set keywords.`
+        : `Empty - Google will use: “Buy ${name} Online in India”. Add a custom title to target keywords.`
       : "Set after product name.",
     status:
       !name ? "fail"
       : !seoTitle ? "warn"
-      : seoTitle.length > MAX_TITLE_LEN || seoTitle.length < MIN_TITLE_LEN ? "warn"
+      : seoTitle.length > MAX_TITLE_LEN || seoTitle.length < MIN_TITLE_LEN ?
+        "warn"
       : "pass",
   });
 
@@ -100,12 +104,12 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
     detail:
       seoDescription ?
         seoDescription.length < MIN_META_DESC ?
-          `${seoDescription.length}/${MAX_META_DESC} chars — aim for ${MIN_META_DESC}–${MAX_META_DESC} for better CTR.`
-        : `${seoDescription.length}/${MAX_META_DESC} chars — good length for Google snippets.`
+          `${seoDescription.length}/${MAX_META_DESC} chars - aim for ${MIN_META_DESC}–${MAX_META_DESC} for better CTR.`
+        : `${seoDescription.length}/${MAX_META_DESC} chars - good length for Google snippets.`
       : shortDescription ?
-        `Empty — fallback uses short description (${shortDescription.length} chars). Add a dedicated meta description.`
+        `Empty - fallback uses short description (${shortDescription.length} chars). Add a dedicated meta description.`
       : name ?
-        "Missing — add 120–160 chars with fabric, occasion, delivery & returns."
+        "Missing - add 120–160 chars with fabric, occasion, delivery & returns."
       : "Set after product name.",
     status:
       !name ? "fail"
@@ -123,7 +127,9 @@ export function evaluateProductSeo(fields: ProductSeoFormFields): {
         "Description or title mentions India, saree, delivery, or returns."
       : "Add “India”, “free delivery”, “5-day returns”, or “saree” in the meta description.",
     status:
-      INDIA_INTENT.test(effectiveDesc) || INDIA_INTENT.test(seoTitle) ? "pass" : "warn",
+      INDIA_INTENT.test(effectiveDesc) || INDIA_INTENT.test(seoTitle) ?
+        "pass"
+      : "warn",
   });
 
   const passCount = items.filter((i) => i.status === "pass").length;

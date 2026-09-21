@@ -202,7 +202,7 @@ export default function AdminEmailsPage() {
     <div className='p-4 sm:p-6 xl:p-8 space-y-6 max-w-6xl mx-auto'>
       <AdminPageHeader
         title='Marketing campaigns'
-        description='Professional broadcasts — email (Resend), WhatsApp (Meta), in-app alerts, and browser push. Queued in the background so large sends never freeze the admin panel.'
+        description='Professional broadcasts - email (Resend), WhatsApp (Meta), in-app alerts, and browser push. Queued in the background so large sends never freeze the admin panel.'
         actions={
           <Link
             href='/admin/storefront'
@@ -347,7 +347,7 @@ export default function AdminEmailsPage() {
               Message
             </label>
             <p className='text-[11px] text-violet-800/90 mt-1 mb-1.5 leading-snug'>
-              Write your details for the AI here — then click{" "}
+              Write your details for the AI here - then click{" "}
               <strong>AI Draft from Your Notes</strong> below to automatically
               generate a professional draft.
             </p>
@@ -475,7 +475,10 @@ export default function AdminEmailsPage() {
                       WhatsApp queued
                     </span>
                     <span className='font-bold text-emerald-700 tabular-nums'>
-                      ~{(stats.estimatedWhatsAppRecipients ?? 0).toLocaleString()}
+                      ~
+                      {(
+                        stats.estimatedWhatsAppRecipients ?? 0
+                      ).toLocaleString()}
                     </span>
                   </div>
                 )}

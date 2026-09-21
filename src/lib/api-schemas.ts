@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Mongo-populated documents — shape validated at runtime only for envelope + critical keys elsewhere */
+/** Mongo-populated documents - shape validated at runtime only for envelope + critical keys elsewhere */
 const doc = z.any();
 
 const statusStr = z.object({ status: z.string() });
@@ -39,18 +39,20 @@ export const authLogout = z.object({
   message: z.string(),
 });
 
-export const authMessage = z.object({
-  status: z.string(),
-  message: z.string(),
-  data: z
-    .object({
-      type: z.string().optional(),
-      retryAfter: z.number().optional(),
-    })
-    .passthrough()
-    .optional(),
-  retryAfter: z.number().optional(),
-}).passthrough();
+export const authMessage = z
+  .object({
+    status: z.string(),
+    message: z.string(),
+    data: z
+      .object({
+        type: z.string().optional(),
+        retryAfter: z.number().optional(),
+      })
+      .passthrough()
+      .optional(),
+    retryAfter: z.number().optional(),
+  })
+  .passthrough();
 
 export const authResetPassword = authWithUser;
 
@@ -266,10 +268,19 @@ export const filterOptions = z.object({
   status: z.string(),
   data: z
     .object({
-      categories: z.array(z.union([z.string(), z.any()])).optional().default([]),
-      colors: z.array(z.union([z.string(), z.any()])).optional().default([]),
+      categories: z
+        .array(z.union([z.string(), z.any()]))
+        .optional()
+        .default([]),
+      colors: z
+        .array(z.union([z.string(), z.any()]))
+        .optional()
+        .default([]),
       colorCodes: z.record(z.string(), z.string()).optional(),
-      fabrics: z.array(z.union([z.string(), z.any()])).optional().default([]),
+      fabrics: z
+        .array(z.union([z.string(), z.any()]))
+        .optional()
+        .default([]),
       subcategories: z.array(z.union([z.string(), z.any()])).optional(),
       occasions: z.array(z.union([z.string(), z.any()])).optional(),
       categoryTree: z
@@ -465,7 +476,8 @@ export const orderCreatedRazorpay = z
         if (!dataHasResolvableOrderMongoId(d)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Legacy razorpay create response must include order._id (or id)",
+            message:
+              "Legacy razorpay create response must include order._id (or id)",
             path: ["order"],
           });
         }
@@ -654,10 +666,16 @@ export const wishlistToggle = z.object({
 });
 
 /** Admin / generic success with `data` object */
-export const successData = z.object({ status: z.string(), data: z.unknown() }).passthrough();
+export const successData = z
+  .object({ status: z.string(), data: z.unknown() })
+  .passthrough();
 
 export const successMessageData = z
-  .object({ status: z.string(), message: z.string().optional(), data: z.unknown().optional() })
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z.unknown().optional(),
+  })
   .passthrough();
 
 export const marketingAudiencePreview = z.object({
@@ -764,7 +782,8 @@ export const adminUpdateUserRole = z.object({
   data: z.object({
     user: z.object({
       _id: z.coerce.string(),
-      role: z.enum(['user', 'admin']),
+      role: z.enum(["user", "admin", "staff"]),
+      adminPermissions: z.array(z.string()).optional(),
     }),
   }),
 });
@@ -827,9 +846,14 @@ export const adminOrderDetail = z.object({
   data: z.object({ order: doc }),
 });
 
-export { adminSalesInvoiceList, adminSalesInvoiceSingle, adminOrderTaxInvoice, adminB2bPendingInvoiceList } from "./invoiceApiSchemas";
+export {
+  adminSalesInvoiceList,
+  adminSalesInvoiceSingle,
+  adminOrderTaxInvoice,
+  adminB2bPendingInvoiceList,
+} from "./invoiceApiSchemas";
 
-/** POST .../delhivery/sync-tracking — includes human summary + parsed tracking */
+/** POST .../delhivery/sync-tracking - includes human summary + parsed tracking */
 export const adminDelhiveryTrackSync = z.object({
   status: z.string(),
   data: z
@@ -873,7 +897,7 @@ export const delhiveryPinCheck = z.object({
     .passthrough(),
 });
 
-/** Same payload as pin-check on order — used for GET /admin/delhivery/serviceability?pin= */
+/** Same payload as pin-check on order - used for GET /admin/delhivery/serviceability?pin= */
 export const delhiveryServiceability = delhiveryPinCheck;
 
 export const delhiveryEstimate = z.object({
@@ -892,25 +916,25 @@ export const delhiveryEstimate = z.object({
     .passthrough(),
 });
 
-/** GET .../delhivery/packing-slip — Delhivery S3 PDF link */
+/** GET .../delhivery/packing-slip - Delhivery S3 PDF link */
 export const delhiveryPackingSlip = z.object({
   status: z.string(),
   data: z
     .object({
       pdfUrl: z.string().min(1),
       waybill: z.string(),
-      pdfSize: z.enum(['4R', 'A4']),
+      pdfSize: z.enum(["4R", "A4"]),
     })
     .passthrough(),
 });
 
-/** GET .../delhivery/packing-slip/json — Delhivery pdf=false payload (custom label data). */
+/** GET .../delhivery/packing-slip/json - Delhivery pdf=false payload (custom label data). */
 export const delhiveryPackingSlipJson = z.object({
   status: z.string(),
   data: z
     .object({
       waybill: z.string(),
-      pdfSize: z.enum(['4R', 'A4']),
+      pdfSize: z.enum(["4R", "A4"]),
       payload: z.unknown(),
     })
     .passthrough(),
@@ -930,14 +954,20 @@ export const looseDataResponse = z
 
 export const emptySuccess = statusStr;
 
-export const nullDataSuccess = z.object({ status: z.string(), data: z.null().optional() });
+export const nullDataSuccess = z.object({
+  status: z.string(),
+  data: z.null().optional(),
+});
 
 export const categorySingle = z.object({
   status: z.string(),
   data: z.object({ category: doc }),
 });
 
-export const categoryStats = z.object({ status: z.string(), data: z.unknown() });
+export const categoryStats = z.object({
+  status: z.string(),
+  data: z.unknown(),
+});
 
 export const subcategorySingle = z.object({
   status: z.string(),
@@ -946,7 +976,9 @@ export const subcategorySingle = z.object({
 
 export const subcategoriesList = z.object({
   status: z.string(),
-  data: z.object({ subcategories: z.array(doc), category: doc.optional() }).passthrough(),
+  data: z
+    .object({ subcategories: z.array(doc), category: doc.optional() })
+    .passthrough(),
 });
 
 export const orderCreateResponse = z.union([
@@ -972,20 +1004,31 @@ export const blogsPaginated = z
       })
       .passthrough()
       .optional(),
-    data: z.object({ blogs: z.array(doc) }).passthrough().optional(),
+    data: z
+      .object({ blogs: z.array(doc) })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 
-export const blogSingle = z.object({
-  status: z.string(),
-  data: z.object({ blog: doc, comments: z.array(doc).optional() }).passthrough().optional(),
-}).passthrough();
+export const blogSingle = z
+  .object({
+    status: z.string(),
+    data: z
+      .object({ blog: doc, comments: z.array(doc).optional() })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
 export const newsletterSubscribeResponse = z
   .object({
     status: z.string(),
     message: z.string().optional(),
-    data: z.object({ subscribed: z.boolean().optional() }).passthrough().optional(),
+    data: z
+      .object({ subscribed: z.boolean().optional() })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 
@@ -1016,20 +1059,35 @@ export const adminNewsletterSubscribersList = z.object({
   }),
 });
 
-export const notificationsList = z.object({
-  status: z.string(),
-  data: z.object({ notifications: z.array(doc), unreadCount: z.number().optional() }).passthrough().optional(),
-}).passthrough();
+export const notificationsList = z
+  .object({
+    status: z.string(),
+    data: z
+      .object({
+        notifications: z.array(doc),
+        unreadCount: z.number().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
-export const notificationSingle = z.object({
-  status: z.string(),
-  data: z.object({ notification: doc }).passthrough().optional(),
-}).passthrough();
+export const notificationSingle = z
+  .object({
+    status: z.string(),
+    data: z.object({ notification: doc }).passthrough().optional(),
+  })
+  .passthrough();
 
-export const pushPublicKey = z.object({
-  status: z.string(),
-  data: z.object({ publicKey: z.string(), enabled: z.boolean().optional() }).passthrough().optional(),
-}).passthrough();
+export const pushPublicKey = z
+  .object({
+    status: z.string(),
+    data: z
+      .object({ publicKey: z.string(), enabled: z.boolean().optional() })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
 const notificationPreferences = z.object({
   pushOptIn: z.boolean(),
@@ -1038,103 +1096,147 @@ const notificationPreferences = z.object({
   quietHoursEnd: z.string().nullable(),
 });
 
-export const notificationPreferencesResponse = z.object({
-  status: z.string(),
-  data: z.object({ preferences: notificationPreferences }).passthrough().optional(),
-}).passthrough();
+export const notificationPreferencesResponse = z
+  .object({
+    status: z.string(),
+    data: z
+      .object({ preferences: notificationPreferences })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
-export const giftingProductsList = z.object({
-  status: z.string(),
-  pagination: z.any().optional(),
-  data: z.object({ products: z.array(doc) }).passthrough().optional(),
-}).passthrough();
+export const giftingProductsList = z
+  .object({
+    status: z.string(),
+    pagination: z.any().optional(),
+    data: z
+      .object({ products: z.array(doc) })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
-export const premiumProductsList = z.object({
-  status: z.string(),
-  pagination: z.any().optional(),
-  data: z.object({ products: z.array(doc) }).passthrough().optional(),
-}).passthrough();
+export const premiumProductsList = z
+  .object({
+    status: z.string(),
+    pagination: z.any().optional(),
+    data: z
+      .object({ products: z.array(doc) })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
-export const premiumProductSingle = z.object({
-  status: z.string(),
-  data: z.object({ product: doc }).passthrough().optional(),
-}).passthrough();
+export const premiumProductSingle = z
+  .object({
+    status: z.string(),
+    data: z.object({ product: doc }).passthrough().optional(),
+  })
+  .passthrough();
 
-export const giftingRequestsList = z.object({
-  status: z.string(),
-  pagination: z.any().optional(),
-  data: z.object({ requests: z.array(doc) }).passthrough().optional(),
-}).passthrough();
+export const giftingRequestsList = z
+  .object({
+    status: z.string(),
+    pagination: z.any().optional(),
+    data: z
+      .object({ requests: z.array(doc) })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
-export const giftingRequestSingle = z.object({
-  status: z.string(),
-  data: z.object({ request: doc }).passthrough().optional(),
-}).passthrough();
+export const giftingRequestSingle = z
+  .object({
+    status: z.string(),
+    data: z.object({ request: doc }).passthrough().optional(),
+  })
+  .passthrough();
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
-const paginationShape = z.object({
-  currentPage: z.number(),
-  totalPages: z.number(),
-  total: z.number(),
-}).passthrough();
+const paginationShape = z
+  .object({
+    currentPage: z.number(),
+    totalPages: z.number(),
+    total: z.number(),
+  })
+  .passthrough();
 
-export const adminInventoryOverview = z.object({
-  status: z.string(),
-  pagination: paginationShape,
-  data: z.object({
-    products: z.array(doc),
-    summary: z.any(),
-  }),
-}).passthrough();
+export const adminInventoryOverview = z
+  .object({
+    status: z.string(),
+    pagination: paginationShape,
+    data: z.object({
+      products: z.array(doc),
+      summary: z.any(),
+    }),
+  })
+  .passthrough();
 
-export const adminStockLedger = z.object({
-  status: z.string(),
-  pagination: paginationShape,
-  data: z.object({ entries: z.array(doc) }),
-}).passthrough();
+export const adminStockLedger = z
+  .object({
+    status: z.string(),
+    pagination: paginationShape,
+    data: z.object({ entries: z.array(doc) }),
+  })
+  .passthrough();
 
-export const adminInventoryValuation = z.object({
-  status: z.string(),
-  data: z.object({ overall: z.any(), byCategory: z.array(z.any()) }),
-}).passthrough();
+export const adminInventoryValuation = z
+  .object({
+    status: z.string(),
+    data: z.object({ overall: z.any(), byCategory: z.array(z.any()) }),
+  })
+  .passthrough();
 
-export const adminPurchaseInvoiceList = z.object({
-  status: z.string(),
-  pagination: paginationShape,
-  data: z.object({ invoices: z.array(doc) }),
-}).passthrough();
+export const adminPurchaseInvoiceList = z
+  .object({
+    status: z.string(),
+    pagination: paginationShape,
+    data: z.object({ invoices: z.array(doc) }),
+  })
+  .passthrough();
 
-export const adminPurchaseInvoiceSingle = z.object({
-  status: z.string(),
-  data: z.object({ invoice: doc }),
-}).passthrough();
+export const adminPurchaseInvoiceSingle = z
+  .object({
+    status: z.string(),
+    data: z.object({ invoice: doc }),
+  })
+  .passthrough();
 
-export const adminGstSummary = z.object({
-  status: z.string(),
-  data: z.object({
-    bySupplier: z.array(z.any()),
-    monthly: z.array(z.any()),
-    totals: z.any(),
-    year: z.number(),
-  }),
-}).passthrough();
+export const adminGstSummary = z
+  .object({
+    status: z.string(),
+    data: z.object({
+      bySupplier: z.array(z.any()),
+      monthly: z.array(z.any()),
+      totals: z.any(),
+      year: z.number(),
+    }),
+  })
+  .passthrough();
 
-export const adminOperatingExpenseList = z.object({
-  status: z.string(),
-  pagination: paginationShape,
-  data: z.object({ expenses: z.array(doc) }),
-}).passthrough();
+export const adminOperatingExpenseList = z
+  .object({
+    status: z.string(),
+    pagination: paginationShape,
+    data: z.object({ expenses: z.array(doc) }),
+  })
+  .passthrough();
 
-export const adminOperatingExpenseSingle = z.object({
-  status: z.string(),
-  data: z.object({ expense: doc }),
-}).passthrough();
+export const adminOperatingExpenseSingle = z
+  .object({
+    status: z.string(),
+    data: z.object({ expense: doc }),
+  })
+  .passthrough();
 
-export const adminOperatingExpenseSummary = z.object({
-  status: z.string(),
-  data: z.object({ summary: z.any() }),
-}).passthrough();
+export const adminOperatingExpenseSummary = z
+  .object({
+    status: z.string(),
+    data: z.object({ summary: z.any() }),
+  })
+  .passthrough();
 
 const adminAiTextPayload = z.object({
   text: z.string(),
@@ -1169,7 +1271,7 @@ export const adminAiActionSuggestions = z.object({
     rules: z.array(
       z.object({
         id: z.string(),
-        priority: z.enum(['high', 'medium', 'low']),
+        priority: z.enum(["high", "medium", "low"]),
         title: z.string(),
         detail: z.string(),
         href: z.string().optional(),

@@ -1,38 +1,38 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import StorefrontAdminShell from '@/components/admin/storefront/StorefrontAdminShell';
-import StorefrontSectionPanel from '@/components/admin/storefront/StorefrontSectionPanel';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import StorefrontAdminShell from "@/components/admin/storefront/StorefrontAdminShell";
+import StorefrontSectionPanel from "@/components/admin/storefront/StorefrontSectionPanel";
 import {
   getStorefrontSection,
   type StorefrontSectionId,
-} from '@/components/admin/storefront/storefrontSections';
-import { adminApi, categoryApi } from '@/lib/api';
+} from "@/components/admin/storefront/storefrontSections";
+import { adminApi, categoryApi } from "@/lib/api";
 import {
   Category,
   HeroSlide,
   HomeEditorialGalleryTile,
   StorefrontSettings,
-} from '@/types';
-import ImageUploader from '@/components/ui/ImageUploader';
-import ExploreHouseShowcaseCard from '@/components/home/ExploreHouseShowcaseCard';
+} from "@/types";
+import ImageUploader from "@/components/ui/ImageUploader";
+import ExploreHouseShowcaseCard from "@/components/home/ExploreHouseShowcaseCard";
 import {
   resolveGiftingCard,
   resolveGiftingCardImage,
   resolveSaleCard,
   resolveSaleCardImage,
-} from '@/lib/shopSpecialCollections';
-import { revalidateStorefrontCache } from '@/actions/revalidateStorefrontCache';
-import { cn } from '@/lib/utils';
-import toast from 'react-hot-toast';
+} from "@/lib/shopSpecialCollections";
+import { revalidateStorefrontCache } from "@/actions/revalidateStorefrontCache";
+import { cn } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 /* ─── Shared styles & small form primitives ─────────────────── */
 
 const inputCls =
-  'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400/60 focus:border-transparent transition-all placeholder:text-gray-400';
+  "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400/60 focus:border-transparent transition-all placeholder:text-gray-400";
 
-/** Labeled field — every input gets a visible label so the form stays readable after typing. */
+/** Labeled field - every input gets a visible label so the form stays readable after typing. */
 function Field({
   label,
   hint,
@@ -46,16 +46,18 @@ function Field({
 }) {
   return (
     <div className={className}>
-      <label className="mb-1.5 block text-xs font-semibold text-gray-600">
+      <label className='mb-1.5 block text-xs font-semibold text-gray-600'>
         {label}
       </label>
       {children}
-      {hint && <p className="mt-1 text-[11px] leading-relaxed text-gray-400">{hint}</p>}
+      {hint && (
+        <p className='mt-1 text-[11px] leading-relaxed text-gray-400'>{hint}</p>
+      )}
     </div>
   );
 }
 
-/** Accessible on/off switch — clearer than a bare checkbox. */
+/** Accessible on/off switch - clearer than a bare checkbox. */
 function Toggle({
   checked,
   onChange,
@@ -69,28 +71,32 @@ function Toggle({
 }) {
   return (
     <button
-      type="button"
-      role="switch"
+      type='button'
+      role='switch'
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-left transition hover:border-gray-300"
+      className='flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-left transition hover:border-gray-300'
     >
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold text-gray-800">{label}</span>
+      <span className='min-w-0'>
+        <span className='block text-sm font-semibold text-gray-800'>
+          {label}
+        </span>
         {description && (
-          <span className="mt-0.5 block text-xs text-gray-500">{description}</span>
+          <span className='mt-0.5 block text-xs text-gray-500'>
+            {description}
+          </span>
         )}
       </span>
       <span
         className={cn(
-          'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200',
-          checked ? 'bg-brand-600' : 'bg-gray-300',
+          "relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200",
+          checked ? "bg-brand-600" : "bg-gray-300",
         )}
       >
         <span
           className={cn(
-            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200',
-            checked ? 'left-[calc(100%-1.375rem)]' : 'left-0.5',
+            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200",
+            checked ? "left-[calc(100%-1.375rem)]" : "left-0.5",
           )}
         />
       </span>
@@ -113,24 +119,24 @@ function ItemCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-4 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-bold text-navy-900">{title}</p>
+    <div className='rounded-xl border border-gray-200 bg-white overflow-hidden'>
+      <div className='flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-4 py-2.5'>
+        <div className='flex min-w-0 items-center gap-2'>
+          <p className='truncate text-sm font-bold text-navy-900'>{title}</p>
           {badge}
         </div>
         {onDelete && (
           <button
-            type="button"
+            type='button'
             onClick={onDelete}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+            className='inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50'
           >
-            <Trash2 className="h-3.5 w-3.5" />
-            {deleteLabel ?? 'Remove'}
+            <Trash2 className='h-3.5 w-3.5' />
+            {deleteLabel ?? "Remove"}
           </button>
         )}
       </div>
-      <div className="space-y-3 p-4">{children}</div>
+      <div className='space-y-3 p-4'>{children}</div>
     </div>
   );
 }
@@ -138,42 +144,38 @@ function ItemCard({
 function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
+      className='inline-flex items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-100'
     >
-      <Plus className="h-4 w-4" /> {label}
+      <Plus className='h-4 w-4' /> {label}
     </button>
   );
 }
 
 function EmptyListHint({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 px-4 py-8 text-center text-sm text-gray-500">
+    <div className='rounded-xl border border-dashed border-gray-300 bg-gray-50/60 px-4 py-8 text-center text-sm text-gray-500'>
       {children}
     </div>
   );
 }
 
-function QuickLinkChips({
-  onPick,
-}: {
-  onPick: (value: string) => void;
-}) {
+function QuickLinkChips({ onPick }: { onPick: (value: string) => void }) {
   const presets: Array<[string, string]> = [
-    ['Shop All', '/shop'],
-    ['New Arrivals', '/shop?sort=-createdAt'],
-    ['Featured', '/shop?isFeatured=true'],
+    ["Shop All", "/shop"],
+    ["New Arrivals", "/shop?sort=-createdAt"],
+    ["Featured", "/shop?isFeatured=true"],
   ];
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-      <span className="text-gray-500">Quick fill:</span>
+    <div className='flex flex-wrap items-center gap-1.5 text-xs'>
+      <span className='text-gray-500'>Quick fill:</span>
       {presets.map(([label, value]) => (
         <button
           key={value}
-          type="button"
+          type='button'
           onClick={() => onPick(value)}
-          className="rounded-md bg-gray-100 px-2 py-1 font-medium text-gray-600 transition hover:bg-gray-200"
+          className='rounded-md bg-gray-100 px-2 py-1 font-medium text-gray-600 transition hover:bg-gray-200'
         >
           {label}
         </button>
@@ -184,22 +186,22 @@ function QuickLinkChips({
 
 /* ─── Pure helpers ──────────────────────────────────────────── */
 
-type BlogBannerFields = StorefrontSettings['blogBanner'];
-type ShopBannerFields = NonNullable<StorefrontSettings['shopBanner']>;
-type PromoBannerFields = StorefrontSettings['promoBanner'];
-type FooterFields = StorefrontSettings['footer'];
-type MiddleBannerFields = NonNullable<StorefrontSettings['homeMiddleBanner']>;
+type BlogBannerFields = StorefrontSettings["blogBanner"];
+type ShopBannerFields = NonNullable<StorefrontSettings["shopBanner"]>;
+type PromoBannerFields = StorefrontSettings["promoBanner"];
+type FooterFields = StorefrontSettings["footer"];
+type MiddleBannerFields = NonNullable<StorefrontSettings["homeMiddleBanner"]>;
 
 const emptySlide: HeroSlide = {
-  title: '',
-  subtitle: '',
-  description: '',
-  badge: '',
-  image: '',
-  ctaText: '',
-  ctaLink: '/shop',
-  secondaryCtaText: 'View All',
-  secondaryCtaLink: '/shop',
+  title: "",
+  subtitle: "",
+  description: "",
+  badge: "",
+  image: "",
+  ctaText: "",
+  ctaLink: "/shop",
+  secondaryCtaText: "View All",
+  secondaryCtaLink: "/shop",
   isActive: true,
 };
 
@@ -208,7 +210,7 @@ function padHomeEditorialTiles(
 ): HomeEditorialGalleryTile[] {
   const base = [...(tiles || [])];
   while (base.length < 3) {
-    base.push({ image: '', link: '', alt: '' });
+    base.push({ image: "", link: "", alt: "" });
   }
   return base.slice(0, 3);
 }
@@ -238,45 +240,73 @@ export default function AdminStorefrontPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [announcementDraft, setAnnouncementDraft] = useState('');
-  const [heroImageFiles, setHeroImageFiles] = useState<Record<number, File | null>>({});
+  const [announcementDraft, setAnnouncementDraft] = useState("");
+  const [heroImageFiles, setHeroImageFiles] = useState<
+    Record<number, File | null>
+  >({});
   const [promoBgFile, setPromoBgFile] = useState<File | null>(null);
   const [blogMainFile, setBlogMainFile] = useState<File | null>(null);
   const [blogSideFile, setBlogSideFile] = useState<File | null>(null);
-  const [shopBannerLeftFile, setShopBannerLeftFile] = useState<File | null>(null);
-  const [shopBannerCenterFile, setShopBannerCenterFile] = useState<File | null>(null);
-  const [shopBannerRightFile, setShopBannerRightFile] = useState<File | null>(null);
-  const [homeMiddleBannerFile, setHomeMiddleBannerFile] = useState<File | null>(null);
-  const [homePremiumShowcaseFile, setHomePremiumShowcaseFile] = useState<File | null>(null);
-  const [homeExploreHouseSaleFile, setHomeExploreHouseSaleFile] = useState<File | null>(null);
-  const [homeExploreHouseGiftingFile, setHomeExploreHouseGiftingFile] = useState<File | null>(null);
-  const [homeEditorialTileFiles, setHomeEditorialTileFiles] = useState<Record<number, File | null>>({});
-  const [premiumAudienceBannerFiles, setPremiumAudienceBannerFiles] = useState<Record<number, File | null>>({});
-  const [premiumEditorialFile, setPremiumEditorialFile] = useState<File | null>(null);
+  const [shopBannerLeftFile, setShopBannerLeftFile] = useState<File | null>(
+    null,
+  );
+  const [shopBannerCenterFile, setShopBannerCenterFile] = useState<File | null>(
+    null,
+  );
+  const [shopBannerRightFile, setShopBannerRightFile] = useState<File | null>(
+    null,
+  );
+  const [homeMiddleBannerFile, setHomeMiddleBannerFile] = useState<File | null>(
+    null,
+  );
+  const [homePremiumShowcaseFile, setHomePremiumShowcaseFile] =
+    useState<File | null>(null);
+  const [homeExploreHouseSaleFile, setHomeExploreHouseSaleFile] =
+    useState<File | null>(null);
+  const [homeExploreHouseGiftingFile, setHomeExploreHouseGiftingFile] =
+    useState<File | null>(null);
+  const [homeEditorialTileFiles, setHomeEditorialTileFiles] = useState<
+    Record<number, File | null>
+  >({});
+  const [premiumAudienceBannerFiles, setPremiumAudienceBannerFiles] = useState<
+    Record<number, File | null>
+  >({});
+  const [premiumEditorialFile, setPremiumEditorialFile] = useState<File | null>(
+    null,
+  );
   const [premiumStoryFile, setPremiumStoryFile] = useState<File | null>(null);
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(null);
-  const [activeSection, setActiveSection] = useState<StorefrontSectionId>('announcement');
+  const [pendingFocusSlide, setPendingFocusSlide] = useState<number | null>(
+    null,
+  );
+  const [activeSection, setActiveSection] =
+    useState<StorefrontSectionId>("announcement");
   const contentTopRef = useRef<HTMLDivElement>(null);
 
   /** Route all edits through this so the "Unsaved changes" state stays accurate. */
-  const mutate = useCallback((fn: (s: StorefrontSettings) => StorefrontSettings) => {
-    setSettings((p) => (p ? fn(p) : p));
-    setIsDirty(true);
-  }, []);
+  const mutate = useCallback(
+    (fn: (s: StorefrontSettings) => StorefrontSettings) => {
+      setSettings((p) => (p ? fn(p) : p));
+      setIsDirty(true);
+    },
+    [],
+  );
 
   const markDirty = useCallback(() => setIsDirty(true), []);
 
   useEffect(() => {
-    contentTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    contentTopRef.current?.scrollIntoView({
+      behavior: "instant",
+      block: "start",
+    });
   }, [activeSection]);
 
   useEffect(() => {
     if (pendingFocusSlide === null) return;
     const el = slideRefs.current[pendingFocusSlide];
     if (!el) return;
-    el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-    const firstInput = el.querySelector('input');
+    el.scrollIntoView({ behavior: "auto", block: "nearest" });
+    const firstInput = el.querySelector("input");
     if (firstInput instanceof HTMLInputElement) firstInput.focus();
     setPendingFocusSlide(null);
   }, [pendingFocusSlide, settings?.heroSlides.length]);
@@ -286,14 +316,16 @@ export default function AdminStorefrontPage() {
     if (!isDirty) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = '';
+      e.returnValue = "";
     };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  const [homeExploreHouseSalePreview, setHomeExploreHouseSalePreview] = useState<string | null>(null);
-  const [homeExploreHouseGiftingPreview, setHomeExploreHouseGiftingPreview] = useState<string | null>(null);
+  const [homeExploreHouseSalePreview, setHomeExploreHouseSalePreview] =
+    useState<string | null>(null);
+  const [homeExploreHouseGiftingPreview, setHomeExploreHouseGiftingPreview] =
+    useState<string | null>(null);
 
   useEffect(() => {
     if (!homeExploreHouseSaleFile) {
@@ -316,7 +348,9 @@ export default function AdminStorefrontPage() {
   }, [homeExploreHouseGiftingFile]);
 
   const exploreHouseSalePreviewImage = useMemo(
-    () => homeExploreHouseSalePreview || resolveSaleCardImage(settings?.homeExploreHouse),
+    () =>
+      homeExploreHouseSalePreview ||
+      resolveSaleCardImage(settings?.homeExploreHouse),
     [homeExploreHouseSalePreview, settings?.homeExploreHouse],
   );
 
@@ -354,7 +388,7 @@ export default function AdminStorefrontPage() {
         setSettings(settingsRes.data?.settings || null);
         setCategories(categoriesRes.data?.categories || []);
       })
-      .catch(() => toast.error('Failed to load storefront settings'))
+      .catch(() => toast.error("Failed to load storefront settings"))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -386,7 +420,7 @@ export default function AdminStorefrontPage() {
     }));
 
   const patchHomePremiumShowcase = (
-    patch: Partial<NonNullable<StorefrontSettings['homePremiumShowcase']>>,
+    patch: Partial<NonNullable<StorefrontSettings["homePremiumShowcase"]>>,
   ) =>
     mutate((s) => ({
       ...s,
@@ -394,13 +428,13 @@ export default function AdminStorefrontPage() {
     }));
 
   const ensureShopBanner = (p: StorefrontSettings): ShopBannerFields => ({
-    title: p.shopBanner?.title || '',
-    subtitle: p.shopBanner?.subtitle || '',
-    leftImage: p.shopBanner?.leftImage || '',
+    title: p.shopBanner?.title || "",
+    subtitle: p.shopBanner?.subtitle || "",
+    leftImage: p.shopBanner?.leftImage || "",
     leftImagePublicId: p.shopBanner?.leftImagePublicId,
-    centerImage: p.shopBanner?.centerImage || '',
+    centerImage: p.shopBanner?.centerImage || "",
     centerImagePublicId: p.shopBanner?.centerImagePublicId,
-    rightImage: p.shopBanner?.rightImage || '',
+    rightImage: p.shopBanner?.rightImage || "",
     rightImagePublicId: p.shopBanner?.rightImagePublicId,
     isActive: p.shopBanner?.isActive !== false,
   });
@@ -409,7 +443,7 @@ export default function AdminStorefrontPage() {
     mutate((s) => ({ ...s, shopBanner: { ...ensureShopBanner(s), ...patch } }));
 
   const patchHomeExploreHouse = (
-    patch: Partial<NonNullable<StorefrontSettings['homeExploreHouse']>>,
+    patch: Partial<NonNullable<StorefrontSettings["homeExploreHouse"]>>,
   ) =>
     mutate((s) => ({
       ...s,
@@ -417,27 +451,36 @@ export default function AdminStorefrontPage() {
     }));
 
   const patchEditorial = (
-    patch: Partial<NonNullable<StorefrontSettings['homeEditorialGallery']>>,
+    patch: Partial<NonNullable<StorefrontSettings["homeEditorialGallery"]>>,
   ) =>
     mutate((s) => ({
       ...s,
       homeEditorialGallery: {
         ...s.homeEditorialGallery,
         ...patch,
-        tiles: patch.tiles ?? padHomeEditorialTiles(s.homeEditorialGallery?.tiles),
+        tiles:
+          patch.tiles ?? padHomeEditorialTiles(s.homeEditorialGallery?.tiles),
       },
     }));
 
-  const patchEditorialTile = (index: number, patch: Partial<HomeEditorialGalleryTile>) =>
+  const patchEditorialTile = (
+    index: number,
+    patch: Partial<HomeEditorialGalleryTile>,
+  ) =>
     mutate((s) => {
       const tiles = padHomeEditorialTiles(s.homeEditorialGallery?.tiles);
       tiles[index] = { ...tiles[index], ...patch };
-      return { ...s, homeEditorialGallery: { ...s.homeEditorialGallery, tiles } };
+      return {
+        ...s,
+        homeEditorialGallery: { ...s.homeEditorialGallery, tiles },
+      };
     });
 
   const patchPremiumAudienceBanner = (
     index: number,
-    patch: Partial<NonNullable<StorefrontSettings['premiumAudienceBanners']>[0]>,
+    patch: Partial<
+      NonNullable<StorefrontSettings["premiumAudienceBanners"]>[0]
+    >,
   ) =>
     mutate((s) => ({
       ...s,
@@ -446,40 +489,55 @@ export default function AdminStorefrontPage() {
       ),
     }));
 
-  const patchPremiumEditorial = (patch: Partial<NonNullable<StorefrontSettings['premiumEditorial']>>) => 
-    mutate((s) => ({ ...s, premiumEditorial: { ...s.premiumEditorial, ...patch } }));
-  const patchPremiumStory = (patch: Partial<NonNullable<StorefrontSettings['premiumStory']>>) => 
-    mutate((s) => ({ ...s, premiumStory: { ...s.premiumStory, ...patch } }));
-  const patchPremiumFinalCta = (patch: Partial<NonNullable<StorefrontSettings['premiumFinalCta']>>) => 
-    mutate((s) => ({ ...s, premiumFinalCta: { ...s.premiumFinalCta, ...patch } }));
+  const patchPremiumEditorial = (
+    patch: Partial<NonNullable<StorefrontSettings["premiumEditorial"]>>,
+  ) =>
+    mutate((s) => ({
+      ...s,
+      premiumEditorial: { ...s.premiumEditorial, ...patch },
+    }));
+  const patchPremiumStory = (
+    patch: Partial<NonNullable<StorefrontSettings["premiumStory"]>>,
+  ) => mutate((s) => ({ ...s, premiumStory: { ...s.premiumStory, ...patch } }));
+  const patchPremiumFinalCta = (
+    patch: Partial<NonNullable<StorefrontSettings["premiumFinalCta"]>>,
+  ) =>
+    mutate((s) => ({
+      ...s,
+      premiumFinalCta: { ...s.premiumFinalCta, ...patch },
+    }));
 
   /* ── Save ── */
 
   const serializeSettingsForSave = (s: StorefrontSettings) => {
     const sb = s.shopBanner;
-    const editorialTiles = padHomeEditorialTiles(s.homeEditorialGallery?.tiles).map(
-      (tile) => ({
-        ...tile,
-        imagePublicId: tile.imagePublicId ?? undefined,
-      }),
-    );
+    const editorialTiles = padHomeEditorialTiles(
+      s.homeEditorialGallery?.tiles,
+    ).map((tile) => ({
+      ...tile,
+      imagePublicId: tile.imagePublicId ?? undefined,
+    }));
     return JSON.stringify({
       ...s,
-      shopBanner: sb
-        ? {
+      shopBanner:
+        sb ?
+          {
             ...sb,
             leftImagePublicId: sb.leftImagePublicId ?? undefined,
             centerImagePublicId: sb.centerImagePublicId ?? undefined,
             rightImagePublicId: sb.rightImagePublicId ?? undefined,
           }
         : sb,
-      homeEditorialGallery: s.homeEditorialGallery
-        ? { ...s.homeEditorialGallery, tiles: editorialTiles }
+      homeEditorialGallery:
+        s.homeEditorialGallery ?
+          { ...s.homeEditorialGallery, tiles: editorialTiles }
         : { isActive: true, tiles: editorialTiles },
-      homeExploreHouse: s.homeExploreHouse
-        ? {
+      homeExploreHouse:
+        s.homeExploreHouse ?
+          {
             ...s.homeExploreHouse,
-            saleImagePublicId: s.homeExploreHouse.saleImagePublicId ?? undefined,
+            saleImagePublicId:
+              s.homeExploreHouse.saleImagePublicId ?? undefined,
             giftingImagePublicId:
               s.homeExploreHouse.giftingImagePublicId ?? undefined,
           }
@@ -492,25 +550,29 @@ export default function AdminStorefrontPage() {
     setIsSaving(true);
     try {
       const fd = new FormData();
-      fd.append('settings', serializeSettingsForSave(settings));
+      fd.append("settings", serializeSettingsForSave(settings));
       Object.entries(heroImageFiles).forEach(([index, file]) => {
         if (file) fd.append(`heroImage_${index}`, file);
       });
-      if (promoBgFile) fd.append('promoBackground', promoBgFile);
-      if (blogMainFile) fd.append('blogMainImage', blogMainFile);
-      if (blogSideFile) fd.append('blogSideImage', blogSideFile);
-      if (shopBannerLeftFile) fd.append('shopBannerLeftImage', shopBannerLeftFile);
-      if (shopBannerCenterFile) fd.append('shopBannerCenterImage', shopBannerCenterFile);
-      if (shopBannerRightFile) fd.append('shopBannerRightImage', shopBannerRightFile);
-      if (homeMiddleBannerFile) fd.append('homeMiddleBanner', homeMiddleBannerFile);
+      if (promoBgFile) fd.append("promoBackground", promoBgFile);
+      if (blogMainFile) fd.append("blogMainImage", blogMainFile);
+      if (blogSideFile) fd.append("blogSideImage", blogSideFile);
+      if (shopBannerLeftFile)
+        fd.append("shopBannerLeftImage", shopBannerLeftFile);
+      if (shopBannerCenterFile)
+        fd.append("shopBannerCenterImage", shopBannerCenterFile);
+      if (shopBannerRightFile)
+        fd.append("shopBannerRightImage", shopBannerRightFile);
+      if (homeMiddleBannerFile)
+        fd.append("homeMiddleBanner", homeMiddleBannerFile);
       if (homePremiumShowcaseFile) {
-        fd.append('homePremiumShowcaseImage', homePremiumShowcaseFile);
+        fd.append("homePremiumShowcaseImage", homePremiumShowcaseFile);
       }
       if (homeExploreHouseSaleFile) {
-        fd.append('homeExploreHouseSaleImage', homeExploreHouseSaleFile);
+        fd.append("homeExploreHouseSaleImage", homeExploreHouseSaleFile);
       }
       if (homeExploreHouseGiftingFile) {
-        fd.append('homeExploreHouseGiftingImage', homeExploreHouseGiftingFile);
+        fd.append("homeExploreHouseGiftingImage", homeExploreHouseGiftingFile);
       }
       Object.entries(homeEditorialTileFiles).forEach(([index, file]) => {
         if (file) fd.append(`homeEditorialTileImage_${index}`, file);
@@ -518,9 +580,10 @@ export default function AdminStorefrontPage() {
       Object.entries(premiumAudienceBannerFiles).forEach(([index, file]) => {
         if (file) fd.append(`premiumAudienceImage_${index}`, file);
       });
-      if (premiumEditorialFile) fd.append('premiumEditorialImage', premiumEditorialFile);
-      if (premiumStoryFile) fd.append('premiumStoryImage', premiumStoryFile);
-      
+      if (premiumEditorialFile)
+        fd.append("premiumEditorialImage", premiumEditorialFile);
+      if (premiumStoryFile) fd.append("premiumStoryImage", premiumStoryFile);
+
       const saved = await adminApi.updateStorefrontSettings(fd);
       if (saved.data?.settings) {
         setSettings(saved.data.settings as StorefrontSettings);
@@ -542,9 +605,11 @@ export default function AdminStorefrontPage() {
       setPremiumEditorialFile(null);
       setPremiumStoryFile(null);
       setIsDirty(false);
-      toast.success('Storefront settings updated');
+      toast.success("Storefront settings updated");
     } catch (err: unknown) {
-      toast.error((err as { message?: string }).message || 'Failed to save settings');
+      toast.error(
+        (err as { message?: string }).message || "Failed to save settings",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -552,9 +617,11 @@ export default function AdminStorefrontPage() {
 
   if (isLoading || !settings) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
-        <div className="h-10 w-10 rounded-full border-2 border-brand-200 border-t-brand-600 animate-spin" />
-        <p className="text-sm font-medium text-gray-500">Loading storefront settings…</p>
+      <div className='flex flex-col items-center justify-center gap-4 p-16 text-center'>
+        <div className='h-10 w-10 rounded-full border-2 border-brand-200 border-t-brand-600 animate-spin' />
+        <p className='text-sm font-medium text-gray-500'>
+          Loading storefront settings…
+        </p>
       </div>
     );
   }
@@ -566,7 +633,7 @@ export default function AdminStorefrontPage() {
       ...s,
       announcementMessages: [...s.announcementMessages, value],
     }));
-    setAnnouncementDraft('');
+    setAnnouncementDraft("");
   };
 
   const sectionMeta = getStorefrontSection(activeSection);
@@ -582,57 +649,57 @@ export default function AdminStorefrontPage() {
       <div ref={contentTopRef} />
 
       {/* ══ Announcements ══ */}
-      {activeSection === 'announcement' && (
+      {activeSection === "announcement" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             <Field
-              label="New announcement"
-              hint="Press Enter or click Add. Messages rotate in the top bar of every page."
+              label='New announcement'
+              hint='Press Enter or click Add. Messages rotate in the top bar of every page.'
             >
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className='flex flex-col gap-2 sm:flex-row'>
                 <input
                   className={inputCls}
                   value={announcementDraft}
                   onChange={(e) => setAnnouncementDraft(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       addAnnouncement();
                     }
                   }}
-                  placeholder="e.g. Use code WELCOME10 on first order"
+                  placeholder='e.g. Use code WELCOME10 on first order'
                 />
                 <button
-                  type="button"
+                  type='button'
                   onClick={addAnnouncement}
                   disabled={!announcementDraft.trim()}
-                  className="shrink-0 rounded-xl bg-navy-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-navy-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className='shrink-0 rounded-xl bg-navy-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-navy-800 disabled:cursor-not-allowed disabled:opacity-40'
                 >
                   Add
                 </button>
               </div>
             </Field>
 
-            {settings.announcementMessages.length === 0 ? (
+            {settings.announcementMessages.length === 0 ?
               <EmptyListHint>
-                No announcements yet — add one above to show a message bar on the site.
+                No announcements yet - add one above to show a message bar on
+                the site.
               </EmptyListHint>
-            ) : (
-              <div className="space-y-2">
+            : <div className='space-y-2'>
                 {settings.announcementMessages.map((msg, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2"
+                    className='flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2'
                   >
-                    <span className="w-5 shrink-0 text-xs font-semibold text-gray-400">
+                    <span className='w-5 shrink-0 text-xs font-semibold text-gray-400'>
                       {idx + 1}.
                     </span>
                     <input
-                      className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 focus:outline-none"
+                      className='min-w-0 flex-1 bg-transparent text-sm text-gray-800 focus:outline-none'
                       value={msg}
                       onChange={(e) =>
                         mutate((s) => {
@@ -644,7 +711,7 @@ export default function AdminStorefrontPage() {
                       aria-label={`Announcement ${idx + 1}`}
                     />
                     <button
-                      type="button"
+                      type='button'
                       onClick={() =>
                         mutate((s) => ({
                           ...s,
@@ -653,33 +720,34 @@ export default function AdminStorefrontPage() {
                           ),
                         }))
                       }
-                      className="shrink-0 rounded-lg p-1.5 text-red-500 transition hover:bg-red-50"
+                      className='shrink-0 rounded-lg p-1.5 text-red-500 transition hover:bg-red-50'
                       aria-label={`Delete announcement ${idx + 1}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className='h-4 w-4' />
                     </button>
                   </div>
                 ))}
               </div>
-            )}
+            }
           </div>
         </StorefrontSectionPanel>
       )}
 
       {/* ══ Hero carousel ══ */}
-      {activeSection === 'hero' && (
+      {activeSection === "hero" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
-          description={`${sectionMeta.description} — ${settings.heroSlides.length} slide${settings.heroSlides.length !== 1 ? 's' : ''}`}
+          description={`${sectionMeta.description} - ${settings.heroSlides.length} slide${settings.heroSlides.length !== 1 ? "s" : ""}`}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-500">
-                Slides rotate automatically on the homepage. Inactive slides stay saved but hidden.
+          <div className='space-y-4'>
+            <div className='flex items-center justify-between gap-2'>
+              <p className='text-xs text-gray-500'>
+                Slides rotate automatically on the homepage. Inactive slides
+                stay saved but hidden.
               </p>
               <AddButton
-                label="Add slide"
+                label='Add slide'
                 onClick={() => {
                   setPendingFocusSlide(settings.heroSlides.length);
                   mutate((s) => ({
@@ -692,7 +760,8 @@ export default function AdminStorefrontPage() {
 
             {settings.heroSlides.length === 0 && (
               <EmptyListHint>
-                No slides yet — click “Add slide” to create the first homepage hero slide.
+                No slides yet - click “Add slide” to create the first homepage
+                hero slide.
               </EmptyListHint>
             )}
 
@@ -706,19 +775,19 @@ export default function AdminStorefrontPage() {
                 <ItemCard
                   title={slide.title.trim() || `Slide ${index + 1}`}
                   badge={
-                    slide.isActive === false ? (
-                      <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                    slide.isActive === false ?
+                      <span className='rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-500'>
                         Hidden
                       </span>
-                    ) : (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                    : <span className='rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700'>
                         Live
                       </span>
-                    )
                   }
-                  deleteLabel="Delete slide"
+                  deleteLabel='Delete slide'
                   onDelete={() => {
-                    setHeroImageFiles((prev) => remapFilesAfterRemoval(prev, index));
+                    setHeroImageFiles((prev) =>
+                      remapFilesAfterRemoval(prev, index),
+                    );
                     slideRefs.current.splice(index, 1);
                     mutate((s) => ({
                       ...s,
@@ -728,101 +797,128 @@ export default function AdminStorefrontPage() {
                 >
                   <Toggle
                     checked={slide.isActive !== false}
-                    onChange={(checked) => updateSlide(index, { isActive: checked })}
-                    label="Show this slide on the homepage"
+                    onChange={(checked) =>
+                      updateSlide(index, { isActive: checked })
+                    }
+                    label='Show this slide on the homepage'
                   />
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <Field label="Title">
+                  <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                    <Field label='Title'>
                       <input
                         className={inputCls}
                         value={slide.title}
-                        onChange={(e) => updateSlide(index, { title: e.target.value })}
-                        placeholder="e.g. Elegance in Every Thread"
+                        onChange={(e) =>
+                          updateSlide(index, { title: e.target.value })
+                        }
+                        placeholder='e.g. Elegance in Every Thread'
                       />
                     </Field>
-                    <Field label="Subtitle">
+                    <Field label='Subtitle'>
                       <input
                         className={inputCls}
-                        value={slide.subtitle || ''}
-                        onChange={(e) => updateSlide(index, { subtitle: e.target.value })}
-                        placeholder="e.g. New Silk Saree Collection"
+                        value={slide.subtitle || ""}
+                        onChange={(e) =>
+                          updateSlide(index, { subtitle: e.target.value })
+                        }
+                        placeholder='e.g. New Silk Saree Collection'
                       />
                     </Field>
-                    <Field label="Badge" hint="Small tag shown on the slide, e.g. “New Collection”.">
+                    <Field
+                      label='Badge'
+                      hint='Small tag shown on the slide, e.g. “New Collection”.'
+                    >
                       <input
                         className={inputCls}
-                        value={slide.badge || ''}
-                        onChange={(e) => updateSlide(index, { badge: e.target.value })}
-                        placeholder="e.g. New Collection"
+                        value={slide.badge || ""}
+                        onChange={(e) =>
+                          updateSlide(index, { badge: e.target.value })
+                        }
+                        placeholder='e.g. New Collection'
                       />
                     </Field>
-                    <Field label="Primary button text">
+                    <Field label='Primary button text'>
                       <input
                         className={inputCls}
-                        value={slide.ctaText || ''}
-                        onChange={(e) => updateSlide(index, { ctaText: e.target.value })}
-                        placeholder="e.g. Shop Sarees"
+                        value={slide.ctaText || ""}
+                        onChange={(e) =>
+                          updateSlide(index, { ctaText: e.target.value })
+                        }
+                        placeholder='e.g. Shop Sarees'
                       />
                     </Field>
-                    <Field label="Primary button link">
+                    <Field label='Primary button link'>
                       <input
                         className={inputCls}
-                        value={slide.ctaLink || ''}
-                        onChange={(e) => updateSlide(index, { ctaLink: e.target.value })}
-                        placeholder="e.g. /shop?category=Sarees"
+                        value={slide.ctaLink || ""}
+                        onChange={(e) =>
+                          updateSlide(index, { ctaLink: e.target.value })
+                        }
+                        placeholder='e.g. /shop?category=Sarees'
                       />
-                      <div className="mt-1.5">
+                      <div className='mt-1.5'>
                         <QuickLinkChips
-                          onPick={(value) => updateSlide(index, { ctaLink: value })}
+                          onPick={(value) =>
+                            updateSlide(index, { ctaLink: value })
+                          }
                         />
                       </div>
                     </Field>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:col-span-1">
-                      <Field label="Secondary button text">
+                    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 md:col-span-1'>
+                      <Field label='Secondary button text'>
                         <input
                           className={inputCls}
-                          value={slide.secondaryCtaText || ''}
+                          value={slide.secondaryCtaText || ""}
                           onChange={(e) =>
-                            updateSlide(index, { secondaryCtaText: e.target.value })
+                            updateSlide(index, {
+                              secondaryCtaText: e.target.value,
+                            })
                           }
-                          placeholder="e.g. View All"
+                          placeholder='e.g. View All'
                         />
                       </Field>
-                      <Field label="Secondary button link">
+                      <Field label='Secondary button link'>
                         <input
                           className={inputCls}
-                          value={slide.secondaryCtaLink || ''}
+                          value={slide.secondaryCtaLink || ""}
                           onChange={(e) =>
-                            updateSlide(index, { secondaryCtaLink: e.target.value })
+                            updateSlide(index, {
+                              secondaryCtaLink: e.target.value,
+                            })
                           }
-                          placeholder="e.g. /shop"
+                          placeholder='e.g. /shop'
                         />
                       </Field>
                     </div>
                   </div>
 
-                  <Field label="Description">
+                  <Field label='Description'>
                     <textarea
                       rows={2}
                       className={inputCls}
-                      value={slide.description || ''}
-                      onChange={(e) => updateSlide(index, { description: e.target.value })}
-                      placeholder="Short supporting text under the title"
+                      value={slide.description || ""}
+                      onChange={(e) =>
+                        updateSlide(index, { description: e.target.value })
+                      }
+                      placeholder='Short supporting text under the title'
                     />
                   </Field>
 
                   <ImageUploader
                     maxFiles={1}
-                    aspectRatio="16:9"
+                    aspectRatio='16:9'
                     maxSizeMB={5}
                     existingImages={
                       heroImageFiles[index] ? []
-                      : slide.image ? [slide.image]
+                      : slide.image ?
+                        [slide.image]
                       : []
                     }
                     onRemoveExisting={() => {
-                      updateSlide(index, { image: '', imagePublicId: undefined });
+                      updateSlide(index, {
+                        image: "",
+                        imagePublicId: undefined,
+                      });
                       setHeroImageFiles((prev) => ({ ...prev, [index]: null }));
                     }}
                     onChange={(files) => {
@@ -832,8 +928,8 @@ export default function AdminStorefrontPage() {
                       }));
                       markDirty();
                     }}
-                    label="Slide background image"
-                    hint="Uploads when you press Save. Tap the × on a thumbnail to remove it."
+                    label='Slide background image'
+                    hint='Uploads when you press Save. Tap the × on a thumbnail to remove it.'
                   />
                 </ItemCard>
               </div>
@@ -843,45 +939,50 @@ export default function AdminStorefrontPage() {
       )}
 
       {/* ══ Explore our house ══ */}
-      {activeSection === 'exploreHouse' && (
+      {activeSection === "exploreHouse" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-5">
-            <p className="text-xs text-gray-500">
-              Upload portrait images (3:4) and edit card labels. Sale appears first; Premium last.
-              Links are fixed — Sale → shop offers, Premium → premium page.
+          <div className='space-y-5'>
+            <p className='text-xs text-gray-500'>
+              Upload portrait images (3:4) and edit card labels. Sale appears
+              first; Premium last. Links are fixed - Sale → shop offers, Premium
+              → premium page.
             </p>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <ItemCard title="Sale card">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Title">
+            <div className='grid gap-5 md:grid-cols-2'>
+              <ItemCard title='Sale card'>
+                <div className='grid gap-3 sm:grid-cols-2'>
+                  <Field label='Title'>
                     <input
                       className={inputCls}
-                      value={settings.homeExploreHouse?.saleName ?? 'Sale'}
-                      onChange={(e) => patchHomeExploreHouse({ saleName: e.target.value })}
-                      placeholder="Sale"
+                      value={settings.homeExploreHouse?.saleName ?? "Sale"}
+                      onChange={(e) =>
+                        patchHomeExploreHouse({ saleName: e.target.value })
+                      }
+                      placeholder='Sale'
                       maxLength={48}
                     />
                   </Field>
-                  <Field label="Label">
+                  <Field label='Label'>
                     <input
                       className={inputCls}
-                      value={settings.homeExploreHouse?.saleSubtitle ?? 'ON OFFER'}
+                      value={
+                        settings.homeExploreHouse?.saleSubtitle ?? "ON OFFER"
+                      }
                       onChange={(e) =>
                         patchHomeExploreHouse({ saleSubtitle: e.target.value })
                       }
-                      placeholder="ON OFFER"
+                      placeholder='ON OFFER'
                       maxLength={48}
                     />
                   </Field>
                 </div>
                 <ImageUploader
                   maxFiles={1}
-                  aspectRatio="3:4"
+                  aspectRatio='3:4'
                   maxSizeMB={5}
                   existingImages={
                     homeExploreHouseSaleFile ? []
@@ -890,46 +991,56 @@ export default function AdminStorefrontPage() {
                     : []
                   }
                   onRemoveExisting={() => {
-                    patchHomeExploreHouse({ saleImage: '', saleImagePublicId: undefined });
+                    patchHomeExploreHouse({
+                      saleImage: "",
+                      saleImagePublicId: undefined,
+                    });
                     setHomeExploreHouseSaleFile(null);
                   }}
                   onChange={(files) => {
                     setHomeExploreHouseSaleFile(files[0] || null);
                     markDirty();
                   }}
-                  label="Sale image (first card)"
-                  hint="Shown before category cards on homepage & shop."
+                  label='Sale image (first card)'
+                  hint='Shown before category cards on homepage & shop.'
                 />
               </ItemCard>
 
-              <ItemCard title="Premium card">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Title">
+              <ItemCard title='Premium card'>
+                <div className='grid gap-3 sm:grid-cols-2'>
+                  <Field label='Title'>
                     <input
                       className={inputCls}
-                      value={settings.homeExploreHouse?.giftingName ?? 'Premium'}
+                      value={
+                        settings.homeExploreHouse?.giftingName ?? "Premium"
+                      }
                       onChange={(e) =>
                         patchHomeExploreHouse({ giftingName: e.target.value })
                       }
-                      placeholder="Premium"
+                      placeholder='Premium'
                       maxLength={48}
                     />
                   </Field>
-                  <Field label="Label">
+                  <Field label='Label'>
                     <input
                       className={inputCls}
-                      value={settings.homeExploreHouse?.giftingSubtitle ?? 'THE COLLECTION'}
-                      onChange={(e) =>
-                        patchHomeExploreHouse({ giftingSubtitle: e.target.value })
+                      value={
+                        settings.homeExploreHouse?.giftingSubtitle ??
+                        "THE COLLECTION"
                       }
-                      placeholder="THE COLLECTION"
+                      onChange={(e) =>
+                        patchHomeExploreHouse({
+                          giftingSubtitle: e.target.value,
+                        })
+                      }
+                      placeholder='THE COLLECTION'
                       maxLength={48}
                     />
                   </Field>
                 </div>
                 <ImageUploader
                   maxFiles={1}
-                  aspectRatio="3:4"
+                  aspectRatio='3:4'
                   maxSizeMB={5}
                   existingImages={
                     homeExploreHouseGiftingFile ? []
@@ -939,7 +1050,7 @@ export default function AdminStorefrontPage() {
                   }
                   onRemoveExisting={() => {
                     patchHomeExploreHouse({
-                      giftingImage: '',
+                      giftingImage: "",
                       giftingImagePublicId: undefined,
                     });
                     setHomeExploreHouseGiftingFile(null);
@@ -948,28 +1059,28 @@ export default function AdminStorefrontPage() {
                     setHomeExploreHouseGiftingFile(files[0] || null);
                     markDirty();
                   }}
-                  label="Premium image (last card)"
-                  hint="Links to /premium on homepage & shop."
+                  label='Premium image (last card)'
+                  hint='Links to /premium on homepage & shop.'
                 />
               </ItemCard>
             </div>
 
-            <div className="rounded-xl border border-dashed border-emerald-200 bg-[#f9f9f9] p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+            <div className='rounded-xl border border-dashed border-emerald-200 bg-[#f9f9f9] p-4'>
+              <p className='text-xs font-semibold uppercase tracking-wide text-gray-600'>
                 Homepage label preview
               </p>
-              <p className="mt-1 text-xs text-gray-500">
-                Live preview of card title + label — updates as you type.
+              <p className='mt-1 text-xs text-gray-500'>
+                Live preview of card title + label - updates as you type.
               </p>
-              <div className="mt-4 flex flex-wrap items-end justify-center gap-4">
+              <div className='mt-4 flex flex-wrap items-end justify-center gap-4'>
                 <ExploreHouseShowcaseCard
                   disableLoader
-                  className="!w-[112px] !min-w-0 !max-w-[112px] !flex-none sm:!w-[128px] sm:!max-w-[128px]"
+                  className='!w-[112px] !min-w-0 !max-w-[112px] !flex-none sm:!w-[128px] sm:!max-w-[128px]'
                   card={exploreHouseSalePreviewCard}
                 />
                 <ExploreHouseShowcaseCard
                   disableLoader
-                  className="!w-[112px] !min-w-0 !max-w-[112px] !flex-none sm:!w-[128px] sm:!max-w-[128px]"
+                  className='!w-[112px] !min-w-0 !max-w-[112px] !flex-none sm:!w-[128px] sm:!max-w-[128px]'
                   card={exploreHouseGiftingPreviewCard}
                 />
               </div>
@@ -979,16 +1090,16 @@ export default function AdminStorefrontPage() {
       )}
 
       {/* ══ Promo & editorial ══ */}
-      {activeSection === 'promo' && (
+      {activeSection === "promo" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             <ImageUploader
               maxFiles={1}
-              aspectRatio="16:9"
+              aspectRatio='16:9'
               maxSizeMB={5}
               existingImages={
                 promoBgFile ? []
@@ -997,65 +1108,72 @@ export default function AdminStorefrontPage() {
                 : []
               }
               onRemoveExisting={() => {
-                patchPromo({ backgroundImage: '', backgroundImagePublicId: undefined });
+                patchPromo({
+                  backgroundImage: "",
+                  backgroundImagePublicId: undefined,
+                });
                 setPromoBgFile(null);
               }}
               onChange={(files) => {
                 setPromoBgFile(files[0] || null);
                 markDirty();
               }}
-              label="Promo background image"
+              label='Promo background image'
             />
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Eyebrow text" hint="Small line above the title.">
+            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+              <Field label='Eyebrow text' hint='Small line above the title.'>
                 <input
                   className={inputCls}
-                  value={settings.promoBanner.eyebrow || ''}
+                  value={settings.promoBanner.eyebrow || ""}
                   onChange={(e) => patchPromo({ eyebrow: e.target.value })}
-                  placeholder="e.g. The House of Rani"
+                  placeholder='e.g. The House of Rani'
                 />
               </Field>
-              <Field label="Title">
+              <Field label='Title'>
                 <input
                   className={inputCls}
-                  value={settings.promoBanner.title || ''}
+                  value={settings.promoBanner.title || ""}
                   onChange={(e) => patchPromo({ title: e.target.value })}
-                  placeholder="e.g. Festive-ready pieces"
+                  placeholder='e.g. Festive-ready pieces'
                 />
               </Field>
-              <Field label="Primary button text">
+              <Field label='Primary button text'>
                 <input
                   className={inputCls}
-                  value={settings.promoBanner.primaryButtonText || ''}
-                  onChange={(e) => patchPromo({ primaryButtonText: e.target.value })}
-                  placeholder="e.g. Shop New Arrivals"
+                  value={settings.promoBanner.primaryButtonText || ""}
+                  onChange={(e) =>
+                    patchPromo({ primaryButtonText: e.target.value })
+                  }
+                  placeholder='e.g. Shop New Arrivals'
                 />
               </Field>
-              <Field label="Primary button link">
+              <Field label='Primary button link'>
                 <input
                   className={inputCls}
-                  value={settings.promoBanner.primaryButtonLink || ''}
-                  onChange={(e) => patchPromo({ primaryButtonLink: e.target.value })}
-                  placeholder="e.g. /shop?sort=-createdAt"
+                  value={settings.promoBanner.primaryButtonLink || ""}
+                  onChange={(e) =>
+                    patchPromo({ primaryButtonLink: e.target.value })
+                  }
+                  placeholder='e.g. /shop?sort=-createdAt'
                 />
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <div className='mt-1.5 flex flex-wrap items-center gap-2'>
                   <QuickLinkChips
                     onPick={(value) => patchPromo({ primaryButtonLink: value })}
                   />
                   <select
-                    className="h-7 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-600"
+                    className='h-7 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-600'
                     onChange={(e) => {
                       if (!e.target.value) return;
                       patchPromo({
                         primaryButtonLink: `/shop?category=${encodeURIComponent(e.target.value)}`,
                       });
-                      e.target.value = '';
+                      e.target.value = "";
                     }}
-                    defaultValue=""
-                    aria-label="Fill link from category"
+                    defaultValue=''
+                    aria-label='Fill link from category'
                   >
-                    <option value="">Category…</option>
+                    <option value=''>Category…</option>
                     {categories.map((cat) => (
                       <option key={cat._id} value={cat.name}>
                         {cat.name}
@@ -1064,109 +1182,124 @@ export default function AdminStorefrontPage() {
                   </select>
                 </div>
               </Field>
-              <Field label="Secondary button text">
+              <Field label='Secondary button text'>
                 <input
                   className={inputCls}
-                  value={settings.promoBanner.secondaryButtonText || ''}
-                  onChange={(e) => patchPromo({ secondaryButtonText: e.target.value })}
-                  placeholder="e.g. Browse All"
+                  value={settings.promoBanner.secondaryButtonText || ""}
+                  onChange={(e) =>
+                    patchPromo({ secondaryButtonText: e.target.value })
+                  }
+                  placeholder='e.g. Browse All'
                 />
               </Field>
-              <Field label="Secondary button link">
+              <Field label='Secondary button link'>
                 <input
                   className={inputCls}
-                  value={settings.promoBanner.secondaryButtonLink || ''}
-                  onChange={(e) => patchPromo({ secondaryButtonLink: e.target.value })}
-                  placeholder="e.g. /shop"
+                  value={settings.promoBanner.secondaryButtonLink || ""}
+                  onChange={(e) =>
+                    patchPromo({ secondaryButtonLink: e.target.value })
+                  }
+                  placeholder='e.g. /shop'
                 />
               </Field>
             </div>
 
-            <Field label="Description">
+            <Field label='Description'>
               <textarea
                 className={inputCls}
                 rows={2}
-                value={settings.promoBanner.description || ''}
+                value={settings.promoBanner.description || ""}
                 onChange={(e) => patchPromo({ description: e.target.value })}
-                placeholder="Short promo description"
+                placeholder='Short promo description'
               />
             </Field>
 
             <Field
-              label="Perks"
-              hint="Comma separated — each perk shows as a small highlight, e.g. “Premium fabrics, Curated colors”."
+              label='Perks'
+              hint='Comma separated - each perk shows as a small highlight, e.g. “Premium fabrics, Curated colors”.'
             >
               <input
                 className={inputCls}
-                value={(settings.promoBanner.perks || []).join(', ')}
+                value={(settings.promoBanner.perks || []).join(", ")}
                 onChange={(e) =>
                   patchPromo({
                     perks: e.target.value
-                      .split(',')
+                      .split(",")
                       .map((s) => s.trim())
                       .filter(Boolean),
                   })
                 }
-                placeholder="Premium fabrics, Curated colors, Easy to shop"
+                placeholder='Premium fabrics, Curated colors, Easy to shop'
               />
             </Field>
 
             {/* Editorial gallery */}
-            <div className="mt-6 space-y-4 rounded-xl border border-rose-100 bg-rose-50/40 p-4">
+            <div className='mt-6 space-y-4 rounded-xl border border-rose-100 bg-rose-50/40 p-4'>
               <div>
-                <p className="text-sm font-semibold text-gray-900">Editorial image grid</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Shown below the promo hero on the homepage. Upload only the images you want —
-                  empty slots stay hidden. Each tile can link anywhere.
+                <p className='text-sm font-semibold text-gray-900'>
+                  Editorial image grid
+                </p>
+                <p className='mt-1 text-xs text-gray-500'>
+                  Shown below the promo hero on the homepage. Upload only the
+                  images you want - empty slots stay hidden. Each tile can link
+                  anywhere.
                 </p>
               </div>
 
               <Toggle
                 checked={settings.homeEditorialGallery?.isActive !== false}
                 onChange={(checked) => patchEditorial({ isActive: checked })}
-                label="Show editorial gallery on homepage"
+                label='Show editorial gallery on homepage'
               />
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <Field label="Eyebrow">
+              <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                <Field label='Eyebrow'>
                   <input
                     className={inputCls}
-                    value={settings.homeEditorialGallery?.eyebrow || ''}
-                    onChange={(e) => patchEditorial({ eyebrow: e.target.value })}
-                    placeholder="e.g. Editorial Edit"
+                    value={settings.homeEditorialGallery?.eyebrow || ""}
+                    onChange={(e) =>
+                      patchEditorial({ eyebrow: e.target.value })
+                    }
+                    placeholder='e.g. Editorial Edit'
                   />
                 </Field>
-                <Field label="Section title">
+                <Field label='Section title'>
                   <input
                     className={inputCls}
-                    value={settings.homeEditorialGallery?.title || ''}
+                    value={settings.homeEditorialGallery?.title || ""}
                     onChange={(e) => patchEditorial({ title: e.target.value })}
-                    placeholder="Section title"
+                    placeholder='Section title'
                   />
                 </Field>
-                <Field label="Section subtitle (optional)">
+                <Field label='Section subtitle (optional)'>
                   <input
                     className={inputCls}
-                    value={settings.homeEditorialGallery?.subtitle || ''}
-                    onChange={(e) => patchEditorial({ subtitle: e.target.value })}
-                    placeholder="Section subtitle"
+                    value={settings.homeEditorialGallery?.subtitle || ""}
+                    onChange={(e) =>
+                      patchEditorial({ subtitle: e.target.value })
+                    }
+                    placeholder='Section subtitle'
                   />
                 </Field>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field label="Header link text">
+                <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                  <Field label='Header link text'>
                     <input
                       className={inputCls}
-                      value={settings.homeEditorialGallery?.ctaText || ''}
-                      onChange={(e) => patchEditorial({ ctaText: e.target.value })}
-                      placeholder="e.g. Shop Now"
+                      value={settings.homeEditorialGallery?.ctaText || ""}
+                      onChange={(e) =>
+                        patchEditorial({ ctaText: e.target.value })
+                      }
+                      placeholder='e.g. Shop Now'
                     />
                   </Field>
-                  <Field label="Header link URL">
+                  <Field label='Header link URL'>
                     <input
                       className={inputCls}
-                      value={settings.homeEditorialGallery?.ctaLink || ''}
-                      onChange={(e) => patchEditorial({ ctaLink: e.target.value })}
-                      placeholder="e.g. /shop"
+                      value={settings.homeEditorialGallery?.ctaLink || ""}
+                      onChange={(e) =>
+                        patchEditorial({ ctaLink: e.target.value })
+                      }
+                      placeholder='e.g. /shop'
                     />
                   </Field>
                 </div>
@@ -1175,24 +1308,31 @@ export default function AdminStorefrontPage() {
               {padHomeEditorialTiles(settings.homeEditorialGallery?.tiles).map(
                 (tile, index) => {
                   const tileLabels = [
-                    'Large left image (desktop layout)',
-                    'Top right image',
-                    'Bottom right image',
+                    "Large left image (desktop layout)",
+                    "Top right image",
+                    "Bottom right image",
                   ];
                   return (
                     <ItemCard key={index} title={tileLabels[index]!}>
                       <ImageUploader
                         maxFiles={1}
-                        aspectRatio="3:4"
+                        aspectRatio='3:4'
                         maxSizeMB={5}
                         existingImages={
                           homeEditorialTileFiles[index] ? []
-                          : tile.image ? [tile.image]
+                          : tile.image ?
+                            [tile.image]
                           : []
                         }
                         onRemoveExisting={() => {
-                          patchEditorialTile(index, { image: '', imagePublicId: undefined });
-                          setHomeEditorialTileFiles((prev) => ({ ...prev, [index]: null }));
+                          patchEditorialTile(index, {
+                            image: "",
+                            imagePublicId: undefined,
+                          });
+                          setHomeEditorialTileFiles((prev) => ({
+                            ...prev,
+                            [index]: null,
+                          }));
                         }}
                         onChange={(files) => {
                           setHomeEditorialTileFiles((prev) => ({
@@ -1201,24 +1341,33 @@ export default function AdminStorefrontPage() {
                           }));
                           markDirty();
                         }}
-                        label="Tile image (3:4)"
-                        hint="Saved on Save. Removing clears the old file from Cloudinary on save."
+                        label='Tile image (3:4)'
+                        hint='Saved on Save. Removing clears the old file from Cloudinary on save.'
                       />
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <Field label="Tile link">
+                      <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                        <Field label='Tile link'>
                           <input
                             className={inputCls}
-                            value={tile.link || ''}
-                            onChange={(e) => patchEditorialTile(index, { link: e.target.value })}
-                            placeholder="e.g. /shop?category=Sarees"
+                            value={tile.link || ""}
+                            onChange={(e) =>
+                              patchEditorialTile(index, {
+                                link: e.target.value,
+                              })
+                            }
+                            placeholder='e.g. /shop?category=Sarees'
                           />
                         </Field>
-                        <Field label="Image alt text" hint="Describes the image for accessibility & SEO.">
+                        <Field
+                          label='Image alt text'
+                          hint='Describes the image for accessibility & SEO.'
+                        >
                           <input
                             className={inputCls}
-                            value={tile.alt || ''}
-                            onChange={(e) => patchEditorialTile(index, { alt: e.target.value })}
-                            placeholder="e.g. Model wearing red silk saree"
+                            value={tile.alt || ""}
+                            onChange={(e) =>
+                              patchEditorialTile(index, { alt: e.target.value })
+                            }
+                            placeholder='e.g. Model wearing red silk saree'
                           />
                         </Field>
                       </div>
@@ -1232,97 +1381,99 @@ export default function AdminStorefrontPage() {
       )}
 
       {/* ══ Blog banner ══ */}
-      {activeSection === 'blog' && (
+      {activeSection === "blog" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className='space-y-4'>
+            <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
               <ImageUploader
                 maxFiles={1}
-                aspectRatio="4:5"
+                aspectRatio='4:5'
                 maxSizeMB={5}
                 existingImages={
                   blogMainFile ? []
-                  : settings.blogBanner?.mainImage ? [settings.blogBanner.mainImage]
+                  : settings.blogBanner?.mainImage ?
+                    [settings.blogBanner.mainImage]
                   : []
                 }
                 onRemoveExisting={() => {
-                  patchBlog({ mainImage: '', mainImagePublicId: undefined });
+                  patchBlog({ mainImage: "", mainImagePublicId: undefined });
                   setBlogMainFile(null);
                 }}
                 onChange={(files) => {
                   setBlogMainFile(files[0] || null);
                   markDirty();
                 }}
-                label="Main image (portrait)"
+                label='Main image (portrait)'
               />
 
               <ImageUploader
                 maxFiles={1}
-                aspectRatio="1:1"
+                aspectRatio='1:1'
                 maxSizeMB={5}
                 existingImages={
                   blogSideFile ? []
-                  : settings.blogBanner?.sideImage ? [settings.blogBanner.sideImage]
+                  : settings.blogBanner?.sideImage ?
+                    [settings.blogBanner.sideImage]
                   : []
                 }
                 onRemoveExisting={() => {
-                  patchBlog({ sideImage: '', sideImagePublicId: undefined });
+                  patchBlog({ sideImage: "", sideImagePublicId: undefined });
                   setBlogSideFile(null);
                 }}
                 onChange={(files) => {
                   setBlogSideFile(files[0] || null);
                   markDirty();
                 }}
-                label="Side floating image (square)"
+                label='Side floating image (square)'
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Eyebrow text">
+            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+              <Field label='Eyebrow text'>
                 <input
                   className={inputCls}
-                  value={settings.blogBanner?.eyebrow || ''}
+                  value={settings.blogBanner?.eyebrow || ""}
                   onChange={(e) => patchBlog({ eyebrow: e.target.value })}
-                  placeholder="e.g. Journal & Stories"
+                  placeholder='e.g. Journal & Stories'
                 />
               </Field>
-              <Field label="Title">
+              <Field label='Title'>
                 <input
                   className={inputCls}
-                  value={settings.blogBanner?.title || ''}
+                  value={settings.blogBanner?.title || ""}
                   onChange={(e) => patchBlog({ title: e.target.value })}
-                  placeholder="e.g. Discover the Art of Ethnic"
+                  placeholder='e.g. Discover the Art of Ethnic'
                 />
               </Field>
-              <Field label="Button text">
+              <Field label='Button text'>
                 <input
                   className={inputCls}
-                  value={settings.blogBanner?.buttonText || ''}
+                  value={settings.blogBanner?.buttonText || ""}
                   onChange={(e) => patchBlog({ buttonText: e.target.value })}
-                  placeholder="e.g. Visit Our Blog"
+                  placeholder='e.g. Visit Our Blog'
                 />
               </Field>
-              <Field label="Button link">
+              <Field label='Button link'>
                 <input
                   className={inputCls}
-                  value={settings.blogBanner?.buttonLink || ''}
+                  value={settings.blogBanner?.buttonLink || ""}
                   onChange={(e) => patchBlog({ buttonLink: e.target.value })}
-                  placeholder="e.g. /blog"
+                  placeholder='e.g. /blog'
                 />
               </Field>
             </div>
 
-            <Field label="Description">
+            <Field label='Description'>
               <textarea
                 className={inputCls}
                 rows={2}
-                value={settings.blogBanner?.description || ''}
+                value={settings.blogBanner?.description || ""}
                 onChange={(e) => patchBlog({ description: e.target.value })}
-                placeholder="Short banner description"
+                placeholder='Short banner description'
               />
             </Field>
           </div>
@@ -1330,104 +1481,118 @@ export default function AdminStorefrontPage() {
       )}
 
       {/* ══ Shop banner ══ */}
-      {activeSection === 'shopBanner' && (
+      {activeSection === "shopBanner" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             <Toggle
               checked={settings.shopBanner?.isActive !== false}
               onChange={(checked) => patchShopBanner({ isActive: checked })}
-              label="Show this banner on the shop page"
+              label='Show this banner on the shop page'
             />
 
-            <p className="text-xs text-gray-500">
-              Prefer one full-width banner image. If the main image is set, it overrides the two
-              side images.
+            <p className='text-xs text-gray-500'>
+              Prefer one full-width banner image. If the main image is set, it
+              overrides the two side images.
             </p>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Title">
+            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+              <Field label='Title'>
                 <input
                   className={inputCls}
-                  value={settings.shopBanner?.title || ''}
+                  value={settings.shopBanner?.title || ""}
                   onChange={(e) => patchShopBanner({ title: e.target.value })}
-                  placeholder="e.g. Sara Ali Khan Spotted"
+                  placeholder='e.g. Sara Ali Khan Spotted'
                 />
               </Field>
-              <Field label="Subtitle">
+              <Field label='Subtitle'>
                 <input
                   className={inputCls}
-                  value={settings.shopBanner?.subtitle || ''}
-                  onChange={(e) => patchShopBanner({ subtitle: e.target.value })}
-                  placeholder="e.g. Shop all celebrity styles"
+                  value={settings.shopBanner?.subtitle || ""}
+                  onChange={(e) =>
+                    patchShopBanner({ subtitle: e.target.value })
+                  }
+                  placeholder='e.g. Shop all celebrity styles'
                 />
               </Field>
             </div>
 
             <ImageUploader
               maxFiles={1}
-              aspectRatio="5:1"
+              aspectRatio='5:1'
               maxSizeMB={5}
               existingImages={
                 shopBannerCenterFile ? []
-                : settings.shopBanner?.centerImage ? [settings.shopBanner.centerImage]
+                : settings.shopBanner?.centerImage ?
+                  [settings.shopBanner.centerImage]
                 : []
               }
               onRemoveExisting={() => {
-                patchShopBanner({ centerImage: '', centerImagePublicId: undefined });
+                patchShopBanner({
+                  centerImage: "",
+                  centerImagePublicId: undefined,
+                });
                 setShopBannerCenterFile(null);
               }}
               onChange={(files) => {
                 setShopBannerCenterFile(files[0] || null);
                 markDirty();
               }}
-              label="Main full-width banner image (recommended)"
-              hint="When set, this one image is used full-width on the shop banner."
+              label='Main full-width banner image (recommended)'
+              hint='When set, this one image is used full-width on the shop banner.'
             />
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
               <ImageUploader
                 maxFiles={1}
-                aspectRatio="3:4"
+                aspectRatio='3:4'
                 maxSizeMB={5}
                 existingImages={
                   shopBannerLeftFile ? []
-                  : settings.shopBanner?.leftImage ? [settings.shopBanner.leftImage]
+                  : settings.shopBanner?.leftImage ?
+                    [settings.shopBanner.leftImage]
                   : []
                 }
                 onRemoveExisting={() => {
-                  patchShopBanner({ leftImage: '', leftImagePublicId: undefined });
+                  patchShopBanner({
+                    leftImage: "",
+                    leftImagePublicId: undefined,
+                  });
                   setShopBannerLeftFile(null);
                 }}
                 onChange={(files) => {
                   setShopBannerLeftFile(files[0] || null);
                   markDirty();
                 }}
-                label="Left side image"
-                hint="Used only when the main full-width image is not set."
+                label='Left side image'
+                hint='Used only when the main full-width image is not set.'
               />
               <ImageUploader
                 maxFiles={1}
-                aspectRatio="3:4"
+                aspectRatio='3:4'
                 maxSizeMB={5}
                 existingImages={
                   shopBannerRightFile ? []
-                  : settings.shopBanner?.rightImage ? [settings.shopBanner.rightImage]
+                  : settings.shopBanner?.rightImage ?
+                    [settings.shopBanner.rightImage]
                   : []
                 }
                 onRemoveExisting={() => {
-                  patchShopBanner({ rightImage: '', rightImagePublicId: undefined });
+                  patchShopBanner({
+                    rightImage: "",
+                    rightImagePublicId: undefined,
+                  });
                   setShopBannerRightFile(null);
                 }}
                 onChange={(files) => {
                   setShopBannerRightFile(files[0] || null);
                   markDirty();
                 }}
-                label="Right side image"
-                hint="Used only when the main full-width image is not set."
+                label='Right side image'
+                hint='Used only when the main full-width image is not set.'
               />
             </div>
           </div>
@@ -1435,100 +1600,112 @@ export default function AdminStorefrontPage() {
       )}
 
       {/* ══ Middle banner ══ */}
-      {activeSection === 'middleBanner' && (
+      {activeSection === "middleBanner" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             <Toggle
               checked={settings.homeMiddleBanner?.isActive !== false}
               onChange={(checked) => patchMiddleBanner({ isActive: checked })}
-              label="Show middle banner on homepage"
+              label='Show middle banner on homepage'
             />
 
             <ImageUploader
               maxFiles={1}
-              aspectRatio="21:9"
+              aspectRatio='21:9'
               maxSizeMB={5}
               existingImages={
                 homeMiddleBannerFile ? []
-                : settings.homeMiddleBanner?.image ? [settings.homeMiddleBanner.image]
+                : settings.homeMiddleBanner?.image ?
+                  [settings.homeMiddleBanner.image]
                 : []
               }
               onRemoveExisting={() => {
-                patchMiddleBanner({ image: '', imagePublicId: undefined });
+                patchMiddleBanner({ image: "", imagePublicId: undefined });
                 setHomeMiddleBannerFile(null);
               }}
               onChange={(files) => {
                 setHomeMiddleBannerFile(files[0] || null);
                 markDirty();
               }}
-              label="Middle banner background image (Recommended: 21:9 panoramic / ~2.2:1)"
-              hint="Upload a wide banner photo (e.g. 1920×820 px or 2560×1080 px). This aspect ratio matches the desktop homepage middle banner perfectly without any cropping."
+              label='Middle banner background image (Recommended: 21:9 panoramic / ~2.2:1)'
+              hint='Upload a wide banner photo (e.g. 1920×820 px or 2560×1080 px). This aspect ratio matches the desktop homepage middle banner perfectly without any cropping.'
             />
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Banner title">
+            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+              <Field label='Banner title'>
                 <input
                   className={inputCls}
-                  value={settings.homeMiddleBanner?.title || ''}
+                  value={settings.homeMiddleBanner?.title || ""}
                   onChange={(e) => patchMiddleBanner({ title: e.target.value })}
-                  placeholder="e.g. Timeless Craftsmanship"
+                  placeholder='e.g. Timeless Craftsmanship'
                 />
               </Field>
-              <Field label="Banner subtitle">
+              <Field label='Banner subtitle'>
                 <input
                   className={inputCls}
-                  value={settings.homeMiddleBanner?.subtitle || ''}
-                  onChange={(e) => patchMiddleBanner({ subtitle: e.target.value })}
-                  placeholder="e.g. A modern homage to our cultural legacy."
+                  value={settings.homeMiddleBanner?.subtitle || ""}
+                  onChange={(e) =>
+                    patchMiddleBanner({ subtitle: e.target.value })
+                  }
+                  placeholder='e.g. A modern homage to our cultural legacy.'
                 />
               </Field>
-              <Field label="Button text">
+              <Field label='Button text'>
                 <input
                   className={inputCls}
-                  value={settings.homeMiddleBanner?.linkText || ''}
-                  onChange={(e) => patchMiddleBanner({ linkText: e.target.value })}
-                  placeholder="e.g. Discover the Story"
+                  value={settings.homeMiddleBanner?.linkText || ""}
+                  onChange={(e) =>
+                    patchMiddleBanner({ linkText: e.target.value })
+                  }
+                  placeholder='e.g. Discover the Story'
                 />
               </Field>
-              <Field label="Button link URL">
+              <Field label='Button link URL'>
                 <input
                   className={inputCls}
-                  value={settings.homeMiddleBanner?.linkUrl || ''}
-                  onChange={(e) => patchMiddleBanner({ linkUrl: e.target.value })}
-                  placeholder="e.g. /about"
+                  value={settings.homeMiddleBanner?.linkUrl || ""}
+                  onChange={(e) =>
+                    patchMiddleBanner({ linkUrl: e.target.value })
+                  }
+                  placeholder='e.g. /about'
                 />
               </Field>
-              <Field label="Text alignment">
+              <Field label='Text alignment'>
                 <select
                   className={inputCls}
-                  value={settings.homeMiddleBanner?.textAlignment || 'center'}
+                  value={settings.homeMiddleBanner?.textAlignment || "center"}
                   onChange={(e) =>
                     patchMiddleBanner({
-                      textAlignment: e.target.value as MiddleBannerFields['textAlignment'],
+                      textAlignment: e.target
+                        .value as MiddleBannerFields["textAlignment"],
                     })
                   }
                 >
-                  <option value="left">Left aligned</option>
-                  <option value="center">Center aligned</option>
-                  <option value="right">Right aligned</option>
+                  <option value='left'>Left aligned</option>
+                  <option value='center'>Center aligned</option>
+                  <option value='right'>Right aligned</option>
                 </select>
               </Field>
-              <Field label="Text color" hint="Pick light text for dark images, dark text for light images.">
+              <Field
+                label='Text color'
+                hint='Pick light text for dark images, dark text for light images.'
+              >
                 <select
                   className={inputCls}
-                  value={settings.homeMiddleBanner?.textColor || 'light'}
+                  value={settings.homeMiddleBanner?.textColor || "light"}
                   onChange={(e) =>
                     patchMiddleBanner({
-                      textColor: e.target.value as MiddleBannerFields['textColor'],
+                      textColor: e.target
+                        .value as MiddleBannerFields["textColor"],
                     })
                   }
                 >
-                  <option value="light">Light text (for dark images)</option>
-                  <option value="dark">Dark text (for light images)</option>
+                  <option value='light'>Light text (for dark images)</option>
+                  <option value='dark'>Dark text (for light images)</option>
                 </select>
               </Field>
             </div>
@@ -1537,22 +1714,24 @@ export default function AdminStorefrontPage() {
       )}
 
       {/* ══ Home Premium showcase ══ */}
-      {activeSection === 'homePremium' && (
+      {activeSection === "homePremium" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             <Toggle
               checked={settings.homePremiumShowcase?.isActive !== false}
-              onChange={(checked) => patchHomePremiumShowcase({ isActive: checked })}
-              label="Show Premium showcase on homepage (above blog)"
+              onChange={(checked) =>
+                patchHomePremiumShowcase({ isActive: checked })
+              }
+              label='Show Premium showcase on homepage (above blog)'
             />
 
             <ImageUploader
               maxFiles={1}
-              aspectRatio="4:5"
+              aspectRatio='4:5'
               maxSizeMB={5}
               existingImages={
                 homePremiumShowcaseFile ? []
@@ -1561,67 +1740,72 @@ export default function AdminStorefrontPage() {
                 : []
               }
               onRemoveExisting={() => {
-                patchHomePremiumShowcase({ image: '', imagePublicId: undefined });
+                patchHomePremiumShowcase({
+                  image: "",
+                  imagePublicId: undefined,
+                });
                 setHomePremiumShowcaseFile(null);
               }}
               onChange={(files) => {
                 setHomePremiumShowcaseFile(files[0] || null);
                 markDirty();
               }}
-              label="Premium showcase image (portrait 4:5)"
-              hint="Same Cloudinary upload flow as other storefront images. Shown left of the copy on desktop."
+              label='Premium showcase image (portrait 4:5)'
+              hint='Same Cloudinary upload flow as other storefront images. Shown left of the copy on desktop.'
             />
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Pre-heading (eyebrow)">
+            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+              <Field label='Pre-heading (eyebrow)'>
                 <input
                   className={inputCls}
-                  value={settings.homePremiumShowcase?.preHeading || ''}
+                  value={settings.homePremiumShowcase?.preHeading || ""}
                   onChange={(e) =>
                     patchHomePremiumShowcase({ preHeading: e.target.value })
                   }
-                  placeholder="e.g. The Rani Edit"
+                  placeholder='e.g. The Rani Edit'
                 />
               </Field>
-              <Field label="Heading">
+              <Field label='Heading'>
                 <input
                   className={inputCls}
-                  value={settings.homePremiumShowcase?.heading || ''}
+                  value={settings.homePremiumShowcase?.heading || ""}
                   onChange={(e) =>
                     patchHomePremiumShowcase({ heading: e.target.value })
                   }
-                  placeholder="e.g. The Premium Collection"
+                  placeholder='e.g. The Premium Collection'
                 />
               </Field>
             </div>
-            <Field label="Body text">
+            <Field label='Body text'>
               <textarea
                 className={inputCls}
                 rows={4}
-                value={settings.homePremiumShowcase?.text || ''}
-                onChange={(e) => patchHomePremiumShowcase({ text: e.target.value })}
-                placeholder="Handwoven sarees, rare silks, loom hours…"
+                value={settings.homePremiumShowcase?.text || ""}
+                onChange={(e) =>
+                  patchHomePremiumShowcase({ text: e.target.value })
+                }
+                placeholder='Handwoven sarees, rare silks, loom hours…'
               />
             </Field>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Button text">
+            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+              <Field label='Button text'>
                 <input
                   className={inputCls}
-                  value={settings.homePremiumShowcase?.linkText || ''}
+                  value={settings.homePremiumShowcase?.linkText || ""}
                   onChange={(e) =>
                     patchHomePremiumShowcase({ linkText: e.target.value })
                   }
-                  placeholder="e.g. Explore Premium"
+                  placeholder='e.g. Explore Premium'
                 />
               </Field>
-              <Field label="Button link URL">
+              <Field label='Button link URL'>
                 <input
                   className={inputCls}
-                  value={settings.homePremiumShowcase?.linkUrl || ''}
+                  value={settings.homePremiumShowcase?.linkUrl || ""}
                   onChange={(e) =>
                     patchHomePremiumShowcase({ linkUrl: e.target.value })
                   }
-                  placeholder="/premium"
+                  placeholder='/premium'
                 />
               </Field>
             </div>
@@ -1630,28 +1814,28 @@ export default function AdminStorefrontPage() {
       )}
 
       {/* ══ Premium audience banners ══ */}
-      {activeSection === 'premiumBanners' && (
+      {activeSection === "premiumBanners" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-500">
+          <div className='space-y-4'>
+            <div className='flex items-center justify-between gap-2'>
+              <p className='text-xs text-gray-500'>
                 Storefront shows this image at <strong>21:9</strong> with side
-                margins (not full screen). Crop the photo to 21:9 here — that
+                margins (not full screen). Crop the photo to 21:9 here - that
                 exact frame is what appears on the premium page for the selected
                 audience tab.
               </p>
               <AddButton
-                label="Add premium banner"
+                label='Add premium banner'
                 onClick={() =>
                   mutate((s) => ({
                     ...s,
                     premiumAudienceBanners: [
                       ...(s.premiumAudienceBanners || []),
-                      { audience: 'all', title: '' },
+                      { audience: "all", title: "" },
                     ],
                   }))
                 }
@@ -1662,16 +1846,16 @@ export default function AdminStorefrontPage() {
               <ItemCard
                 key={`premium-${index}`}
                 title={`Audience Banner ${index + 1}`}
-                deleteLabel="Delete banner"
+                deleteLabel='Delete banner'
                 onDelete={() => {
                   setPremiumAudienceBannerFiles((prev) =>
                     remapFilesAfterRemoval(prev, index),
                   );
                   mutate((s) => ({
                     ...s,
-                    premiumAudienceBanners: (s.premiumAudienceBanners || []).filter(
-                      (_, i) => i !== index,
-                    ),
+                    premiumAudienceBanners: (
+                      s.premiumAudienceBanners || []
+                    ).filter((_, i) => i !== index),
                   }));
                 }}
               >
@@ -1680,26 +1864,28 @@ export default function AdminStorefrontPage() {
                   onChange={(checked) =>
                     patchPremiumAudienceBanner(index, { isActive: checked })
                   }
-                  label="Show this banner"
+                  label='Show this banner'
                 />
 
                 <ImageUploader
                   maxFiles={1}
-                  aspectRatio="21:9"
+                  aspectRatio='21:9'
                   maxSizeMB={5}
                   existingImages={
-                    premiumAudienceBannerFiles[index]
-                      ? []
-                      : banner.image
-                        ? [banner.image]
-                        : []
+                    premiumAudienceBannerFiles[index] ? []
+                    : banner.image ?
+                      [banner.image]
+                    : []
                   }
                   onRemoveExisting={() => {
                     patchPremiumAudienceBanner(index, {
-                      image: '',
+                      image: "",
                       imagePublicId: undefined,
                     });
-                    setPremiumAudienceBannerFiles((prev) => ({ ...prev, [index]: null }));
+                    setPremiumAudienceBannerFiles((prev) => ({
+                      ...prev,
+                      [index]: null,
+                    }));
                   }}
                   onChange={(files) => {
                     setPremiumAudienceBannerFiles((prev) => ({
@@ -1708,179 +1894,270 @@ export default function AdminStorefrontPage() {
                     }));
                     markDirty();
                   }}
-                  label="Hero image (21:9 — same crop as storefront)"
+                  label='Hero image (21:9 - same crop as storefront)'
                 />
-                <p className="text-[11px] leading-snug text-gray-500">
+                <p className='text-[11px] leading-snug text-gray-500'>
                   Preview above matches the live banner frame. Avoid faces or
-                  logos near the very bottom — title/subtitle overlay sits there.
+                  logos near the very bottom - title/subtitle overlay sits
+                  there.
                 </p>
-                
-                <Field label="Target Audience">
+
+                <Field label='Target Audience'>
                   <select
                     className={inputCls}
-                    value={banner.audience || 'all'}
-                    onChange={(e) => patchPremiumAudienceBanner(index, { audience: e.target.value as any })}
+                    value={banner.audience || "all"}
+                    onChange={(e) =>
+                      patchPremiumAudienceBanner(index, {
+                        audience: e.target.value as any,
+                      })
+                    }
                   >
-                    <option value="all">All (/premium)</option>
-                    <option value="women">Women</option>
-                    <option value="men">Men</option>
-                    <option value="kids">Kids</option>
-                    <option value="couple">Couple</option>
+                    <option value='all'>All (/premium)</option>
+                    <option value='women'>Women</option>
+                    <option value='men'>Men</option>
+                    <option value='kids'>Kids</option>
+                    <option value='couple'>Couple</option>
                   </select>
                 </Field>
 
-                <Field label="Hero Title">
+                <Field label='Hero Title'>
                   <input
                     className={inputCls}
-                    value={banner.title || ''}
+                    value={banner.title || ""}
                     onChange={(e) =>
-                      patchPremiumAudienceBanner(index, { title: e.target.value })
+                      patchPremiumAudienceBanner(index, {
+                        title: e.target.value,
+                      })
                     }
-                    placeholder="e.g. The Menswear Edit"
+                    placeholder='e.g. The Menswear Edit'
                   />
                 </Field>
 
-                <Field label="Hero Subtitle">
+                <Field label='Hero Subtitle'>
                   <input
                     className={inputCls}
-                    value={banner.subtitle || ''}
+                    value={banner.subtitle || ""}
                     onChange={(e) =>
-                      patchPremiumAudienceBanner(index, { subtitle: e.target.value })
+                      patchPremiumAudienceBanner(index, {
+                        subtitle: e.target.value,
+                      })
                     }
-                    placeholder="e.g. Timeless kurtas for modern gentlemen."
+                    placeholder='e.g. Timeless kurtas for modern gentlemen.'
                   />
                 </Field>
               </ItemCard>
             ))}
           </div>
 
-          <div className="mt-12 space-y-6 border-t border-gray-100 pt-10">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-900">Premium Editorial Sections</h3>
+          <div className='mt-12 space-y-6 border-t border-gray-100 pt-10'>
+            <h3 className='text-sm font-semibold uppercase tracking-wider text-gray-900'>
+              Premium Editorial Sections
+            </h3>
 
-            <ItemCard title="Editorial Feature Block">
+            <ItemCard title='Editorial Feature Block'>
               <ImageUploader
                 maxFiles={1}
-                aspectRatio="4:5"
+                aspectRatio='4:5'
                 maxSizeMB={5}
-                existingImages={premiumEditorialFile ? [] : settings.premiumEditorial?.image ? [settings.premiumEditorial.image] : []}
+                existingImages={
+                  premiumEditorialFile ? []
+                  : settings.premiumEditorial?.image ?
+                    [settings.premiumEditorial.image]
+                  : []
+                }
                 onRemoveExisting={() => {
-                  patchPremiumEditorial({ image: '', imagePublicId: undefined });
+                  patchPremiumEditorial({
+                    image: "",
+                    imagePublicId: undefined,
+                  });
                   setPremiumEditorialFile(null);
                 }}
                 onChange={(files) => {
                   setPremiumEditorialFile(files[0] || null);
                   markDirty();
                 }}
-                label="Editorial Lifestyle Image"
-                hint="Portrait 4:5 crop — matches the Premium page editorial block."
+                label='Editorial Lifestyle Image'
+                hint='Portrait 4:5 crop - matches the Premium page editorial block.'
               />
-              <Field label="Pre-Heading (Eyebrow)">
-                <input className={inputCls} value={settings.premiumEditorial?.preHeading || ''} onChange={(e) => patchPremiumEditorial({ preHeading: e.target.value })} placeholder="e.g. The Rani Edit" />
+              <Field label='Pre-Heading (Eyebrow)'>
+                <input
+                  className={inputCls}
+                  value={settings.premiumEditorial?.preHeading || ""}
+                  onChange={(e) =>
+                    patchPremiumEditorial({ preHeading: e.target.value })
+                  }
+                  placeholder='e.g. The Rani Edit'
+                />
               </Field>
-              <Field label="Heading">
-                <input className={inputCls} value={settings.premiumEditorial?.heading || ''} onChange={(e) => patchPremiumEditorial({ heading: e.target.value })} placeholder="e.g. CRAFTED FOR THE EXTRAORDINARY" />
+              <Field label='Heading'>
+                <input
+                  className={inputCls}
+                  value={settings.premiumEditorial?.heading || ""}
+                  onChange={(e) =>
+                    patchPremiumEditorial({ heading: e.target.value })
+                  }
+                  placeholder='e.g. CRAFTED FOR THE EXTRAORDINARY'
+                />
               </Field>
-              <Field label="Paragraph Description">
-                <textarea className={inputCls} rows={4} value={settings.premiumEditorial?.text || ''} onChange={(e) => patchPremiumEditorial({ text: e.target.value })} placeholder="Write about the legacy and artisanship..." />
+              <Field label='Paragraph Description'>
+                <textarea
+                  className={inputCls}
+                  rows={4}
+                  value={settings.premiumEditorial?.text || ""}
+                  onChange={(e) =>
+                    patchPremiumEditorial({ text: e.target.value })
+                  }
+                  placeholder='Write about the legacy and artisanship...'
+                />
               </Field>
-              <Field label="CTA Link Text">
-                <input className={inputCls} value={settings.premiumEditorial?.linkText || ''} onChange={(e) => patchPremiumEditorial({ linkText: e.target.value })} placeholder="e.g. View Collection" />
+              <Field label='CTA Link Text'>
+                <input
+                  className={inputCls}
+                  value={settings.premiumEditorial?.linkText || ""}
+                  onChange={(e) =>
+                    patchPremiumEditorial({ linkText: e.target.value })
+                  }
+                  placeholder='e.g. View Collection'
+                />
               </Field>
             </ItemCard>
 
-            <ItemCard title="Story Discovery Block">
+            <ItemCard title='Story Discovery Block'>
               <ImageUploader
                 maxFiles={1}
-                aspectRatio="21:9"
+                aspectRatio='21:9'
                 maxSizeMB={5}
-                existingImages={premiumStoryFile ? [] : settings.premiumStory?.image ? [settings.premiumStory.image] : []}
+                existingImages={
+                  premiumStoryFile ? []
+                  : settings.premiumStory?.image ?
+                    [settings.premiumStory.image]
+                  : []
+                }
                 onRemoveExisting={() => {
-                  patchPremiumStory({ image: '', imagePublicId: undefined });
+                  patchPremiumStory({ image: "", imagePublicId: undefined });
                   setPremiumStoryFile(null);
                 }}
                 onChange={(files) => {
                   setPremiumStoryFile(files[0] || null);
                   markDirty();
                 }}
-                label="Story Craft Image"
+                label='Story Craft Image'
               />
-              <Field label="Heading">
-                <input className={inputCls} value={settings.premiumStory?.heading || ''} onChange={(e) => patchPremiumStory({ heading: e.target.value })} placeholder="e.g. MORE THAN A SAREE" />
+              <Field label='Heading'>
+                <input
+                  className={inputCls}
+                  value={settings.premiumStory?.heading || ""}
+                  onChange={(e) =>
+                    patchPremiumStory({ heading: e.target.value })
+                  }
+                  placeholder='e.g. MORE THAN A SAREE'
+                />
               </Field>
-              <Field label="Story Description">
-                <textarea className={inputCls} rows={3} value={settings.premiumStory?.text || ''} onChange={(e) => patchPremiumStory({ text: e.target.value })} placeholder="Write the secondary brand messaging..." />
+              <Field label='Story Description'>
+                <textarea
+                  className={inputCls}
+                  rows={3}
+                  value={settings.premiumStory?.text || ""}
+                  onChange={(e) => patchPremiumStory({ text: e.target.value })}
+                  placeholder='Write the secondary brand messaging...'
+                />
               </Field>
             </ItemCard>
 
-            <ItemCard title="Final Journey CTA">
-              <Field label="Heading">
-                <input className={inputCls} value={settings.premiumFinalCta?.heading || ''} onChange={(e) => patchPremiumFinalCta({ heading: e.target.value })} placeholder="e.g. DISCOVER THE RANI PREMIUM EDIT" />
+            <ItemCard title='Final Journey CTA'>
+              <Field label='Heading'>
+                <input
+                  className={inputCls}
+                  value={settings.premiumFinalCta?.heading || ""}
+                  onChange={(e) =>
+                    patchPremiumFinalCta({ heading: e.target.value })
+                  }
+                  placeholder='e.g. DISCOVER THE RANI PREMIUM EDIT'
+                />
               </Field>
-              <Field label="Subtext">
-                <input className={inputCls} value={settings.premiumFinalCta?.text || ''} onChange={(e) => patchPremiumFinalCta({ text: e.target.value })} placeholder="e.g. Exceptional pieces, thoughtfully curated for your legacy." />
+              <Field label='Subtext'>
+                <input
+                  className={inputCls}
+                  value={settings.premiumFinalCta?.text || ""}
+                  onChange={(e) =>
+                    patchPremiumFinalCta({ text: e.target.value })
+                  }
+                  placeholder='e.g. Exceptional pieces, thoughtfully curated for your legacy.'
+                />
               </Field>
-              <Field label="Primary button text">
-                <input className={inputCls} value={settings.premiumFinalCta?.linkText || ''} onChange={(e) => patchPremiumFinalCta({ linkText: e.target.value })} placeholder="e.g. Explore Collection" />
+              <Field label='Primary button text'>
+                <input
+                  className={inputCls}
+                  value={settings.premiumFinalCta?.linkText || ""}
+                  onChange={(e) =>
+                    patchPremiumFinalCta({ linkText: e.target.value })
+                  }
+                  placeholder='e.g. Explore Collection'
+                />
               </Field>
             </ItemCard>
           </div>
         </StorefrontSectionPanel>
       )}
 
-
-
       {/* ══ Footer & contact ══ */}
-      {activeSection === 'footer' && (
+      {activeSection === "footer" && (
         <StorefrontSectionPanel
           title={sectionMeta.label}
           description={sectionMeta.description}
           icon={sectionMeta.icon}
         >
-          <div className="space-y-4">
-            <Field label="Footer description">
+          <div className='space-y-4'>
+            <Field label='Footer description'>
               <textarea
                 className={inputCls}
                 rows={2}
-                value={settings.footer.description || ''}
+                value={settings.footer.description || ""}
                 onChange={(e) => patchFooter({ description: e.target.value })}
-                placeholder="Short brand blurb shown in the footer"
+                placeholder='Short brand blurb shown in the footer'
               />
             </Field>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Contact address">
+            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+              <Field label='Contact address'>
                 <input
                   className={inputCls}
-                  value={settings.footer.contactAddress || ''}
-                  onChange={(e) => patchFooter({ contactAddress: e.target.value })}
-                  placeholder="Street, city, state, PIN"
+                  value={settings.footer.contactAddress || ""}
+                  onChange={(e) =>
+                    patchFooter({ contactAddress: e.target.value })
+                  }
+                  placeholder='Street, city, state, PIN'
                 />
               </Field>
-              <Field label="Contact phone">
+              <Field label='Contact phone'>
                 <input
                   className={inputCls}
-                  type="tel"
-                  value={settings.footer.contactPhone || ''}
-                  onChange={(e) => patchFooter({ contactPhone: e.target.value })}
-                  placeholder="+91 98765 43210"
+                  type='tel'
+                  value={settings.footer.contactPhone || ""}
+                  onChange={(e) =>
+                    patchFooter({ contactPhone: e.target.value })
+                  }
+                  placeholder='+91 98765 43210'
                 />
               </Field>
-              <Field label="Contact email">
+              <Field label='Contact email'>
                 <input
                   className={inputCls}
-                  type="email"
-                  value={settings.footer.contactEmail || ''}
-                  onChange={(e) => patchFooter({ contactEmail: e.target.value })}
-                  placeholder="hello@example.com"
+                  type='email'
+                  value={settings.footer.contactEmail || ""}
+                  onChange={(e) =>
+                    patchFooter({ contactEmail: e.target.value })
+                  }
+                  placeholder='hello@example.com'
                 />
               </Field>
               <Field
-                label="Category links to show"
-                hint="How many category links appear in the footer list."
+                label='Category links to show'
+                hint='How many category links appear in the footer list.'
               >
                 <input
                   className={inputCls}
-                  type="number"
+                  type='number'
                   min={1}
                   max={12}
                   value={settings.footer.categoryLimit || 5}
@@ -1891,41 +2168,49 @@ export default function AdminStorefrontPage() {
               </Field>
             </div>
 
-            <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+            <div className='space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4'>
+              <p className='text-xs font-bold uppercase tracking-wide text-gray-500'>
                 Social links
               </p>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <Field label="Facebook URL">
+              <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                <Field label='Facebook URL'>
                   <input
                     className={inputCls}
-                    value={settings.footer.facebookUrl || ''}
-                    onChange={(e) => patchFooter({ facebookUrl: e.target.value })}
-                    placeholder="https://facebook.com/…"
+                    value={settings.footer.facebookUrl || ""}
+                    onChange={(e) =>
+                      patchFooter({ facebookUrl: e.target.value })
+                    }
+                    placeholder='https://facebook.com/…'
                   />
                 </Field>
-                <Field label="Instagram URL">
+                <Field label='Instagram URL'>
                   <input
                     className={inputCls}
-                    value={settings.footer.instagramUrl || ''}
-                    onChange={(e) => patchFooter({ instagramUrl: e.target.value })}
-                    placeholder="https://instagram.com/…"
+                    value={settings.footer.instagramUrl || ""}
+                    onChange={(e) =>
+                      patchFooter({ instagramUrl: e.target.value })
+                    }
+                    placeholder='https://instagram.com/…'
                   />
                 </Field>
-                <Field label="Twitter / X URL">
+                <Field label='Twitter / X URL'>
                   <input
                     className={inputCls}
-                    value={settings.footer.twitterUrl || ''}
-                    onChange={(e) => patchFooter({ twitterUrl: e.target.value })}
-                    placeholder="https://x.com/…"
+                    value={settings.footer.twitterUrl || ""}
+                    onChange={(e) =>
+                      patchFooter({ twitterUrl: e.target.value })
+                    }
+                    placeholder='https://x.com/…'
                   />
                 </Field>
-                <Field label="YouTube URL">
+                <Field label='YouTube URL'>
                   <input
                     className={inputCls}
-                    value={settings.footer.youtubeUrl || ''}
-                    onChange={(e) => patchFooter({ youtubeUrl: e.target.value })}
-                    placeholder="https://youtube.com/…"
+                    value={settings.footer.youtubeUrl || ""}
+                    onChange={(e) =>
+                      patchFooter({ youtubeUrl: e.target.value })
+                    }
+                    placeholder='https://youtube.com/…'
                   />
                 </Field>
               </div>

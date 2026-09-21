@@ -1,6 +1,6 @@
 import type { ProductVariant } from "@/types";
 
-/** Max units a customer can add — never above live variant stock. */
+/** Max units a customer can add - never above live variant stock. */
 export function maxPurchasableQty(
   variant: Pick<ProductVariant, "stock"> | null | undefined,
 ): number {

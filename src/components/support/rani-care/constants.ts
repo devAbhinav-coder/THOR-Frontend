@@ -4,7 +4,7 @@ export const STORAGE_KEY = "rani-care-chat-v7";
 export const META_KEY = "rani-care-meta-v1";
 export const OPEN_KEY = "rani-care-open-v2";
 export const FAB_POSITION_KEY = "rani-care-fab-pos-v1";
-/** Window event — footer / other UI can request the panel open. */
+/** Window event - footer / other UI can request the panel open. */
 export const OPEN_EVENT = "rani-care:open";
 export const MAX_MESSAGES = 40;
 /** Client-side retention (common for support widgets: 7–14 days) */

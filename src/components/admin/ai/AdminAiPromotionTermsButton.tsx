@@ -69,10 +69,10 @@ export function AdminAiPromotionTermsButton({
           const d = res.data as { termsAndConditions?: string; text?: string };
           const terms = (d.termsAndConditions || d.text || "").trim();
           if (terms.length < 15) {
-            throw new Error("AI ne khali T&C bheji — dubara try karo");
+            throw new Error("AI ne khali T&C bheji - dubara try karo");
           }
           onTerms(terms);
-          toast.success("AI ne simple T&C likh di — review karke save karo");
+          toast.success("AI ne simple T&C likh di - review karke save karo");
         } catch (e) {
           toast.error(aiErrorMessage(e));
         } finally {

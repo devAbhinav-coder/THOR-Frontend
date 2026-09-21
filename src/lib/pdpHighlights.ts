@@ -20,9 +20,11 @@ function linesFromText(text: string): string[] {
     .filter((line) => line.length >= 12 && line.length <= 220);
 }
 
-/** PDP "Why You'll Love It" bullets — admin highlights first, then smart fallbacks. */
+/** PDP "Why You'll Love It" bullets - admin highlights first, then smart fallbacks. */
 export function getPdpHighlights(product: Product): string[] {
-  const fromAdmin = (product.highlights ?? []).map((h) => h.trim()).filter(Boolean);
+  const fromAdmin = (product.highlights ?? [])
+    .map((h) => h.trim())
+    .filter(Boolean);
   if (fromAdmin.length > 0) return fromAdmin.slice(0, 6);
 
   const fromDescription = linesFromText(stripHtml(product.description || ""));
@@ -30,12 +32,18 @@ export function getPdpHighlights(product: Product): string[] {
 
   const fallback: string[] = [];
   if (product.fabric?.trim()) {
-    fallback.push(`Premium ${product.fabric.trim()} — soft, breathable & skin-friendly`);
+    fallback.push(
+      `Premium ${product.fabric.trim()} - soft, breathable & skin-friendly`,
+    );
   }
   if (product.subcategory?.trim()) {
-    fallback.push(`Curated ${product.subcategory.trim()} from The House of Rani`);
+    fallback.push(
+      `Curated ${product.subcategory.trim()} from The House of Rani`,
+    );
   } else if (product.category?.trim()) {
-    fallback.push(`Handpicked ${product.category.trim()} for everyday elegance`);
+    fallback.push(
+      `Handpicked ${product.category.trim()} for everyday elegance`,
+    );
   }
   if (product.occasions?.length) {
     fallback.push(
@@ -45,7 +53,9 @@ export function getPdpHighlights(product: Product): string[] {
   if (product.shortDescription?.trim()) {
     fallback.push(product.shortDescription.trim());
   }
-  fallback.push("Easy 5-day returns · Secure checkout · Free shipping above ₹1,099");
+  fallback.push(
+    "Easy 5-day returns · Secure checkout · Free shipping above ₹1,099",
+  );
 
   return fallback.filter(Boolean).slice(0, 6);
 }

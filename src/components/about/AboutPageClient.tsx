@@ -16,6 +16,15 @@ import AboutConnectSection from "@/components/about/AboutConnectSection";
 import AboutFounderSection from "@/components/about/AboutFounderSection";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { BRAND_NAME } from "@/lib/brandSeo";
+import {
+  ABOUT_CHAPTER_QUEEN,
+  ABOUT_CLOSING,
+  ABOUT_HERO_EYEBROW,
+  ABOUT_HERO_LEAD,
+  ABOUT_HERO_TITLE,
+  ABOUT_INTENTION,
+} from "@/lib/aboutStoryCopy";
+import { ABOUT_HERO_IMAGE_ALT } from "@/lib/aboutPageSeo";
 import { cn } from "@/lib/utils";
 import { useAboutReveal } from "@/hooks/useAboutReveal";
 import { aboutPageStyles } from "@/lib/aboutPageStyles";
@@ -75,9 +84,11 @@ function AboutVisualFrame({
   if (!src) return null;
 
   const href = productHref(img?.href);
-  const alt = img?.alt || `${BRAND_NAME} — handcrafted sarees`;
+  const alt = img?.alt || `${BRAND_NAME} - handcrafted sarees`;
   const frameClass =
-    surface === "light" ? aboutPageStyles.frameLight : aboutPageStyles.frameDark;
+    surface === "light" ?
+      aboutPageStyles.frameLight
+    : aboutPageStyles.frameDark;
 
   const inner = (
     <div
@@ -93,19 +104,19 @@ function AboutVisualFrame({
         fill
         priority={priority}
         sizes={sizes}
-        className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+        className='object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]'
         loader={cloudinaryLoader}
       />
-      {img?.caption ? (
-        <figcaption className="absolute bottom-0 inset-x-0 z-10 bg-gradient-to-t from-navy-950/90 via-navy-950/40 to-transparent px-4 py-3 text-[11px] uppercase tracking-[0.14em] text-white/90 line-clamp-2">
+      {img?.caption ?
+        <figcaption className='absolute bottom-0 inset-x-0 z-10 bg-gradient-to-t from-navy-950/90 via-navy-950/40 to-transparent px-4 py-3 text-[11px] uppercase tracking-[0.14em] text-white/90 line-clamp-2'>
           {img.caption}
         </figcaption>
-      ) : null}
-      {showViewLabel && href ? (
-        <span className="absolute top-3 right-3 z-10 bg-white/95 text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+      : null}
+      {showViewLabel && href ?
+        <span className='absolute top-3 right-3 z-10 bg-white/95 text-navy-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity'>
           View saree
         </span>
-      ) : null}
+      : null}
     </div>
   );
 
@@ -141,95 +152,84 @@ export default function AboutPageClient({
   const discoverLinks = internalLinks.filter((l) => l.group === "discover");
 
   return (
-    <div ref={rootRef} className="about-page bg-navy-950 text-white overflow-x-hidden">
+    <div
+      ref={rootRef}
+      className='about-page bg-navy-950 text-white overflow-x-hidden'
+    >
       {/* ── Cinematic hero ── */}
-      <header className="relative min-h-[100svh] flex flex-col justify-end">
-        {heroImage ? (
-          <div className="absolute inset-0 z-0" aria-hidden>
+      <header className='relative min-h-[100svh] flex flex-col justify-end'>
+        {heroImage ?
+          <div className='absolute inset-0 z-0' aria-hidden>
             <Image
               src={heroImage.src}
-              alt=""
+              alt={heroImage.alt?.trim() || ABOUT_HERO_IMAGE_ALT}
               fill
               priority
-              sizes="100vw"
-              className="object-cover scale-105"
+              sizes='100vw'
+              className='object-cover scale-105'
               loader={cloudinaryLoader}
             />
           </div>
-        ) : (
-          <div
-            className="absolute inset-0 z-0 bg-gradient-to-br from-navy-900 via-navy-950 to-brand-950"
+        : <div
+            className='absolute inset-0 z-0 bg-gradient-to-br from-navy-900 via-navy-950 to-brand-950'
             aria-hidden
           />
-        )}
+        }
         <div
-          className="absolute inset-0 z-[1] bg-gradient-to-t from-navy-950 via-navy-950/75 to-navy-950/30"
+          className='absolute inset-0 z-[1] bg-gradient-to-t from-navy-950 via-navy-950/75 to-navy-950/30'
           aria-hidden
         />
         <div
-          className="absolute inset-0 z-[1] opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_20%_20%,rgba(197,160,89,0.35),transparent_50%)]"
+          className='absolute inset-0 z-[1] opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_20%_20%,rgba(197,160,89,0.35),transparent_50%)]'
           aria-hidden
         />
 
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-8 pb-16 sm:pb-24">
+        <div className='relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-8 pb-16 sm:pb-24'>
           <nav
-            className="flex items-center gap-1.5 text-xs text-white/60 mb-16 sm:mb-24"
-            aria-label="Breadcrumb"
+            className='flex items-center gap-1.5 text-xs text-white/60 mb-16 sm:mb-24'
+            aria-label='Breadcrumb'
           >
-            <Link href="/" className="hover:text-brand-300 transition-colors">
+            <Link href='/' className='hover:text-brand-300 transition-colors'>
               Home
             </Link>
-            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-            <span className="text-white font-medium">About</span>
+            <ChevronRight className='h-3.5 w-3.5' aria-hidden />
+            <span className='text-white font-medium'>About</span>
           </nav>
 
-          <div data-about-reveal className="max-w-5xl">
-            <p className="inline-flex items-center gap-2 border border-white/15 bg-white/5 backdrop-blur-md px-4 py-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-brand-200 mb-8">
-              <Sparkles className="h-3.5 w-3.5 text-brand-400" aria-hidden />
-              Our story · Since day one
+          <div data-about-reveal className='max-w-5xl'>
+            <p className='inline-flex items-center gap-2 border border-white/15 bg-white/5 backdrop-blur-md px-4 py-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-brand-200 mb-8'>
+              <Sparkles className='h-3.5 w-3.5 text-brand-400' aria-hidden />
+              {ABOUT_HERO_EYEBROW}
             </p>
-            <h1 className="font-serif font-bold leading-[0.92] tracking-tight">
-              <span className="block text-[clamp(1.25rem,4vw,2rem)] text-brand-200/90 mb-2 tracking-wide">
-                About {BRAND_NAME} — Premium Sarees India
-              </span>
-              <span className="block text-[clamp(2.75rem,11vw,7rem)] text-white">
-                Where Stories
-              </span>
-              <span className="block text-[clamp(2.75rem,11vw,7rem)] bg-gradient-to-r from-brand-200 via-white to-brand-100 bg-clip-text text-transparent">
-                Are Woven
-              </span>
+            <h1 className='font-serif font-bold leading-[1.02] tracking-tight text-[clamp(2.25rem,8vw,5.5rem)] text-white max-w-4xl'>
+              {ABOUT_HERO_TITLE}
             </h1>
-            <p className="mt-8 text-lg sm:text-2xl font-serif italic text-white/90 max-w-2xl">
-              Welcome to {BRAND_NAME}!
-            </p>
-            <p className="mt-6 text-sm sm:text-base text-white/75 leading-relaxed max-w-2xl">
-              There is something quietly powerful about a saree that tells a
-              story. Not just through its colour or its drape, but through every
-              line etched into its fabric, every motif that carries centuries of
-              meaning. At {BRAND_NAME}, that belief is not just a philosophy. It
-              is the very thread the brand was built on.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3 sm:gap-4">
-              <Link href="/shop" className={aboutPageStyles.ctaGold}>
+            <div className='mt-8 space-y-5 text-sm sm:text-base md:text-lg text-white/80 leading-relaxed max-w-2xl'>
+              {ABOUT_HERO_LEAD.map((para) => (
+                <p key={para.slice(0, 40)}>{para}</p>
+              ))}
+            </div>
+            <div className='mt-10 flex flex-wrap gap-3 sm:gap-4'>
+              <Link href='/shop' className={aboutPageStyles.ctaGold}>
                 Shop the collection
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className='h-4 w-4' />
               </Link>
-              <Link href="/blog" className={aboutPageStyles.ctaOutlineOnDark}>
+              <Link href='/blog' className={aboutPageStyles.ctaOutlineOnDark}>
                 Read the journal
               </Link>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 border-t border-white/10 bg-navy-950/80 backdrop-blur-sm overflow-hidden py-3">
-          <div className="about-marquee flex whitespace-nowrap">
+        <div className='relative z-10 border-t border-white/10 bg-navy-950/80 backdrop-blur-sm overflow-hidden py-3'>
+          <div className='about-marquee flex whitespace-nowrap'>
             {[...MARQUEE_WORDS, ...MARQUEE_WORDS].map((word, i) => (
               <span
                 key={`${word}-${i}`}
-                className="mx-6 text-[11px] sm:text-xs font-bold uppercase tracking-[0.35em] text-white/35"
+                className='mx-6 text-[11px] sm:text-xs font-bold uppercase tracking-[0.35em] text-white/35'
               >
                 {word}
-                <span className="mx-6 text-brand-500">◆</span>
+                <span className='mx-6 text-brand-500'>◆</span>
               </span>
             ))}
           </div>
@@ -237,65 +237,46 @@ export default function AboutPageClient({
       </header>
 
       <main>
-        {/* ── Dream — split editorial ── */}
+        {/* ── Dream - split editorial ── */}
         <section
-          className="relative py-20 sm:py-32"
-          aria-labelledby="about-dream-heading"
+          className='relative py-20 sm:py-32'
+          aria-labelledby='about-dream-heading'
         >
-          <div className="absolute inset-0 bg-[#faf9f7] text-navy-900" />
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-12 gap-12 lg:gap-6 items-start">
-              <div data-about-reveal className="lg:col-span-5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand-600 mb-4">
+          <div className='absolute inset-0 bg-[#faf9f7] text-navy-900' />
+          <div className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+            <div className='grid lg:grid-cols-12 gap-12 lg:gap-6 items-start'>
+              <div data-about-reveal className='lg:col-span-5'>
+                <p className='text-[11px] font-bold uppercase tracking-[0.3em] text-brand-600 mb-4'>
                   Chapter 01
                 </p>
                 <h2
-                  id="about-dream-heading"
-                  className="font-serif text-3xl sm:text-5xl font-bold text-navy-900 leading-[1.05]"
+                  id='about-dream-heading'
+                  className='font-serif text-3xl sm:text-5xl font-bold text-navy-900 leading-[1.05]'
                 >
-                  A Dream Stitched into Every Saree
+                  What &ldquo;Rani&rdquo; really means
                 </h2>
               </div>
               <div
                 data-about-reveal
-                className="lg:col-span-7 space-y-5 text-stone-600 text-[15px] sm:text-lg leading-relaxed"
+                className='lg:col-span-7 space-y-5 text-stone-600 text-[15px] sm:text-lg leading-relaxed'
               >
-                <p>
-                  {BRAND_NAME} was born from a simple yet deeply personal vision:
-                  to create ethnic wear that a modern woman actually wants to live
-                  in. Comfortable enough for a long day. Beautiful enough to stop
-                  a room. And meaningful enough to be passed down.
-                </p>
-                <p>
-                  For too long, traditional sarees existed at two extremes —
-                  heavily ornate pieces reserved for weddings, or plain everyday
-                  drapes with little artistry. {BRAND_NAME} steps into the space
-                  between, offering modern ethnic sarees that feel as effortless
-                  as they look extraordinary.
-                </p>
-                <blockquote className="relative py-6 pl-6 border-l-4 border-brand-500 font-serif text-2xl sm:text-3xl text-navy-900 leading-snug">
-                  That dream? It has finally, beautifully come true.
-                </blockquote>
-                <p>
-                  Each saree from {BRAND_NAME} carries a story drawn from Indian
-                  epics, botanical motifs, temple art, and folk traditions. The
-                  result is a wearable piece of heritage that feels anything but
-                  dated.
-                </p>
+                {ABOUT_CHAPTER_QUEEN.map((para) => (
+                  <p key={para.slice(0, 48)}>{para}</p>
+                ))}
               </div>
             </div>
 
-            {dreamBanner ? (
+            {dreamBanner ?
               <div data-about-reveal-scale>
                 <AboutVisualFrame
                   img={dreamBanner}
-                  surface="light"
-                  className="mt-16 sm:mt-20 shadow-[0_12px_40px_rgba(0,13,33,0.06)]"
-                  innerClassName="aspect-[21/9] sm:aspect-[2.4/1]"
-                  sizes="100vw"
+                  surface='light'
+                  className='mt-16 sm:mt-20 shadow-[0_12px_40px_rgba(0,13,33,0.06)]'
+                  innerClassName='aspect-[21/9] sm:aspect-[2.4/1]'
+                  sizes='100vw'
                 />
               </div>
-            ) : null}
+            : null}
           </div>
         </section>
 
@@ -304,31 +285,35 @@ export default function AboutPageClient({
         <AboutChapterFeatures />
 
         {/* ── Bento gallery ── */}
-        {bento.length >= 3 ? (
+        {bento.length >= 3 ?
           <section
-            className="bg-navy-950 py-16 sm:py-24"
-            aria-label="Saree craftsmanship gallery"
+            className='bg-navy-950 py-16 sm:py-24'
+            aria-label='Saree craftsmanship gallery'
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div data-about-reveal className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10">
-                <h2 className="font-serif text-3xl sm:text-4xl font-bold max-w-lg">
+            <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+              <div
+                data-about-reveal
+                className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10'
+              >
+                <h2 className='font-serif text-3xl sm:text-4xl font-bold max-w-lg'>
                   Woven in detail
                 </h2>
                 <Link
-                  href="/shop"
-                  className="inline-flex items-center gap-2 text-sm font-bold text-brand-300 hover:text-brand-200 shrink-0"
+                  href='/shop'
+                  className='inline-flex items-center gap-2 text-sm font-bold text-brand-300 hover:text-brand-200 shrink-0'
                 >
-                  View full collection <ArrowRight className="h-4 w-4" />
+                  View full collection <ArrowRight className='h-4 w-4' />
                 </Link>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-12 gap-3 sm:gap-4 auto-rows-[minmax(140px,1fr)]">
+              <div className='grid grid-cols-2 md:grid-cols-12 gap-3 sm:gap-4 auto-rows-[minmax(140px,1fr)]'>
                 {bento.map((img, idx) => (
                   <div
                     key={`${img.src}-${idx}`}
                     data-about-reveal-scale
                     className={cn(
                       "relative",
-                      idx === 0 && "col-span-2 md:col-span-7 md:row-span-2 min-h-[280px] md:min-h-[420px]",
+                      idx === 0 &&
+                        "col-span-2 md:col-span-7 md:row-span-2 min-h-[280px] md:min-h-[420px]",
                       idx === 1 && "col-span-1 md:col-span-5 min-h-[180px]",
                       idx === 2 && "col-span-1 md:col-span-5 min-h-[180px]",
                       idx === 3 && "col-span-1 md:col-span-4 min-h-[160px]",
@@ -337,10 +322,10 @@ export default function AboutPageClient({
                   >
                     <AboutVisualFrame
                       img={img}
-                      surface="dark"
+                      surface='dark'
                       fill
-                      className="absolute inset-0"
-                      sizes="(max-width: 768px) 50vw, 33vw"
+                      className='absolute inset-0'
+                      sizes='(max-width: 768px) 50vw, 33vw'
                       showViewLabel={Boolean(img.href)}
                     />
                   </div>
@@ -348,103 +333,106 @@ export default function AboutPageClient({
               </div>
             </div>
           </section>
-        ) : null}
+        : null}
 
         {/* ── Intention ── */}
         <section
-          className="relative py-20 sm:py-32 overflow-hidden"
-          aria-labelledby="about-intention-heading"
+          className='relative py-20 sm:py-32 overflow-hidden'
+          aria-labelledby='about-intention-heading'
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-950/40 via-navy-950 to-navy-950" />
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-14 items-center">
-            {intention ? (
+          <div className='absolute inset-0 bg-gradient-to-br from-brand-950/40 via-navy-950 to-navy-950' />
+          <div className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-14 items-center'>
+            {intention ?
               <div data-about-reveal-scale>
                 <AboutVisualFrame
                   img={intention}
-                  surface="dark"
-                  className="max-w-md mx-auto lg:mx-0 shadow-[0_20px_40px_rgba(3,22,50,0.25)]"
-                  innerClassName="aspect-[3/4]"
-                  sizes="(max-width: 1024px) 90vw, 40vw"
+                  surface='dark'
+                  className='max-w-md mx-auto lg:mx-0 shadow-[0_20px_40px_rgba(3,22,50,0.25)]'
+                  innerClassName='aspect-[3/4]'
+                  sizes='(max-width: 1024px) 90vw, 40vw'
                   showViewLabel={Boolean(intention.href)}
                 />
               </div>
-            ) : null}
+            : null}
             <div data-about-reveal>
-              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand-300 mb-4">
+              <p className='text-[11px] font-bold uppercase tracking-[0.3em] text-brand-300 mb-4'>
                 Chapter 03
               </p>
               <h2
-                id="about-intention-heading"
-                className="font-serif text-3xl sm:text-5xl font-bold leading-tight"
+                id='about-intention-heading'
+                className='font-serif text-3xl sm:text-5xl font-bold leading-tight'
               >
-                Sarees That Say Something
+                {ABOUT_INTENTION.heading}
               </h2>
-              <p className="mt-6 text-white/75 text-base sm:text-lg leading-relaxed">
-                What sets {BRAND_NAME} apart is intention. Every saree in the
-                collection is curated around a narrative, a theme, a tale, an
-                emotion. When you wear one, you are not just dressed. You are
-                draped in a story.
-              </p>
-              <p className="mt-4 text-white/70 text-base sm:text-lg leading-relaxed">
-                Whether you are attending a festive gathering, a work event, or
-                simply embracing your roots on an ordinary Tuesday, there is a{" "}
-                {BRAND_NAME} saree made for that moment.
-              </p>
+              {ABOUT_INTENTION.paragraphs.map((para, i) => (
+                <p
+                  key={para.slice(0, 40)}
+                  className={cn(
+                    "text-white/75 text-base sm:text-lg leading-relaxed",
+                    i === 0 ? "mt-6" : "mt-4 text-white/70",
+                  )}
+                >
+                  {para}
+                </p>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ── Featured products — internal links to PDPs ── */}
-        {products.length > 0 ? (
+        {/* ── Featured products - internal links to PDPs ── */}
+        {products.length > 0 ?
           <section
-            className="bg-[#faf9f7] text-navy-900 py-16 sm:py-24"
-            aria-labelledby="about-products-heading"
+            className='bg-[#faf9f7] text-navy-900 py-16 sm:py-24'
+            aria-labelledby='about-products-heading'
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div data-about-reveal className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
+            <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+              <div
+                data-about-reveal
+                className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10'
+              >
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand-600">
+                  <p className='text-[11px] font-bold uppercase tracking-[0.3em] text-brand-600'>
                     Curated for you
                   </p>
                   <h2
-                    id="about-products-heading"
-                    className="mt-2 font-serif text-3xl sm:text-4xl font-bold"
+                    id='about-products-heading'
+                    className='mt-2 font-serif text-3xl sm:text-4xl font-bold'
                   >
                     Stories you can wear now
                   </h2>
                 </div>
                 <Link
-                  href="/shop"
-                  className="text-sm font-bold text-brand-600 hover:underline inline-flex items-center gap-1"
+                  href='/shop'
+                  className='text-sm font-bold text-brand-600 hover:underline inline-flex items-center gap-1'
                 >
-                  All sarees <ArrowRight className="h-4 w-4" />
+                  All sarees <ArrowRight className='h-4 w-4' />
                 </Link>
               </div>
-              <ul className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              <ul className='grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5'>
                 {products.map((p) => (
                   <li key={p.slug} data-about-reveal>
                     <Link
                       href={p.href}
-                      className="group flex h-full flex-col border border-[#c5a059]/75 bg-white transition-colors duration-300 hover:border-[#c5a059] hover:shadow-[0_10px_36px_rgba(0,13,33,0.06)]"
+                      className='group flex h-full flex-col border border-[#c5a059]/75 bg-white transition-colors duration-300 hover:border-[#c5a059] hover:shadow-[0_10px_36px_rgba(0,13,33,0.06)]'
                     >
-                      <div className="p-1 sm:p-2">
-                        <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/20">
+                      <div className='p-1 sm:p-2'>
+                        <div className='relative aspect-[3/4] overflow-hidden bg-gray-50 ring-1 ring-[#c5a059]/20'>
                           <Image
                             src={p.image}
-                            alt={`${p.name} — shop at ${BRAND_NAME}`}
+                            alt={`${p.name} - shop at ${BRAND_NAME}`}
                             fill
-                            sizes="(max-width: 768px) 50vw, 25vw"
-                            className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                            sizes='(max-width: 768px) 50vw, 25vw'
+                            className='object-cover transition-transform duration-700 group-hover:scale-[1.03]'
                             loader={cloudinaryLoader}
                           />
                         </div>
                       </div>
-                      <div className="px-3 pb-4 pt-0 sm:px-4 sm:pb-5">
-                        <p className="font-serif font-medium text-navy-900 line-clamp-2 group-hover:text-brand-600 transition-colors sm:text-lg">
+                      <div className='px-3 pb-4 pt-0 sm:px-4 sm:pb-5'>
+                        <p className='font-serif font-medium text-navy-900 line-clamp-2 group-hover:text-brand-600 transition-colors sm:text-lg'>
                           {p.name}
                         </p>
-                        <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c5a059] sm:text-[11px]">
-                          View saree <ArrowUpRight className="h-3.5 w-3.5" />
+                        <span className='mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c5a059] sm:text-[11px]'>
+                          View saree <ArrowUpRight className='h-3.5 w-3.5' />
                         </span>
                       </div>
                     </Link>
@@ -453,47 +441,55 @@ export default function AboutPageClient({
               </ul>
             </div>
           </section>
-        ) : null}
+        : null}
 
         {/* ── Wear your story ── */}
         <section
-          className="relative py-24 sm:py-36 text-center overflow-hidden bg-navy-950"
-          aria-labelledby="about-wear-heading"
+          className='relative py-24 sm:py-36 text-center overflow-hidden bg-navy-950'
+          aria-labelledby='about-wear-heading'
         >
           <div
             className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.08\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]"
             aria-hidden
           />
-          <div data-about-reveal className="relative max-w-4xl mx-auto px-4 sm:px-6">
-            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand-300 mb-4">
-              Chapter 04
+          <div
+            data-about-reveal
+            className='relative max-w-4xl mx-auto px-4 sm:px-6'
+          >
+            <p className='text-[11px] font-bold uppercase tracking-[0.3em] text-brand-300 mb-4'>
+              For you
             </p>
             <h2
-              id="about-wear-heading"
-              className="font-serif text-[clamp(2.5rem,8vw,5rem)] font-bold leading-[1] bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent"
+              id='about-wear-heading'
+              className='font-serif text-[clamp(2rem,6vw,3.75rem)] font-bold leading-[1.08] text-white max-w-3xl mx-auto'
             >
-              Wear Your Story
+              {ABOUT_CLOSING.heading}
             </h2>
-            <p className="mt-8 text-base sm:text-lg text-white/75 leading-relaxed max-w-2xl mx-auto">
-              {BRAND_NAME} is for the woman who honours where she comes from and
-              knows exactly where she is going. It is for those who refuse to
-              choose between comfort and culture, between the traditional and the
-              contemporary.
+            <p className='mt-4 font-serif text-xl sm:text-2xl italic text-brand-200/95 max-w-2xl mx-auto'>
+              {ABOUT_CLOSING.subheading}
             </p>
-            <p className="mt-4 text-base sm:text-lg text-white/70 leading-relaxed max-w-2xl mx-auto">
-              Because the finest sarees have always done both.
+            <p className='mt-8 text-base sm:text-lg text-white/75 leading-relaxed max-w-2xl mx-auto'>
+              {ABOUT_CLOSING.body}
             </p>
-            <p className="mt-4 text-base sm:text-lg text-white/80 leading-relaxed max-w-2xl mx-auto">
-              Explore the collection at {BRAND_NAME} and find the story that is
-              yours to wear.
+            <p className='mt-6 font-serif text-xl sm:text-2xl text-white/90 leading-snug max-w-2xl mx-auto'>
+              {ABOUT_CLOSING.tagline}
             </p>
-            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <Link href="/shop" className={cn(aboutPageStyles.ctaWhite, "min-w-[220px]")}>
-                <ShoppingBag className="h-4 w-4" aria-hidden />
+            <div className='mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4'>
+              <Link
+                href='/shop'
+                className={cn(aboutPageStyles.ctaWhite, "min-w-[220px]")}
+              >
+                <ShoppingBag className='h-4 w-4' aria-hidden />
                 Explore the collection
               </Link>
-              <Link href="/premium" className={cn(aboutPageStyles.ctaOutlineOnDark, "min-w-[220px]")}>
-                <Sparkles className="h-4 w-4" aria-hidden />
+              <Link
+                href='/premium'
+                className={cn(
+                  aboutPageStyles.ctaOutlineOnDark,
+                  "min-w-[220px]",
+                )}
+              >
+                <Sparkles className='h-4 w-4' aria-hidden />
                 Premium edit
               </Link>
             </div>

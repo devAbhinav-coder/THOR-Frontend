@@ -49,7 +49,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
     // Cloudinary direct uploads (motion video from admin)
     "https://api.cloudinary.com",
     "https://*.cloudinary.com",
-    // Meta Pixel (browser) — without these, CSP blocks fbq and Events Manager
+    // Meta Pixel (browser) - without these, CSP blocks fbq and Events Manager
     // shows Conversions API only, which tanks Event Match Quality.
     "https://www.facebook.com",
     "https://web.facebook.com",

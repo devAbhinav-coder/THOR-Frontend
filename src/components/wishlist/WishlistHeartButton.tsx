@@ -14,7 +14,7 @@ type Props = {
   className?: string;
 };
 
-/** SSR-safe wishlist heart — identical shell until client mount, then live state. */
+/** SSR-safe wishlist heart - identical shell until client mount, then live state. */
 export default function WishlistHeartButton({
   productId,
   productName,

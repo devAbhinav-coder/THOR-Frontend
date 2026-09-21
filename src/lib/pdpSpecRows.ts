@@ -8,7 +8,7 @@ const RESERVED_DETAIL_LABELS = new Set([
   "tags",
 ]);
 
-/** Admin "Product specs table" key/value pairs — shown as-is on PDP. */
+/** Admin "Product specs table" key/value pairs - shown as-is on PDP. */
 export function buildPdpFormSpecPairs(
   productDetails?: { key: string; value: string }[],
 ): { label: string; value: string }[] {
@@ -67,13 +67,16 @@ export function buildPdpSpecRows(input: {
 export function usePdpSpecRows(
   input: Parameters<typeof buildPdpSpecRows>[0],
 ): { label: string; value: string }[] {
-  return useMemo(() => buildPdpSpecRows(input), [
-    input.category,
-    input.subcategory,
-    input.fabric,
-    input.sku,
-    input.tags,
-    input.occasions,
-    input.productDetails,
-  ]);
+  return useMemo(
+    () => buildPdpSpecRows(input),
+    [
+      input.category,
+      input.subcategory,
+      input.fabric,
+      input.sku,
+      input.tags,
+      input.occasions,
+      input.productDetails,
+    ],
+  );
 }

@@ -3,11 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  ShoppingBag,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, Gift, Zap } from "lucide-react";
+import BagIcon from "@/components/icons/BagIcon";
 import PremiumFadeIn from "@/components/premium/PremiumFadeIn";
 import PremiumWishlistButton from "@/components/premium/PremiumWishlistButton";
 import { PdpStorySection } from "@/components/product/pdp/PdpStorySection";
@@ -22,7 +19,14 @@ import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { isFreeProductSize } from "@/lib/productCatalogOptions";
 import { getSelectedVariantPriceDisplay } from "@/lib/productPricing";
 import { hasInStockVariant } from "@/lib/productStock";
-import { productApi } from "@/lib/api";
+import { cartApi, productApi } from "@/lib/api";
+import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
+import {
+  customFieldAnswersToPayload,
+  PdpInlineCustomFields,
+  validateRequiredCustomFields,
+} from "@/components/product/pdp/PdpInlineCustomFields";
+import { productNeedsCustomization } from "@/lib/productCustomization";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackGaViewItem } from "@/lib/googleAnalytics";
 import { useCartStore } from "@/store/useCartStore";
@@ -128,7 +132,9 @@ function buildEditorialRows(
   fallbacks: { editorial: string; craft: string },
 ): EditorialRow[] {
   const editorial =
-    gallery.length > 1 ? gallery.slice(1) : [fallbacks.editorial, fallbacks.craft];
+    gallery.length > 1 ?
+      gallery.slice(1)
+    : [fallbacks.editorial, fallbacks.craft];
 
   const first = editorial[0] ?? fallbacks.editorial;
   const last =
@@ -236,8 +242,7 @@ function PremiumSizeChips({
             className={cn(
               "shrink-0 border px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition-colors sm:px-3 sm:text-[11px]",
               compact ? "h-11 min-w-[2.75rem]" : "min-w-[3rem] py-2.5",
-              selected ?
-                "border-account-primary bg-account-primary text-white"
+              selected ? "border-account-primary bg-account-primary text-white"
               : ok ?
                 "border-black/15 bg-white text-account-primary hover:border-account-primary/50"
               : "cursor-not-allowed border-black/10 bg-black/[0.03] text-black/25 line-through",
@@ -260,6 +265,14 @@ export default function PremiumProductClient({ product, related }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] =
+    useState(false);
+  const [customFieldAnswers, setCustomFieldAnswers] = useState<
+    Record<string, string>
+  >({});
+  const [uploadingFieldImages, setUploadingFieldImages] = useState<
+    Record<string, boolean>
+  >({});
 
   const isLiveProduct = product._id !== product.slug;
 
@@ -278,7 +291,7 @@ export default function PremiumProductClient({ product, related }: Props) {
     );
   }, [product._id, variants]);
 
-  /** Same as shop PDP: Free Size never appears as a chip — size UI only when real sizes exist. */
+  /** Same as shop PDP: Free Size never appears as a chip - size UI only when real sizes exist. */
   const sizes = useMemo(() => {
     const unique = Array.from(
       new Set(variants.map((v) => v.size).filter(Boolean)),
@@ -325,6 +338,10 @@ export default function PremiumProductClient({ product, related }: Props) {
       isActive: product.isActive,
       isPremium: true,
       premiumSlug: product.slug,
+      isCustomizable: product.isCustomizable,
+      isGiftable: product.isGiftable,
+      minOrderQty: product.minOrderQty,
+      customFields: product.customFields,
       ratings: { average: 0, count: 0 },
       createdAt: new Date().toISOString(),
     };
@@ -334,6 +351,12 @@ export default function PremiumProductClient({ product, related }: Props) {
     if (!isLiveProduct) return undefined;
     return storyProduct;
   }, [isLiveProduct, storyProduct]);
+
+  const showCustomization =
+    isLiveProduct && cartProduct ?
+      productNeedsCustomization(cartProduct)
+    : false;
+  const showQuoteFlow = Boolean(cartProduct?.isCustomizable);
 
   /* Analytics: one counted view per product per browser session (same as shop PDP) */
   useEffect(() => {
@@ -380,8 +403,7 @@ export default function PremiumProductClient({ product, related }: Props) {
         : null);
       const discountPercent =
         d.discountPercent >= 1 ? d.discountPercent
-        : mrp != null && mrp > d.sell ?
-          Math.round(((mrp - d.sell) / mrp) * 100)
+        : mrp != null && mrp > d.sell ? Math.round(((mrp - d.sell) / mrp) * 100)
         : 0;
       return {
         sell: d.sell,
@@ -410,8 +432,8 @@ export default function PremiumProductClient({ product, related }: Props) {
   const isOutOfStock =
     isLiveProduct ?
       !selectedVariant ||
-        selectedVariant.stock <= 0 ||
-        !hasInStockVariant(product as unknown as Product)
+      selectedVariant.stock <= 0 ||
+      !hasInStockVariant(product as unknown as Product)
     : false;
 
   const productGallery = useMemo(
@@ -469,9 +491,33 @@ export default function PremiumProductClient({ product, related }: Props) {
     );
   };
 
+  const handleCustomFieldImageUpload = async (
+    fieldLabel: string,
+    file?: File,
+  ) => {
+    if (!file) return;
+    if (!isAuthenticated) return requireAuth("Sign in to upload image");
+    setUploadingFieldImages((prev) => ({ ...prev, [fieldLabel]: true }));
+    try {
+      const fd = new FormData();
+      fd.append("images", file);
+      const res = await cartApi.uploadCustomFieldImage(fd);
+      const imageUrl = (res.data as { image?: { url?: string } })?.image?.url;
+      if (!imageUrl) throw new Error("Upload failed");
+      setCustomFieldAnswers((prev) => ({ ...prev, [fieldLabel]: imageUrl }));
+      toast.success("Image attached");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { message?: string })?.message || "Failed to upload image",
+      );
+    } finally {
+      setUploadingFieldImages((prev) => ({ ...prev, [fieldLabel]: false }));
+    }
+  };
+
   const handleAddToBag = async () => {
     if (!isLiveProduct || !selectedVariant || !cartProduct) {
-      toast.success("Premium pieces launch soon — we will notify you.", {
+      toast.success("Premium pieces launch soon - we will notify you.", {
         icon: "✦",
       });
       return;
@@ -481,6 +527,15 @@ export default function PremiumProductClient({ product, related }: Props) {
       toast.error("Please select an available size");
       return;
     }
+    const missing = validateRequiredCustomFields(
+      cartProduct,
+      customFieldAnswers,
+    );
+    if (missing) {
+      toast.error(`Please fill in: ${missing}`);
+      return;
+    }
+    const answersArray = customFieldAnswersToPayload(customFieldAnswers);
     setIsAddingToCart(true);
     try {
       await addToCart(
@@ -494,7 +549,7 @@ export default function PremiumProductClient({ product, related }: Props) {
           price: selectedVariant.price,
         },
         1,
-        undefined,
+        answersArray.length > 0 ? answersArray : undefined,
         cartProduct,
       );
       toast.success("Added to bag");
@@ -507,7 +562,7 @@ export default function PremiumProductClient({ product, related }: Props) {
 
   const handleBuyNow = async () => {
     if (!isLiveProduct || !selectedVariant || !cartProduct) {
-      toast.success("Premium checkout opens soon — we will notify you.", {
+      toast.success("Premium checkout opens soon - we will notify you.", {
         icon: "✦",
       });
       return;
@@ -517,6 +572,15 @@ export default function PremiumProductClient({ product, related }: Props) {
       toast.error("Please select an available size");
       return;
     }
+    const missing = validateRequiredCustomFields(
+      cartProduct,
+      customFieldAnswers,
+    );
+    if (missing) {
+      toast.error(`Please fill in: ${missing}`);
+      return;
+    }
+    const answersArray = customFieldAnswersToPayload(customFieldAnswers);
 
     setIsBuyingNow(true);
     try {
@@ -532,6 +596,7 @@ export default function PremiumProductClient({ product, related }: Props) {
           colorCode: selectedVariant.colorCode,
           sku: selectedVariant.sku,
         },
+        customFieldAnswers: answersArray.length > 0 ? answersArray : undefined,
       });
       router.push("/checkout?buyNow=1");
     } finally {
@@ -544,7 +609,7 @@ export default function PremiumProductClient({ product, related }: Props) {
 
   return (
     <div className={cn("bg-[#fcf9f8] text-[#1a1a1a]", mobileBottomReserve)}>
-      {/* Premium back bar — moves up with auto-hide navbar */}
+      {/* Premium back bar - moves up with auto-hide navbar */}
       <div
         className={cn(
           "fixed inset-x-0 top-[var(--store-sticky-nav-offset,4.25rem)] z-40 border-b transition-[top,background-color,box-shadow,border-color] duration-300 ease-out motion-reduce:transition-none",
@@ -582,7 +647,7 @@ export default function PremiumProductClient({ product, related }: Props) {
         </div>
       </div>
 
-      {/* Full-bleed hero — auto-fade carousel */}
+      {/* Full-bleed hero - auto-fade carousel */}
       <section className='relative h-[100svh] w-full overflow-hidden'>
         {heroSlides.map((src, i) => (
           <div
@@ -595,7 +660,7 @@ export default function PremiumProductClient({ product, related }: Props) {
           >
             <Image
               src={src}
-              alt={`${product.name} — view ${i + 1}`}
+              alt={`${product.name} - view ${i + 1}`}
               fill
               priority={i === 0}
               className='object-cover object-center'
@@ -687,9 +752,9 @@ export default function PremiumProductClient({ product, related }: Props) {
                 onClick={() => goToHeroImage(i)}
                 className={cn(
                   "h-1.5 w-8 rounded-full transition-colors",
-                  i === activeImage ?
-                    "bg-white"
-                  : "bg-white/35 hover:bg-white/60",
+                  i === activeImage ? "bg-white" : (
+                    "bg-white/35 hover:bg-white/60"
+                  ),
                 )}
               />
             ))}
@@ -697,7 +762,7 @@ export default function PremiumProductClient({ product, related }: Props) {
         )}
       </section>
 
-      {/* Editorial gallery — dynamic: feature row, pair rows, feature row */}
+      {/* Editorial gallery - dynamic: feature row, pair rows, feature row */}
       <section className='mx-auto max-w-[1280px] px-5 py-6 md:px-16 md:py-10'>
         {editorialRows.map((row, index) => (
           <PremiumFadeIn
@@ -708,7 +773,7 @@ export default function PremiumProductClient({ product, related }: Props) {
               <div className='grid items-center gap-8 md:grid-cols-2 md:gap-16 lg:gap-24'>
                 <EditorialImage
                   src={row.image}
-                  alt={`${product.name} — editorial`}
+                  alt={`${product.name} - editorial`}
                 />
                 <EditorialTextPanel panel={product.editorialOpen} />
               </div>
@@ -722,7 +787,7 @@ export default function PremiumProductClient({ product, related }: Props) {
                 />
                 <EditorialImage
                   src={row.image}
-                  alt={`${product.name} — detail`}
+                  alt={`${product.name} - detail`}
                 />
               </div>
             )}
@@ -731,11 +796,11 @@ export default function PremiumProductClient({ product, related }: Props) {
               <div className='grid gap-4 md:grid-cols-2 md:gap-8'>
                 <EditorialImage
                   src={row.left}
-                  alt={`${product.name} — gallery`}
+                  alt={`${product.name} - gallery`}
                 />
                 <EditorialImage
                   src={row.right}
-                  alt={`${product.name} — gallery`}
+                  alt={`${product.name} - gallery`}
                 />
               </div>
             )}
@@ -743,13 +808,38 @@ export default function PremiumProductClient({ product, related }: Props) {
             {row.type === "single" && (
               <EditorialImage
                 src={row.image}
-                alt={`${product.name} — gallery`}
+                alt={`${product.name} - gallery`}
                 className='mx-auto max-w-xl'
               />
             )}
           </PremiumFadeIn>
         ))}
       </section>
+
+      {showCustomization && cartProduct ?
+        <section className='mx-auto max-w-[640px] px-5 pb-2 md:px-16 md:pb-4'>
+          <PdpInlineCustomFields
+            product={cartProduct}
+            answers={customFieldAnswers}
+            onChange={(label, value) =>
+              setCustomFieldAnswers((prev) => ({ ...prev, [label]: value }))
+            }
+            uploadingFieldImages={uploadingFieldImages}
+            onImageUpload={handleCustomFieldImageUpload}
+            variant='premium'
+          />
+          {showQuoteFlow ?
+            <button
+              type='button'
+              onClick={() => setIsCustomizationModalOpen(true)}
+              className='mt-4 flex w-full items-center justify-center gap-2 border border-[#c5a059]/50 bg-[#c5a059]/10 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a6d3b] transition-colors hover:bg-[#c5a059]/20'
+            >
+              <Gift className='h-4 w-4' aria-hidden />
+              Request customization quote
+            </button>
+          : null}
+        </section>
+      : null}
 
       {/* Shop-style story: Fabric & Care, description, Why You'll Love It */}
       <PdpStorySection
@@ -798,7 +888,7 @@ export default function PremiumProductClient({ product, related }: Props) {
         </section>
       )}
 
-      {/* Mobile purchase bar — size + Add to Bag + Buy Now */}
+      {/* Mobile purchase bar - size + Add to Bag + Buy Now */}
       <div
         className='fixed inset-x-0 bottom-0 z-[88] border-t border-black/10 bg-[#fcf9f8]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-6px_28px_rgba(0,13,33,0.08)] lg:hidden'
         role='toolbar'
@@ -824,7 +914,7 @@ export default function PremiumProductClient({ product, related }: Props) {
               {isAddingToCart ?
                 <span className='h-4 w-4 animate-spin rounded-full border-2 border-account-primary/30 border-t-account-primary' />
               : <>
-                  <ShoppingBag className='h-4 w-4 shrink-0' aria-hidden />
+                  <BagIcon className='h-4 w-4 shrink-0' aria-hidden />
                   Add to Bag
                 </>
               }
@@ -844,6 +934,16 @@ export default function PremiumProductClient({ product, related }: Props) {
               }
             </button>
           </div>
+          {showQuoteFlow ?
+            <button
+              type='button'
+              onClick={() => setIsCustomizationModalOpen(true)}
+              className='flex w-full items-center justify-center gap-2 border border-[#c5a059]/40 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'
+            >
+              <Gift className='h-4 w-4' aria-hidden />
+              Request quote
+            </button>
+          : null}
         </div>
       </div>
 
@@ -881,7 +981,7 @@ export default function PremiumProductClient({ product, related }: Props) {
               {isAddingToCart ?
                 <span className='h-4 w-4 animate-spin rounded-full border-2 border-account-primary/30 border-t-account-primary' />
               : <>
-                  <ShoppingBag className='h-4 w-4' aria-hidden />
+                  <BagIcon className='h-4 w-4' aria-hidden />
                   Add to Bag
                 </>
               }
@@ -901,9 +1001,26 @@ export default function PremiumProductClient({ product, related }: Props) {
                 </>
               }
             </button>
+            {showQuoteFlow ?
+              <button
+                type='button'
+                onClick={() => setIsCustomizationModalOpen(true)}
+                className='inline-flex h-11 shrink-0 items-center justify-center gap-2 border border-[#c5a059]/50 px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a6d3b]'
+              >
+                <Gift className='h-4 w-4' aria-hidden />
+                Quote
+              </button>
+            : null}
           </div>
         </div>
       </div>
+
+      {isCustomizationModalOpen && cartProduct ?
+        <GiftCustomizationModal
+          product={cartProduct}
+          onClose={() => setIsCustomizationModalOpen(false)}
+        />
+      : null}
     </div>
   );
 }

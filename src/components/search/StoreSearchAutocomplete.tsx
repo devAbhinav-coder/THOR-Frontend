@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Mic, MicOff, Search, X } from "lucide-react";
-import { giftingApi, productApi } from "@/lib/api";
+import { premiumApi, productApi } from "@/lib/api";
 import type { Product } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -64,7 +64,9 @@ function readRecentSearches(): string[] {
   try {
     const raw = window.localStorage.getItem(RECENT_SEARCHES_KEY);
     const parsed = raw ? (JSON.parse(raw) as string[]) : [];
-    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, RECENT_SEARCHES_LIMIT) : [];
+    return Array.isArray(parsed) ?
+        parsed.filter(Boolean).slice(0, RECENT_SEARCHES_LIMIT)
+      : [];
   } catch {
     return [];
   }
@@ -138,7 +140,7 @@ async function fetchSuggestions(
   }
   try {
     if (scope === "gifting") {
-      const res = await giftingApi.getProducts({
+      const res = await premiumApi.getProducts({
         search: trimmed,
         page: 1,
         limit: SUGGEST_LIMIT,
@@ -168,7 +170,8 @@ async function fetchSuggestions(
         slug: item.slug,
         price: item.price,
         category: item.category ?? "",
-        images: item.image ? [{ url: item.image, publicId: "", alt: item.name }] : [],
+        images:
+          item.image ? [{ url: item.image, publicId: "", alt: item.name }] : [],
       } as Product;
     });
     return {
@@ -216,9 +219,10 @@ function StoreSearchAutocomplete({
   const autoId = useId();
   // Derive a stable ID so SSR and client always agree.
   // useId() differs if the component tree between server/client doesn't match exactly
-  // (e.g. two navbar instances — desktop & mobile — where one is hidden via CSS).
-  const listId = searchInstance
-    ? `store-search-${scope}-${searchInstance}`
+  // (e.g. two navbar instances - desktop & mobile - where one is hidden via CSS).
+  const listId =
+    searchInstance ?
+      `store-search-${scope}-${searchInstance}`
     : `store-search-${scope}-${autoId}`;
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -253,7 +257,9 @@ function StoreSearchAutocomplete({
     Array<{ name: string; url: string; image?: string }>
   >([]);
   const [didYouMean, setDidYouMean] = useState<string | undefined>();
-  const [searchIntent, setSearchIntent] = useState<ParsedSearchIntent | undefined>();
+  const [searchIntent, setSearchIntent] = useState<
+    ParsedSearchIntent | undefined
+  >();
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -265,7 +271,8 @@ function StoreSearchAutocomplete({
   } | null>(null);
 
   const isLuxuryPanel = variant !== "gifting-inline";
-  const showVoice = scope === "shop" && (variant === "nav-dark" || variant === "nav-mobile");
+  const showVoice =
+    scope === "shop" && (variant === "nav-dark" || variant === "nav-mobile");
 
   const navigateToQuery = useCallback(
     (query: string) => {
@@ -303,7 +310,7 @@ function StoreSearchAutocomplete({
         stopVoiceSearch();
         return;
       }
-      // Sync call — must stay in click handler (no async wrapper).
+      // Sync call - must stay in click handler (no async wrapper).
       startVoiceSearch("en-IN", { onResult: handleVoiceResult });
     },
     [voiceActive, handleVoiceResult],
@@ -431,7 +438,8 @@ function StoreSearchAutocomplete({
   }, [showPanel, updatePanelBox]);
 
   const basePlaceholder = placeholder ?? PLACEHOLDER_BY_SCOPE[scope];
-  const [animatedPlaceholder, setAnimatedPlaceholder] = useState(basePlaceholder);
+  const [animatedPlaceholder, setAnimatedPlaceholder] =
+    useState(basePlaceholder);
 
   useEffect(() => {
     // If a custom placeholder is passed in, respect it and skip animation.
@@ -475,15 +483,19 @@ function StoreSearchAutocomplete({
   }, [variant, basePlaceholder, placeholder]);
 
   const placeholderText =
-    variant === "nav-dark" || variant === "nav-mobile"
-      ? animatedPlaceholder
-      : basePlaceholder;
+    variant === "nav-dark" || variant === "nav-mobile" ?
+      animatedPlaceholder
+    : basePlaceholder;
 
   const inputBase =
     variant === "nav-dark" ?
       cn(
         "w-full rounded-none border border-navy-600/80 bg-navy-800/90 py-2 pl-9 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24",
-        showVoice ? (inputValue ? "pr-16" : "pr-10") : inputValue ? "pr-9" : "pr-3",
+        showVoice ?
+          inputValue ? "pr-16"
+          : "pr-10"
+        : inputValue ? "pr-9"
+        : "pr-3",
       )
     : variant === "nav-mobile" ?
       cn(
@@ -603,10 +615,10 @@ function StoreSearchAutocomplete({
             <>
               <div className={navDropdownAccent} aria-hidden />
               <div className={cn(navLuxuryDropdownHeader, "py-4")}>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#c5a059]">
+                <p className='text-[9px] font-semibold uppercase tracking-[0.22em] text-[#c5a059]'>
                   Search
                 </p>
-                <p className="mt-1 truncate font-serif text-base font-medium text-white/90">
+                <p className='mt-1 truncate font-serif text-base font-medium text-white/90'>
                   {inputValue.trim() || "Suggestions"}
                 </p>
               </div>
@@ -614,16 +626,19 @@ function StoreSearchAutocomplete({
               <div className={navLuxuryDropdownNav}>
                 {showRecentPanel ?
                   <ul>
-                    <li className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1a2b48]/45">
+                    <li className='px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1a2b48]/45'>
                       Recent searches
                     </li>
                     {recentSearches.map((q) => (
-                      <li key={q} className="border-b border-[#c5a059]/15 last:border-b-0">
+                      <li
+                        key={q}
+                        className='border-b border-[#c5a059]/15 last:border-b-0'
+                      >
                         <button
-                          type="button"
-                          role="option"
+                          type='button'
+                          role='option'
                           onClick={() => applySuggestion(q)}
-                          className="block w-full px-5 py-3 text-left font-serif text-[14px] text-[#1a2b48] transition-colors hover:bg-white"
+                          className='block w-full px-5 py-3 text-left font-serif text-[14px] text-[#1a2b48] transition-colors hover:bg-white'
                         >
                           {q}
                         </button>
@@ -631,26 +646,35 @@ function StoreSearchAutocomplete({
                     ))}
                   </ul>
                 : suggestLoading ?
-                  <div className="flex items-center justify-center gap-2 px-5 py-8 text-[13px] text-[#1a2b48]/60">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#c5a059]" />
+                  <div className='flex items-center justify-center gap-2 px-5 py-8 text-[13px] text-[#1a2b48]/60'>
+                    <Loader2 className='h-4 w-4 animate-spin text-[#c5a059]' />
                     Searching…
                   </div>
                 : <>
-                    {didYouMean && didYouMean.toLowerCase() !== trimmedInput.toLowerCase() ?
-                      <div className="border-b border-[#c5a059]/15 px-5 py-3">
+                    {(
+                      didYouMean &&
+                      didYouMean.toLowerCase() !== trimmedInput.toLowerCase()
+                    ) ?
+                      <div className='border-b border-[#c5a059]/15 px-5 py-3'>
                         <button
-                          type="button"
+                          type='button'
                           onClick={() => applySuggestion(didYouMean)}
-                          className="text-left text-[13px] text-[#1a2b48]"
+                          className='text-left text-[13px] text-[#1a2b48]'
                         >
                           Did you mean{" "}
-                          <span className="font-semibold text-[#c5a059]">{didYouMean}</span>?
+                          <span className='font-semibold text-[#c5a059]'>
+                            {didYouMean}
+                          </span>
+                          ?
                         </button>
                       </div>
                     : null}
-                    {searchIntent?.displayLabel &&
-                    searchIntent.displayLabel.toLowerCase() !== trimmedInput.toLowerCase() ?
-                      <div className="border-b border-[#c5a059]/15 px-5 py-2 text-[12px] text-[#1a2b48]/70">
+                    {(
+                      searchIntent?.displayLabel &&
+                      searchIntent.displayLabel.toLowerCase() !==
+                        trimmedInput.toLowerCase()
+                    ) ?
+                      <div className='border-b border-[#c5a059]/15 px-5 py-2 text-[12px] text-[#1a2b48]/70'>
                         {searchIntent.displayLabel}
                       </div>
                     : null}
@@ -659,13 +683,13 @@ function StoreSearchAutocomplete({
                         {querySuggestions.map((q, index) => (
                           <li
                             key={`${q}-${index}`}
-                            className="border-b border-[#c5a059]/15 last:border-b-0"
+                            className='border-b border-[#c5a059]/15 last:border-b-0'
                           >
                             <button
-                              type="button"
-                              role="option"
+                              type='button'
+                              role='option'
                               onClick={() => applySuggestion(q)}
-                              className="block w-full px-5 py-2.5 text-left text-[13px] text-[#1a2b48] transition-colors hover:bg-white"
+                              className='block w-full px-5 py-2.5 text-left text-[13px] text-[#1a2b48] transition-colors hover:bg-white'
                             >
                               {q}
                             </button>
@@ -675,13 +699,13 @@ function StoreSearchAutocomplete({
                     : null}
                     {collectionSuggestions.length > 0 ?
                       <ul>
-                        <li className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1a2b48]/45">
+                        <li className='px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1a2b48]/45'>
                           Collections
                         </li>
                         {collectionSuggestions.map((item) => (
                           <li
                             key={item.url}
-                            className="border-b border-[#c5a059]/15 last:border-b-0"
+                            className='border-b border-[#c5a059]/15 last:border-b-0'
                           >
                             <Link
                               href={item.url}
@@ -689,7 +713,7 @@ function StoreSearchAutocomplete({
                                 setOpen(false);
                                 onNavigate?.();
                               }}
-                              className="block px-5 py-2.5 text-left text-[13px] text-[#1a2b48] transition-colors hover:bg-white"
+                              className='block px-5 py-2.5 text-left text-[13px] text-[#1a2b48] transition-colors hover:bg-white'
                             >
                               {item.name}
                             </Link>
@@ -699,43 +723,43 @@ function StoreSearchAutocomplete({
                     : null}
                     <ul>
                       {suggestions.map((p) => {
-                      const img = p.images?.[0]?.url;
-                      return (
-                        <li
-                          key={p._id}
-                          role="option"
-                          className="border-b border-[#c5a059]/15 last:border-b-0"
-                        >
-                          <Link
-                            href={`/shop/${encodeURIComponent(p.slug)}`}
-                            onClick={() => {
-                              setOpen(false);
-                              onNavigate?.();
-                            }}
-                            className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-white"
+                        const img = p.images?.[0]?.url;
+                        return (
+                          <li
+                            key={p._id}
+                            role='option'
+                            className='border-b border-[#c5a059]/15 last:border-b-0'
                           >
-                            <div className="relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100">
-                              {img ?
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={img}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              : null}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="line-clamp-2 font-serif text-[14px] leading-snug text-[#1a2b48]">
-                                {p.name}
-                              </p>
-                              <p className="mt-0.5 text-[12px] font-medium text-[#c5a059]">
-                                {formatPrice(p.price)}
-                              </p>
-                            </div>
-                          </Link>
-                        </li>
-                      );
-                    })}
+                            <Link
+                              href={`/shop/${encodeURIComponent(p.slug)}`}
+                              onClick={() => {
+                                setOpen(false);
+                                onNavigate?.();
+                              }}
+                              className='flex items-center gap-3 px-5 py-3 transition-colors hover:bg-white'
+                            >
+                              <div className='relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100'>
+                                {img ?
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={img}
+                                    alt=''
+                                    className='h-full w-full object-cover'
+                                  />
+                                : null}
+                              </div>
+                              <div className='min-w-0 flex-1'>
+                                <p className='line-clamp-2 font-serif text-[14px] leading-snug text-[#1a2b48]'>
+                                  {p.name}
+                                </p>
+                                <p className='mt-0.5 text-[12px] font-medium text-[#c5a059]'>
+                                  {formatPrice(p.price)}
+                                </p>
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </>
                 }
@@ -743,31 +767,31 @@ function StoreSearchAutocomplete({
 
               {trimmedInput.length >= SUGGEST_MIN ?
                 <div className={cn(navLuxuryDropdownFooter, "text-center")}>
-                <Link
-                  href={resultsHref}
-                  onClick={() => {
-                    setOpen(false);
-                    onNavigate?.();
-                  }}
-                  className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#c5a059] transition-colors hover:text-[#1a2b48]"
-                >
-                  See all matching products
-                </Link>
+                  <Link
+                    href={resultsHref}
+                    onClick={() => {
+                      setOpen(false);
+                      onNavigate?.();
+                    }}
+                    className='text-[11px] font-medium uppercase tracking-[0.14em] text-[#c5a059] transition-colors hover:text-[#1a2b48]'
+                  >
+                    See all matching products
+                  </Link>
                 </div>
               : null}
             </>
           : <>
               {showRecentPanel ?
-                <ul className="py-1">
-                  <li className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                <ul className='py-1'>
+                  <li className='px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400'>
                     Recent searches
                   </li>
                   {recentSearches.map((q) => (
-                    <li key={q} role="option" className="px-1">
+                    <li key={q} role='option' className='px-1'>
                       <button
-                        type="button"
+                        type='button'
                         onClick={() => applySuggestion(q)}
-                        className="block w-full rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]"
+                        className='block w-full rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]'
                       >
                         {q}
                       </button>
@@ -775,31 +799,41 @@ function StoreSearchAutocomplete({
                   ))}
                 </ul>
               : suggestLoading ?
-                <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className='flex items-center justify-center gap-2 py-6 text-sm text-gray-500'>
+                  <Loader2 className='h-4 w-4 animate-spin' />
                   Searching…
                 </div>
               : <>
-                  {didYouMean && didYouMean.toLowerCase() !== trimmedInput.toLowerCase() ?
-                    <div className="border-b border-gray-100 px-3 py-2">
+                  {(
+                    didYouMean &&
+                    didYouMean.toLowerCase() !== trimmedInput.toLowerCase()
+                  ) ?
+                    <div className='border-b border-gray-100 px-3 py-2'>
                       <button
-                        type="button"
+                        type='button'
                         onClick={() => applySuggestion(didYouMean)}
-                        className="text-left text-sm text-gray-700"
+                        className='text-left text-sm text-gray-700'
                       >
                         Did you mean{" "}
-                        <span className="font-semibold text-[#c5a059]">{didYouMean}</span>?
+                        <span className='font-semibold text-[#c5a059]'>
+                          {didYouMean}
+                        </span>
+                        ?
                       </button>
                     </div>
                   : null}
                   {querySuggestions.length > 0 ?
-                    <ul className="border-b border-gray-100 py-1">
+                    <ul className='border-b border-gray-100 py-1'>
                       {querySuggestions.map((q, index) => (
-                        <li key={`${q}-${index}`} role="option" className="px-1">
+                        <li
+                          key={`${q}-${index}`}
+                          role='option'
+                          className='px-1'
+                        >
                           <button
-                            type="button"
+                            type='button'
                             onClick={() => applySuggestion(q)}
-                            className="block w-full rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]"
+                            className='block w-full rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]'
                           >
                             {q}
                           </button>
@@ -808,19 +842,19 @@ function StoreSearchAutocomplete({
                     </ul>
                   : null}
                   {collectionSuggestions.length > 0 ?
-                    <ul className="border-b border-gray-100 py-1">
-                      <li className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    <ul className='border-b border-gray-100 py-1'>
+                      <li className='px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400'>
                         Collections
                       </li>
                       {collectionSuggestions.map((item) => (
-                        <li key={item.url} role="option" className="px-1">
+                        <li key={item.url} role='option' className='px-1'>
                           <Link
                             href={item.url}
                             onClick={() => {
                               setOpen(false);
                               onNavigate?.();
                             }}
-                            className="block rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]"
+                            className='block rounded px-2 py-2 text-left text-sm text-gray-800 hover:bg-[#fff8eb]'
                           >
                             {item.name}
                           </Link>
@@ -828,56 +862,56 @@ function StoreSearchAutocomplete({
                       ))}
                     </ul>
                   : null}
-                  <ul className="py-1">
-                  {suggestions.map((p) => {
-                    const img = p.images?.[0]?.url;
-                    return (
-                      <li key={p._id} role="option" className="px-1">
-                        <Link
-                          href={`/shop/${encodeURIComponent(p.slug)}`}
-                          onClick={() => {
-                            setOpen(false);
-                            onNavigate?.();
-                          }}
-                          className="flex gap-3 px-2 py-2 text-left transition-colors hover:bg-[#fff8eb]"
-                        >
-                          <div className="relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100">
-                            {img ?
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={img}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            : null}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="line-clamp-2 text-sm font-semibold text-gray-900">
-                              {p.name}
-                            </p>
-                            <p className="text-xs text-[#c5a059]">
-                              {formatPrice(p.price)}
-                            </p>
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
+                  <ul className='py-1'>
+                    {suggestions.map((p) => {
+                      const img = p.images?.[0]?.url;
+                      return (
+                        <li key={p._id} role='option' className='px-1'>
+                          <Link
+                            href={`/shop/${encodeURIComponent(p.slug)}`}
+                            onClick={() => {
+                              setOpen(false);
+                              onNavigate?.();
+                            }}
+                            className='flex gap-3 px-2 py-2 text-left transition-colors hover:bg-[#fff8eb]'
+                          >
+                            <div className='relative h-12 w-10 shrink-0 overflow-hidden bg-gray-100'>
+                              {img ?
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={img}
+                                  alt=''
+                                  className='h-full w-full object-cover'
+                                />
+                              : null}
+                            </div>
+                            <div className='min-w-0 flex-1'>
+                              <p className='line-clamp-2 text-sm font-semibold text-gray-900'>
+                                {p.name}
+                              </p>
+                              <p className='text-xs text-[#c5a059]'>
+                                {formatPrice(p.price)}
+                              </p>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </>
               }
               {trimmedInput.length >= SUGGEST_MIN ?
-                <div className="border-t border-gray-100 px-3 py-2 text-center text-[11px] text-gray-500">
-                <Link
-                  href={resultsHref}
-                  onClick={() => {
-                    setOpen(false);
-                    onNavigate?.();
-                  }}
-                  className="font-semibold text-[#c5a059] underline-offset-2 hover:underline"
-                >
-                  See all matching products
-                </Link>
+                <div className='border-t border-gray-100 px-3 py-2 text-center text-[11px] text-gray-500'>
+                  <Link
+                    href={resultsHref}
+                    onClick={() => {
+                      setOpen(false);
+                      onNavigate?.();
+                    }}
+                    className='font-semibold text-[#c5a059] underline-offset-2 hover:underline'
+                  >
+                    See all matching products
+                  </Link>
                 </div>
               : null}
             </>

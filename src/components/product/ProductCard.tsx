@@ -84,20 +84,21 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
   const showPrimaryImage = Boolean(primaryUrl) && !primaryImageError;
 
   const hasSecondary =
-    Boolean(secondaryUrl) &&
-    secondaryUrl !== primaryUrl &&
-    !secondaryFailed;
+    Boolean(secondaryUrl) && secondaryUrl !== primaryUrl && !secondaryFailed;
   const showSecondary = isHovered && secondaryLoaded && hasSecondary;
 
   const primaryAlt = useMemo(() => {
     const parts: string[] = [product.name];
     if (product.category) parts.push(product.category);
     if (product.fabric) parts.push(product.fabric);
-    return parts.join(" — ");
+    return parts.join(" - ");
   }, [product.name, product.category, product.fabric]);
 
   const discountPercent = useMemo(() => {
-    if (typeof product.discountPercent === "number" && product.discountPercent > 0) {
+    if (
+      typeof product.discountPercent === "number" &&
+      product.discountPercent > 0
+    ) {
       return Math.round(product.discountPercent);
     }
     const mrp = (product as unknown as { mrp?: number }).mrp;
@@ -171,14 +172,16 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
 
       const colorKey = displayColor?.trim().toLowerCase();
       const availableVariant =
-        (colorKey
-          ? product.variants?.find(
-              (v) =>
-                String(v.color || "").toLowerCase().trim() === colorKey &&
-                (Number(v.stock) || 0) > 0 &&
-                v.sku,
-            )
-          : undefined) ||
+        (colorKey ?
+          product.variants?.find(
+            (v) =>
+              String(v.color || "")
+                .toLowerCase()
+                .trim() === colorKey &&
+              (Number(v.stock) || 0) > 0 &&
+              v.sku,
+          )
+        : undefined) ||
         product.variants?.find((v) => (Number(v.stock) || 0) > 0 && v.sku) ||
         product.variants?.find((v) => v.sku) ||
         product.variants?.[0];
@@ -214,7 +217,14 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
         setIsAddingToCart(false);
       }
     },
-    [addToCart, displayColor, isOutOfStock, needsCustomization, product, router],
+    [
+      addToCart,
+      displayColor,
+      isOutOfStock,
+      needsCustomization,
+      product,
+      router,
+    ],
   );
 
   const schemaAvailability =
@@ -243,7 +253,10 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
         }
       />
       {primaryUrl && <link itemProp='image' href={primaryUrl} />}
-      <meta itemProp='sku' content={product.variants?.[0]?.sku || product._id} />
+      <meta
+        itemProp='sku'
+        content={product.variants?.[0]?.sku || product._id}
+      />
       <meta itemProp='brand' content='The House of Rani' />
 
       <div
@@ -268,8 +281,14 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
           className='hidden'
           aria-hidden='true'
         >
-          <meta itemProp='ratingValue' content={String(product.ratings.average)} />
-          <meta itemProp='reviewCount' content={String(product.ratings.count)} />
+          <meta
+            itemProp='ratingValue'
+            content={String(product.ratings.average)}
+          />
+          <meta
+            itemProp='reviewCount'
+            content={String(product.ratings.count)}
+          />
           <meta itemProp='bestRating' content='5' />
           <meta itemProp='worstRating' content='1' />
         </div>
@@ -408,7 +427,10 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
             );
           })()}
 
-          <Link href={productHref} className='block group-hover:text-brand-600 transition-colors'>
+          <Link
+            href={productHref}
+            className='block group-hover:text-brand-600 transition-colors'
+          >
             <h3
               className='line-clamp-2 min-h-8 text-xs sm:text-sm font-semibold leading-4 sm:leading-5 text-gray-900'
               itemProp='name'

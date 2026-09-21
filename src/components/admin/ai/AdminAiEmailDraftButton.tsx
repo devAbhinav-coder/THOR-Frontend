@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import { useAdminAiStatus, aiErrorMessage } from "./useAdminAi";
 
 type Props = {
-  /** Admin's message / notes — what they want the email to say */
+  /** Admin's message / notes - what they want the email to say */
   adminBrief?: string;
   subjectHint?: string;
   audience?: string;
@@ -34,10 +34,10 @@ export function AdminAiEmailDraftButton({
 
   return (
     <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="rounded-xl border-violet-200 bg-violet-50/40 text-violet-900 gap-1.5"
+      type='button'
+      variant='outline'
+      size='sm'
+      className='rounded-xl border-violet-200 bg-violet-50/40 text-violet-900 gap-1.5'
       disabled={loading}
       onClick={async () => {
         const brief = String(adminBrief ?? "").trim();
@@ -76,7 +76,9 @@ export function AdminAiEmailDraftButton({
             );
           }
           onDraft(subject, messageHtml);
-          toast.success("AI ne aapke brief se email likh di — review karke bhejein");
+          toast.success(
+            "AI ne aapke brief se email likh di - review karke bhejein",
+          );
         } catch (e) {
           toast.error(aiErrorMessage(e));
         } finally {
@@ -84,11 +86,9 @@ export function AdminAiEmailDraftButton({
         }
       }}
     >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Sparkles className="h-4 w-4" />
-      )}
+      {loading ?
+        <Loader2 className='h-4 w-4 animate-spin' />
+      : <Sparkles className='h-4 w-4' />}
       AI draft from your notes
     </Button>
   );

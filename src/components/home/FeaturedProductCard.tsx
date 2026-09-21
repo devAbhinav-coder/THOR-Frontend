@@ -7,7 +7,10 @@ import { ShoppingBag, Star } from "lucide-react";
 import { Product } from "@/types";
 import { cn } from "@/lib/utils";
 import ProductPriceBlock from "@/components/product/ProductPriceBlock";
-import { getStorefrontPriceDisplay, storefrontPriceMeta } from "@/lib/productPricing";
+import {
+  getStorefrontPriceDisplay,
+  storefrontPriceMeta,
+} from "@/lib/productPricing";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
@@ -59,7 +62,7 @@ function FeaturedProductCardInner({
     const parts: string[] = [product.name];
     if (product.category) parts.push(product.category);
     if (product.fabric) parts.push(product.fabric);
-    return parts.join(" — ");
+    return parts.join(" - ");
   }, [product.category, product.fabric, product.name]);
 
   const priceMeta = useMemo(
@@ -144,10 +147,7 @@ function FeaturedProductCardInner({
           }
         />
         <link itemProp='itemCondition' href='https://schema.org/NewCondition' />
-        <link
-          itemProp='url'
-          href={productHref}
-        />
+        <link itemProp='url' href={productHref} />
       </div>
 
       {hasReviews && (
@@ -207,7 +207,10 @@ function FeaturedProductCardInner({
         </div>
 
         <div className='flex min-h-[3rem] flex-1 flex-col px-3 py-2 text-left sm:min-h-[3.25rem] sm:px-4 sm:py-3'>
-          <Link href={productHref} className='block group-hover:text-[#c5a059] transition-colors'>
+          <Link
+            href={productHref}
+            className='block group-hover:text-[#c5a059] transition-colors'
+          >
             <h3
               className='line-clamp-1 min-h-[1.20rem] font-serif text-sm font-medium leading-snug text-navy-900 sm:min-h-[1.175rem] sm:text-base'
               itemProp='name'
@@ -250,7 +253,10 @@ function FeaturedProductCardInner({
               <span className='ml-0.5 text-[10px] tabular-nums text-gray-500'>
                 {product.ratings.average.toFixed(1)} ({product.ratings.count})
               </span>
-            : <span className='ml-0.5 text-[10px] tabular-nums text-transparent' aria-hidden>
+            : <span
+                className='ml-0.5 text-[10px] tabular-nums text-transparent'
+                aria-hidden
+              >
                 0.0 (0)
               </span>
             }

@@ -4,7 +4,9 @@ export function routeKeyFromLocation(
   searchWithoutQuestion: string,
 ): string {
   const path =
-    pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+    pathname.length > 1 && pathname.endsWith("/") ?
+      pathname.slice(0, -1)
+    : pathname;
   return `${path}?${searchWithoutQuestion}`;
 }
 
@@ -19,10 +21,7 @@ export function routeKeyFromWindow(): string {
   );
 }
 
-function readHeaders(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Headers {
+function readHeaders(input: RequestInfo | URL, init?: RequestInit): Headers {
   if (init?.headers) return new Headers(init.headers);
   if (input instanceof Request) return new Headers(input.headers);
   return new Headers();
@@ -35,7 +34,10 @@ function requestUrl(input: RequestInfo | URL): string {
 }
 
 /** Next.js flight/RSC request (navigation or prefetch). */
-export function isRscFetch(input: RequestInfo | URL, init?: RequestInit): boolean {
+export function isRscFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): boolean {
   const headers = readHeaders(input, init);
   if (headers.get("rsc") === "1") return true;
 
@@ -47,7 +49,7 @@ export function isRscFetch(input: RequestInfo | URL, init?: RequestInit): boolea
   }
 }
 
-/** Background prefetch — must not start the top loading bar. */
+/** Background prefetch - must not start the top loading bar. */
 export function isPrefetchRscFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -60,7 +62,10 @@ export function isPrefetchRscFetch(
 }
 
 export type NavigationRscTracker = {
-  waitForIdle: (opts?: { idleMs?: number; timeoutMs?: number }) => Promise<void>;
+  waitForIdle: (opts?: {
+    idleMs?: number;
+    timeoutMs?: number;
+  }) => Promise<void>;
   dispose: () => void;
 };
 

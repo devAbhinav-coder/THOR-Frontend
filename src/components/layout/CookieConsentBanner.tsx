@@ -60,7 +60,7 @@ export default function CookieConsentBanner() {
     };
   }, []);
 
-  // 2) After full load / delayed GA — re-send consent so tags that mount late still see it
+  // 2) After full load / delayed GA - re-send consent so tags that mount late still see it
   useEffect(() => {
     const stored = getStoredConsent();
     if (!stored) return;
@@ -99,7 +99,7 @@ export default function CookieConsentBanner() {
             <p className='mt-1 text-xs text-white/90 sm:text-sm'>
               We use essential cookies for secure login, cart, and checkout.
               Optional analytics and marketing cookies help us improve your
-              experience — only if you accept.
+              experience - only if you accept.
             </p>
             <p className='mt-1 text-[11px] text-white/80'>
               Read our{" "}

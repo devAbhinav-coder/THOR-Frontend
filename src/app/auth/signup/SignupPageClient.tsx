@@ -99,8 +99,13 @@ export default function SignupPageClient({
     title: "Please wait",
     description: "We are preparing your secure authentication session.",
   });
-  const { signupStart, signupVerify, loginWithGoogle, isLoading, admin2faPending } =
-    useAuthStore();
+  const {
+    signupStart,
+    signupVerify,
+    loginWithGoogle,
+    isLoading,
+    admin2faPending,
+  } = useAuthStore();
   const turnstile = useTurnstileToken();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -162,7 +167,9 @@ export default function SignupPageClient({
         email: pendingEmail,
         phone: signupValues.phone,
         firstName: signupValues.name?.trim().split(/\s+/)[0],
-        lastName: signupValues.name?.trim().split(/\s+/).slice(1).join(" ") || undefined,
+        lastName:
+          signupValues.name?.trim().split(/\s+/).slice(1).join(" ") ||
+          undefined,
         country: "India",
       });
       toast.success("Account verified. Welcome to The House of Rani!");
@@ -194,7 +201,9 @@ export default function SignupPageClient({
     try {
       const result = await loginWithGoogle(credential, turnstileToken);
       if (result.requiresAdmin2FA) {
-        toast("Enter the 6-digit code from your authenticator app.", { icon: "🔐" });
+        toast("Enter the 6-digit code from your authenticator app.", {
+          icon: "🔐",
+        });
         return;
       }
       toast.success("Welcome! Your account is ready.");
@@ -211,12 +220,14 @@ export default function SignupPageClient({
   };
 
   const stepIndex =
-    wizardStep === "details" ? 0 : wizardStep === "password" ? 1 : 2;
+    wizardStep === "details" ? 0
+    : wizardStep === "password" ? 1
+    : 2;
 
   const googleBlock =
     googleClientId ?
       <AuthGoogleButton
-        mode="signup"
+        mode='signup'
         onSuccess={(credential) => void handleGoogle(credential)}
         onError={() => toast.error("Google sign-up was cancelled or failed.")}
       />
@@ -253,42 +264,73 @@ export default function SignupPageClient({
       <AuthFormRoot embedded={embedded}>
         {wizardStep === "otp" ?
           <>
-            {embedded ? <AuthStepBar total={3} current={2} /> : null}
+            {embedded ?
+              <AuthStepBar total={3} current={2} />
+            : null}
             <AuthFormHeader
               embedded={embedded}
-              title="Verify your email"
+              title='Verify your email'
               subtitle={`Enter the code sent to ${pendingEmail}`}
-              icon={<Mail className="h-5 w-5" />}
+              icon={<Mail className='h-5 w-5' />}
             />
-            <form onSubmit={otpForm.handleSubmit(onSubmitOtp)} className="space-y-3">
-              <div className="space-y-2 pb-2">
+            <form
+              onSubmit={otpForm.handleSubmit(onSubmitOtp)}
+              className='space-y-3'
+            >
+              <div className='space-y-2 pb-2'>
                 <label className={authFieldLabel(embedded)}>6-digit code</label>
                 <Controller
                   control={otpForm.control}
-                  name="otp"
+                  name='otp'
                   render={({ field }) => (
                     <InputOTP maxLength={6} {...field}>
-                      <InputOTPGroup className="w-full justify-between gap-1 sm:gap-2">
-                        <InputOTPSlot index={0} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={1} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={2} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={3} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={4} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
-                        <InputOTPSlot index={5} className="w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50" />
+                      <InputOTPGroup className='w-full justify-between gap-1 sm:gap-2'>
+                        <InputOTPSlot
+                          index={0}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={1}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={2}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={3}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={4}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
+                        <InputOTPSlot
+                          index={5}
+                          className='w-10 h-11 sm:w-12 sm:h-12 text-lg bg-navy-50/50'
+                        />
                       </InputOTPGroup>
                     </InputOTP>
                   )}
                 />
                 {otpForm.formState.errors.otp?.message && (
-                  <p className="text-xs text-red-600">{otpForm.formState.errors.otp.message}</p>
+                  <p className='text-xs text-red-600'>
+                    {otpForm.formState.errors.otp.message}
+                  </p>
                 )}
               </div>
-              <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
+              <Button
+                type='submit'
+                variant='brand'
+                size='lg'
+                className={authPrimaryBtn()}
+                loading={isLoading}
+              >
                 Verify & create account
               </Button>
               <OtpResendCooldown
                 email={pendingEmail}
-                type="signup"
+                type='signup'
                 consumeTurnstile={turnstile.consumeOrToast}
               />
               <AuthBackButton
@@ -304,45 +346,63 @@ export default function SignupPageClient({
           </>
         : wizardStep === "password" ?
           <>
-            {embedded ? <AuthStepBar total={3} current={1} /> : null}
+            {embedded ?
+              <AuthStepBar total={3} current={1} />
+            : null}
             <AuthFormHeader
               embedded={embedded}
-              title="Secure your account"
-              subtitle="Choose a strong password to finish setup"
+              title='Secure your account'
+              subtitle='Choose a strong password to finish setup'
             />
-            <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-3">
+            <form
+              onSubmit={form.handleSubmit(onSubmitForm)}
+              className='space-y-3'
+            >
               <AuthField
                 embedded={embedded}
                 {...form.register("password")}
                 type={showPassword ? "text" : "password"}
-                label="Password"
-                placeholder="Min. 8 characters"
+                label='Password'
+                placeholder='Min. 8 characters'
                 error={form.formState.errors.password?.message}
-                autoComplete="new-password"
+                autoComplete='new-password'
                 suffix={
                   <button
-                    type="button"
+                    type='button'
                     onClick={() => setShowPassword(!showPassword)}
-                    className="p-1 text-gray-400 transition-colors hover:text-navy-900"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className='p-1 text-gray-400 transition-colors hover:text-navy-900'
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ?
+                      <EyeOff className='h-4 w-4' />
+                    : <Eye className='h-4 w-4' />}
                   </button>
                 }
               />
               <AuthField
                 embedded={embedded}
                 {...form.register("confirmPassword")}
-                type="password"
-                label="Confirm password"
-                placeholder="Repeat password"
+                type='password'
+                label='Confirm password'
+                placeholder='Repeat password'
                 error={form.formState.errors.confirmPassword?.message}
-                autoComplete="new-password"
+                autoComplete='new-password'
               />
-              <Button type="submit" variant="brand" size="lg" className={authPrimaryBtn()} loading={isLoading}>
+              <Button
+                type='submit'
+                variant='brand'
+                size='lg'
+                className={authPrimaryBtn()}
+                loading={isLoading}
+              >
                 Send verification code
               </Button>
-              <AuthBackButton embedded={embedded} onClick={() => setWizardStep("details")}>
+              <AuthBackButton
+                embedded={embedded}
+                onClick={() => setWizardStep("details")}
+              >
                 ← Back to your details
               </AuthBackButton>
             </form>
@@ -353,45 +413,47 @@ export default function SignupPageClient({
             {!embedded && (
               <AuthFormHeader
                 embedded={embedded}
-                title="Create your House of Rani account"
-                subtitle="Join us — verify your email to finish"
+                title='Create your House of Rani account'
+                subtitle='Join us - verify your email to finish'
               />
             )}
 
             {googleBlock}
-            {googleClientId ? <AuthFormDivider embedded={embedded} label="or email" /> : null}
+            {googleClientId ?
+              <AuthFormDivider embedded={embedded} label='or email' />
+            : null}
 
-            <div className="space-y-2.5">
+            <div className='space-y-2.5'>
               <AuthField
                 embedded={embedded}
                 {...form.register("name")}
-                label="Full name"
-                placeholder="Your name"
+                label='Full name'
+                placeholder='Your name'
                 error={form.formState.errors.name?.message}
-                autoComplete="name"
+                autoComplete='name'
               />
               <AuthField
                 embedded={embedded}
                 {...form.register("email")}
-                type="email"
-                label="Email address"
-                placeholder="your@email.com"
+                type='email'
+                label='Email address'
+                placeholder='your@email.com'
                 error={form.formState.errors.email?.message}
-                autoComplete="email"
+                autoComplete='email'
               />
               <AuthField
                 embedded={embedded}
                 {...form.register("phone")}
-                type="tel"
-                label="Mobile"
-                placeholder="10-digit number"
+                type='tel'
+                label='Mobile'
+                placeholder='10-digit number'
                 error={form.formState.errors.phone?.message}
                 maxLength={10}
               />
               <Button
-                type="button"
-                variant="brand"
-                size="lg"
+                type='button'
+                variant='brand'
+                size='lg'
                 className={authPrimaryBtn()}
                 onClick={() => void onContinueDetails()}
               >
@@ -404,17 +466,17 @@ export default function SignupPageClient({
               <AuthNavLink
                 embedded={embedded}
                 onNavigate={onSwitchToLogin}
-                href="/auth/login"
+                href='/auth/login'
                 className={authLinkText(embedded)}
               >
                 Sign In
               </AuthNavLink>
             </AuthFormFooter>
-            <AuthLegalNotice mode="signup" />
+            <AuthLegalNotice mode='signup' />
           </>
         }
 
-        {/* One stable widget for the whole signup session — never remount on step change. */}
+        {/* One stable widget for the whole signup session - never remount on step change. */}
         <TurnstileField ref={turnstile.ref} onToken={turnstile.setToken} />
       </AuthFormRoot>
       <AuthPendingOverlay
