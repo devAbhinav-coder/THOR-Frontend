@@ -5,6 +5,9 @@
 export const BRAND_NAME = "The House of Rani";
 export const BRAND_SHORT = "House of Rani";
 
+/** Footer, emails, and brand lockups — keep in sync with backend `constants/brand`. */
+export const BRAND_TAGLINE = "Celebrating the queen in every woman";
+
 /** Homepage SERP title (absolute - includes brand once). */
 export const HOME_TITLE =
   "Premium Sarees, Salwar Suits & Corsets | The House of Rani";
@@ -26,8 +29,7 @@ export const HOME_OG_TITLE = HOME_TITLE;
 export const HOME_OG_DESCRIPTION =
   "Discover exquisite sarees, salwar suits & corsets - heritage craftsmanship with modern elegance. Free delivery over ₹1,099.";
 
-export const FOOTER_DEFAULT_DESCRIPTION =
-  "Discover premium Indian ethnic wear including sarees, salwar suits, and corsets - crafted with elegance, tradition, and timeless design.";
+export const FOOTER_DEFAULT_DESCRIPTION = BRAND_TAGLINE;
 
 /** Shop listing SERP title segment - root template appends `| The House of Rani`. */
 export const SHOP_META_TITLE =

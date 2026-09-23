@@ -2237,7 +2237,7 @@ export default function AdminStorefrontPage() {
                 rows={2}
                 value={settings.footer.description || ""}
                 onChange={(e) => patchFooter({ description: e.target.value })}
-                placeholder='Short brand blurb shown in the footer'
+                placeholder='Celebrating the queen in every woman'
               />
             </Field>
 

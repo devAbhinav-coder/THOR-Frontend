@@ -21,6 +21,7 @@ import { adminApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import { AdminAiEmailDraftButton } from "@/components/admin/ai";
+import { BRAND_TAGLINE } from "@/lib/brandSeo";
 
 type Audience = "users" | "admins" | "all";
 type Channel = "email" | "in_app" | "push" | "whatsapp";
@@ -517,10 +518,10 @@ export default function AdminEmailsPage() {
                     <img
                       src='/logo.png'
                       alt='The House of Rani'
-                      className='h-8 w-auto object-contain'
+                      className='h-9 w-auto max-w-[140px] object-contain shrink-0'
                     />
-                    <span className='text-[10px] uppercase tracking-widest text-white/70 rounded-full bg-white/10 px-2 py-1'>
-                      Premium Ethnic Wear
+                    <span className='text-[11px] italic leading-snug text-white/85 font-serif max-w-[200px] text-right'>
+                      {BRAND_TAGLINE}
                     </span>
                   </div>
                 </div>

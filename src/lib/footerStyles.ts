@@ -18,7 +18,8 @@ export const footerSectionHeading =
 export const footerBrandTitle =
   "font-serif text-lg font-medium tracking-tight text-white sm:text-xl";
 
-export const footerBrandDescription = "text-sm leading-relaxed text-white/58";
+export const footerBrandDescription =
+  "font-serif text-sm italic leading-relaxed text-white/62";
 
 export const footerLinkList = "space-y-2.5";
 

@@ -29,6 +29,7 @@ const FooterContactDialog = dynamic(
   { ssr: false },
 );
 import { cn } from "@/lib/utils";
+import { FOOTER_DEFAULT_DESCRIPTION } from "@/lib/brandSeo";
 import {
   footerAccentLine,
   footerAtmosphere,
@@ -321,8 +322,7 @@ export default function Footer({
                 />
               </Link>
               <p className={cn(footerBrandDescription, "max-w-sm")}>
-                {footer?.description ||
-                  "Your destination for exquisite Indian ethnic wear. Curated sarees, salwar suits, and corsets - crafted with love and tradition."}
+                {footer?.description || FOOTER_DEFAULT_DESCRIPTION}
               </p>
 
               <div className={footerContactRow}>
