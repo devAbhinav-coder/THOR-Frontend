@@ -2,6 +2,10 @@ import { cache } from "react";
 import type { Blog, Category, Product } from "@/types";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import { serverFetch } from "@/lib/serverFetch";
+import {
+  PREMIUM_CATALOG_CACHE_TAG,
+  productPageCacheTag,
+} from "@/lib/cacheTags";
 
 /** Categories with counts for home “Browse by Category” - avoids a client-only skeleton flash. */
 export async function fetchHomeCategoryStats(): Promise<
@@ -144,7 +148,10 @@ export const fetchProductBySlugServer = cache(
     const safe = encodeURIComponent(slug);
     try {
       const res = await serverFetch(`${base}/products/${safe}`, {
-        next: { revalidate: 60 },
+        next: {
+          revalidate: 60,
+          tags: [productPageCacheTag(slug)],
+        },
         headers: { Accept: "application/json" },
       });
       if (!res.ok) return null;
@@ -174,7 +181,10 @@ export async function fetchPremiumProductsServer(
       qs.set("audience", audience);
     }
     const res = await serverFetch(`${base}/premium/products?${qs}`, {
-      next: { revalidate: 60 },
+      next: {
+        revalidate: 60,
+        tags: [PREMIUM_CATALOG_CACHE_TAG],
+      },
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return null;
@@ -194,7 +204,10 @@ export const fetchPremiumProductBySlugServer = cache(
     const safe = encodeURIComponent(slug);
     try {
       const res = await serverFetch(`${base}/premium/products/${safe}`, {
-        next: { revalidate: 60 },
+        next: {
+          revalidate: 60,
+          tags: [productPageCacheTag(slug)],
+        },
         headers: { Accept: "application/json" },
       });
       if (!res.ok) return null;

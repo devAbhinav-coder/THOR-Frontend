@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { Category, MegaMenuCategory } from "@/types";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
+import { MEGA_MENU_CACHE_TAG } from "@/lib/cacheTags";
 import { serverFetch } from "@/lib/serverFetch";
 
 /** Matches Navbar shop dropdown - keep SSR + client lists identical. */
@@ -13,7 +14,7 @@ const fetchMegaMenuCached = cache(async (): Promise<MegaMenuCategory[]> => {
 
   try {
     const res = await serverFetch(`${base}/navigation/mega-menu`, {
-      next: { revalidate: 300 },
+      next: { revalidate: 300, tags: [MEGA_MENU_CACHE_TAG] },
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return [];

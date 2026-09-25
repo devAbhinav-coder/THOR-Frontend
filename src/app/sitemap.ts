@@ -6,6 +6,7 @@ import {
   fetchAllSitemapBlogs,
   fetchAllSitemapPremiumProducts,
   fetchAllSitemapProducts,
+  fetchSitemapMegaMenuCategories,
 } from "@/lib/sitemapData";
 import { SEO_SITEMAP_STATIC } from "@/lib/seoCrawl";
 import type { MegaMenuCategory } from "@/types";
@@ -57,17 +58,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!apiUrl) return baseRoutes;
 
   try {
-    const [products, blogs, premiumProducts, megaMenuRes] = await Promise.all([
+    const [products, blogs, premiumProducts, categories] = await Promise.all([
       fetchAllSitemapProducts(),
       fetchAllSitemapBlogs(),
       fetchAllSitemapPremiumProducts(),
-      fetch(`${apiUrl}/navigation/mega-menu`, {
-        next: { revalidate: 3600 },
-      }),
+      fetchSitemapMegaMenuCategories(),
     ]);
-
-    const megaMenuJson = megaMenuRes.ok ? await megaMenuRes.json() : null;
-    const categories: MegaMenuCategory[] = megaMenuJson?.data?.categories || [];
 
     const emittedSlugs = new Set<string>();
 

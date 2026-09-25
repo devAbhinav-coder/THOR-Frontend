@@ -28,6 +28,7 @@ export type PremiumProductView = PremiumProduct & {
   tags?: string[];
   seoTitle?: string;
   seoDescription?: string;
+  ratings?: Product["ratings"];
   isCustomizable?: boolean;
   isGiftable?: boolean;
   minOrderQty?: number;
@@ -100,6 +101,7 @@ export function mapApiProductToPremiumView(p: Product): PremiumProductView {
     tags: p.tags,
     seoTitle: p.seoTitle,
     seoDescription: p.seoDescription,
+    ratings: p.ratings,
     craftNote: p.craftNote || p.shortDescription || "",
     weaveHours: p.weaveHours ?? 0,
     editorialOpen: p.premiumEditorialOpen ?? defaultEditorialOpen(p),

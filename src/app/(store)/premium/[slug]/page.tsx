@@ -6,9 +6,12 @@ import {
   mapApiProductsToPremiumViews,
 } from "@/lib/premiumProductMapper";
 import {
+  buildPremiumProductBreadcrumbJsonLd,
   buildPremiumProductJsonLd,
   buildPremiumProductMetadata,
+  mapPremiumReviewsToJsonLd,
 } from "@/lib/premiumSeo";
+import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import {
   fetchPremiumProductBySlugServer,
   fetchPremiumProductsServer,
@@ -16,6 +19,14 @@ import {
 
 type Props = {
   params: Promise<{ slug: string }>;
+};
+
+type ProductReviewLite = {
+  rating?: number;
+  title?: string;
+  comment?: string;
+  createdAt?: string;
+  user?: { name?: string };
 };
 
 export async function generateStaticParams() {
@@ -57,13 +68,41 @@ export default async function PremiumProductPage({ params }: Props) {
     .filter((p) => p.slug !== product.slug)
     .slice(0, 3);
 
-  const jsonLd = buildPremiumProductJsonLd(product, slug);
+  let reviewEntries: Array<Record<string, unknown>> = [];
+  const apiUrl = await getBuildSafeApiBase();
+  if (apiUrl && product._id) {
+    try {
+      const reviewsRes = await fetch(
+        `${apiUrl}/reviews/product/${encodeURIComponent(product._id)}?limit=3&page=1`,
+        { next: { revalidate: 1800 } },
+      );
+      if (reviewsRes.ok) {
+        const reviewsJson = (await reviewsRes.json()) as {
+          data?: { reviews?: ProductReviewLite[] };
+        };
+        const reviews =
+          Array.isArray(reviewsJson?.data?.reviews) ?
+            reviewsJson.data.reviews
+          : [];
+        reviewEntries = mapPremiumReviewsToJsonLd(reviews);
+      }
+    } catch {
+      reviewEntries = [];
+    }
+  }
+
+  const productLd = buildPremiumProductJsonLd(product, slug, { reviewEntries });
+  const breadcrumbLd = buildPremiumProductBreadcrumbJsonLd(product.name, slug);
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <PremiumProductClient product={product} related={related} />
     </>

@@ -5,6 +5,7 @@ import type { Category, Product, SubCategory } from "@/types";
 import { resolveCategoryPageSeo } from "@/lib/categoryPageSeo";
 import { resolveAdminSeoTitle, resolveSerpTitleString } from "@/lib/pageSeo";
 import SubcategoryCards from "@/components/shop/SubcategoryCards";
+import { MEGA_MENU_CACHE_TAG } from "@/lib/cacheTags";
 
 const SITE_URL = getSiteUrl();
 
@@ -32,7 +33,7 @@ async function fetchCollectionDetails(catSlug: string): Promise<CollectionDetail
   if (!apiBase) return null;
   try {
     const res = await fetch(`${apiBase}/collections/${encodeURIComponent(catSlug)}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: 3600, tags: [MEGA_MENU_CACHE_TAG] },
     });
     if (!res.ok) return null;
     const body = await res.json();

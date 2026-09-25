@@ -10,6 +10,7 @@ import {
   buildSubcategoryPageTitle,
 } from "@/lib/subcategoryPageSeo";
 import Image from "next/image";
+import { MEGA_MENU_CACHE_TAG } from "@/lib/cacheTags";
 
 const SITE_URL = getSiteUrl();
 
@@ -42,7 +43,7 @@ async function fetchSubcollectionDetails(
     const res = await fetch(
       `${apiBase}/collections/${encodeURIComponent(catSlug)}/${encodeURIComponent(subSlug)}`,
       {
-        next: { revalidate: 3600 },
+        next: { revalidate: 3600, tags: [MEGA_MENU_CACHE_TAG] },
       },
     );
     if (!res.ok) return null;

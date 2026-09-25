@@ -105,6 +105,11 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: "/products/:slug",
+        destination: "/shop/:slug",
+        permanent: true,
+      },
+      {
         source: "/shop/category/:slug",
         destination: "/shop/collections/:slug",
         permanent: true,

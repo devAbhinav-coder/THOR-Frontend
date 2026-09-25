@@ -7,6 +7,7 @@ import {
 } from "@/lib/pageSeo";
 import { getSiteUrl } from "@/lib/siteUrl";
 import type { PremiumProductView } from "@/lib/premiumProductMapper";
+import { buildMerchantProductOfferLd } from "@/lib/productMerchantOfferLd";
 
 /** Core India-intent keywords for The Rani Premium Edit. */
 export const PREMIUM_SEO_KEYWORDS = [
@@ -183,9 +184,20 @@ export function buildPremiumProductMetadata(
   };
 }
 
+type PremiumReviewLite = {
+  rating?: number;
+  title?: string;
+  comment?: string;
+  createdAt?: string;
+  user?: { name?: string };
+};
+
 export function buildPremiumProductJsonLd(
   product: PremiumProductView,
   slug: string,
+  options?: {
+    reviewEntries?: Array<Record<string, unknown>>;
+  },
 ): Record<string, unknown> {
   const appUrl = getSiteUrl();
   const url = `${appUrl}/premium/${encodeURIComponent(slug)}`;
@@ -193,10 +205,13 @@ export function buildPremiumProductJsonLd(
     product.heroImage,
     ...product.images.filter((u) => u && u !== product.heroImage),
   ].filter(Boolean);
+  const inStock = Number(product.totalStock || 0) > 0;
+  const reviewEntries = options?.reviewEntries ?? [];
 
   return {
     "@context": "https://schema.org",
     "@type": "Product",
+    "@id": `${url}#product`,
     name: product.name,
     description: buildProductMetaDescription(
       product.seoDescription,
@@ -212,6 +227,7 @@ export function buildPremiumProductJsonLd(
     image: images.slice(0, 5),
     sku: product.variants?.[0]?.sku || product.slug,
     url,
+    itemCondition: "https://schema.org/NewCondition",
     brand: {
       "@type": "Brand",
       name: "The House of Rani",
@@ -242,31 +258,83 @@ export function buildPremiumProductJsonLd(
           },
         ],
       }),
-    offers: {
-      "@type": "Offer",
-      url,
-      priceCurrency: "INR",
+    offers: buildMerchantProductOfferLd({
+      pageUrl: url,
       price: product.price,
-      availability:
-        product.totalStock > 0 ?
-          "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock",
-      itemCondition: "https://schema.org/NewCondition",
-      shippingDetails: {
-        "@type": "OfferShippingDetails",
-        shippingDestination: {
-          "@type": "DefinedRegion",
-          addressCountry: "IN",
+      inStock,
+    }),
+    ...(Number(product.ratings?.count || 0) > 0 ?
+      {
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: String(product.ratings?.average || 0),
+          reviewCount: String(product.ratings?.count || 0),
+          bestRating: "5",
+          worstRating: "1",
         },
+      }
+    : {}),
+    ...(reviewEntries.length > 0 ? { review: reviewEntries } : {}),
+  };
+}
+
+export function mapPremiumReviewsToJsonLd(
+  reviews: PremiumReviewLite[],
+): Array<Record<string, unknown>> {
+  return reviews
+    .filter(
+      (r) =>
+        Number(r?.rating || 0) > 0 &&
+        (String(r?.comment || "").trim() || String(r?.title || "").trim()),
+    )
+    .slice(0, 3)
+    .map((r) => ({
+      "@type": "Review",
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: String(Number(r.rating || 0)),
+        bestRating: "5",
+        worstRating: "1",
       },
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "IN",
-        returnPolicyCategory:
-          "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 5,
+      author: {
+        "@type": "Person",
+        name: String(r.user?.name || "Verified Buyer"),
       },
-    },
+      ...(String(r.title || "").trim() ? { name: String(r.title).trim() } : {}),
+      reviewBody: String(r.comment || r.title || "").trim(),
+      ...(r.createdAt ? { datePublished: r.createdAt } : {}),
+    }));
+}
+
+export function buildPremiumProductBreadcrumbJsonLd(
+  productName: string,
+  slug: string,
+): Record<string, unknown> {
+  const appUrl = getSiteUrl();
+  const pageUrl = `${appUrl}/premium/${encodeURIComponent(slug)}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${appUrl}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Premium Edit",
+        item: `${appUrl}/premium`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: productName,
+        item: pageUrl,
+      },
+    ],
   };
 }
 
