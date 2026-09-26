@@ -29,7 +29,12 @@ import type {
   AdminCreateOfflineOrderBody,
   Category,
   Product,
+  SubCategory,
 } from "@/types";
+import {
+  fetchAdminCatalogSubcategories,
+  subcategoriesForCategory,
+} from "@/lib/adminCatalog";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { cn, formatPrice } from "@/lib/utils";
 import { hideScrollbarCls } from "@/components/admin/shared/AdminOfferFormUi";
@@ -58,6 +63,7 @@ export type ManualDraft = {
   id: string;
   kind: "manual";
   categorySelect: string;
+  subcategorySelect: string;
   customTitle: string;
   quantity: number;
   unitPrice: string;
@@ -95,7 +101,11 @@ function lineQty(line: DraftLine): number {
   return Math.max(1, Math.min(50, Math.floor(Number(line.quantity) || 1)));
 }
 
-function lineLabel(line: DraftLine, shopCategories: Category[]): string {
+function lineLabel(
+  line: DraftLine,
+  shopCategories: Category[],
+  shopSubcategories: SubCategory[],
+): string {
   if (line.kind === "catalog") {
     const p = line.selectedProduct;
     if (!p) return "Catalog product";
@@ -110,7 +120,10 @@ function lineLabel(line: DraftLine, shopCategories: Category[]): string {
     return line.customTitle.trim() || "Custom line";
   }
   const cat = shopCategories.find((c) => c._id === line.categorySelect);
-  return cat?.name || "Category line";
+  const base = cat?.name || "Category line";
+  if (!line.subcategorySelect) return base;
+  const sub = shopSubcategories.find((s) => s._id === line.subcategorySelect);
+  return sub?.name ? `${base} · ${sub.name}` : base;
 }
 
 function newLineId(): string {
@@ -137,6 +150,7 @@ function manualWithId(id: string): ManualDraft {
     id,
     kind: "manual",
     categorySelect: "",
+    subcategorySelect: "",
     customTitle: "",
     quantity: 1,
     unitPrice: "",
@@ -418,6 +432,7 @@ function ManualLineEditor({
   line,
   patch,
   shopCategories,
+  shopSubcategories,
   categoriesLoading,
   onRemove,
   canRemove,
@@ -426,6 +441,7 @@ function ManualLineEditor({
   line: ManualDraft;
   patch: (id: string, p: Partial<ManualDraft>) => void;
   shopCategories: Category[];
+  shopSubcategories: SubCategory[];
   categoriesLoading: boolean;
   onRemove: () => void;
   canRemove: boolean;
@@ -434,10 +450,11 @@ function ManualLineEditor({
     line.categorySelect && line.categorySelect !== OTHER_CATEGORY_VALUE ?
       shopCategories.find((c) => c._id === line.categorySelect)
     : null;
-  const previewLabel =
-    line.categorySelect === OTHER_CATEGORY_VALUE ?
-      line.customTitle.trim() || "Custom line"
-    : selectedCategory?.name || "Category line";
+  const subcategoryOptions = subcategoriesForCategory(
+    shopSubcategories,
+    selectedCategory ?? undefined,
+  );
+  const previewLabel = lineLabel(line, shopCategories, shopSubcategories);
 
   return (
     <div className='space-y-3'>
@@ -449,6 +466,7 @@ function ManualLineEditor({
             const v = e.target.value;
             patch(lineId, {
               categorySelect: v,
+              subcategorySelect: "",
               ...(v !== OTHER_CATEGORY_VALUE ? { customTitle: "" } : {}),
             });
           }}
@@ -468,6 +486,25 @@ function ManualLineEditor({
           </option>
         </select>
       </label>
+      {selectedCategory && subcategoryOptions.length > 0 && (
+        <label className='block space-y-1.5'>
+          <span className='text-xs text-gray-600'>Subcategory</span>
+          <select
+            value={line.subcategorySelect}
+            onChange={(e) =>
+              patch(lineId, { subcategorySelect: e.target.value })
+            }
+            className='h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+          >
+            <option value=''>All / not specific</option>
+            {subcategoryOptions.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {(line.categorySelect || line.customTitle.trim()) && (
         <div className='flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5'>
           {selectedCategory?.image ?
@@ -577,6 +614,9 @@ export default function AdminChannelOrderClient({
   const lineRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const pendingScrollLineId = useRef<string | null>(null);
   const [shopCategories, setShopCategories] = useState<Category[]>([]);
+  const [shopSubcategories, setShopSubcategories] = useState<SubCategory[]>(
+    [],
+  );
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   const [shipName, setShipName] = useState("");
@@ -610,6 +650,20 @@ export default function AdminChannelOrderClient({
       })
       .finally(() => {
         if (!cancelled) setCategoriesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAdminCatalogSubcategories()
+      .then((list) => {
+        if (!cancelled) setShopSubcategories(list.filter((s) => s.isActive));
+      })
+      .catch(() => {
+        if (!cancelled) setShopSubcategories([]);
       });
     return () => {
       cancelled = true;
@@ -914,6 +968,9 @@ export default function AdminChannelOrderClient({
           lineItems.push({
             type: "manual",
             categoryId: line.categorySelect,
+            ...(line.subcategorySelect ?
+              { subcategoryId: line.subcategorySelect }
+            : {}),
             quantity: q,
             unitPrice: up,
             unitCost: costPayload,
@@ -1627,6 +1684,7 @@ export default function AdminChannelOrderClient({
                           line={line}
                           patch={patchManual}
                           shopCategories={shopCategories}
+                          shopSubcategories={shopSubcategories}
                           categoriesLoading={categoriesLoading}
                           onRemove={() => removeLine(line.id)}
                           canRemove={false}
@@ -1817,7 +1875,7 @@ export default function AdminChannelOrderClient({
                       <div className='flex justify-between gap-3'>
                         <span className='min-w-0 text-gray-600'>
                           <span className='text-gray-400'>#{idx + 1}</span>{" "}
-                          {lineLabel(line, shopCategories)}
+                          {lineLabel(line, shopCategories, shopSubcategories)}
                           <span className='text-gray-400'> × {q}</span>
                         </span>
                         <span className='shrink-0 font-medium text-gray-900'>

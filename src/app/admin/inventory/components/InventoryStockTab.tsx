@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import OrderLineThumbnail from "@/components/orders/OrderLineThumbnail";
 import {
   Package,
   RefreshCw,
-  Search,
   Download,
   ChevronDown,
   ChevronRight,
@@ -19,6 +18,13 @@ import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from "@/lib/inventoryConstants";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SearchField } from "@/components/ui/SearchField";
+import AdminCategorySubcategoryFilters from "@/components/admin/shared/AdminCategorySubcategoryFilters";
+import { adminStickyToolbarCls } from "@/components/admin/shared/adminStickyToolbarCls";
+import {
+  fetchAdminCatalogCategories,
+  fetchAdminCatalogSubcategories,
+} from "@/lib/adminCatalog";
 import AdminPremiumBadge, {
   isAdminPremiumProduct,
 } from "@/components/admin/AdminPremiumBadge";
@@ -696,6 +702,8 @@ function ProductRow({
 export default function InventoryStockTab() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("");
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("-sold");
   const [period, setPeriod] = useState<RevenuePeriod>("lifetime");
@@ -713,10 +721,35 @@ export default function InventoryStockTab() {
     (_, i) => new Date().getFullYear() - i,
   );
 
+  const { data: catalogCategories = [] } = useQuery({
+    queryKey: ["admin-catalog-categories"],
+    queryFn: fetchAdminCatalogCategories,
+  });
+
+  const { data: catalogSubcategories = [] } = useQuery({
+    queryKey: ["admin-catalog-subcategories"],
+    queryFn: fetchAdminCatalogSubcategories,
+  });
+
+  const productCategoryOptions = useMemo(
+    () =>
+      catalogCategories
+        .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== "gifting")
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [catalogCategories],
+  );
+
+  useEffect(() => {
+    setSubcategoryFilter("");
+  }, [categoryFilter]);
+
   const stockQueryKey = [
     "admin-inventory-stock",
     page,
     search,
+    categoryFilter,
+    subcategoryFilter,
     filter,
     sort,
     period,
@@ -740,6 +773,8 @@ export default function InventoryStockTab() {
           period,
         };
         if (search) params.search = search;
+        if (categoryFilter) params.category = categoryFilter;
+        if (subcategoryFilter) params.subcategory = subcategoryFilter;
         if (period === "year") params.year = year;
         if (period === "month") params.month = new Date().getMonth() + 1;
 
@@ -785,6 +820,14 @@ export default function InventoryStockTab() {
 
   const handleSearch = (v: string) => {
     setSearch(v);
+    setPage(1);
+  };
+  const handleCategoryFilter = (v: string) => {
+    setCategoryFilter(v);
+    setPage(1);
+  };
+  const handleSubcategoryFilter = (v: string) => {
+    setSubcategoryFilter(v);
     setPage(1);
   };
   const handleFilter = (f: string) => {
@@ -883,76 +926,85 @@ export default function InventoryStockTab() {
 
       {/* Filters */}
       <div className='bg-white rounded-xl border border-gray-100 shadow-sm'>
-        <div className='p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3'>
-          <div className='relative flex-1'>
-            <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
-            <input
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder='Search product, SKU…'
-              className='w-full h-10 pl-9 pr-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none'
-            />
-          </div>
-          <div className='flex items-center gap-2 flex-wrap'>
-            {(
-              [
-                { id: "all", label: "All" },
-                { id: "premium", label: "Premium" },
-                { id: "sold", label: "With sales" },
-                { id: "low", label: "Low stock" },
-                { id: "out", label: "Out of stock" },
-                { id: "missing_cost", label: "Missing cost" },
-              ] as const
-            ).map((f) => (
-              <button
-                key={f.id}
-                onClick={() => handleFilter(f.id)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                  filter === f.id ?
-                    "bg-brand-600 text-white border-brand-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-brand-300"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-            <select
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value);
-                setPage(1);
-              }}
-              className='h-10 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700'
-            >
-              <option value='-sold'>Best sellers first</option>
-              <option value='-updatedAt'>Recently updated</option>
-              <option value='-stock'>Stock high → low</option>
-              <option value='stock'>Stock low → high</option>
-              <option value='name'>Name A–Z</option>
-              <option value='-name'>Name Z–A</option>
-              <option value='category'>Category</option>
-            </select>
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              className='rounded-xl h-10 gap-1.5'
-              disabled={exporting}
-              onClick={handleExport}
-            >
-              <Download className='h-3.5 w-3.5' />
-              {exporting ? "Export…" : "CSV"}
-            </Button>
+        <div
+          className={`${adminStickyToolbarCls} rounded-t-xl px-3 sm:px-4 py-3 flex flex-wrap items-center gap-2`}
+        >
+          <SearchField
+            value={search}
+            onChange={handleSearch}
+            placeholder='Search product, SKU…'
+            size='compact'
+            className='w-full min-w-[10rem] sm:w-[11.5rem] shrink-0'
+            aria-label='Search inventory'
+          />
+          <AdminCategorySubcategoryFilters
+            categories={productCategoryOptions}
+            allSubcategories={catalogSubcategories}
+            categoryValue={categoryFilter}
+            subcategoryValue={subcategoryFilter}
+            onCategoryChange={handleCategoryFilter}
+            onSubcategoryChange={handleSubcategoryFilter}
+          />
+          <select
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value);
+              setPage(1);
+            }}
+            className='h-9 px-2.5 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 shrink-0'
+          >
+            <option value='-sold'>Best sellers</option>
+            <option value='-updatedAt'>Recently updated</option>
+            <option value='-stock'>Stock high → low</option>
+            <option value='stock'>Stock low → high</option>
+            <option value='name'>Name A–Z</option>
+            <option value='-name'>Name Z–A</option>
+            <option value='category'>Category</option>
+          </select>
+          {(
+            [
+              { id: "all", label: "All" },
+              { id: "premium", label: "Premium" },
+              { id: "sold", label: "With sales" },
+              { id: "low", label: "Low stock" },
+              { id: "out", label: "Out of stock" },
+              { id: "missing_cost", label: "Missing cost" },
+            ] as const
+          ).map((f) => (
             <button
+              key={f.id}
               type='button'
-              onClick={() => void refetch()}
-              className='p-2 rounded-xl border border-gray-200 hover:bg-gray-50'
+              onClick={() => handleFilter(f.id)}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors shrink-0 ${
+                filter === f.id ?
+                  "bg-brand-600 text-white border-brand-600"
+                : "bg-white text-gray-600 border-gray-200 hover:border-brand-200 hover:bg-brand-50/80"
+              }`}
             >
-              <RefreshCw
-                className={`h-4 w-4 text-gray-500 ${isFetching ? "animate-spin" : ""}`}
-              />
+              {f.label}
             </button>
-          </div>
+          ))}
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='rounded-xl h-9 gap-1.5 text-xs shrink-0'
+            disabled={exporting}
+            onClick={handleExport}
+          >
+            <Download className='h-3.5 w-3.5' />
+            {exporting ? "Export…" : "CSV"}
+          </Button>
+          <button
+            type='button'
+            onClick={() => void refetch()}
+            className='h-9 w-9 rounded-xl border border-gray-200 hover:bg-gray-50 grid place-items-center shrink-0'
+            aria-label='Refresh stock'
+          >
+            <RefreshCw
+              className={`h-4 w-4 text-gray-500 ${isFetching ? "animate-spin" : ""}`}
+            />
+          </button>
         </div>
 
         <div className='overflow-x-auto'>

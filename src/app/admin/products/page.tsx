@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   useInfiniteQuery,
@@ -10,7 +10,6 @@ import {
 } from "@tanstack/react-query";
 import {
   Plus,
-  Pencil,
   Trash2,
   AlertTriangle,
   Sparkles,
@@ -23,7 +22,12 @@ import {
   Crown,
 } from "lucide-react";
 import { adminApi, productApi } from "@/lib/api";
-import { fetchAdminCatalogCategories } from "@/lib/adminCatalog";
+import {
+  fetchAdminCatalogCategories,
+  fetchAdminCatalogSubcategories,
+} from "@/lib/adminCatalog";
+import AdminCategorySubcategoryFilters from "@/components/admin/shared/AdminCategorySubcategoryFilters";
+import { adminStickyToolbarCls } from "@/components/admin/shared/adminStickyToolbarCls";
 import { Product } from "@/types";
 import { sumVariantStock, variantStockSummary } from "@/lib/productStock";
 import { adminProductListThumbnail } from "@/lib/adminProductDisplay";
@@ -39,7 +43,6 @@ import AdminPremiumBadge, {
 import toast from "react-hot-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from "@/lib/inventoryConstants";
-import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import AdminErrorState from "@/components/admin/AdminErrorState";
 
 type QuickFilter = "all" | "featured" | "active" | "inactive" | "premium";
@@ -61,8 +64,10 @@ async function fetchAdminProductsPage(args: {
   sort: string;
   filter: QuickFilter;
   categoryFilter: string;
+  subcategoryFilter: string;
 }): Promise<ProductsPageData> {
-  const { page, query, sort, filter, categoryFilter } = args;
+  const { page, query, sort, filter, categoryFilter, subcategoryFilter } =
+    args;
   const params: Record<string, string | number> = {
     page,
     limit: PAGE_LIMIT,
@@ -73,6 +78,7 @@ async function fetchAdminProductsPage(args: {
   if (filter === "inactive") params.isActive = "false";
   if (filter === "premium") params.isPremium = "true";
   if (categoryFilter) params.category = categoryFilter;
+  if (subcategoryFilter) params.subcategory = subcategoryFilter;
 
   try {
     if (query) {
@@ -111,6 +117,7 @@ async function fetchAdminProductsPage(args: {
     };
     if (query) fallback.search = query;
     if (categoryFilter) fallback.category = categoryFilter;
+    if (subcategoryFilter) fallback.subcategory = subcategoryFilter;
     if (filter === "featured") fallback.isFeatured = "true";
     if (filter === "active") fallback.isActive = "true";
     if (filter === "inactive") fallback.isActive = "false";
@@ -134,6 +141,7 @@ export default function AdminProductsPage() {
   const debouncedSearch = useDebouncedValue(search.trim(), 420);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("");
   const [sortBy, setSortBy] = useState<
     "-createdAt" | "-viewCount" | "viewCount" | "-soldCount" | "soldCount"
   >("-createdAt");
@@ -164,6 +172,7 @@ export default function AdminProductsPage() {
     debouncedSearch,
     sortBy,
     categoryFilter,
+    subcategoryFilter,
     quickFilter,
   ] as const;
 
@@ -185,6 +194,7 @@ export default function AdminProductsPage() {
         sort: sortBy,
         filter: quickFilter,
         categoryFilter,
+        subcategoryFilter,
       }),
     initialPageParam: 1,
     getNextPageParam: (last) => {
@@ -219,19 +229,27 @@ export default function AdminProductsPage() {
 
   const { data: catalogCategories = [] } = useQuery({
     queryKey: ["admin-catalog-categories"],
-    queryFn: async () => {
-      try {
-        return await fetchAdminCatalogCategories();
-      } catch {
-        return [];
-      }
-    },
+    queryFn: fetchAdminCatalogCategories,
+  });
+
+  const { data: catalogSubcategories = [] } = useQuery({
+    queryKey: ["admin-catalog-subcategories"],
+    queryFn: fetchAdminCatalogSubcategories,
   });
 
   const productCategoryOptions = catalogCategories
     .filter((c) => !c.isGiftCategory && c.name.toLowerCase() !== "gifting")
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  useEffect(() => {
+    setSubcategoryFilter("");
+  }, [categoryFilter]);
+
+  const openProductEditor = useCallback((product: Product) => {
+    setEditProduct(product);
+    setIsModalOpen(true);
+  }, []);
 
   const filtered = products;
 
@@ -351,48 +369,7 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <div className='p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto space-y-6'>
-      <AdminPageHeader
-        title='Products'
-        description='Search, filter by category or status, sort by views or sales - edits sync with the storefront when active.'
-        actions={
-          <>
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              className='rounded-xl border-gray-200'
-              onClick={handleRefresh}
-              disabled={isRefreshing || isLoading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-            <Link
-              href='/shop'
-              target='_blank'
-              rel='noreferrer'
-              className='inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:border-brand-300 hover:bg-brand-50/50 transition-colors'
-            >
-              <Eye className='h-4 w-4 text-brand-600' />
-              View store
-            </Link>
-            <Button
-              variant='brand'
-              className='rounded-xl'
-              onClick={() => {
-                setEditProduct(null);
-                setIsModalOpen(true);
-              }}
-            >
-              <Plus className='h-4 w-4 mr-2' /> Add product
-            </Button>
-          </>
-        }
-      />
-
+    <div className='p-3 sm:p-5 lg:p-6 w-full min-w-0 space-y-4'>
       {loadError && !isLoading && (
         <AdminErrorState
           title='Couldn’t load products'
@@ -402,93 +379,130 @@ export default function AdminProductsPage() {
       )}
 
       {!loadError && (
-        <section className='rounded-2xl border border-gray-200/80 bg-white shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] flex flex-col'>
-          <div className='sticky top-0 z-20 px-4 sm:px-6 py-4 border-b border-gray-100 bg-white/95 backdrop-blur-md flex flex-col sm:flex-row sm:items-center gap-3 shadow-sm rounded-t-2xl'>
+        <section className='rounded-2xl border border-gray-200/80 bg-white shadow-[0_16px_40px_-24px_rgba(15,23,42,0.15)] flex flex-col'>
+          <div
+            className={`${adminStickyToolbarCls} rounded-t-2xl px-3 sm:px-5 py-3 flex flex-wrap items-center gap-2`}
+          >
+            <h1 className='text-lg sm:text-xl font-serif font-bold text-gray-900 tracking-tight shrink-0 mr-0.5'>
+              Products
+            </h1>
+            <span
+              className='hidden sm:block h-6 w-px bg-gray-200 shrink-0'
+              aria-hidden
+            />
             <SearchField
               value={search}
               onChange={setSearch}
-              placeholder='Search products by name, SKU, tags…'
+              placeholder='Search name, SKU…'
+              size='compact'
               isLoading={isLoading && search.trim() !== debouncedSearch}
-              className='flex-1'
+              className='w-full min-w-[10rem] sm:w-[11.5rem] shrink-0'
               aria-label='Search products'
             />
-
-            <div className='flex items-center gap-2 flex-wrap'>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className='h-9 min-w-[9.5rem] max-w-[14rem] px-3 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-brand-500 focus:outline-none'
-                aria-label='Filter by category'
+            <AdminCategorySubcategoryFilters
+              categories={productCategoryOptions}
+              allSubcategories={catalogSubcategories}
+              categoryValue={categoryFilter}
+              subcategoryValue={subcategoryFilter}
+              onCategoryChange={setCategoryFilter}
+              onSubcategoryChange={setSubcategoryFilter}
+            />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className='h-9 px-2.5 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 focus:ring-2 focus:ring-brand-500 focus:outline-none shrink-0'
+            >
+              <option value='-createdAt'>Newest</option>
+              <option value='-soldCount'>Top sold</option>
+              <option value='soldCount'>Least sold</option>
+              <option value='-viewCount'>Most views</option>
+              <option value='viewCount'>Least views</option>
+            </select>
+            <span className='hidden sm:inline-flex items-center h-9 rounded-lg bg-gray-50 border border-gray-100 px-2 text-[11px] font-semibold text-gray-500 tabular-nums shrink-0'>
+              {filtered.length}/{pagination.totalProducts || products.length}
+            </span>
+            <div className='flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white shrink-0'>
+              <button
+                type='button'
+                onClick={() => setViewMode("table")}
+                className={`h-9 w-9 grid place-items-center ${viewMode === "table" ? "bg-navy-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                title='List view'
               >
-                <option value=''>All categories</option>
-                {productCategoryOptions.map((c) => (
-                  <option key={c._id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className='h-9 px-3 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-brand-500 focus:outline-none'
+                <List className='h-4 w-4' />
+              </button>
+              <button
+                type='button'
+                onClick={() => setViewMode("grid")}
+                className={`h-9 w-9 grid place-items-center ${viewMode === "grid" ? "bg-navy-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                title='Grid view'
               >
-                <option value='-createdAt'>Newest First</option>
-                <option value='-soldCount'>Top Sold</option>
-                <option value='soldCount'>Least Sold</option>
-                <option value='-viewCount'>Most Viewed</option>
-                <option value='viewCount'>Least Viewed</option>
-              </select>
-              <span className='hidden sm:flex items-center rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-500'>
-                {filtered.length} /{" "}
-                {pagination.totalProducts || products.length} shown
-              </span>
-
-              <div className='flex items-center rounded-xl border border-gray-200 overflow-hidden bg-white mr-1'>
+                <LayoutGrid className='h-4 w-4' />
+              </button>
+            </div>
+            {[
+              { id: "all", label: "All" },
+              { id: "premium", label: "Premium", icon: Crown },
+              { id: "featured", label: "Featured", icon: Sparkles },
+              { id: "active", label: "Active", icon: CheckCircle2 },
+              { id: "inactive", label: "Inactive", icon: EyeOff },
+            ].map((f) => {
+              const Icon = (f as any).icon as any;
+              const active = quickFilter === (f as any).id;
+              return (
                 <button
+                  key={f.id}
                   type='button'
-                  onClick={() => setViewMode("table")}
-                  className={`h-9 px-2.5 grid place-items-center ${viewMode === "table" ? "bg-navy-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
-                  title='Table view'
+                  onClick={() => setQuickFilter(f.id as any)}
+                  className={[
+                    "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors shrink-0",
+                    active ?
+                      "bg-brand-600 text-white border-brand-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-brand-200 hover:bg-brand-50/80",
+                  ].join(" ")}
                 >
-                  <List className='h-4 w-4' />
+                  {Icon ?
+                    <Icon className='h-3 w-3' />
+                  : null}
+                  {f.label}
                 </button>
-                <button
-                  type='button'
-                  onClick={() => setViewMode("grid")}
-                  className={`h-9 px-2.5 grid place-items-center ${viewMode === "grid" ? "bg-navy-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
-                  title='Grid view'
-                >
-                  <LayoutGrid className='h-4 w-4' />
-                </button>
-              </div>
-              {[
-                { id: "all", label: "All" },
-                { id: "premium", label: "Premium", icon: Crown },
-                { id: "featured", label: "Featured", icon: Sparkles },
-                { id: "active", label: "Active", icon: CheckCircle2 },
-                { id: "inactive", label: "Inactive", icon: EyeOff },
-              ].map((f) => {
-                const Icon = (f as any).icon as any;
-                const active = quickFilter === (f as any).id;
-                return (
-                  <button
-                    key={f.id}
-                    type='button'
-                    onClick={() => setQuickFilter(f.id as any)}
-                    className={[
-                      "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all duration-200",
-                      active ?
-                        "bg-brand-600 text-white border-brand-600 shadow-sm"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-brand-300 hover:bg-brand-50",
-                    ].join(" ")}
-                  >
-                    {Icon ?
-                      <Icon className='h-3.5 w-3.5' />
-                    : null}
-                    {f.label}
-                  </button>
-                );
-              })}
+              );
+            })}
+            <div className='flex items-center gap-1.5 shrink-0 sm:ml-auto'>
+              <button
+                type='button'
+                onClick={handleRefresh}
+                disabled={isRefreshing || isLoading}
+                title='Refresh list'
+                aria-label='Refresh products'
+                className='h-9 w-9 grid place-items-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:border-brand-200 hover:bg-brand-50/80 hover:text-brand-700 transition-colors disabled:opacity-50'
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+              </button>
+              <Link
+                href='/shop'
+                target='_blank'
+                rel='noreferrer'
+                title='Open storefront'
+                aria-label='View store'
+                className='h-9 w-9 grid place-items-center rounded-xl border border-gray-200 bg-white text-brand-600 hover:border-brand-200 hover:bg-brand-50/80 transition-colors'
+              >
+                <Eye className='h-4 w-4' />
+              </Link>
+              <Button
+                type='button'
+                variant='brand'
+                size='sm'
+                className='h-9 rounded-xl px-2.5 gap-1 text-xs font-bold'
+                onClick={() => {
+                  setEditProduct(null);
+                  setIsModalOpen(true);
+                }}
+              >
+                <Plus className='h-4 w-4' />
+                Add
+              </Button>
             </div>
           </div>
 
@@ -504,7 +518,7 @@ export default function AdminProductsPage() {
                     <th className='text-left px-4 py-4 font-bold'>Stock</th>
                     <th className='text-left px-4 py-4 font-bold'>Metrics</th>
                     <th className='text-left px-4 py-4 font-bold'>Status</th>
-                    <th className='text-right px-5 py-4 font-bold'>Actions</th>
+                    <th className='text-right px-5 py-4 font-bold w-14' />
                   </tr>
                 </thead>
                 <tbody className='divide-y divide-gray-50'>
@@ -521,7 +535,16 @@ export default function AdminProductsPage() {
                       return (
                         <tr
                           key={product._id}
-                          className='group hover:bg-brand-50/40 transition-all hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent'
+                          role='button'
+                          tabIndex={0}
+                          onClick={() => openProductEditor(product)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openProductEditor(product);
+                            }
+                          }}
+                          className='group cursor-pointer hover:bg-brand-50/40 transition-all hover:shadow-[inset_4px_0_0_0_#0284c7] hover:bg-gradient-to-r hover:from-brand-50/50 hover:to-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500'
                         >
                           <td className='px-5 py-3'>
                             <div className='flex items-center gap-3'>
@@ -565,6 +588,11 @@ export default function AdminProductsPage() {
                             <span className='text-sm font-semibold text-gray-700 group-hover:text-gray-900'>
                               {product.category}
                             </span>
+                            {product.subcategory ?
+                              <p className='text-[11px] font-medium text-gray-500 mt-0.5'>
+                                {product.subcategory}
+                              </p>
+                            : null}
                           </td>
                           <td className='px-4 py-3'>{renderPrice(product)}</td>
                           <td className='px-4 py-3'>
@@ -607,21 +635,16 @@ export default function AdminProductsPage() {
                             </Badge>
                           </td>
                           <td className='px-5 py-3'>
-                            <div className='flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity'>
+                            <div className='flex items-center justify-end opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
                               <button
-                                onClick={() => {
-                                  setEditProduct(product);
-                                  setIsModalOpen(true);
+                                type='button'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirm(product._id);
                                 }}
-                                className='p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors border border-transparent hover:border-brand-200 shadow-sm'
-                                title='Edit'
-                              >
-                                <Pencil className='h-4 w-4' />
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirm(product._id)}
-                                className='p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200 shadow-sm'
-                                title='Delete'
+                                className='p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200'
+                                title='Delete product'
+                                aria-label='Delete product'
                               >
                                 <Trash2 className='h-4 w-4' />
                               </button>
@@ -650,7 +673,16 @@ export default function AdminProductsPage() {
                   return (
                     <div
                       key={product._id}
-                      className='rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all'
+                      role='button'
+                      tabIndex={0}
+                      onClick={() => openProductEditor(product)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openProductEditor(product);
+                        }
+                      }}
+                      className='group relative rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-lg hover:border-brand-200/80 transition-all cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500'
                     >
                       <div
                         className='relative w-full bg-gray-100'
@@ -669,6 +701,9 @@ export default function AdminProductsPage() {
                         </p>
                         <p className='text-xs text-gray-500 mt-1'>
                           {product.category}
+                          {product.subcategory ?
+                            ` · ${product.subcategory}`
+                          : ""}
                         </p>
                         <div className='mt-2 flex items-center justify-between'>
                           {renderPrice(product)}
@@ -717,23 +752,18 @@ export default function AdminProductsPage() {
                             {product.soldCount || 0} sold
                           </span>
                         </div>
-                        <div className='mt-3 flex items-center justify-end gap-2'>
-                          <button
-                            onClick={() => {
-                              setEditProduct(product);
-                              setIsModalOpen(true);
-                            }}
-                            className='p-1.5 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors'
-                          >
-                            <Pencil className='h-4 w-4' />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(product._id)}
-                            className='p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors'
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </button>
-                        </div>
+                        <button
+                          type='button'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(product._id);
+                          }}
+                          className='absolute top-2 right-2 z-10 p-2 rounded-xl bg-white/90 text-gray-500 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-red-600 hover:bg-red-50 shadow-sm border border-gray-100 transition-all'
+                          title='Delete product'
+                          aria-label='Delete product'
+                        >
+                          <Trash2 className='h-4 w-4' />
+                        </button>
                       </div>
                     </div>
                   );
@@ -754,7 +784,19 @@ export default function AdminProductsPage() {
               : filtered.map((product) => {
                   const sm = stockMeta(product);
                   return (
-                    <div key={product._id} className='p-4'>
+                    <div
+                      key={product._id}
+                      role='button'
+                      tabIndex={0}
+                      onClick={() => openProductEditor(product)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openProductEditor(product);
+                        }
+                      }}
+                      className='p-4 active:bg-brand-50/50 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 focus-visible:-outline-offset-2'
+                    >
                       <div className='flex items-start gap-3'>
                         <div
                           className='w-16 flex-shrink-0'
@@ -773,6 +815,9 @@ export default function AdminProductsPage() {
                           </p>
                           <p className='text-xs text-gray-500 mt-0.5'>
                             {product.category}
+                            {product.subcategory ?
+                              ` · ${product.subcategory}`
+                            : ""}
                             {product.fabric ? ` · ${product.fabric}` : ""}
                           </p>
                           <div className='mt-2 space-y-0.5'>
@@ -807,25 +852,18 @@ export default function AdminProductsPage() {
                             </div>
                           </div>
                         </div>
-                        <div className='flex items-center gap-1'>
-                          <button
-                            onClick={() => {
-                              setEditProduct(product);
-                              setIsModalOpen(true);
-                            }}
-                            className='h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-brand-50 hover:border-brand-200 text-gray-600 hover:text-brand-700 transition-colors grid place-items-center'
-                            title='Edit'
-                          >
-                            <Pencil className='h-4 w-4' />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(product._id)}
-                            className='h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-600 hover:text-red-700 transition-colors grid place-items-center'
-                            title='Delete'
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </button>
-                        </div>
+                        <button
+                          type='button'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(product._id);
+                          }}
+                          className='h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-500 hover:text-red-700 transition-colors grid place-items-center shrink-0'
+                          title='Delete product'
+                          aria-label='Delete product'
+                        >
+                          <Trash2 className='h-4 w-4' />
+                        </button>
                       </div>
                     </div>
                   );
@@ -848,7 +886,16 @@ export default function AdminProductsPage() {
                   return (
                     <div
                       key={product._id}
-                      className='rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm'
+                      role='button'
+                      tabIndex={0}
+                      onClick={() => openProductEditor(product)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openProductEditor(product);
+                        }
+                      }}
+                      className='group relative rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm active:scale-[0.98] transition-transform cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500'
                     >
                       <div
                         className='relative w-full bg-gray-100'
@@ -865,8 +912,11 @@ export default function AdminProductsPage() {
                         <p className='text-xs font-semibold text-gray-900 line-clamp-2'>
                           {product.name}
                         </p>
-                        <p className='text-[11px] text-gray-500 mt-0.5'>
+                        <p className='text-[11px] text-gray-500 mt-0.5 line-clamp-1'>
                           {product.category}
+                          {product.subcategory ?
+                            ` · ${product.subcategory}`
+                          : ""}
                         </p>
                         <div className='mt-1.5'>
                           {renderPrice(product)}
@@ -886,26 +936,19 @@ export default function AdminProductsPage() {
                             "Out of stock"
                           : `${sm.total} in stock`}
                         </p>
-                        <div className='mt-2 flex items-center justify-end gap-1.5'>
-                          <button
-                            onClick={() => {
-                              setEditProduct(product);
-                              setIsModalOpen(true);
-                            }}
-                            className='h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-600 grid place-items-center'
-                            title='Edit'
-                          >
-                            <Pencil className='h-4 w-4' />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(product._id)}
-                            className='h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-600 grid place-items-center'
-                            title='Delete'
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </button>
-                        </div>
                       </div>
+                      <button
+                        type='button'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirm(product._id);
+                        }}
+                        className='absolute top-1.5 right-1.5 z-10 h-7 w-7 rounded-lg bg-white/95 text-gray-500 grid place-items-center shadow-sm border border-gray-100'
+                        title='Delete product'
+                        aria-label='Delete product'
+                      >
+                        <Trash2 className='h-3.5 w-3.5' />
+                      </button>
                     </div>
                   );
                 })

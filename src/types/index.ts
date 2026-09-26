@@ -326,6 +326,7 @@ type AdminChannelOrderLineItem =
   | {
       type: "manual";
       categoryId?: string;
+      subcategoryId?: string;
       title?: string;
       quantity: number;
       unitPrice: number;

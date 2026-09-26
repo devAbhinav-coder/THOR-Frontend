@@ -9,6 +9,8 @@ type SearchFieldProps = {
   placeholder?: string;
   /** Optional: show spinner (e.g. while API request in flight) */
   isLoading?: boolean;
+  /** Tighter height and padding for dense admin toolbars */
+  size?: "default" | "compact";
   className?: string;
   inputClassName?: string;
   id?: string;
@@ -20,15 +22,20 @@ export function SearchField({
   onChange,
   placeholder = "Search…",
   isLoading = false,
+  size = "default",
   className,
   inputClassName,
   id,
   "aria-label": ariaLabel = "Search",
 }: SearchFieldProps) {
+  const compact = size === "compact";
   return (
     <div className={cn("relative", className)}>
       <Search
-        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+        className={cn(
+          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-gray-400",
+          compact ? "left-2.5 h-3.5 w-3.5" : "left-3 h-4 w-4",
+        )}
         aria-hidden
       />
       <input
@@ -42,13 +49,16 @@ export function SearchField({
         spellCheck={false}
         aria-label={ariaLabel}
         className={cn(
-          "w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-20 text-sm text-gray-900 shadow-sm transition-[box-shadow,border-color] [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden",
+          "w-full rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm transition-[box-shadow,border-color] [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden",
+          compact ?
+            "h-9 py-0 pl-8 pr-9 text-xs"
+          : "py-2.5 pl-9 pr-11 text-sm",
           "placeholder:text-gray-400",
           "focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25",
           inputClassName,
         )}
       />
-      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+      <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
         {isLoading && (
           <Loader2 className="h-4 w-4 animate-spin text-brand-600" aria-hidden />
         )}
