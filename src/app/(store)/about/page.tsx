@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import AboutPageClient from "@/components/about/AboutPageClient";
-import { BRAND_NAME, BRAND_SAME_AS } from "@/lib/brandSeo";
+import { BRAND_NAME } from "@/lib/brandSeo";
+import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
+import { resolveBrandSameAs } from "@/lib/socialLinks";
 import { buildInfoPageMetadata } from "@/lib/infoPagesSeo";
 import { aboutLinksForSchema, resolveAboutPageData } from "@/lib/aboutPageData";
 import { getSiteUrl } from "@/lib/siteUrl";
@@ -34,8 +36,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AboutRoutePage() {
   const appUrl = getSiteUrl();
-  const { visuals, schemaImages, products, internalLinks } =
-    await resolveAboutPageData();
+  const [aboutData, storefrontSettings] = await Promise.all([
+    resolveAboutPageData(),
+    fetchStorefrontSettingsHome(),
+  ]);
+  const { visuals, schemaImages, products, internalLinks } = aboutData;
+  const brandSameAs = resolveBrandSameAs(storefrontSettings?.footer);
   const primaryImage =
     visuals.hero?.src ?? schemaImages[0]?.src ?? `${appUrl}/ogimage.png`;
   const schemaLinks = aboutLinksForSchema(internalLinks, appUrl);
@@ -87,7 +93,7 @@ export default async function AboutRoutePage() {
       "@id": `${appUrl}/#organization`,
       name: BRAND_NAME,
       description: ABOUT_ORGANIZATION_STORY,
-      sameAs: [...BRAND_SAME_AS],
+      sameAs: brandSameAs,
       founder: {
         "@type": "Person",
         "@id": `${appUrl}/about#founder`,

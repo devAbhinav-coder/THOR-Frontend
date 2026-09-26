@@ -55,6 +55,7 @@ export const SHOP_KEYWORDS = [
 export const BRAND_SAME_AS = [
   "https://www.instagram.com/thehouseofraniofficial",
   "https://www.facebook.com/people/HouseofRani/61580570102572/",
+  "https://www.youtube.com/@TheHouseOfRani",
 ] as const;
 
 /** Primary homepage keywords. */

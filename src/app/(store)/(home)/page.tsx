@@ -21,8 +21,8 @@ import {
   HOME_OG_TITLE,
   HOME_TITLE,
   ORG_SCHEMA_DESCRIPTION,
-  BRAND_SAME_AS,
 } from "@/lib/brandSeo";
+import { resolveBrandSameAs } from "@/lib/socialLinks";
 import { absolutePageTitle } from "@/lib/pageSeo";
 
 const CategorySection = dynamic(
@@ -187,7 +187,7 @@ export default async function HomePage() {
       "@type": "Country",
       name: "India",
     },
-    sameAs: [...BRAND_SAME_AS],
+    sameAs: resolveBrandSameAs(storefrontSettings?.footer),
   };
 
   /**

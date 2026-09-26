@@ -2296,6 +2296,16 @@ export default function AdminStorefrontPage() {
                 Social links
               </p>
               <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                <Field label='Pinterest URL'>
+                  <input
+                    className={inputCls}
+                    value={settings.footer.pinterestUrl || ""}
+                    onChange={(e) =>
+                      patchFooter({ pinterestUrl: e.target.value })
+                    }
+                    placeholder='https://pinterest.com/…'
+                  />
+                </Field>
                 <Field label='Facebook URL'>
                   <input
                     className={inputCls}

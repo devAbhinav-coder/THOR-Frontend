@@ -1235,6 +1235,7 @@ export interface StorefrontSettings {
     instagramUrl?: string;
     twitterUrl?: string;
     youtubeUrl?: string;
+    pinterestUrl?: string;
     quickLinks?: StorefrontLink[];
     categoryLimit?: number;
   };

@@ -18,8 +18,9 @@ import {
   ROOT_DEFAULT_DESCRIPTION,
   ROOT_DEFAULT_TITLE,
   ROOT_KEYWORDS,
-  BRAND_SAME_AS,
 } from "@/lib/brandSeo";
+import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
+import { resolveBrandSameAs } from "@/lib/socialLinks";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 const dmSans = DM_Sans({
@@ -157,6 +158,8 @@ export default async function RootLayout({
 }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const appUrl = SITE_URL;
+  const storefrontSettings = await fetchStorefrontSettingsHome();
+  const brandSameAs = resolveBrandSameAs(storefrontSettings?.footer);
   /** Single @graph: Organization ↔ WebSite publisher - helps Google show a brand site name vs raw domain. */
   const siteGraphLd = {
     "@context": "https://schema.org",
@@ -178,7 +181,7 @@ export default async function RootLayout({
          * sameAs links the brand to its official social and directory profiles.
          * Google uses these to build and verify the Knowledge Panel entry.
          */
-        sameAs: [...BRAND_SAME_AS],
+        sameAs: brandSameAs,
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "customer service",

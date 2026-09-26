@@ -14,7 +14,13 @@ import {
   ChevronDown,
   Phone,
   Mail,
+  Youtube,
+  Twitter,
 } from "lucide-react";
+import {
+  listFooterSocialLinks,
+  type FooterSocialLinkSpec,
+} from "@/lib/socialLinks";
 import { navigationApi, storefrontApi } from "@/lib/api";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { buildShopCategoryHref } from "@/lib/shopCategorySeo";
@@ -55,6 +61,37 @@ import {
   footerTrustStrip,
   resolveFooterCategoryLimit,
 } from "@/lib/footerStyles";
+
+/** Official-style Pinterest glyph - lucide has no brand mark. */
+function PinterestIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox='0 0 24 24'
+      fill='currentColor'
+      aria-hidden='true'
+      className={className}
+    >
+      <path d='M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.403.042-3.441.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.177.271-.408.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.746-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z' />
+    </svg>
+  );
+}
+
+function footerSocialIcon(spec: FooterSocialLinkSpec) {
+  switch (spec.key) {
+    case "facebook":
+      return Facebook;
+    case "instagram":
+      return Instagram;
+    case "pinterest":
+      return PinterestIcon;
+    case "youtube":
+      return Youtube;
+    case "twitter":
+      return Twitter;
+    default:
+      return Facebook;
+  }
+}
 
 /** Official-style WhatsApp glyph - lucide has no brand mark. */
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -272,15 +309,15 @@ export default function Footer({
   const contactEmail = footer?.contactEmail || "support@thehouseofrani.com";
   const whatsappHref = buildWhatsAppHref(contactPhone);
   const socialLinks = [
-    { Icon: Facebook, href: footer?.facebookUrl || "", label: "Facebook" },
-    { Icon: Instagram, href: footer?.instagramUrl || "", label: "Instagram" },
+    ...listFooterSocialLinks(footer).map((spec) => ({
+      Icon: footerSocialIcon(spec),
+      href: spec.href,
+      label: spec.label,
+    })),
     ...(whatsappHref ?
       [{ Icon: WhatsAppIcon, href: whatsappHref, label: "WhatsApp" }]
     : []),
-  ].filter((s) => {
-    const href = normalizeHref(s.href);
-    return href !== "/" && href !== "#";
-  });
+  ];
 
   const hideOnMobilePaths = ["/cart", "/checkout", "/dashboard"];
   const shouldHideOnMobile = hideOnMobilePaths.some(
