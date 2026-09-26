@@ -51,6 +51,12 @@ const FETCH_DEBOUNCE_MS = 260;
 const RECENT_SEARCHES_KEY = "pia-recent-searches";
 const RECENT_SEARCHES_LIMIT = 5;
 
+/** Stop mobile Safari / Chrome from scrolling the page when the nav search is focused. */
+function restoreWindowScrollY(y: number) {
+  if (typeof window === "undefined") return;
+  window.scrollTo({ top: y, left: 0, behavior: "auto" });
+}
+
 type SuggestPayload = {
   products: Product[];
   querySuggestions: string[];
@@ -226,6 +232,8 @@ function StoreSearchAutocomplete({
     : `store-search-${scope}-${autoId}`;
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Page scroll position when search opened — prevents jump while typing (keyboard / focus). */
+  const pageScrollAnchorRef = useRef<number | null>(null);
 
   const [internal, setInternal] = useState(
     () => controlledValue ?? urlSearch?.slice(0, maxLen) ?? "",
@@ -428,14 +436,62 @@ function StoreSearchAutocomplete({
       setPanelBox(null);
       return;
     }
-    updatePanelBox();
-    window.addEventListener("scroll", updatePanelBox, true);
-    window.addEventListener("resize", updatePanelBox);
+    let raf = 0;
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updatePanelBox);
+    };
+    schedule();
+    window.addEventListener("resize", schedule, { passive: true });
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", schedule);
+    vv?.addEventListener("scroll", schedule);
     return () => {
-      window.removeEventListener("scroll", updatePanelBox, true);
-      window.removeEventListener("resize", updatePanelBox);
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", schedule);
+      vv?.removeEventListener("resize", schedule);
+      vv?.removeEventListener("scroll", schedule);
     };
   }, [showPanel, updatePanelBox]);
+
+  const pinPageScroll = useCallback(() => {
+    pageScrollAnchorRef.current = window.scrollY;
+  }, []);
+
+  const handleSearchFocus = useCallback(() => {
+    pinPageScroll();
+    setOpen(true);
+    requestAnimationFrame(() => {
+      if (pageScrollAnchorRef.current != null) {
+        restoreWindowScrollY(pageScrollAnchorRef.current);
+      }
+    });
+  }, [pinPageScroll]);
+
+  const handleSearchBlur = useCallback(() => {
+    window.setTimeout(() => {
+      if (document.activeElement === inputRef.current) return;
+      pageScrollAnchorRef.current = null;
+    }, 200);
+  }, []);
+
+  useEffect(() => {
+    const anchor = pageScrollAnchorRef.current;
+    if (anchor == null || !open) return;
+    const restore = () => {
+      if (Math.abs(window.scrollY - anchor) > 1) {
+        restoreWindowScrollY(anchor);
+      }
+    };
+    restore();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", restore);
+    vv?.addEventListener("scroll", restore);
+    return () => {
+      vv?.removeEventListener("resize", restore);
+      vv?.removeEventListener("scroll", restore);
+    };
+  }, [open, inputValue]);
 
   const basePlaceholder = placeholder ?? PLACEHOLDER_BY_SCOPE[scope];
   const [animatedPlaceholder, setAnimatedPlaceholder] =
@@ -449,6 +505,11 @@ function StoreSearchAutocomplete({
     }
     // Only run typing effect for navbar variants so other usages stay static.
     if (!(variant === "nav-dark" || variant === "nav-mobile")) {
+      setAnimatedPlaceholder(basePlaceholder);
+      return;
+    }
+    // Typing animation re-renders the navbar and can shift scroll on mobile.
+    if (open || inputValue.length > 0) {
       setAnimatedPlaceholder(basePlaceholder);
       return;
     }
@@ -480,7 +541,7 @@ function StoreSearchAutocomplete({
     }, 120);
 
     return () => window.clearInterval(interval);
-  }, [variant, basePlaceholder, placeholder]);
+  }, [variant, basePlaceholder, placeholder, open, inputValue.length]);
 
   const placeholderText =
     variant === "nav-dark" || variant === "nav-mobile" ?
@@ -490,7 +551,7 @@ function StoreSearchAutocomplete({
   const inputBase =
     variant === "nav-dark" ?
       cn(
-        "w-full rounded-none border border-navy-600/80 bg-navy-800/90 py-2 pl-9 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24",
+        "w-full rounded-none border border-navy-600/80 bg-navy-800/90 py-2 pl-9 text-sm text-white shadow-inner placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden",
         showVoice ?
           inputValue ? "pr-16"
           : "pr-10"
@@ -499,7 +560,7 @@ function StoreSearchAutocomplete({
       )
     : variant === "nav-mobile" ?
       cn(
-        "w-full rounded-none border border-navy-600 bg-navy-800 py-2.5 pl-9 text-sm text-white placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden scroll-mt-24",
+        "w-full rounded-none border border-navy-600 bg-navy-800 py-2.5 pl-9 text-sm text-white placeholder:text-white/40 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/25 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden",
         showVoice ? "pr-16" : "pr-10",
       )
     : "w-full rounded-none border border-gray-200/80 bg-white py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-500 focus:border-[#c5a059]/60 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/20 [appearance:textfield] [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden";
@@ -514,7 +575,7 @@ function StoreSearchAutocomplete({
       <form
         onSubmit={onSubmit}
         {...(variant === "nav-dark" || variant === "nav-mobile" ?
-          { "data-navbar-search": "" as const }
+          { "data-navbar-search": "" as const, "data-lenis-prevent": true }
         : {})}
       >
         <div className='relative'>
@@ -538,8 +599,15 @@ function StoreSearchAutocomplete({
             enterKeyHint='search'
             maxLength={maxLen}
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onFocus={() => setOpen(true)}
+            onChange={(e) => {
+              const anchor = pageScrollAnchorRef.current;
+              setInputValue(e.target.value);
+              if (anchor != null) {
+                requestAnimationFrame(() => restoreWindowScrollY(anchor));
+              }
+            }}
+            onFocus={handleSearchFocus}
+            onBlur={handleSearchBlur}
             aria-label={ARIA_SEARCH_LABEL[scope]}
             aria-expanded={showPanel}
             aria-controls={showPanel ? `${listId}-listbox` : undefined}
