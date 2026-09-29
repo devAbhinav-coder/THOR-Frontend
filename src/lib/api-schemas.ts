@@ -210,7 +210,17 @@ export const productsPaginated = z
 
 export const productSingle = z.object({
   status: z.string(),
-  data: z.object({ product: doc }),
+  data: z
+    .object({
+      product: doc.optional(),
+      redirect: z
+        .object({
+          slug: z.string(),
+          permanent: z.boolean().optional(),
+        })
+        .optional(),
+    })
+    .passthrough(),
 });
 
 export const viewCount = z.object({

@@ -96,6 +96,10 @@ import {
   type BuyNowCheckoutItem,
 } from "@/lib/buyNowCheckoutSession";
 import {
+  formatClientApiErrorMessage,
+  getClientApiError,
+} from "@/lib/clientApiError";
+import {
   addressSchema,
   type AddressForm,
   normalizeCheckoutMongoId,
@@ -122,6 +126,7 @@ type ReviewAddressDisplay = {
 export default function CheckoutClient() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const placeOrderLockRef = useRef(false);
   /** Default open so mobile users always see qty/delete without an extra tap. */
   const [showItems, setShowItems] = useState(true);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
@@ -341,6 +346,7 @@ export default function CheckoutClient() {
           price?: number;
           maxStock?: number;
           minQuantity?: number;
+          variantSku?: string;
           promotion?: CartPromotion | null;
           promotionDiscount?: number;
           promotionHint?: { label: string; message: string } | null;
@@ -348,12 +354,16 @@ export default function CheckoutClient() {
 
         const livePrice = Number(data.price);
         const maxStock = Number(data.maxStock);
+        const liveSku = String(data.variantSku || "").trim();
         if (Number.isFinite(livePrice) && livePrice >= 0) {
           setBuyNowItem((prev) => {
             if (!prev) return prev;
             const next = {
               ...prev,
               price: livePrice,
+              ...(liveSku ?
+                { variant: { ...prev.variant, sku: liveSku } }
+              : {}),
               ...(Number.isFinite(maxStock) && maxStock > 0 ?
                 { maxStock }
               : {}),
@@ -373,18 +383,21 @@ export default function CheckoutClient() {
         setBuyNowPromotionDiscount(0);
         setBuyNowPromotionHint(null);
 
-        const status =
-          err && typeof err === "object" && "response" in err ?
-            (err as { response?: { status?: number } }).response?.status
-          : undefined;
-        if (status !== 400 && status !== 404) return;
-
-        const msg =
-          err instanceof Error ? err.message : "This product is unavailable.";
-        toast.error(msg);
-        clearBuyNowSession();
-        setBuyNowItem(null);
-        router.replace("/shop");
+        const { status } = getClientApiError(err);
+        if (status === 400 || status === 404) {
+          toast.error(formatClientApiErrorMessage(err));
+          clearBuyNowSession();
+          setBuyNowItem(null);
+          router.replace("/shop");
+          return;
+        }
+        if (status === 409) {
+          toast.error(formatClientApiErrorMessage(err));
+          return;
+        }
+        toast.error(
+          "Could not refresh this item. Check your connection, then try again.",
+        );
       });
 
     return () => {
@@ -397,6 +410,50 @@ export default function CheckoutClient() {
     buyNowItem?.variant?.sku,
     router,
   ]);
+
+  /** Mobile Safari / bfcache: re-sync buy-now or cart when user returns to checkout tab. */
+  useEffect(() => {
+    if (!isAuthenticated || typeof window === "undefined") return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (buyNowItem) {
+        void cartApi
+          .previewBuyNow({
+            productId: String(buyNowItem.productId),
+            variant: buyNowItem.variant,
+            quantity: buyNowItem.quantity,
+          })
+          .then((res) => {
+            const data = res.data as {
+              price?: number;
+              maxStock?: number;
+              variantSku?: string;
+            };
+            const liveSku = String(data.variantSku || "").trim();
+            setBuyNowItem((prev) => {
+              if (!prev) return prev;
+              const next = {
+                ...prev,
+                ...(Number.isFinite(Number(data.price)) ?
+                  { price: Number(data.price) }
+                : {}),
+                ...(liveSku ? { variant: { ...prev.variant, sku: liveSku } } : {}),
+                ...(Number.isFinite(Number(data.maxStock)) && Number(data.maxStock) > 0 ?
+                  { maxStock: Number(data.maxStock) }
+                : {}),
+              };
+              writeBuyNowToSession(next);
+              return next;
+            });
+          })
+          .catch(() => {});
+      } else if (!orderId) {
+        void fetchCart().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [isAuthenticated, buyNowItem, orderId, fetchCart]);
 
   /** If cart still has a discount but Zustand lost the code (race / sync bug), restore from sessionStorage. */
   useEffect(() => {
@@ -1109,12 +1166,59 @@ export default function CheckoutClient() {
     [recoverFromAbortedPayment],
   );
 
+  const refreshBuyNowForPlaceOrder = useCallback(
+    async (item: BuyNowCheckoutItem): Promise<BuyNowCheckoutItem> => {
+      const res = await cartApi.previewBuyNow({
+        productId: String(item.productId),
+        variant: item.variant,
+        quantity: item.quantity,
+      });
+      const data = res.data as {
+        price?: number;
+        maxStock?: number;
+        variantSku?: string;
+        name?: string;
+      };
+      const liveSku = String(data.variantSku || "").trim();
+      const livePrice = Number(data.price);
+      const maxStock = Number(data.maxStock);
+      const next: BuyNowCheckoutItem = {
+        ...item,
+        name: data.name?.trim() || item.name,
+        price:
+          Number.isFinite(livePrice) && livePrice >= 0 ? livePrice : item.price,
+        ...(Number.isFinite(maxStock) && maxStock > 0 ?
+          { maxStock }
+        : {}),
+        variant: {
+          ...item.variant,
+          ...(liveSku ? { sku: liveSku } : {}),
+        },
+      };
+      writeBuyNowToSession(next);
+      setBuyNowItem(next);
+      return next;
+    },
+    [],
+  );
+
   const onSubmit = useCallback(
     async (addressData: AddressForm) => {
+      if (placeOrderLockRef.current || isSubmittingOrder || isPlacingOrder) {
+        return;
+      }
+      placeOrderLockRef.current = true;
       setIsSubmittingOrder(true);
       let holdPlacingUntilOverlay = false;
       let openedRazorpay = false;
+      let buyNowForOrder = buyNowItem;
       try {
+        if (buyNowForOrder) {
+          buyNowForOrder = await refreshBuyNowForPlaceOrder(buyNowForOrder);
+        } else {
+          await fetchCart();
+        }
+
         const normalizedPhone = toE164IndianMobile(addressData.phone);
         const metaBrowser = getMetaBrowserIdentifiers();
 
@@ -1194,7 +1298,7 @@ export default function CheckoutClient() {
             : `k${Date.now()}_${Math.floor(Math.random() * 1e12)}`;
 
           const couponCodeForOrder =
-            buyNowItem ?
+            buyNowForOrder ?
               buyNowCouponCode || undefined
             : getCartAppliedCouponCodeForOrder() || undefined;
 
@@ -1209,13 +1313,13 @@ export default function CheckoutClient() {
               ...(shopSessionKey ? { shopSessionKey } : {}),
               ...(marketingAttribution ? { marketingAttribution } : {}),
               metaBrowser,
-              ...(buyNowItem ?
+              ...(buyNowForOrder ?
                 {
                   buyNowItem: {
-                    productId: buyNowItem.productId,
-                    variant: buyNowItem.variant,
-                    quantity: buyNowItem.quantity,
-                    customFieldAnswers: buyNowItem.customFieldAnswers,
+                    productId: buyNowForOrder.productId,
+                    variant: buyNowForOrder.variant,
+                    quantity: buyNowForOrder.quantity,
+                    customFieldAnswers: buyNowForOrder.customFieldAnswers,
                   },
                 }
               : {}),
@@ -1350,9 +1454,21 @@ export default function CheckoutClient() {
           }
         }
       } catch (err: unknown) {
-        const error = err as { message?: string };
-        toast.error(error.message || "Failed to process order");
+        const apiErr = getClientApiError(err);
+        const msg = formatClientApiErrorMessage(err);
+        toast.error(msg || "Failed to process order");
+        if (
+          apiErr.status === 409 ||
+          apiErr.status === 400 ||
+          /stock|unavailable|catalog|variant/i.test(msg)
+        ) {
+          await fetchCart().catch(() => {});
+          if (buyNowItem) {
+            void refreshBuyNowForPlaceOrder(buyNowItem).catch(() => {});
+          }
+        }
       } finally {
+        placeOrderLockRef.current = false;
         setIsSubmittingOrder(false);
         if (!holdPlacingUntilOverlay && !openedRazorpay) {
           setIsPlacingOrder(false);
@@ -1363,6 +1479,8 @@ export default function CheckoutClient() {
     [
       existingOrder,
       buyNowItem,
+      isSubmittingOrder,
+      isPlacingOrder,
       user?.email,
       fetchCart,
       buyNowCouponCode,
@@ -1370,6 +1488,7 @@ export default function CheckoutClient() {
       finalizeSuccessfulOrder,
       recoverFromAbortedPayment,
       bindRazorpayEvents,
+      refreshBuyNowForPlaceOrder,
     ],
   );
 

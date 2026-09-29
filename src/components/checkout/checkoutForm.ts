@@ -60,7 +60,7 @@ export function normalizeCheckoutMongoId(value: unknown): string | null {
 
 export const SHIPPING_THRESHOLD = 1099;
 export const SHIPPING_CHARGE = 99;
-export const COD_HANDLING_FEE = 99;
+export const COD_HANDLING_FEE = 49;
 export const TAX_RATE = 0;
 
 export const INDIAN_STATES = [

@@ -141,8 +141,12 @@ export async function fetchHomeExploreProducts(
 }
 
 /** Single product for PDP - deduped per request (metadata + page + JSON-LD). */
+export type ProductBySlugServerResult =
+  | { product: Product; redirect?: undefined }
+  | { product?: undefined; redirect: { slug: string; permanent?: boolean } };
+
 export const fetchProductBySlugServer = cache(
-  async (slug: string): Promise<Product | null> => {
+  async (slug: string): Promise<ProductBySlugServerResult | null> => {
     const base = await getBuildSafeApiBase();
     if (!base) return null;
     const safe = encodeURIComponent(slug);
@@ -155,9 +159,17 @@ export const fetchProductBySlugServer = cache(
         headers: { Accept: "application/json" },
       });
       if (!res.ok) return null;
-      const json = (await res.json()) as { data?: { product?: Product } };
+      const json = (await res.json()) as {
+        data?: {
+          product?: Product;
+          redirect?: { slug: string; permanent?: boolean };
+        };
+      };
+      if (json?.data?.redirect?.slug) {
+        return { redirect: json.data.redirect };
+      }
       const p = json?.data?.product;
-      return p && typeof p === "object" ? p : null;
+      return p && typeof p === "object" ? { product: p } : null;
     } catch {
       return null;
     }

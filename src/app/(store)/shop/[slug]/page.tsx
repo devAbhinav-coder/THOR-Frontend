@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import ProductDetailClient from "@/components/product/ProductDetailClient";
 import { fetchProductBySlugServer } from "@/lib/storePrefetch";
 import { getSiteUrl } from "@/lib/siteUrl";
@@ -28,7 +29,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const safeSlug = encodeURIComponent(slug);
   const appUrl = getSiteUrl();
   try {
-    const product = await fetchProductBySlugServer(slug);
+    const loaded = await fetchProductBySlugServer(slug);
+    if (loaded?.redirect?.slug) {
+      redirect(`/shop/${encodeURIComponent(loaded.redirect.slug)}`);
+    }
+    const product = loaded?.product;
     if (!product) {
       return {
         title: "Product Not Found",
@@ -111,7 +116,12 @@ export default async function ProductDetailPage({
     typeof rawColor === "string" ?
       decodeURIComponent(rawColor.trim())
     : undefined;
-  const initialProduct = await fetchProductBySlugServer(slug);
+  const loaded = await fetchProductBySlugServer(slug);
+  if (loaded?.redirect?.slug) {
+    redirect(`/shop/${encodeURIComponent(loaded.redirect.slug)}`);
+  }
+  const initialProduct = loaded?.product ?? null;
+  if (!initialProduct) notFound();
   const safeSlug = encodeURIComponent(slug);
   const apiUrl = await getBuildSafeApiBase();
   const appUrl = getSiteUrl();

@@ -210,11 +210,23 @@ export default function ProductDetailClient({
     queryKey: ["product", slug],
     queryFn: async () => {
       const res = await productApi.getBySlug(slug);
-      return res.data.product as Product;
+      const redirectSlug = res.data.redirect?.slug?.trim();
+      if (redirectSlug && redirectSlug !== slug) {
+        if (typeof window !== "undefined") {
+          window.location.replace(
+            `/shop/${encodeURIComponent(redirectSlug)}`,
+          );
+        }
+        throw new Error("Redirecting to updated product link.");
+      }
+      const p = res.data.product;
+      if (!p) throw new Error("Product not found.");
+      return p as Product;
     },
     initialData:
       canHydrateFromInitial(slug, initialProduct) ? initialProduct : undefined,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const product = useMemo(() => {
