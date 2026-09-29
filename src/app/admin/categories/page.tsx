@@ -30,6 +30,7 @@ export default function AdminCategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [clearImage, setClearImage] = useState(false);
   const emptyForm = {
     name: "",
     description: "",
@@ -56,6 +57,7 @@ export default function AdminCategoriesPage() {
   const openCreate = () => {
     setForm(emptyForm);
     setNewImageFile(null);
+    setClearImage(false);
     setEditingId(null);
     setShowForm(true);
   };
@@ -70,8 +72,14 @@ export default function AdminCategoriesPage() {
       metaDescription: cat.metaDescription || "",
     });
     setNewImageFile(null);
+    setClearImage(false);
     setEditingId(cat._id);
     setShowForm(true);
+  };
+
+  const removeCategoryImage = () => {
+    setNewImageFile(null);
+    setClearImage(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +97,7 @@ export default function AdminCategoriesPage() {
       if (form.metaDescription)
         fd.append("metaDescription", form.metaDescription);
       if (newImageFile) fd.append("avatar", newImageFile);
+      if (clearImage && !newImageFile) fd.append("clearImage", "true");
 
       if (editingId) {
         await adminApi.updateCategory(editingId, fd);
@@ -130,6 +139,8 @@ export default function AdminCategoriesPage() {
   };
 
   const editingCat = categories.find((c) => c._id === editingId);
+  const existingCategoryImageUrl =
+    clearImage ? null : (editingCat?.image ?? null);
 
   return (
     <div className='p-6 xl:p-8 space-y-6'>
@@ -366,8 +377,17 @@ export default function AdminCategoriesPage() {
                 maxFiles={1}
                 aspectRatio='3:4'
                 maxSizeMB={2}
-                existingImages={editingCat?.image ? [editingCat.image] : []}
-                onChange={(files) => setNewImageFile(files[0] || null)}
+                existingImages={
+                  newImageFile ? []
+                  : existingCategoryImageUrl ?
+                    [existingCategoryImageUrl]
+                  : []
+                }
+                onRemoveExisting={editingId ? removeCategoryImage : undefined}
+                onChange={(files) => {
+                  setNewImageFile(files[0] || null);
+                  if (files[0]) setClearImage(false);
+                }}
                 label='Category Image'
                 hint='Portrait 3:4 recommended (e.g. 600×800px). Full image will show without cropping.'
               />

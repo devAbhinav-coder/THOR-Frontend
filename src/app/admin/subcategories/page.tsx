@@ -22,6 +22,7 @@ export default function AdminSubCategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [clearImage, setClearImage] = useState(false);
 
   const emptyForm = {
     name: '',
@@ -54,6 +55,7 @@ export default function AdminSubCategoriesPage() {
   const openCreate = () => {
     setForm({ ...emptyForm, categoryId: categories[0]?._id || '' });
     setNewImageFile(null);
+    setClearImage(false);
     setEditingId(null);
     setShowForm(true);
   };
@@ -69,8 +71,14 @@ export default function AdminSubCategoriesPage() {
       metaDescription: sub.metaDescription || '',
     });
     setNewImageFile(null);
+    setClearImage(false);
     setEditingId(sub._id);
     setShowForm(true);
+  };
+
+  const removeSubcategoryImage = () => {
+    setNewImageFile(null);
+    setClearImage(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,6 +96,7 @@ export default function AdminSubCategoriesPage() {
       if (form.metaTitle) fd.append('metaTitle', form.metaTitle);
       if (form.metaDescription) fd.append('metaDescription', form.metaDescription);
       if (newImageFile) fd.append('avatar', newImageFile);
+      if (clearImage && !newImageFile) fd.append('clearImage', 'true');
 
       if (editingId) {
         await adminApi.updateSubcategory(editingId, fd);
@@ -116,6 +125,8 @@ export default function AdminSubCategoriesPage() {
   };
 
   const editingSub = subcategories.find((c) => c._id === editingId);
+  const existingSubcategoryImageUrl =
+    clearImage ? null : (editingSub?.image ?? null);
 
   return (
     <div className="p-6 xl:p-8 space-y-6">
@@ -228,8 +239,17 @@ export default function AdminSubCategoriesPage() {
                   maxFiles={1}
                   aspectRatio="3:4"
                   maxSizeMB={2}
-                  existingImages={editingSub?.image ? [editingSub.image] : []}
-                  onChange={(files) => setNewImageFile(files[0] || null)}
+                  existingImages={
+                    newImageFile ? []
+                    : existingSubcategoryImageUrl ?
+                      [existingSubcategoryImageUrl]
+                    : []
+                  }
+                  onRemoveExisting={editingId ? removeSubcategoryImage : undefined}
+                  onChange={(files) => {
+                    setNewImageFile(files[0] || null);
+                    if (files[0]) setClearImage(false);
+                  }}
                   label="Subcategory Image"
                   hint="Recommended: 600x800px, max 2MB."
                 />
