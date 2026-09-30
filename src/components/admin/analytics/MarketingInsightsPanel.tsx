@@ -8,24 +8,51 @@ import {
   ShoppingBag,
   XCircle,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { formatPrice } from "@/lib/utils";
 import type { DashboardAnalytics } from "@/types";
 
 type MarketingInsights = NonNullable<DashboardAnalytics["marketingInsights"]>;
 
 const META_EVENTS_MANAGER_URL = "https://business.facebook.com/events_manager";
+const META_COMMERCE_MANAGER_URL =
+  "https://business.facebook.com/commerce/catalogs";
+
+function copyFeedUrl(path: string) {
+  if (typeof window === "undefined") return;
+  const url = `${window.location.origin}${path}`;
+  void navigator.clipboard?.writeText(url);
+  toast.success("Copied Meta catalog feed URL");
+}
 
 const PIXEL_EVENTS = [
   { name: "PageView", where: "Every page load & route change" },
-  { name: "ViewContent", where: "Product page" },
-  { name: "Search", where: "Shop search" },
-  { name: "AddToCart", where: "PDP, gift add, move-to-bag" },
-  { name: "AddToWishlist", where: "Heart on PDP & product cards" },
-  { name: "InitiateCheckout", where: "Checkout (with phone/email when known)" },
-  { name: "AddPaymentInfo", where: "Checkout payment step" },
+  { name: "ViewContent", where: "Shop + Premium PDP (variant SKU & sell price)" },
+  { name: "Search", where: "Header nav + voice + shop filters (deduped)" },
+  { name: "AddToCart", where: "PDP, cards, gift, wishlist, cart qty +" },
+  { name: "AddToWishlist", where: "Heart on PDP & cards (variant SKU)" },
+  {
+    name: "InitiateCheckout",
+    where: "Checkout with cart content_ids + value",
+  },
+  {
+    name: "AddPaymentInfo",
+    where: "Payment step (value + cart lines + address match)",
+  },
   { name: "CompleteRegistration", where: "Account signup verify" },
   { name: "Contact", where: "WhatsApp / email on Connect" },
-  { name: "Purchase", where: "Order placed or paid (server CAPI)" },
+  { name: "Purchase", where: "Browser + server CAPI (order_id, SKU lines)" },
+] as const;
+
+const CATALOG_FEED_FIELDS = [
+  "Variant id = SKU (matches pixel content_ids)",
+  "item_group_id = product Mongo id",
+  "Premium → /premium/slug · Shop → /shop/slug?color=",
+  "Per-variant image + up to 10 additional_image_link",
+  "price / sale_price, availability, brand, condition",
+  "gender, age_group, product_type, google category 2271",
+  "identifier_exists false (no GTIN)",
+  "Inactive products excluded",
 ] as const;
 
 const MATCH_PARAMS = [
@@ -267,6 +294,55 @@ export default function MarketingInsightsPanel({
             browsing product pages will still score lower.
           </p>
         </div>
+      </div>
+
+      <div className='rounded-lg border border-gray-100 bg-white px-2.5 py-2 flex flex-col gap-2'>
+        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+          <div>
+            <h4 className='text-[10px] font-bold uppercase tracking-wide text-gray-500'>
+              Meta product catalog (scheduled feed)
+            </h4>
+            <p className='text-[11px] text-gray-600 mt-0.5'>
+              Commerce Manager → Catalog → Data sources → Add items → Data feed →
+              Scheduled fetch. Variant SKUs in{" "}
+              <code className='text-[10px] bg-gray-100 px-1 rounded'>
+                /api/feed
+              </code>{" "}
+              match pixel{" "}
+              <code className='text-[10px] bg-gray-100 px-1 rounded'>
+                content_ids
+              </code>
+              .
+            </p>
+          </div>
+          <button
+            type='button'
+            onClick={() => copyFeedUrl("/api/feed")}
+            className='inline-flex items-center justify-center shrink-0 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-gray-800 hover:bg-gray-50'
+          >
+            Copy feed URL
+          </button>
+        </div>
+        <a
+          href={META_COMMERCE_MANAGER_URL}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='inline-flex items-center gap-1 text-[10px] font-semibold text-brand-700 hover:underline w-fit'
+        >
+          Open Commerce Manager
+          <ExternalLink className='h-3 w-3' />
+        </a>
+        <ul className='mt-1 space-y-0.5 border-t border-gray-100 pt-2'>
+          {CATALOG_FEED_FIELDS.map((line) => (
+            <li
+              key={line}
+              className='flex items-start gap-1.5 text-[10px] text-gray-600'
+            >
+              <CheckCircle2 className='h-3 w-3 text-emerald-600 mt-0.5 shrink-0' />
+              {line}
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className='rounded-lg border border-gray-100 bg-white px-2.5 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>

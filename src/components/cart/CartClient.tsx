@@ -21,6 +21,7 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { formatPrice, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CartItem, type NearEligibleCoupon } from "@/types";
+import { trackCartQuantityAdd } from "@/lib/metaPixel";
 import { useEligibleCouponsQuery } from "@/hooks/useEligibleCouponsQuery";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
 import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
@@ -123,6 +124,26 @@ export default function CartClient() {
     }
     return skus;
   }, [cart?.items]);
+
+  const changeItemQuantity = useCallback(
+    async (item: CartItem, nextQuantity: number) => {
+      const previousQuantity = item.quantity;
+      if (nextQuantity === previousQuantity) return;
+      try {
+        await updateItem(item.cartItemId, nextQuantity);
+        const synced = useCartStore
+          .getState()
+          .cart?.items.find((row) => row.cartItemId === item.cartItemId);
+        if (synced?.quantity === nextQuantity) {
+          trackCartQuantityAdd(item, previousQuantity, nextQuantity);
+        }
+      } catch {
+        /* store handles toast */
+      }
+    },
+    [updateItem],
+  );
+
   const hasUnavailableItems = unavailableItemSkus.size > 0;
 
   const handleSaveForLater = async (item: CartItem) => {
@@ -370,8 +391,8 @@ export default function CartClient() {
                                 type='button'
                                 onClick={() =>
                                   item.quantity > minQty ?
-                                    updateItem(
-                                      item.cartItemId,
+                                    void changeItemQuantity(
+                                      item,
                                       item.quantity - 1,
                                     )
                                   : item.quantity === 1 ?
@@ -394,7 +415,10 @@ export default function CartClient() {
                               <button
                                 type='button'
                                 onClick={() =>
-                                  updateItem(item.cartItemId, item.quantity + 1)
+                                  void changeItemQuantity(
+                                    item,
+                                    item.quantity + 1,
+                                  )
                                 }
                                 className='flex h-8 w-8 items-center justify-center text-navy-900 transition-colors hover:text-[#c5a059] disabled:opacity-40'
                                 disabled={

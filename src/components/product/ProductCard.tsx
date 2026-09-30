@@ -29,7 +29,7 @@ import { hasInStockVariant } from "@/lib/productStock";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { shopProductHref } from "@/lib/shopProductListing";
-import { trackAddToCart, trackAddToWishlist } from "@/lib/metaPixel";
+import { trackAddToCart, trackAddToWishlist, pickMetaCatalogVariant } from "@/lib/metaPixel";
 
 interface ProductCardProps {
   product: Product;
@@ -148,7 +148,12 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
       }
       const alreadySaved = isInWishlist(product._id);
       await toggleWishlist(product._id, product);
-      if (!alreadySaved) trackAddToWishlist(product);
+      if (!alreadySaved) {
+        trackAddToWishlist(
+          product,
+          pickMetaCatalogVariant(product.variants, displayColor),
+        );
+      }
     },
     [isAuthenticated, isInWishlist, product, router, toggleWishlist],
   );

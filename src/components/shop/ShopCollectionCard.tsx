@@ -20,7 +20,7 @@ import { hasInStockVariant } from "@/lib/productStock";
 import { resolveShopCardImage } from "@/lib/pdpImages";
 import { isInStockForColor, shopProductHref } from "@/lib/shopProductListing";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
-import { trackAddToWishlist } from "@/lib/metaPixel";
+import { trackAddToWishlist, pickMetaCatalogVariant } from "@/lib/metaPixel";
 
 interface ShopCollectionCardProps {
   product: Product;
@@ -102,7 +102,12 @@ function ShopCollectionCardInner({
       }
       const alreadySaved = isInWishlist(product._id);
       await toggleWishlist(product._id, product);
-      if (!alreadySaved) trackAddToWishlist(product);
+      if (!alreadySaved) {
+        trackAddToWishlist(
+          product,
+          pickMetaCatalogVariant(product.variants, displayColor),
+        );
+      }
     },
     [isAuthenticated, isInWishlist, product, router, toggleWishlist],
   );

@@ -30,3 +30,37 @@ export function getMetaCatalogItemId(
 export function getMetaItemGroupId(productId: string): string {
   return String(productId);
 }
+
+export type MetaCatalogVariantPick = MetaCatalogVariantRef & {
+  color?: string;
+  stock?: number;
+  price?: number;
+  size?: string;
+};
+
+/** Same variant resolution as quick-add / pixel events (SKU-aligned with catalog feed). */
+export function pickMetaCatalogVariant(
+  variants: MetaCatalogVariantPick[] | undefined,
+  displayColor?: string | null,
+): MetaCatalogVariantPick | undefined {
+  if (!variants?.length) return undefined;
+
+  const colorKey = displayColor?.trim().toLowerCase();
+  if (colorKey) {
+    const byColor = variants.find(
+      (v) =>
+        String(v.color || "")
+          .toLowerCase()
+          .trim() === colorKey &&
+        (Number(v.stock) || 0) > 0 &&
+        v.sku,
+    );
+    if (byColor) return byColor;
+  }
+
+  return (
+    variants.find((v) => (Number(v.stock) || 0) > 0 && v.sku) ||
+    variants.find((v) => v.sku) ||
+    variants[0]
+  );
+}

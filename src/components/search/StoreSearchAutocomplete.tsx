@@ -30,6 +30,7 @@ import {
   parseSearchQueryIntent,
   type ParsedSearchIntent,
 } from "@/lib/searchQueryParser";
+import { trackSearchDeduped } from "@/lib/metaPixel";
 import {
   buildStoreSearchHref,
   type StoreSearchScope,
@@ -287,6 +288,7 @@ function StoreSearchAutocomplete({
       const q = query.trim().slice(0, maxLen);
       if (!q.length) return;
       pushRecentSearch(q);
+      trackSearchDeduped(q);
       setOpen(false);
       onNavigate?.();
       router.push(buildStoreSearchHref(scope, q, maxLen));

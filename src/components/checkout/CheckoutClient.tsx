@@ -79,6 +79,7 @@ import {
 import {
   buildCheckoutMetaUserData,
   getMetaBrowserIdentifiers,
+  buildMetaCheckoutLineItems,
   trackPurchase,
   trackInitiateCheckout,
   trackAddPaymentInfo,
@@ -642,7 +643,12 @@ export default function CheckoutClient() {
         : buyNowItem ? [buyNowItem]
         : cart?.items || [];
 
-      trackInitiateCheckout(total, numItems, userData);
+      trackInitiateCheckout(
+        total,
+        numItems,
+        userData,
+        buildMetaCheckoutLineItems(trackingItems),
+      );
       if (trackingItems.length > 0) {
         trackGaBeginCheckout(total, trackingItems);
       }
@@ -1020,7 +1026,12 @@ export default function CheckoutClient() {
     });
     fireInitiateCheckoutTracking(checkoutUserData);
     if (!hasTrackedPaymentInfo.current) {
-      trackAddPaymentInfo(checkoutUserData);
+      const paymentLines = buildMetaCheckoutLineItems(
+        buyNowItem ? [buyNowItem]
+        : existingOrder ? existingOrder.items || []
+        : cart?.items || [],
+      );
+      trackAddPaymentInfo(checkoutUserData, total, paymentLines);
       hasTrackedPaymentInfo.current = true;
     }
     setCheckoutStep(2);
@@ -1031,6 +1042,10 @@ export default function CheckoutClient() {
     user,
     isDeliveryEstimateLoading,
     deliveryEstimate,
+    total,
+    buyNowItem,
+    existingOrder,
+    cart?.items,
   ]);
 
   const goToReviewStep = useCallback(async () => {

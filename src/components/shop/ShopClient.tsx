@@ -14,7 +14,7 @@ import ShopCollectionCardSkeleton from "@/components/shop/ShopCollectionCardSkel
 import ShopFilterBar, { ShopFilterPanel, ShopSortDropdown } from "@/components/shop/ShopFilterBar";
 import ShopCategoryPills from "@/components/shop/ShopCategoryPills";
 import ShopSearchIntentChips from "@/components/shop/ShopSearchIntentChips";
-import { trackSearch } from "@/lib/metaPixel";
+import { trackSearchDeduped } from "@/lib/metaPixel";
 import { trackGaSearch } from "@/lib/googleAnalytics";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { getNextNumericPage } from "@/lib/infiniteScrollPagination";
@@ -290,7 +290,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   const lastTrackedSearch = useRef("");
   useEffect(() => {
     if (filters.search && filters.search !== lastTrackedSearch.current) {
-      trackSearch(filters.search);
+      trackSearchDeduped(filters.search);
       trackGaSearch(filters.search);
       lastTrackedSearch.current = filters.search;
     }

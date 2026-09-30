@@ -389,9 +389,12 @@ export default function PremiumProductClient({ product, related }: Props) {
     )
       return;
     hasTrackedViewContent.current = true;
-    trackViewContent(cartProduct, selectedVariant);
+    const sell =
+      getSelectedVariantPriceDisplay(cartProduct, selectedVariant)?.sell ??
+      cartProduct.price;
+    trackViewContent(cartProduct, selectedVariant, sell);
     trackGaViewItem(cartProduct);
-  }, [isLiveProduct, cartProduct, product._id, selectedVariant?.sku]);
+  }, [isLiveProduct, cartProduct, product._id, selectedVariant]);
 
   const priceDisplay = useMemo(() => {
     if (cartProduct && selectedVariant) {

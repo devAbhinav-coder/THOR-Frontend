@@ -571,9 +571,12 @@ export default function ProductDetailClient({
     if (!product?._id || !selectedVariant || hasTrackedViewContent.current)
       return;
     hasTrackedViewContent.current = true;
-    trackViewContent(product, selectedVariant);
+    const sell =
+      getSelectedVariantPriceDisplay(product, selectedVariant)?.sell ??
+      product.price;
+    trackViewContent(product, selectedVariant, sell);
     trackGaViewItem(product);
-  }, [product?._id, selectedVariant?.sku]);
+  }, [product, selectedVariant?.sku]);
 
   /* Derived */
   const inWishlist = useWishlistUiState(product?._id ?? "");

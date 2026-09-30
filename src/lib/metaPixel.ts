@@ -1,7 +1,8 @@
-import { Product } from "@/types";
+import { Product, type CartItem } from "@/types";
 import {
   getMetaCatalogItemId,
   type MetaCatalogVariantRef,
+  pickMetaCatalogVariant,
 } from "@/lib/metaCatalogId";
 import { env } from "@/lib/env";
 import {
@@ -288,8 +289,15 @@ export const trackPageView = (userData?: MetaUserDataInput) => {
 export const trackViewContent = (
   product: Product,
   variant?: MetaCatalogVariantRef,
+  unitPrice?: number,
 ) => {
-  const payload = metaProductPayload(product, variant, 1, product.price);
+  const price =
+    unitPrice ??
+    (variant && typeof (variant as { price?: number }).price === "number" ?
+      Number((variant as { price?: number }).price)
+    : undefined) ??
+    product.price;
+  const payload = metaProductPayload(product, variant, 1, price);
   trackMatchedEvent("ViewContent", payload, `vc_${payload.content_ids[0]}`);
 };
 
@@ -340,6 +348,7 @@ export const trackPurchase = (order: any) => {
     }) || [];
 
   const contentIds = contents.map((c: { id: string }) => c.id);
+  const orderId = String(order._id || order.id || "");
   const customData = {
     content_ids: contentIds,
     content_type: "product",
@@ -347,6 +356,7 @@ export const trackPurchase = (order: any) => {
     currency: order.currency || "INR",
     num_items: order.items?.length || 1,
     contents,
+    ...(orderId ? { order_id: orderId } : {}),
   };
 
   window.fbq("track", "Purchase", customData, { eventID: eventId });
@@ -356,17 +366,31 @@ export const trackInitiateCheckout = (
   cartOrItemValue: number = 0,
   numItems: number = 1,
   userData?: MetaUserDataInput,
+  lineItems?: Array<{
+    productId: string;
+    variant?: MetaCatalogVariantRef;
+    quantity: number;
+    price: number;
+  }>,
 ) => {
-  trackMatchedEvent(
-    "InitiateCheckout",
-    {
-      value: cartOrItemValue,
-      currency: "INR",
-      num_items: numItems,
-    },
-    "ic",
-    userData,
-  );
+  const customData: MetaEventData = {
+    value: cartOrItemValue,
+    currency: "INR",
+    num_items: numItems,
+  };
+
+  if (lineItems?.length) {
+    const contents = lineItems.map((line) => ({
+      id: getMetaCatalogItemId(line.productId, line.variant),
+      quantity: line.quantity,
+      item_price: line.price,
+    }));
+    customData.contents = contents;
+    customData.content_ids = contents.map((c) => c.id);
+    customData.content_type = "product";
+  }
+
+  trackMatchedEvent("InitiateCheckout", customData, "ic", userData);
 };
 
 export const trackAddToWishlist = (
@@ -387,8 +411,76 @@ export const trackSearch = (searchQuery: string) => {
   );
 };
 
-export const trackAddPaymentInfo = (userData?: MetaUserDataInput) => {
-  trackMatchedEvent("AddPaymentInfo", {}, "api", userData);
+const searchTrackDedupeMs = 3000;
+let lastTrackedSearchQuery = "";
+let lastTrackedSearchAt = 0;
+
+/** Avoid duplicate Search when header nav and shop URL sync both fire. */
+export function trackSearchDeduped(searchQuery: string): void {
+  const q = searchQuery.trim().slice(0, 300);
+  if (!q) return;
+  const now = Date.now();
+  if (q === lastTrackedSearchQuery && now - lastTrackedSearchAt < searchTrackDedupeMs) {
+    return;
+  }
+  lastTrackedSearchQuery = q;
+  lastTrackedSearchAt = now;
+  trackSearch(q);
+}
+
+/** Cart quantity increase — same SKU payload as PDP AddToCart. */
+export function trackCartQuantityAdd(
+  item: Pick<
+    CartItem,
+    "product" | "productName" | "price" | "variant" | "quantity"
+  >,
+  previousQuantity: number,
+  nextQuantity: number,
+): void {
+  const delta = nextQuantity - previousQuantity;
+  if (delta <= 0) return;
+  trackAddToCart(
+    {
+      _id: item.product,
+      name: item.productName,
+      price: item.price,
+    } as Product,
+    delta,
+    item.price,
+    item.variant,
+  );
+}
+
+export const trackAddPaymentInfo = (
+  userData?: MetaUserDataInput,
+  checkoutValue?: number,
+  lineItems?: Array<{
+    productId: string;
+    variant?: MetaCatalogVariantRef;
+    quantity: number;
+    price: number;
+  }>,
+) => {
+  const customData: MetaEventData = {};
+  if (checkoutValue != null && checkoutValue > 0) {
+    customData.value = checkoutValue;
+    customData.currency = "INR";
+  }
+  if (lineItems?.length) {
+    const contents = lineItems.map((line) => ({
+      id: getMetaCatalogItemId(line.productId, line.variant),
+      quantity: line.quantity,
+      item_price: line.price,
+    }));
+    customData.contents = contents;
+    customData.content_ids = contents.map((c) => c.id);
+    customData.content_type = "product";
+    customData.num_items = lineItems.reduce(
+      (sum, line) => sum + line.quantity,
+      0,
+    );
+  }
+  trackMatchedEvent("AddPaymentInfo", customData, "api", userData);
 };
 
 export const trackCompleteRegistration = (userData?: MetaUserDataInput) => {
@@ -403,6 +495,47 @@ export const trackCompleteRegistration = (userData?: MetaUserDataInput) => {
 export const trackContact = (userData?: MetaUserDataInput) => {
   trackMatchedEvent("Contact", {}, "contact", userData);
 };
+
+/** Build InitiateCheckout line items from cart / buy-now / resume-order rows. */
+export function buildMetaCheckoutLineItems(
+  items: Array<{
+    product?: string | { _id?: string };
+    variant?: MetaCatalogVariantRef & { sku?: string };
+    quantity?: number;
+    price?: number;
+  }>,
+): Array<{
+  productId: string;
+  variant?: MetaCatalogVariantRef;
+  quantity: number;
+  price: number;
+}> {
+  const lines: Array<{
+    productId: string;
+    variant?: MetaCatalogVariantRef;
+    quantity: number;
+    price: number;
+  }> = [];
+
+  for (const item of items) {
+    const productId =
+      typeof item.product === "object" && item.product?._id ?
+        String(item.product._id)
+      : typeof item.product === "string" ? item.product
+      : "";
+    if (!productId) continue;
+    lines.push({
+      productId,
+      variant: item.variant,
+      quantity: Math.max(1, item.quantity || 1),
+      price: Number(item.price) || 0,
+    });
+  }
+
+  return lines;
+}
+
+export { pickMetaCatalogVariant };
 
 /** Build user data from checkout address form values. */
 export function buildCheckoutMetaUserData(input: {
