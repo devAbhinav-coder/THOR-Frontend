@@ -1682,6 +1682,18 @@ export const inventoryApi = {
       ),
       schemas.successMessageData,
     ),
+  bulkAdjustSellingPrice: (payload: {
+    category: string;
+    subcategory?: string;
+    percentChange: number;
+    dryRun?: boolean;
+    note?: string;
+  }) =>
+    unwrapAxios(
+      "inventory.bulkAdjustSellingPrice",
+      api.post("/admin/inventory/bulk-selling-price", payload),
+      schemas.adminBulkSellingPriceResult,
+    ),
   getLedger: (params?: Record<string, string | number>) =>
     unwrapAxios(
       "inventory.ledger",

@@ -210,6 +210,7 @@ export interface CartPromotion {
   label: string;
   appliedDiscount: number;
   badgeText?: string | null;
+  terms?: string[];
 }
 
 export interface ProductPromotion {
@@ -666,6 +667,7 @@ export interface Promotion {
   buyQuantity?: number;
   getQuantity?: number;
   getDiscountPercent?: number;
+  getItemFixedPrice?: number | null;
   discountValue?: number;
   maxDiscountAmount?: number;
   minOrderAmount?: number;
@@ -695,7 +697,9 @@ export interface PublicPromotion {
   buyQuantity: number;
   getQuantity: number;
   getDiscountPercent: number;
+  getItemFixedPrice?: number | null;
   discountValue?: number | null;
+  maxDiscountAmount?: number | null;
   minOrderAmount?: number;
   scopeType: PromoScopeType;
   label: string;

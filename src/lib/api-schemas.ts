@@ -1208,6 +1208,29 @@ export const adminInventoryValuation = z
   })
   .passthrough();
 
+export const adminBulkSellingPriceResult = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z.object({
+      result: z.object({
+        dryRun: z.boolean(),
+        productCount: z.number(),
+        skuCount: z.number(),
+        samples: z.array(
+          z.object({
+            productId: z.string(),
+            productName: z.string(),
+            sku: z.string(),
+            oldPrice: z.number(),
+            newPrice: z.number(),
+          }),
+        ),
+      }),
+    }),
+  })
+  .passthrough();
+
 export const adminPurchaseInvoiceList = z
   .object({
     status: z.string(),

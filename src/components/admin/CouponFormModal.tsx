@@ -419,7 +419,7 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
             />
             {formData.discountType === "percentage" && (
               <Input
-                label='Max discount (₹)'
+                label='Max discount (₹ cap)'
                 type='number'
                 value={formData.maxDiscountAmount}
                 onChange={(e) =>
@@ -428,7 +428,8 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
                     maxDiscountAmount: e.target.value,
                   })
                 }
-                placeholder='No limit'
+                placeholder='e.g. 500'
+                hint='Shoppers see “50% off up to ₹500” style'
               />
             )}
             {formData.discountType === "fixed" ?

@@ -47,6 +47,7 @@ import {
 } from "@/types";
 import { useEligibleCouponsQuery } from "@/hooks/useEligibleCouponsQuery";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
+import { CartPromotionBanner } from "@/components/cart/CartPromotionBanner";
 import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
 import type { CheckoutDisplayItem } from "@/types/checkoutDisplay";
 import {
@@ -1800,18 +1801,10 @@ export default function CheckoutClient() {
               ) ?
                 <div className='rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/80 px-4 py-3 shadow-sm'>
                   {activePromotion ?
-                    <>
-                      <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'>
-                        Auto offer applied
-                      </p>
-                      <p className='mt-1 text-sm font-semibold text-navy-900'>
-                        {activePromotion.label}
-                      </p>
-                      <p className='mt-0.5 text-xs text-gray-600'>
-                        You save {formatPrice(activePromotion.appliedDiscount)}{" "}
-                        on this order
-                      </p>
-                    </>
+                    <CartPromotionBanner
+                      promotion={activePromotion}
+                      variant='light'
+                    />
                   : activePromotionHint ?
                     <>
                       <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a6d3b]'>
@@ -2318,15 +2311,10 @@ export default function CheckoutClient() {
                 >
                   {!existingOrder && activePromotion ?
                     <div className='mb-5 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3'>
-                      <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800'>
-                        Offer applied
-                      </p>
-                      <p className='mt-1 text-sm font-semibold text-emerald-900'>
-                        {activePromotion.label}
-                      </p>
-                      <p className='mt-0.5 text-xs text-emerald-800/80'>
-                        You save {formatPrice(activePromotion.appliedDiscount)}
-                      </p>
+                      <CartPromotionBanner
+                        promotion={activePromotion}
+                        variant='light'
+                      />
                     </div>
                   : !existingOrder && activePromotionHint ?
                     <div className='mb-5 rounded-xl border border-[#c5a059]/30 bg-[#fff8eb]/70 px-4 py-3'>

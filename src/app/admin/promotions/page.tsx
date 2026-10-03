@@ -14,6 +14,7 @@ import {
   getPromotionLifecycle,
   promotionShowsOnPdp,
 } from "@/lib/promotionLifecycle";
+import { formatPromotionOfferLabel } from "@/lib/promotionOfferText";
 
 function lifecycleBadge(p: Promotion) {
   const lifecycle = getPromotionLifecycle(p);
@@ -49,16 +50,7 @@ function lifecycleBadge(p: Promotion) {
 }
 
 function offerSummary(p: Promotion): string {
-  if (p.promotionType === "bogo") {
-    const pct = p.getDiscountPercent ?? 100;
-    if (pct >= 100)
-      return `Buy ${p.buyQuantity ?? 1} Get ${p.getQuantity ?? 1} Free`;
-    return `Buy ${p.buyQuantity ?? 1} Get ${p.getQuantity ?? 1} @ ${pct}% off`;
-  }
-  if (p.promotionType === "percentage") {
-    return `Buy ${p.buyQuantity ?? 1}+ · ${p.discountValue}% off`;
-  }
-  return `Buy ${p.buyQuantity ?? 1}+ · ₹${p.discountValue} off`;
+  return formatPromotionOfferLabel(p);
 }
 
 export default function AdminPromotionsPage() {

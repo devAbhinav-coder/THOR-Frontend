@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Pencil,
+  Percent,
   X as XIcon,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -51,6 +52,7 @@ import {
   variantCatalogSellPrice,
   variantPriceOverridesBase,
 } from "@/lib/productPricing";
+import BulkSellingPriceModal from "./BulkSellingPriceModal";
 
 interface Variant {
   sku: string;
@@ -715,6 +717,7 @@ export default function InventoryStockTab() {
     p: InventoryProduct;
     v: Variant;
   } | null>(null);
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
 
   const years = Array.from(
     { length: 5 },
@@ -989,6 +992,17 @@ export default function InventoryStockTab() {
             variant='outline'
             size='sm'
             className='rounded-xl h-9 gap-1.5 text-xs shrink-0'
+            onClick={() => setBulkPriceOpen(true)}
+            title='Bulk % change on sell prices by category'
+          >
+            <Percent className='h-3.5 w-3.5' />
+            Bulk price
+          </Button>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='rounded-xl h-9 gap-1.5 text-xs shrink-0'
             disabled={exporting}
             onClick={handleExport}
           >
@@ -1074,6 +1088,14 @@ export default function InventoryStockTab() {
             onSaved={invalidateStock}
           />
         )}
+
+        <BulkSellingPriceModal
+          open={bulkPriceOpen}
+          onClose={() => setBulkPriceOpen(false)}
+          onApplied={invalidateStock}
+          initialCategory={categoryFilter}
+          initialSubcategory={subcategoryFilter}
+        />
 
         {totalPages > 1 && (
           <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100'>

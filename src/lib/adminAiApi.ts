@@ -127,7 +127,9 @@ export const adminAiApi = {
     buyQuantity?: number;
     getQuantity?: number;
     getDiscountPercent?: number;
+    getItemFixedPrice?: number;
     discountValue?: number;
+    maxDiscountAmount?: number;
     minOrderAmount?: number;
     scopeType?: string;
     adminNotes?: string;

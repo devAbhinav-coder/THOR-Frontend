@@ -38,6 +38,11 @@ import {
   AdminOfferInfoBox,
 } from "@/components/admin/shared/AdminOfferFormUi";
 import PromoScopePicker from "@/components/admin/shared/PromoScopePicker";
+import {
+  formatPromotionOfferLabel,
+  inferBogoRewardMode,
+  type BogoRewardMode,
+} from "@/lib/promotionOfferText";
 
 interface Props {
   promotion: Promotion | null;
@@ -47,6 +52,8 @@ interface Props {
 
 type PresetKey =
   | "b1g1"
+  | "b1g1_rs1"
+  | "b1g1_50"
   | "b2g1"
   | "b2g2"
   | "b5g2"
@@ -54,13 +61,19 @@ type PresetKey =
   | "buy1_100"
   | "buy5_500"
   | "pct10"
+  | "pct50_cap500"
+  | "pct50_cap700"
   | "custom";
 
 const PRESETS: Array<{ key: PresetKey; label: string; type: PromotionType }> = [
   { key: "b1g1", label: "Buy 1 Get 1 Free", type: "bogo" },
+  { key: "b1g1_rs1", label: "Buy 1 Get 1 at ₹1", type: "bogo" },
+  { key: "b1g1_50", label: "Buy 1 Get 1 at 50% off", type: "bogo" },
   { key: "b2g1", label: "Buy 2 Get 1 Free", type: "bogo" },
   { key: "b2g2", label: "Buy 2 Get 2 Free", type: "bogo" },
   { key: "b5g2", label: "Buy 5 Get 2 Free", type: "bogo" },
+  { key: "pct50_cap500", label: "50% off up to ₹500", type: "percentage" },
+  { key: "pct50_cap700", label: "50% off up to ₹700", type: "percentage" },
   { key: "buy2_200", label: "Buy 2 · ₹200 off", type: "flat" },
   { key: "buy1_100", label: "Buy 1 · ₹100 off", type: "flat" },
   { key: "buy5_500", label: "Buy 5 · ₹500 off", type: "flat" },
@@ -76,6 +89,26 @@ function applyPreset(key: PresetKey): Partial<ReturnType<typeof defaultForm>> {
         buyQuantity: 1,
         getQuantity: 1,
         getDiscountPercent: 100,
+        bogoRewardMode: "free" as BogoRewardMode,
+        getItemFixedPrice: "",
+      };
+    case "b1g1_rs1":
+      return {
+        promotionType: "bogo",
+        buyQuantity: 1,
+        getQuantity: 1,
+        getDiscountPercent: 100,
+        bogoRewardMode: "fixed" as BogoRewardMode,
+        getItemFixedPrice: "1",
+      };
+    case "b1g1_50":
+      return {
+        promotionType: "bogo",
+        buyQuantity: 1,
+        getQuantity: 1,
+        getDiscountPercent: 50,
+        bogoRewardMode: "percent" as BogoRewardMode,
+        getItemFixedPrice: "",
       };
     case "b2g1":
       return {
@@ -83,6 +116,8 @@ function applyPreset(key: PresetKey): Partial<ReturnType<typeof defaultForm>> {
         buyQuantity: 2,
         getQuantity: 1,
         getDiscountPercent: 100,
+        bogoRewardMode: "free" as BogoRewardMode,
+        getItemFixedPrice: "",
       };
     case "b2g2":
       return {
@@ -90,6 +125,8 @@ function applyPreset(key: PresetKey): Partial<ReturnType<typeof defaultForm>> {
         buyQuantity: 2,
         getQuantity: 2,
         getDiscountPercent: 100,
+        bogoRewardMode: "free" as BogoRewardMode,
+        getItemFixedPrice: "",
       };
     case "b5g2":
       return {
@@ -97,6 +134,8 @@ function applyPreset(key: PresetKey): Partial<ReturnType<typeof defaultForm>> {
         buyQuantity: 5,
         getQuantity: 2,
         getDiscountPercent: 100,
+        bogoRewardMode: "free" as BogoRewardMode,
+        getItemFixedPrice: "",
       };
     case "buy2_200":
       return { promotionType: "flat", buyQuantity: 2, discountValue: "200" };
@@ -109,6 +148,21 @@ function applyPreset(key: PresetKey): Partial<ReturnType<typeof defaultForm>> {
         promotionType: "percentage",
         buyQuantity: 3,
         discountValue: "10",
+        maxDiscountAmount: "",
+      };
+    case "pct50_cap500":
+      return {
+        promotionType: "percentage",
+        buyQuantity: 1,
+        discountValue: "50",
+        maxDiscountAmount: "500",
+      };
+    case "pct50_cap700":
+      return {
+        promotionType: "percentage",
+        buyQuantity: 1,
+        discountValue: "50",
+        maxDiscountAmount: "700",
       };
     default:
       return {};
@@ -126,6 +180,16 @@ function defaultForm(promotion: Promotion | null) {
     buyQuantity: promotion?.buyQuantity ?? 1,
     getQuantity: promotion?.getQuantity ?? 1,
     getDiscountPercent: promotion?.getDiscountPercent ?? 100,
+    bogoRewardMode: promotion ?
+      inferBogoRewardMode({
+        getItemFixedPrice: promotion.getItemFixedPrice,
+        getDiscountPercent: promotion.getDiscountPercent,
+      })
+    : ("free" as BogoRewardMode),
+    getItemFixedPrice:
+      promotion?.getItemFixedPrice != null ?
+        String(promotion.getItemFixedPrice)
+      : "",
     discountValue: promotion?.discountValue?.toString() || "",
     maxDiscountAmount: promotion?.maxDiscountAmount?.toString() || "",
     minOrderAmount: promotion?.minOrderAmount?.toString() || "",
@@ -280,6 +344,16 @@ export default function PromotionFormModal({
       toast.error("Please enter a valid discount value");
       return;
     }
+    if (
+      formData.promotionType === "bogo" &&
+      formData.bogoRewardMode === "fixed" &&
+      (formData.getItemFixedPrice === "" ||
+        Number(formData.getItemFixedPrice) < 0 ||
+        !Number.isFinite(Number(formData.getItemFixedPrice)))
+    ) {
+      toast.error("Set a valid fixed price for the “get” item (e.g. 1 for ₹1)");
+      return;
+    }
     const scopeErr = scopeValidationError(formData);
     if (scopeErr) {
       toast.error(scopeErr);
@@ -325,11 +399,22 @@ export default function PromotionFormModal({
 
       if (formData.promotionType === "bogo") {
         fd.append("getQuantity", String(Number(formData.getQuantity) || 1));
-        fd.append(
-          "getDiscountPercent",
-          String(Number(formData.getDiscountPercent) || 100),
-        );
+        if (formData.bogoRewardMode === "fixed") {
+          fd.append(
+            "getItemFixedPrice",
+            String(Number(formData.getItemFixedPrice)),
+          );
+          fd.append("getDiscountPercent", "100");
+        } else {
+          fd.append("clearGetItemFixedPrice", "true");
+          const pct =
+            formData.bogoRewardMode === "free" ?
+              100
+            : Number(formData.getDiscountPercent) || 0;
+          fd.append("getDiscountPercent", String(pct));
+        }
       } else {
+        fd.append("clearGetItemFixedPrice", "true");
         fd.append("discountValue", String(Number(formData.discountValue)));
         if (
           formData.promotionType === "percentage" &&
@@ -542,6 +627,30 @@ export default function PromotionFormModal({
             />
             {formData.promotionType === "bogo" ?
               <>
+                <div className='col-span-2 sm:col-span-3'>
+                  <AdminOfferField label='“Get” item reward'>
+                    <AdminOfferSelect
+                      value={formData.bogoRewardMode}
+                      onChange={(e) => {
+                        const mode = e.target.value as BogoRewardMode;
+                        setFormData({
+                          ...formData,
+                          bogoRewardMode: mode,
+                          preset: "custom",
+                          getDiscountPercent:
+                            mode === "free" ? 100 : formData.getDiscountPercent,
+                          getItemFixedPrice:
+                            mode === "fixed" ? formData.getItemFixedPrice || "1"
+                            : "",
+                        });
+                      }}
+                    >
+                      <option value='free'>Free (100% off cheapest get items)</option>
+                      <option value='percent'>Partial % off get items</option>
+                      <option value='fixed'>Fixed ₹ price per get item</option>
+                    </AdminOfferSelect>
+                  </AdminOfferField>
+                </div>
                 <Input
                   label='Get qty *'
                   type='number'
@@ -555,20 +664,38 @@ export default function PromotionFormModal({
                   }
                   min={1}
                 />
-                <Input
-                  label='Get item discount %'
-                  type='number'
-                  value={formData.getDiscountPercent}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      getDiscountPercent: parseInt(e.target.value) || 100,
-                      preset: "custom",
-                    })
-                  }
-                  min={0}
-                  max={100}
-                />
+                {formData.bogoRewardMode === "fixed" ?
+                  <Input
+                    label='Customer pays ₹ (per get item) *'
+                    type='number'
+                    value={formData.getItemFixedPrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        getItemFixedPrice: e.target.value,
+                        preset: "custom",
+                      })
+                    }
+                    min={0}
+                    hint='e.g. 1 → “Buy 1 Get 1 at ₹1”'
+                  />
+                : formData.bogoRewardMode === "percent" ?
+                  <Input
+                    label='Get item discount % *'
+                    type='number'
+                    value={formData.getDiscountPercent}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        getDiscountPercent: parseInt(e.target.value) || 0,
+                        preset: "custom",
+                      })
+                    }
+                    min={1}
+                    max={99}
+                    hint='50 → second item half price when Buy 1 Get 1'
+                  />
+                : null}
               </>
             : <>
                 <Input
@@ -590,7 +717,7 @@ export default function PromotionFormModal({
                 />
                 {formData.promotionType === "percentage" ?
                   <Input
-                    label='Max discount ₹'
+                    label='Max discount ₹ (cap)'
                     type='number'
                     value={formData.maxDiscountAmount}
                     onChange={(e) =>
@@ -599,6 +726,7 @@ export default function PromotionFormModal({
                         maxDiscountAmount: e.target.value,
                       })
                     }
+                    hint='e.g. 500 → “50% off up to ₹500”'
                   />
                 : null}
               </>
@@ -611,6 +739,37 @@ export default function PromotionFormModal({
                 setFormData({ ...formData, minOrderAmount: e.target.value })
               }
             />
+          </div>
+          <div className='mt-3'>
+          <AdminOfferInfoBox tone='emerald'>
+            <p className='text-xs font-semibold uppercase tracking-wide text-emerald-900/80'>
+              Shoppers will see
+            </p>
+            <p className='mt-1 text-sm font-semibold text-emerald-950'>
+              {formatPromotionOfferLabel({
+                promotionType: formData.promotionType,
+                buyQuantity: formData.buyQuantity,
+                getQuantity: formData.getQuantity,
+                getDiscountPercent: formData.getDiscountPercent,
+                getItemFixedPrice:
+                  formData.bogoRewardMode === "fixed" &&
+                  formData.getItemFixedPrice !== "" ?
+                    Number(formData.getItemFixedPrice)
+                  : null,
+                discountValue:
+                  formData.discountValue ?
+                    Number(formData.discountValue)
+                  : undefined,
+                maxDiscountAmount:
+                  formData.maxDiscountAmount ?
+                    Number(formData.maxDiscountAmount)
+                  : undefined,
+              })}
+            </p>
+            <p className='mt-1 text-xs text-emerald-900/70'>
+              Cart & checkout me yahi line dikhegi (jab display title khali ho).
+            </p>
+          </AdminOfferInfoBox>
           </div>
         </AdminOfferSection>
 
@@ -699,7 +858,10 @@ export default function PromotionFormModal({
                 buyQuantity={formData.buyQuantity}
                 getQuantity={formData.getQuantity}
                 getDiscountPercent={formData.getDiscountPercent}
+                getItemFixedPrice={formData.getItemFixedPrice}
+                bogoRewardMode={formData.bogoRewardMode}
                 discountValue={formData.discountValue}
+                maxDiscountAmount={formData.maxDiscountAmount}
                 minOrderAmount={formData.minOrderAmount}
                 scopeType={formData.scopeType}
                 onTerms={(text) =>

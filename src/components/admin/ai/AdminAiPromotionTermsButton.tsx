@@ -16,8 +16,11 @@ type Props = {
   buyQuantity?: number;
   getQuantity?: number;
   getDiscountPercent?: number;
+  getItemFixedPrice?: string;
   discountValue?: string;
+  maxDiscountAmount?: string;
   minOrderAmount?: string;
+  bogoRewardMode?: "free" | "percent" | "fixed";
   scopeType: PromoScopeType;
   onTerms: (text: string) => void;
 };
@@ -30,8 +33,11 @@ export function AdminAiPromotionTermsButton({
   buyQuantity,
   getQuantity,
   getDiscountPercent,
+  getItemFixedPrice,
   discountValue,
+  maxDiscountAmount,
   minOrderAmount,
+  bogoRewardMode,
   scopeType,
   onTerms,
 }: Props) {
@@ -62,7 +68,13 @@ export function AdminAiPromotionTermsButton({
             buyQuantity,
             getQuantity,
             getDiscountPercent,
+            getItemFixedPrice:
+              bogoRewardMode === "fixed" && getItemFixedPrice ?
+                Number(getItemFixedPrice)
+              : undefined,
             discountValue: discountValue ? Number(discountValue) : undefined,
+            maxDiscountAmount:
+              maxDiscountAmount ? Number(maxDiscountAmount) : undefined,
             minOrderAmount: minOrderAmount ? Number(minOrderAmount) : undefined,
             scopeType,
           });

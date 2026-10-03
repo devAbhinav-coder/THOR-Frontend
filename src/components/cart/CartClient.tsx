@@ -24,6 +24,7 @@ import { CartItem, type NearEligibleCoupon } from "@/types";
 import { trackCartQuantityAdd } from "@/lib/metaPixel";
 import { useEligibleCouponsQuery } from "@/hooks/useEligibleCouponsQuery";
 import { CouponAppliedBanner } from "@/components/coupons/CouponAppliedBanner";
+import { CartPromotionBanner } from "@/components/cart/CartPromotionBanner";
 import { CouponEligibleOffersList } from "@/components/coupons/CouponEligibleOffersList";
 import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import { clearBuyNowSession } from "@/lib/buyNowCheckoutSession";
@@ -515,15 +516,10 @@ export default function CartClient() {
 
                 {cart.promotion ?
                   <div className='mb-6 rounded-lg border border-[#c5a059]/40 bg-[#c5a059]/10 px-4 py-3'>
-                    <p className='text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffdea5]/90'>
-                      Auto offer applied
-                    </p>
-                    <p className='mt-1 text-sm font-medium text-white'>
-                      {cart.promotion.label}
-                    </p>
-                    <p className='mt-0.5 text-xs text-[#e8d5a3]/90'>
-                      You save {formatPrice(cart.promotion.appliedDiscount)}
-                    </p>
+                    <CartPromotionBanner
+                      promotion={cart.promotion}
+                      variant='heritage'
+                    />
                   </div>
                 : cart.promotionHint ?
                   <div className='mb-6 rounded-lg border border-[#c5a059]/30 bg-white/5 px-4 py-3'>
