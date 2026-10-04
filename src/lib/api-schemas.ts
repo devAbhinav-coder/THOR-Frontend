@@ -233,6 +233,7 @@ export const storeVisitRecorded = z.object({
   data: z.object({
     recorded: z.boolean(),
     visitDate: z.string(),
+    kind: z.enum(["pageview"]).optional(),
   }),
 });
 

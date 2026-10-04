@@ -964,14 +964,44 @@ export interface DashboardAnalytics {
     byDevice: { device: string; visits: number }[];
     byLandingPage: { page: string; visits: number }[];
     byCampaign?: { campaign: string; visits: number }[];
-    recent: {
+    byUtmMedium?: { medium: string; visits: number }[];
+    byIndiaRegion?: { label: string; visits: number }[];
+    topLoggedInBrowsers?: {
+      userId: string;
+      pageViews: number;
+      name?: string;
+      email?: string;
+    }[];
+    visitsByHour?: { hour: number; visits: number }[];
+    visitHeatmap?: { dayIndex: number; hour: number; visits: number }[];
+    topPagesByViews?: { path: string; rawPath: string; views: number }[];
+    recentPageViews?: {
+      path: string;
       country: string;
       region: string;
       source: string;
       device: string;
+      userLabel: string;
+      campaign: string;
+      medium: string;
+      at: string | Date;
+    }[];
+    recent: {
+      country: string;
+      region: string;
+      /** Referrer classification (Direct, Google, Instagram…) */
+      source: string;
+      device: string;
       page: string;
+      landingPath?: string;
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      utmContent?: string;
+      hasFbclid?: boolean;
       campaign?: string;
       medium?: string;
+      marketingChannel?: string | null;
       at: string;
     }[];
   };
@@ -981,9 +1011,34 @@ export interface DashboardAnalytics {
       capiConfigured: boolean;
     };
     attributedOrders?: number;
+    /** Paid orders with Meta click id on checkout (30d). */
     fbclidOrders?: number;
+    /** Sessions that landed with ?fbclid= (30d). */
+    fbclidVisits?: number;
+    /** Sessions with UTM or fbclid (30d). */
+    utmTaggedVisits?: number;
     ordersByCampaign: { campaign: string; orders: number; revenue: number }[];
     ordersBySource?: { source: string; orders: number; revenue: number }[];
+    marketingChannelBreakdown?: {
+      key: string;
+      title: string;
+      description: string;
+      visits: number;
+      orders: number;
+      revenue: number;
+    }[];
+    adAttributionRows?: {
+      source: string;
+      medium: string;
+      campaign: string;
+      term: string;
+      content: string;
+      visits: number;
+      metaClicks: number;
+      orders: number;
+      revenue: number;
+      visitToOrderPercent: number;
+    }[];
   };
   paymentMethodMix?: { _id: string; revenue: number; count: number }[];
   ordersByHour?: { hour: number; orders: number; revenue: number }[];
@@ -1002,13 +1057,64 @@ export interface DashboardAnalytics {
     refunds: number;
     count: number;
   }[];
+  commerceInsights?: {
+    ordersByIndiaState: { state: string; orders: number; revenue: number }[];
+    trafficFunnel: {
+      periodDays: number;
+      sessions: number;
+      paidOrders: number;
+      sessionToPaidPercent: number;
+      productPageViewsLifetime: number;
+      catalogUnitsSoldLifetime: number;
+      pdpViewsToPaidPercent: number;
+    };
+  };
+  contentInsights?: {
+    blog: {
+      summary: {
+        totalPosts: number;
+        published: number;
+        totalViews: number;
+        totalShopClicks: number;
+        clickThroughRate: number;
+      };
+      topPosts: {
+        title: string;
+        slug: string;
+        views: number;
+        shopClicks: number;
+        clickThroughPercent: number;
+      }[];
+    };
+  };
   offerAttributionMtd?: {
     sales: { discountTotal: number; ordersCount: number };
-    promotions: { discountTotal: number; ordersCount: number };
-    coupons: { discountTotal: number; ordersCount: number };
+    promotions: {
+      discountTotal: number;
+      ordersCount: number;
+      top?: {
+        id: string;
+        name: string;
+        discountTotal: number;
+        ordersCount: number;
+      }[];
+    };
+    coupons: {
+      discountTotal: number;
+      ordersCount: number;
+      top?: {
+        id: string;
+        code: string;
+        discountTotal: number;
+        ordersCount: number;
+      }[];
+    };
     popup: {
       impressions: number;
+      dismisses?: number;
       ctaClicks: number;
+      couponCopies?: number;
+      byKind?: { kind: string; impressions: number; ctaClicks: number }[];
       ordersAfterPopup: number;
       revenueAfterPopup: number;
     };

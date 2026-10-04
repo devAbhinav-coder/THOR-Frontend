@@ -1020,8 +1020,10 @@ export const storefrontApi = {
   },
   recordVisit: (data: {
     sessionKey: string;
+    kind?: "session" | "pageview";
     path?: string;
     referrer?: string;
+    userId?: string;
     marketingAttribution?: {
       utmSource?: string;
       utmMedium?: string;

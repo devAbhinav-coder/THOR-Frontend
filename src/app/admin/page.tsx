@@ -40,6 +40,7 @@ import {
   BusinessPulseRow,
   InventorySnapshotPanel,
   MarketingPulseStrip,
+  AdminTrafficPulseStrip,
   StockAlertsPanel,
   type AdminQuickLink,
   type InventoryValuationOverall,
@@ -305,6 +306,12 @@ export default function AdminDashboardPage() {
               <div className='hover:-translate-y-1 transition-transform duration-300'>
                 <BusinessPulseRow overview={overview} />
               </div>
+
+              <AdminTrafficPulseStrip
+                overview={overview}
+                marketing={analytics.marketingInsights}
+                commerce={analytics.commerceInsights}
+              />
 
               {/* AI Section */}
               <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>

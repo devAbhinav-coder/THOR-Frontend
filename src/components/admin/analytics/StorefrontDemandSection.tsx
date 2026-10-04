@@ -94,12 +94,12 @@ export default function StorefrontDemandSection({
             <Eye className='h-4 w-4 text-gold-300' />
           </div>
           <div className='min-w-0'>
-            <h2 className='text-sm font-bold text-gray-900'>
-              Traffic & conversion
+            <h2 className='text-sm font-semibold text-navy-900'>
+              Product demand
             </h2>
-            <p className='text-[10px] text-gray-500 truncate'>
-              Session-unique PDP views (shop + premium) · {stats.trackedSkus}{" "}
-              SKUs · sold = paid catalog units
+            <p className='text-xs text-gray-500 truncate'>
+              Session-unique PDP views · {stats.trackedSkus} SKUs · units sold
+              from paid catalog lines
             </p>
           </div>
         </div>

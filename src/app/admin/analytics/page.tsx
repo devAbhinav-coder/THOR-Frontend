@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Clock,
   RefreshCw,
   IndianRupee,
   Megaphone,
   Users,
+  Radio,
   Repeat2,
   TrendingUp,
   ShoppingBag,
@@ -47,17 +49,32 @@ import {
   TopSellersList,
   ChannelSplitBar,
   StorefrontDemandSection,
-  VisitInsightsPanel,
+  TrafficAnalyticsSection,
   MarketingInsightsPanel,
+  AnalyticsIntelligenceSection,
+  AnalyticsSectionHeader,
 } from "@/components/admin/analytics";
 import { LeakCard } from "@/components/admin/revenue/LeakCard";
 
-type Tab = "sales" | "catalogue" | "customers";
+type Tab = "sales" | "traffic" | "catalogue" | "customers";
+
+const TAB_PARAM: Record<string, Tab> = {
+  sales: "sales",
+  traffic: "traffic",
+  catalogue: "catalogue",
+  customers: "customers",
+};
 
 export default function AnalyticsPage() {
+  const searchParams = useSearchParams();
   const { analytics, isLoading, loadError, isRefreshing, load, refresh } =
     useAdminAnalytics();
   const [activeTab, setActiveTab] = useState<Tab>("sales");
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && TAB_PARAM[t]) setActiveTab(TAB_PARAM[t]);
+  }, [searchParams]);
 
   const stockLists = useMemo(() => {
     if (!analytics) return { out: [], low: [] };
@@ -69,6 +86,25 @@ export default function AnalyticsPage() {
       analytics.lowStockProducts.filter((p) => p.totalStock > 0);
     return { out, low };
   }, [analytics]);
+
+  const trafficMarketing = useMemo(() => {
+    if (!analytics?.marketingInsights) {
+      return {
+        taggedSessions: 0,
+        orders: 0,
+        revenue: 0,
+        fbclidSessions: 0,
+      };
+    }
+    const m = analytics.marketingInsights;
+    const channels = m.marketingChannelBreakdown ?? [];
+    return {
+      taggedSessions: m.utmTaggedVisits ?? 0,
+      orders: m.attributedOrders ?? 0,
+      revenue: channels.reduce((s, r) => s + (r.revenue ?? 0), 0),
+      fbclidSessions: m.fbclidVisits ?? 0,
+    };
+  }, [analytics?.marketingInsights]);
 
   const avgConversion = useMemo(() => {
     const o = analytics?.overview;
@@ -119,7 +155,8 @@ export default function AnalyticsPage() {
   const offerMtd = analytics.offerAttributionMtd;
 
   const tabs: { id: Tab; label: string; icon: typeof LineChart }[] = [
-    { id: "sales", label: "Sales & Traffic", icon: LineChart },
+    { id: "sales", label: "Sales", icon: LineChart },
+    { id: "traffic", label: "Traffic & acquisition", icon: Radio },
     { id: "catalogue", label: "Catalogue", icon: Package },
     { id: "customers", label: "Customers", icon: Users },
   ];
@@ -130,7 +167,7 @@ export default function AnalyticsPage() {
         <AdminPageHeader
           title='Analytics & insights'
           badge='Merchandising'
-          description='Traffic, conversion, categories, and peak hours - live from your store data.'
+          description='Revenue, traffic, marketing attribution, and catalogue metrics from your live store database.'
           actions={
             <>
               <Button
@@ -207,8 +244,12 @@ export default function AnalyticsPage() {
 
         <div className='animate-in fade-in duration-300'>
           {activeTab === "sales" && (
-            <div className='space-y-3'>
-              <div className='grid grid-cols-2 lg:grid-cols-4 gap-2'>
+            <div className='space-y-5'>
+              <AnalyticsSectionHeader
+                title='Sales overview'
+                description='Month-to-date revenue, visits, conversion, and daily trends.'
+              />
+              <div className='grid grid-cols-2 lg:grid-cols-4 gap-2.5'>
                 <AdminMetricCard
                   compact
                   label='MTD gross'
@@ -248,11 +289,11 @@ export default function AnalyticsPage() {
                 <div className='flex items-center gap-2 mb-3'>
                   <Megaphone className='h-4 w-4 text-brand-600' />
                   <div>
-                    <h3 className='text-sm font-bold text-gray-900'>
-                      Offer impact MTD
+                    <h3 className='text-sm font-semibold text-navy-900'>
+                      Promotions &amp; offers (MTD)
                     </h3>
-                    <p className='text-[10px] text-gray-500'>
-                      Sales · auto offers · coupons · popup - all systems
+                    <p className='text-xs text-gray-500 mt-0.5'>
+                      Admin sales, auto offers, coupons, and visit popup
                     </p>
                   </div>
                 </div>
@@ -309,14 +350,6 @@ export default function AnalyticsPage() {
                   />
                 </div>
               )}
-
-              <VisitInsightsPanel insights={analytics.visitInsights} />
-              <div id='meta-ads'>
-                <MarketingInsightsPanel
-                  marketingInsights={analytics.marketingInsights}
-                  visitCampaigns={analytics.visitInsights?.byCampaign}
-                />
-              </div>
 
               {(analytics.revenueByDay?.length ?? 0) > 0 && (
                 <div className='rounded-xl border border-gray-200 bg-white p-3 shadow-sm'>
@@ -386,8 +419,63 @@ export default function AnalyticsPage() {
             </div>
           )}
 
+          {activeTab === "traffic" && (
+            <div className='space-y-5' id='traffic-ads'>
+              <AnalyticsSectionHeader
+                title='Acquisition & traffic'
+                description='Site-wide visits are at the top. Ad orders, Meta clicks, campaigns, and ad visits are in Marketing & Meta below, with visits by campaign and the full UTM table.'
+              />
+
+              <div className='grid grid-cols-2 lg:grid-cols-4 gap-2.5'>
+                <AdminMetricCard
+                  compact
+                  label='Site visits'
+                  value={(overview.totalSiteVisits ?? 0).toLocaleString()}
+                  sub={`${overview.siteVisitsToday ?? 0} today · all sources`}
+                  icon={Eye}
+                />
+                <AdminMetricCard
+                  compact
+                  label='Tagged sessions'
+                  value={trafficMarketing.taggedSessions.toLocaleString()}
+                  sub={`${trafficMarketing.fbclidSessions} Meta click id · 30 days`}
+                  icon={Megaphone}
+                  variant='navy'
+                />
+                <AdminMetricCard
+                  compact
+                  label='Attributed orders'
+                  value={String(trafficMarketing.orders)}
+                  sub='Paid · UTM or fbclid on checkout'
+                  icon={ShoppingBag}
+                  variant='success'
+                />
+                <AdminMetricCard
+                  compact
+                  label='Attributed revenue'
+                  value={formatPrice(trafficMarketing.revenue)}
+                  sub='Paid tagged orders · 30 days'
+                  icon={IndianRupee}
+                />
+              </div>
+
+              <MarketingInsightsPanel
+                marketingInsights={analytics.marketingInsights}
+                visitCampaigns={analytics.visitInsights?.byCampaign}
+              />
+
+              <TrafficAnalyticsSection insights={analytics.visitInsights} />
+
+              <AnalyticsIntelligenceSection analytics={analytics} />
+            </div>
+          )}
+
           {activeTab === "catalogue" && (
-            <div className='space-y-3'>
+            <div className='space-y-5'>
+              <AnalyticsSectionHeader
+                title='Catalogue performance'
+                description='Product demand, category revenue, variants, and stock alerts.'
+              />
               <StorefrontDemandSection
                 topViewed={topViewed}
                 totalPdpViews={overview.totalPdpViews}
@@ -433,8 +521,12 @@ export default function AnalyticsPage() {
           )}
 
           {activeTab === "customers" && (
-            <div className='space-y-3'>
-              <div className='grid grid-cols-2 lg:grid-cols-4 gap-2'>
+            <div className='space-y-5'>
+              <AnalyticsSectionHeader
+                title='Customers &amp; retention'
+                description='Lifetime value, repeat rate, channel mix, and payment methods.'
+              />
+              <div className='grid grid-cols-2 lg:grid-cols-4 gap-2.5'>
                 <AdminMetricCard
                   compact
                   label='Avg. lifetime value'
@@ -470,11 +562,11 @@ export default function AnalyticsPage() {
                 <div className='flex items-center gap-2 mb-3'>
                   <Megaphone className='h-4 w-4 text-brand-600' />
                   <div>
-                    <h3 className='text-sm font-bold text-gray-900'>
-                      Offer impact MTD
+                    <h3 className='text-sm font-semibold text-navy-900'>
+                      Promotions &amp; offers (MTD)
                     </h3>
-                    <p className='text-[10px] text-gray-500'>
-                      Sales · auto offers · coupons · popup - all systems
+                    <p className='text-xs text-gray-500 mt-0.5'>
+                      Admin sales, auto offers, coupons, and visit popup
                     </p>
                   </div>
                 </div>
@@ -574,9 +666,9 @@ export default function AnalyticsPage() {
                       </div>
                     ))}
                   </div>
-                  <p className='text-[9px] text-white/40 mt-2 border-t border-white/10 pt-1.5'>
-                    Website visits = anyone browsing the store · Buyers =
-                    logged-in paid orders only.
+                  <p className='text-[10px] text-white/45 mt-2 border-t border-white/10 pt-1.5'>
+                    Visits count all storefront sessions; buyer metrics use
+                    registered accounts with paid online orders.
                   </p>
                 </div>
 

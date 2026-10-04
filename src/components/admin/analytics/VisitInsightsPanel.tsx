@@ -6,6 +6,13 @@ import type { DashboardAnalytics } from "@/types";
 
 type Insights = NonNullable<DashboardAnalytics["visitInsights"]>;
 
+const CHANNEL_SHORT: Record<string, string> = {
+  meta_paid_ad: "Meta ad",
+  instagram_link_in_bio: "Link in bio",
+  meta_ads_utm: "Meta UTM",
+  other_utm: "Other UTM",
+};
+
 function BreakdownList({
   title,
   icon: Icon,
@@ -88,14 +95,14 @@ export default function VisitInsightsPanel({
   }));
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-gradient-to-b from-slate-50/60 to-white p-3 shadow-sm space-y-2'>
+    <div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3'>
       <div className='flex items-center justify-between gap-2'>
         <div>
-          <h3 className='text-sm font-bold text-gray-900'>
-            Who&apos;s visiting & from where
+          <h3 className='text-sm font-semibold text-navy-900 tracking-tight'>
+            Audience &amp; referrers
           </h3>
-          <p className='text-[10px] text-gray-500'>
-            Last 30 days · region via edge headers · no login needed
+          <p className='text-xs text-gray-500 mt-0.5'>
+            Last 30 days · geography from edge headers · referrer is not UTM
           </p>
         </div>
       </div>
@@ -110,7 +117,7 @@ export default function VisitInsightsPanel({
           }))}
         />
         <BreakdownList
-          title='Traffic source'
+          title='Referrer'
           icon={Link2}
           rows={insights.bySource.map((s) => ({
             label: s.source,
@@ -136,53 +143,124 @@ export default function VisitInsightsPanel({
         <div className='rounded-lg border border-gray-100 bg-white p-2.5'>
           <div className='flex items-center gap-1.5 mb-2'>
             <Clock className='h-3.5 w-3.5 text-navy-700' />
-            <h4 className='text-[10px] font-bold uppercase tracking-wide text-gray-500'>
-              Recent visits
-            </h4>
+            <div>
+              <h4 className='text-[10px] font-bold uppercase tracking-wide text-gray-500'>
+                Recent sessions
+              </h4>
+              <p className='text-[10px] text-gray-500 mt-0.5 max-w-2xl leading-relaxed'>
+                One row per browser tab per IST calendar day (first landing).
+                Referrer differs from UTM tags. Per-route activity is in{" "}
+                <span className='font-medium text-gray-700'>
+                  Live page activity
+                </span>{" "}
+                below.
+              </p>
+            </div>
           </div>
-          <div className='overflow-x-auto'>
-            <table className='w-full text-[10px]'>
-              <thead>
-                <tr className='text-gray-400 border-b border-gray-50'>
+          <div className='overflow-x-auto max-h-[320px] overflow-y-auto'>
+            <table className='w-full text-[10px] min-w-[720px]'>
+              <thead className='sticky top-0 bg-white z-10'>
+                <tr className='text-gray-400 border-b border-gray-100'>
                   <th className='text-left font-semibold py-1 pr-2'>When</th>
                   <th className='text-left font-semibold py-1 pr-2'>Region</th>
-                  <th className='text-left font-semibold py-1 pr-2'>Source</th>
                   <th className='text-left font-semibold py-1 pr-2'>
-                    Campaign
+                    Referrer
                   </th>
-                  <th className='text-left font-semibold py-1 pr-2'>Page</th>
+                  <th className='text-left font-semibold py-1 pr-2'>
+                    UTM source / medium
+                  </th>
+                  <th className='text-left font-semibold py-1 pr-2'>
+                    Campaign / content
+                  </th>
+                  <th className='text-left font-semibold py-1 pr-2'>Bucket</th>
+                  <th className='text-left font-semibold py-1 pr-2'>Landing</th>
                   <th className='text-left font-semibold py-1'>Device</th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-gray-50'>
-                {insights.recent.map((v, i) => (
-                  <tr key={`${v.at}-${i}`} className='text-gray-700'>
-                    <td className='py-1.5 pr-2 tabular-nums whitespace-nowrap text-gray-500'>
-                      {formatDateTime(String(v.at))}
-                    </td>
-                    <td className='py-1.5 pr-2'>
-                      <span className='font-medium text-gray-800'>
-                        {v.country}
-                      </span>
-                      {v.region ?
-                        <span className='block text-[9px] text-gray-400 truncate max-w-[120px]'>
-                          {v.region}
+                {insights.recent.map((v, i) => {
+                  const utmLine = [v.utmSource, v.utmMedium]
+                    .filter(Boolean)
+                    .join(" · ");
+                  const campLine =
+                    v.utmCampaign ||
+                    v.utmContent ||
+                    v.campaign ||
+                    "";
+                  const tagged = Boolean(
+                    v.marketingChannel ||
+                      v.hasFbclid ||
+                      v.utmSource ||
+                      v.utmMedium ||
+                      v.utmCampaign ||
+                      v.utmContent,
+                  );
+                  return (
+                    <tr key={`${v.at}-${i}`} className='text-gray-700'>
+                      <td className='py-1.5 pr-2 tabular-nums whitespace-nowrap text-gray-500'>
+                        {formatDateTime(String(v.at))}
+                      </td>
+                      <td className='py-1.5 pr-2'>
+                        <span className='font-medium text-gray-800'>
+                          {v.country}
                         </span>
-                      : null}
-                    </td>
-                    <td className='py-1.5 pr-2'>{v.source}</td>
-                    <td
-                      className='py-1.5 pr-2 truncate max-w-[100px]'
-                      title={v.campaign || undefined}
-                    >
-                      {v.campaign || "-"}
-                    </td>
-                    <td className='py-1.5 pr-2 truncate max-w-[100px]'>
-                      {v.page}
-                    </td>
-                    <td className='py-1.5 capitalize'>{v.device}</td>
-                  </tr>
-                ))}
+                        {v.region ?
+                          <span className='block text-[9px] text-gray-400 truncate max-w-[100px]'>
+                            {v.region}
+                          </span>
+                        : null}
+                      </td>
+                      <td className='py-1.5 pr-2 whitespace-nowrap'>
+                        {v.source}
+                      </td>
+                      <td
+                        className='py-1.5 pr-2 truncate max-w-[110px]'
+                        title={utmLine || undefined}
+                      >
+                        {utmLine || (tagged ? "" : "—")}
+                        {!utmLine && !tagged ?
+                          <span className='text-gray-400'>No tag</span>
+                        : null}
+                      </td>
+                      <td
+                        className='py-1.5 pr-2 truncate max-w-[120px]'
+                        title={campLine || undefined}
+                      >
+                        {campLine || "—"}
+                        {v.hasFbclid ?
+                          <span className='block text-[9px] text-navy-700 font-semibold'>
+                            fbclid ✓
+                          </span>
+                        : null}
+                      </td>
+                      <td className='py-1.5 pr-2 whitespace-nowrap'>
+                        {v.marketingChannel ?
+                          <span
+                            className={`inline-flex rounded px-1 py-0.5 text-[9px] font-bold ${
+                              v.marketingChannel === "instagram_link_in_bio" ?
+                                "bg-pink-50 text-pink-800"
+                              : v.marketingChannel === "meta_paid_ad" ?
+                                "bg-navy-100 text-navy-900"
+                              : "bg-brand-50 text-brand-900"
+                            }`}
+                          >
+                            {CHANNEL_SHORT[v.marketingChannel] ??
+                              v.marketingChannel}
+                          </span>
+                        : tagged ?
+                          <span className='text-gray-500 text-[9px]'>Tagged</span>
+                        : "—"}
+                      </td>
+                      <td
+                        className='py-1.5 pr-2 truncate max-w-[90px]'
+                        title={v.landingPath || v.page}
+                      >
+                        {v.page}
+                      </td>
+                      <td className='py-1.5 capitalize'>{v.device}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

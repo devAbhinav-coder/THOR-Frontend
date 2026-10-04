@@ -34,17 +34,17 @@ export default function MarketingPulseStrip({
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
           <Link
-            href="/admin/analytics#meta-ads"
+            href="/admin/analytics?tab=traffic"
             className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 border border-white/15 px-3 py-2 text-xs font-bold text-white/90 hover:bg-white/15 transition-colors"
           >
-            Meta ads
+            Acquisition
             <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
           <Link
-            href="/admin/analytics#storefront-demand"
+            href="/admin/analytics?tab=catalogue"
             className="inline-flex items-center gap-1.5 rounded-lg bg-gold-400/20 border border-gold-400/30 px-3 py-2 text-xs font-bold text-gold-200 hover:bg-gold-400/30 hover:text-white transition-colors"
           >
-            Traffic hub
+            Catalogue
             <BarChart3 className="h-3.5 w-3.5" />
           </Link>
         </div>
