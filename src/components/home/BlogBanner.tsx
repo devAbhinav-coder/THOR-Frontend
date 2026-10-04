@@ -11,7 +11,7 @@ import { plainBlogExcerpt } from "@/lib/blogServer";
 import { homeSectionStyles } from "@/lib/homeSectionStyles";
 
 type Props = {
-  /** SSR-prefetched latest blogs --- */
+  /** SSR-prefetched latest blogs  */
   initialBlogs?: Blog[] | null;
 };
 
