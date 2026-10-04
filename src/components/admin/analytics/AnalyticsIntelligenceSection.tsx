@@ -118,10 +118,11 @@ export default function AnalyticsIntelligenceSection({ analytics }: Props) {
             <MapPinned className='h-4 w-4 text-emerald-600' />
             <div>
               <h3 className='text-sm font-bold text-gray-900'>
-                Paid orders by state (shipping)
+                Paid orders by state
               </h3>
               <p className='text-[10px] text-gray-500'>
-                Shipping state on paid orders · last 30 days
+                Checkout shipping state (city if state was saved as country) ·
+                30 days
               </p>
             </div>
           </div>

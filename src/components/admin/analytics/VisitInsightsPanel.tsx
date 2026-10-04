@@ -80,7 +80,7 @@ export default function VisitInsightsPanel({
           Visit breakdown builds as traffic comes in
         </p>
         <p className='text-[10px] text-gray-400 mt-1'>
-          Region from CDN · source from referrer · last 30 days
+          Country from CDN · referrer is not UTM · last 30 days
         </p>
       </div>
     );
@@ -109,7 +109,7 @@ export default function VisitInsightsPanel({
 
       <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2'>
         <BreakdownList
-          title='Region'
+          title='Country'
           icon={Globe}
           rows={insights.byCountry.map((c) => ({
             label: c.label,

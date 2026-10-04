@@ -169,20 +169,65 @@ export default function TrafficAnalyticsSection({
       <div className='grid grid-cols-1 xl:grid-cols-2 gap-3'>
         <div className='rounded-xl border border-gray-200 bg-white p-3 shadow-sm'>
           <div className='flex items-center gap-2 mb-2'>
+            <Globe2 className='h-4 w-4 text-navy-700' />
+            <div>
+              <h3 className='text-sm font-semibold text-navy-900'>
+                Visitors by country
+              </h3>
+              <p className='text-[10px] text-gray-500'>
+                Edge geo on session start · last 30 days
+              </p>
+            </div>
+          </div>
+          {(insights.byCountry ?? []).length === 0 ?
+            <p className='text-xs text-gray-500 py-4 text-center'>
+              Country appears once sessions are recorded behind Vercel or
+              Cloudflare.
+            </p>
+          : <ul className='space-y-1.5 max-h-[220px] overflow-y-auto pr-1'>
+              {(insights.byCountry ?? []).map((row) => {
+                const max = insights.byCountry[0]?.visits ?? 1;
+                return (
+                  <li key={row.code ?? row.label}>
+                    <div className='flex justify-between text-[11px] mb-0.5'>
+                      <span className='text-gray-700 truncate pr-2'>
+                        {row.label}
+                      </span>
+                      <span className='font-bold tabular-nums shrink-0'>
+                        {row.visits}
+                      </span>
+                    </div>
+                    <div className='h-1 bg-gray-100 rounded-full overflow-hidden'>
+                      <div
+                        className='h-full bg-navy-700 rounded-full'
+                        style={{
+                          width: `${(row.visits / max) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          }
+        </div>
+
+        <div className='rounded-xl border border-gray-200 bg-white p-3 shadow-sm'>
+          <div className='flex items-center gap-2 mb-2'>
             <Globe2 className='h-4 w-4 text-brand-600' />
             <div>
               <h3 className='text-sm font-semibold text-navy-900'>
                 India · state &amp; city
               </h3>
               <p className='text-[10px] text-gray-500'>
-                Country IN · inferred from CDN edge headers
+                Sessions with country IN · city/region from CDN headers
               </p>
             </div>
           </div>
           {india.length === 0 ?
             <p className='text-xs text-gray-500 py-4 text-center'>
-              No India geo breakdown yet. Deploy behind Cloudflare/Vercel edge
-              for state codes.
+              No India sessions in this window, or geo headers were missing at
+              visit time.
             </p>
           : <ul className='space-y-1.5 max-h-[220px] overflow-y-auto pr-1'>
               {india.map((row) => {
@@ -210,8 +255,17 @@ export default function TrafficAnalyticsSection({
               })}
             </ul>
           }
+          {india.some((r) => r.label.includes("Region not reported")) ?
+            <p className='text-[10px] text-gray-400 mt-2 leading-relaxed'>
+              &quot;Region not reported&quot; = India detected but CDN did not
+              send city/state when that session was saved. New visits on
+              Vercel/Cloudflare usually include city + region code.
+            </p>
+          : null}
         </div>
+      </div>
 
+      <div className='grid grid-cols-1 xl:grid-cols-2 gap-3'>
         <div className='rounded-xl border border-gray-200 bg-white p-3 shadow-sm'>
           <div className='flex items-center gap-2 mb-2'>
             <MapPin className='h-4 w-4 text-navy-700' />
