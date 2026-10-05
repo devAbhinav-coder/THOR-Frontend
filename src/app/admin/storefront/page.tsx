@@ -649,6 +649,20 @@ export default function AdminStorefrontPage() {
               s.homeExploreHouse.giftingImagePublicId ?? undefined,
           }
         : s.homeExploreHouse,
+      premiumEditorial:
+        s.premiumEditorial ?
+          {
+            ...s.premiumEditorial,
+            imagePublicId: s.premiumEditorial.imagePublicId ?? undefined,
+          }
+        : s.premiumEditorial,
+      premiumStory:
+        s.premiumStory ?
+          {
+            ...s.premiumStory,
+            imagePublicId: s.premiumStory.imagePublicId ?? undefined,
+          }
+        : s.premiumStory,
     });
   };
 
