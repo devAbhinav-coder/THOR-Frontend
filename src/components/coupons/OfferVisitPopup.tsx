@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/bodyScrollLock';
 import { getShopSessionKey } from '@/lib/shopSession';
 import toast from 'react-hot-toast';
+import { SHOP_SALE_HREF } from '@/lib/shopSpecialCollections';
 
 /** Session: which offer keys already dismissed this tab */
 const SEEN_KEY = 'hor_offer_popup_seen_v4';
@@ -445,7 +446,7 @@ export default function OfferVisitPopup() {
               </button>
             ) : (
               <Link
-                href="/shop"
+                href={offer.kind === 'sale' ? SHOP_SALE_HREF : '/shop'}
                 onClick={() => {
                   trackOfferEvent(offer, 'popup_cta_click');
                   dismiss();
