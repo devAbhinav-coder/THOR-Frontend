@@ -374,7 +374,9 @@ export default function ProductFormModal({
       const heroPublicId = p.premiumHeroImage?.publicId?.trim();
       setPremiumHeroPreview(heroUrl || null);
       setSavedPremiumHero(
-        heroUrl && heroPublicId ? { url: heroUrl, publicId: heroPublicId } : null,
+        heroUrl && heroPublicId ?
+          { url: heroUrl, publicId: heroPublicId }
+        : null,
       );
       setFormDirty(false);
     },
@@ -1330,7 +1332,7 @@ export default function ProductFormModal({
                 : null}
                 {savedPremiumHero && !premiumHeroFile ?
                   <p className='mb-2 text-[11px] font-medium text-emerald-700'>
-                    Saved hero on server — change file below to replace.
+                    Saved hero on server - change file below to replace.
                   </p>
                 : null}
                 <input

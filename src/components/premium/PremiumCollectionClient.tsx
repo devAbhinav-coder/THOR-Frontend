@@ -12,6 +12,7 @@ import {
   PREMIUM_HERO_IMAGE,
 } from "@/lib/premiumCollectionData";
 import {
+  getPremiumCardImage,
   mapApiProductsToPremiumViews,
   type PremiumProductView,
 } from "@/lib/premiumProductMapper";
@@ -250,7 +251,9 @@ export default function PremiumCollectionClient({
                 <Link href={`/premium/${product.slug}`} className='group block'>
                   <div className='relative mb-6 aspect-[3/4] overflow-hidden bg-account-surface-variant'>
                     <Image
-                      src={product.heroImage}
+                      src={
+                        getPremiumCardImage(product) || PREMIUM_EDITORIAL_IMAGE
+                      }
                       alt={product.name}
                       fill
                       className='object-cover transition-transform duration-700 ease-out group-hover:scale-105'

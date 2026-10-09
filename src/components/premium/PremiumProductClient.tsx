@@ -13,7 +13,11 @@ import {
   PREMIUM_CRAFT_IMAGE,
   PREMIUM_EDITORIAL_IMAGE,
 } from "@/lib/premiumCollectionData";
-import type { PremiumProductView } from "@/lib/premiumProductMapper";
+import {
+  getPremiumCardImage,
+  type PremiumProductView,
+} from "@/lib/premiumProductMapper";
+import { buildPremiumEditorialRows } from "@/lib/premiumGalleryLayout";
 import { writeBuyNowToSession } from "@/lib/buyNowCheckoutSession";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { isFreeProductSize } from "@/lib/productCatalogOptions";
@@ -125,43 +129,7 @@ function EditorialTextPanel({
   );
 }
 
-type EditorialRow =
-  | { type: "feature"; image: string; align: "start" | "end" }
-  | { type: "pair"; left: string; right: string }
-  | { type: "single"; image: string };
-
-/** First + last rows are always image+text; middle rows are dynamic 2-image pairs. */
-function buildEditorialRows(
-  gallery: string[],
-  fallbacks: { editorial: string; craft: string },
-): EditorialRow[] {
-  const editorial =
-    gallery.length > 1 ?
-      gallery.slice(1)
-    : [fallbacks.editorial, fallbacks.craft];
-
-  const first = editorial[0] ?? fallbacks.editorial;
-  const last =
-    editorial.length > 1 ? editorial[editorial.length - 1]! : fallbacks.craft;
-  const middle = editorial.length > 2 ? editorial.slice(1, -1) : [];
-
-  const rows: EditorialRow[] = [
-    { type: "feature", image: first, align: "start" },
-  ];
-
-  for (let i = 0; i < middle.length; i += 2) {
-    if (i + 1 < middle.length) {
-      rows.push({ type: "pair", left: middle[i]!, right: middle[i + 1]! });
-    } else {
-      rows.push({ type: "single", image: middle[i]! });
-    }
-  }
-
-  rows.push({ type: "feature", image: last, align: "end" });
-  return rows;
-}
-
-/** Full-screen top: premium hero only (stable — no gallery carousel). */
+/** Full-screen top: premium hero only; gallery fallback if no hero uploaded. */
 function buildHeroSlides(product: PremiumProductView): string[] {
   const hero = product.heroImage?.trim();
   if (hero) return [hero];
@@ -441,15 +409,15 @@ export default function PremiumProductClient({
     : false;
 
   const productGallery = useMemo(
-    () => (product.images.length > 0 ? product.images : [product.heroImage]),
-    [product.heroImage, product.images],
+    () => product.images.filter((url) => Boolean(url?.trim())),
+    [product.images],
   );
 
   const heroSlides = useMemo(() => buildHeroSlides(product), [product]);
 
   const editorialRows = useMemo(
     () =>
-      buildEditorialRows(productGallery, {
+      buildPremiumEditorialRows(productGallery, {
         editorial: premiumEditorialImage?.trim() || PREMIUM_EDITORIAL_IMAGE,
         craft: premiumStoryImage?.trim() || PREMIUM_CRAFT_IMAGE,
       }),
@@ -871,7 +839,9 @@ export default function PremiumProductClient({
                   <Link href={`/premium/${item.slug}`} className='group block'>
                     <div className='relative mb-4 aspect-[3/4] overflow-hidden bg-account-surface-variant'>
                       <Image
-                        src={item.heroImage}
+                        src={
+                          getPremiumCardImage(item) || PREMIUM_EDITORIAL_IMAGE
+                        }
                         alt={item.name}
                         fill
                         className='object-cover transition-transform duration-700 group-hover:scale-105'

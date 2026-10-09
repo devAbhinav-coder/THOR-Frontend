@@ -4,8 +4,17 @@ import type {
   PremiumProduct,
 } from "@/lib/premiumCollectionData";
 
+function urlsMatch(a: string, b: string): boolean {
+  const na = a.trim().split("?")[0] ?? "";
+  const nb = b.trim().split("?")[0] ?? "";
+  if (!na || !nb) return false;
+  return na === nb;
+}
+
 export type PremiumProductView = PremiumProduct & {
   _id: string;
+  /** First gallery image for cards/listings (not premium hero). */
+  cardImage: string;
   /** Catalog `Product.slug` - used for view counting & cart identity. */
   catalogSlug: string;
   variants: Product["variants"];
@@ -34,6 +43,13 @@ export type PremiumProductView = PremiumProduct & {
   minOrderQty?: number;
   customFields?: Product["customFields"];
 };
+
+/** Grid/collection cards — always first catalog gallery shot, never premium hero. */
+export function getPremiumCardImage(
+  p: Pick<PremiumProductView, "cardImage" | "images">,
+): string {
+  return p.cardImage?.trim() || p.images[0]?.trim() || "";
+}
 
 function defaultEditorialOpen(p: Product): PremiumEditorialPanel {
   return {
@@ -71,8 +87,14 @@ export function getPremiumRouteSlug(p: Product): string {
 }
 
 export function mapApiProductToPremiumView(p: Product): PremiumProductView {
-  const imageUrls = (p.images ?? []).map((img) => img.url).filter(Boolean);
-  const heroImage = p.premiumHeroImage?.url || imageUrls[0] || "";
+  const rawGallery = (p.images ?? []).map((img) => img.url).filter(Boolean);
+  const heroImage = (p.premiumHeroImage?.url ?? "").trim();
+  const galleryImages =
+    heroImage ?
+      rawGallery.filter((url) => !urlsMatch(url, heroImage))
+    : rawGallery;
+  const images = galleryImages.length > 0 ? galleryImages : rawGallery;
+  const cardImage = images[0]?.trim() || "";
 
   return {
     _id: p._id,
@@ -87,10 +109,8 @@ export function mapApiProductToPremiumView(p: Product): PremiumProductView {
     saleCampaignId: p.saleCampaignId,
     saleBadge: p.saleBadge,
     heroImage,
-    images:
-      imageUrls.length > 0 ? imageUrls
-      : heroImage ? [heroImage]
-      : [],
+    cardImage,
+    images,
     description: p.description ?? "",
     shortDescription: p.shortDescription,
     category: p.category,
