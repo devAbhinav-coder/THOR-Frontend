@@ -16,10 +16,14 @@ import {
   fetchPremiumProductBySlugServer,
   fetchPremiumProductsServer,
 } from "@/lib/storePrefetch";
+import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+/** Always allow new premium slugs after admin publish (not only build-time static params). */
+export const dynamicParams = true;
 
 type ProductReviewLite = {
   rating?: number;
@@ -55,9 +59,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PremiumProductPage({ params }: Props) {
   const { slug } = await params;
-  const [apiProduct, apiAll] = await Promise.all([
+  const [apiProduct, apiAll, storefrontSettings] = await Promise.all([
     fetchPremiumProductBySlugServer(slug),
     fetchPremiumProductsServer(),
+    fetchStorefrontSettingsHome(),
   ]);
 
   if (!apiProduct) notFound();
@@ -104,7 +109,12 @@ export default async function PremiumProductPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
-      <PremiumProductClient product={product} related={related} />
+      <PremiumProductClient
+        product={product}
+        related={related}
+        premiumEditorialImage={storefrontSettings?.premiumEditorial?.image}
+        premiumStoryImage={storefrontSettings?.premiumStory?.image}
+      />
     </>
   );
 }

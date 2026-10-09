@@ -39,6 +39,10 @@ import toast from "react-hot-toast";
 type Props = {
   product: PremiumProductView;
   related: PremiumProductView[];
+  /** Storefront CMS — Editorial Feature Block */
+  premiumEditorialImage?: string;
+  /** Storefront CMS — Story Craft Image */
+  premiumStoryImage?: string;
 };
 
 function normalizeVariants(variants: ProductVariant[]): ProductVariant[] {
@@ -256,7 +260,12 @@ function PremiumSizeChips({
   );
 }
 
-export default function PremiumProductClient({ product, related }: Props) {
+export default function PremiumProductClient({
+  product,
+  related,
+  premiumEditorialImage,
+  premiumStoryImage,
+}: Props) {
   const router = useRouter();
   const { addToCart } = useCartStore();
   const { isAuthenticated } = useAuthStore();
@@ -449,10 +458,10 @@ export default function PremiumProductClient({ product, related }: Props) {
   const editorialRows = useMemo(
     () =>
       buildEditorialRows(productGallery, {
-        editorial: PREMIUM_EDITORIAL_IMAGE,
-        craft: PREMIUM_CRAFT_IMAGE,
+        editorial: premiumEditorialImage?.trim() || PREMIUM_EDITORIAL_IMAGE,
+        craft: premiumStoryImage?.trim() || PREMIUM_CRAFT_IMAGE,
       }),
-    [productGallery],
+    [productGallery, premiumEditorialImage, premiumStoryImage],
   );
 
   useEffect(() => {

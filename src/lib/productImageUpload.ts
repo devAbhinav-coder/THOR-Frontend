@@ -1,4 +1,5 @@
 import { adminApi } from "@/lib/api";
+import { refreshAccessToken } from "@/lib/authRefresh";
 
 export type ProductImageUploadProgress = {
   percent: number;
@@ -18,23 +19,43 @@ type CloudinarySignPayload = {
   allowed_formats?: string;
 };
 
+function isValidSignPayload(
+  payload: CloudinarySignPayload | undefined,
+): payload is CloudinarySignPayload {
+  return Boolean(
+    payload?.cloudName &&
+      payload?.apiKey &&
+      payload?.signature &&
+      payload?.folder,
+  );
+}
+
 async function fetchImageSignature(
   kind: "gallery" | "premium-hero",
 ): Promise<CloudinarySignPayload> {
-  const sigRes =
-    kind === "premium-hero" ?
-      await adminApi.getPremiumHeroUploadSignature()
-    : await adminApi.getProductImageUploadSignature();
-  const payload = sigRes.data as CloudinarySignPayload;
-  if (
-    !payload?.cloudName ||
-    !payload?.apiKey ||
-    !payload?.signature ||
-    !payload?.folder
-  ) {
-    throw new Error("Could not start image upload. Try again.");
+  const requestSig = async () => {
+    const sigRes =
+      kind === "premium-hero" ?
+        await adminApi.getPremiumHeroUploadSignature()
+      : await adminApi.getProductImageUploadSignature();
+    return sigRes.data as CloudinarySignPayload;
+  };
+
+  await refreshAccessToken();
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const payload = await requestSig();
+      if (isValidSignPayload(payload)) return payload;
+    } catch {
+      /* retry once after refresh */
+    }
+    await refreshAccessToken();
   }
-  return payload;
+
+  throw new Error(
+    "Could not start image upload. Refresh the page and sign in again.",
+  );
 }
 
 function uploadOneImage(
@@ -100,41 +121,54 @@ export async function uploadProductGalleryImages(
   onProgress?: (progress: ProductImageUploadProgress) => void,
 ): Promise<{ url: string; publicId: string }[]> {
   if (!files.length) return [];
+  await refreshAccessToken();
   const payload = await fetchImageSignature("gallery");
-  const out: { url: string; publicId: string }[] = [];
+  const count = files.length;
+  const loadedByIndex = new Array<number>(count).fill(0);
+  const totalByIndex = files.map((f) => f.size);
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]!;
+  const reportAggregate = (index: number) => {
+    const totalBytes = totalByIndex.reduce((a, b) => a + b, 0);
+    const loadedBytes = loadedByIndex.reduce((a, b) => a + b, 0);
     onProgress?.({
-      percent: Math.round((i / files.length) * 100),
+      percent:
+        totalBytes > 0 ?
+          Math.min(99, Math.round((loadedBytes / totalBytes) * 100))
+        : Math.min(99, Math.round(((index + 1) / count) * 100)),
       phase: "uploading",
-      loaded: 0,
-      total: file.size,
-      index: i,
-      count: files.length,
+      loaded: loadedBytes,
+      total: totalBytes,
+      index,
+      count,
     });
-    const uploaded = await uploadOneImage(file, payload, (loaded, total) => {
-      const base = i / files.length;
-      const slice = 1 / files.length;
-      onProgress?.({
-        percent: Math.min(99, Math.round((base + (loaded / total) * slice) * 100)),
-        phase: "uploading",
-        loaded,
-        total,
-        index: i,
-        count: files.length,
-      });
-    });
-    out.push(uploaded);
-  }
+  };
+
+  onProgress?.({
+    percent: 0,
+    phase: "preparing",
+    loaded: 0,
+    total: totalByIndex.reduce((a, b) => a + b, 0),
+    index: 0,
+    count,
+  });
+
+  const out = await Promise.all(
+    files.map((file, i) =>
+      uploadOneImage(file, payload, (loaded, total) => {
+        loadedByIndex[i] = loaded;
+        totalByIndex[i] = total;
+        reportAggregate(i);
+      }),
+    ),
+  );
 
   onProgress?.({
     percent: 100,
     phase: "complete",
     loaded: 1,
     total: 1,
-    index: files.length - 1,
-    count: files.length,
+    index: count - 1,
+    count,
   });
   return out;
 }
@@ -144,6 +178,7 @@ export async function uploadPremiumHeroImage(
   file: File,
   onProgress?: (progress: ProductImageUploadProgress) => void,
 ): Promise<{ url: string; publicId: string }> {
+  await refreshAccessToken();
   const payload = await fetchImageSignature("premium-hero");
   onProgress?.({
     percent: 0,

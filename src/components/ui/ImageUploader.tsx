@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Cropper from 'react-easy-crop';
 import type { Area, Point } from 'react-easy-crop';
@@ -32,6 +32,8 @@ interface ImageUploaderProps {
   /** Parent form save: show upload progress overlay (0–100). */
   uploadProgress?: number | null;
   isUploading?: boolean;
+  /** Parent-owned pending File[] length — keeps previews in sync after save/hydrate. */
+  pendingFileCount?: number;
 }
 
 const RATIO_NUM: Record<AspectRatio, number> = {
@@ -106,6 +108,7 @@ export default function ImageUploader({
   className,
   uploadProgress = null,
   isUploading = false,
+  pendingFileCount,
 }: ImageUploaderProps) {
   const [previews, setPreviews] = useState<PreviewFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -128,12 +131,42 @@ export default function ImageUploader({
   onChangeRef.current = onChange;
 
   const previewsRef = useRef<PreviewFile[]>([]);
+  const prevExistingLenRef = useRef(existingImages.length);
 
   const commitPreviews = useCallback((next: PreviewFile[]) => {
     previewsRef.current = next;
     setPreviews(next);
     onChangeRef.current(next.map((p) => p.file));
   }, []);
+
+  /** Parent merged new uploads into `existingImages` — drop local previews to avoid duplicates. */
+  useEffect(() => {
+    const prevLen = prevExistingLenRef.current;
+    if (existingImages.length > prevLen && previewsRef.current.length > 0) {
+      for (const p of previewsRef.current) {
+        if (p.url.startsWith('blob:')) URL.revokeObjectURL(p.url);
+      }
+      commitPreviews([]);
+    }
+    prevExistingLenRef.current = existingImages.length;
+  }, [existingImages.length, commitPreviews]);
+
+  const prevPendingCountRef = useRef(pendingFileCount ?? 0);
+  useEffect(() => {
+    if (pendingFileCount === undefined) return;
+    const prev = prevPendingCountRef.current;
+    prevPendingCountRef.current = pendingFileCount;
+    if (
+      prev > 0 &&
+      pendingFileCount === 0 &&
+      previewsRef.current.length > 0
+    ) {
+      for (const p of previewsRef.current) {
+        if (p.url.startsWith('blob:')) URL.revokeObjectURL(p.url);
+      }
+      commitPreviews([]);
+    }
+  }, [pendingFileCount, commitPreviews]);
 
   const maxBytes = maxSizeMB * 1024 * 1024;
   const total = existingImages.length + previews.length;

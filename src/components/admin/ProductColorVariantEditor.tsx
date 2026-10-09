@@ -651,11 +651,12 @@ export default function ProductColorVariantEditor({
                 )}
               >
                 <ImageUploader
-                  key={group.id}
+                  key={`${group.id}-ex${group.existingImages.length}`}
                   maxFiles={7}
                   aspectRatio='3:4'
                   maxSizeMB={UPLOAD_MAX_MB.product}
                   existingImages={group.existingImages.map((i) => i.url)}
+                  pendingFileCount={group.newFiles.length}
                   onChange={(files) =>
                     updateGroup(group.id, { newFiles: files })
                   }

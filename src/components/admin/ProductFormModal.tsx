@@ -78,6 +78,25 @@ import {
 const MAX_PRODUCT_IMAGES = 20;
 const PRODUCT_FORM_ID = "admin-product-form";
 
+function slugFromProductName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+function editorialPanelForSave(panel: PremiumEditorialPanel) {
+  return {
+    title: panel.title?.trim() || undefined,
+    fields: panel.fields.filter((f) => f.label.trim() && f.value.trim()),
+    note: panel.note.trim(),
+  };
+}
+
 function defaultPremiumEditorialOpen(): PremiumEditorialPanel {
   return {
     title: "",
@@ -116,6 +135,8 @@ export default function ProductFormModal({
 }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [formDirty, setFormDirty] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(!!product?._id);
   const [loadedProduct, setLoadedProduct] = useState<Product | null>(null);
   const editingProduct = loadedProduct ?? product;
@@ -345,6 +366,7 @@ export default function ProductFormModal({
       );
       setPremiumHeroFile(null);
       setPremiumHeroPreview(p.premiumHeroImage?.url ?? null);
+      setFormDirty(false);
     },
     [defaultIsPremium],
   );
@@ -443,11 +465,43 @@ export default function ProductFormModal({
     )
     .map((s) => s.name);
 
-  const set = (key: keyof typeof form, value: string | boolean) =>
+  const markDirty = useCallback(() => setFormDirty(true), []);
+
+  const set = (key: keyof typeof form, value: string | boolean) => {
+    markDirty();
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   const setCategory = (category: string) => {
+    markDirty();
     setForm((prev) => ({ ...prev, category, subcategory: "" }));
+  };
+
+  const updateColorGroups = useCallback(
+    (groups: ColorVariantGroup[]) => {
+      markDirty();
+      setColorGroups(groups);
+    },
+    [markDirty],
+  );
+
+  useEffect(() => {
+    if (!formDirty || isSaving) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [formDirty, isSaving]);
+
+  const requestClose = () => {
+    if (isSaving) return;
+    if (formDirty) {
+      setLeaveDialogOpen(true);
+      return;
+    }
+    onClose();
   };
 
   const totalImageCount = colorGroups.reduce(
@@ -495,8 +549,8 @@ export default function ProductFormModal({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const persistProduct = async (opts?: { asDraft?: boolean }) => {
+    const saveAsDraft = opts?.asDraft === true;
 
     const colorErr = validateColorGroupsForSave(colorGroups);
     if (colorErr) return toast.error(colorErr);
@@ -625,15 +679,19 @@ export default function ProductFormModal({
         normalizeInstagramReelUrl(motionReelUrl) || motionReelUrl.trim(),
       );
       fd.append("isFeatured", String(form.isFeatured));
-      fd.append("isActive", String(form.isActive));
+      fd.append("isActive", String(saveAsDraft ? false : form.isActive));
       fd.append("isPremium", String(form.isPremium));
 
       if (form.isPremium && form.audience) {
         fd.append("audience", form.audience);
       }
 
-      if (form.premiumSlug.trim())
-        fd.append("premiumSlug", form.premiumSlug.trim());
+      const resolvedPremiumSlug =
+        form.premiumSlug.trim() ||
+        (form.isPremium ? slugFromProductName(form.name) : "");
+      if (resolvedPremiumSlug) {
+        fd.append("premiumSlug", resolvedPremiumSlug);
+      }
       if (form.premiumSubtitle.trim()) {
         fd.append("premiumSubtitle", form.premiumSubtitle.trim());
       }
@@ -644,23 +702,11 @@ export default function ProductFormModal({
       if (form.isPremium) {
         fd.append(
           "premiumEditorialOpen",
-          JSON.stringify({
-            title: editorialOpen.title?.trim() || undefined,
-            fields: editorialOpen.fields.filter(
-              (f) => f.label.trim() || f.value.trim(),
-            ),
-            note: editorialOpen.note.trim(),
-          }),
+          JSON.stringify(editorialPanelForSave(editorialOpen)),
         );
         fd.append(
           "premiumEditorialClose",
-          JSON.stringify({
-            title: editorialClose.title?.trim() || undefined,
-            fields: editorialClose.fields.filter(
-              (f) => f.label.trim() || f.value.trim(),
-            ),
-            note: editorialClose.note.trim(),
-          }),
+          JSON.stringify(editorialPanelForSave(editorialClose)),
         );
       }
       if (signedPremiumHero) {
@@ -754,7 +800,7 @@ export default function ProductFormModal({
           setLoadedProduct(saved);
           hydrateFromProduct(saved);
         }
-        toast.success("Product updated");
+        toast.success(saveAsDraft ? "Draft saved" : "Product updated");
       } else {
         const res = await productApi.create(fd, {
           onUploadProgress: (p) => setUploadProgress(p),
@@ -772,8 +818,14 @@ export default function ProductFormModal({
           setLoadedProduct(saved);
           hydrateFromProduct(saved);
         }
-        toast.success("Product created");
+        toast.success(
+          saveAsDraft ?
+            "Draft saved — activate when ready to show on /premium"
+          : "Product created",
+        );
       }
+      setFormDirty(false);
+      setLeaveDialogOpen(false);
       onSave(saved);
     } catch (err: unknown) {
       toast.error(
@@ -783,6 +835,11 @@ export default function ProductFormModal({
       setIsSaving(false);
       setUploadProgress(null);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void persistProduct();
   };
 
   return (
@@ -796,7 +853,7 @@ export default function ProductFormModal({
           `Editing: ${editingProduct.name}`
         : "Name, pricing, photos per color, variants & SEO"
       }
-      onClose={onClose}
+      onClose={requestClose}
       footerClassName='flex-col sm:flex-row sm:items-center sm:justify-between'
       footer={
         <>
@@ -808,15 +865,27 @@ export default function ProductFormModal({
               " · Motion video uploading…"
             : null}
           </p>
-          <div className='flex gap-2.5 w-full sm:w-auto'>
+          <div className='flex flex-wrap gap-2.5 w-full sm:w-auto'>
             <Button
               type='button'
               variant='outline'
               className='flex-1 sm:flex-none'
-              onClick={onClose}
+              onClick={requestClose}
             >
               Cancel
             </Button>
+            {!editingProduct ?
+              <Button
+                type='button'
+                variant='outline'
+                className='flex-1 sm:flex-none'
+                loading={isSaving}
+                disabled={loadingProduct || motionVideoUploading}
+                onClick={() => void persistProduct({ asDraft: true })}
+              >
+                Save draft
+              </Button>
+            : null}
             <Button
               type='submit'
               form={PRODUCT_FORM_ID}
@@ -829,7 +898,7 @@ export default function ProductFormModal({
                 "Saving…"
               : editingProduct ?
                 "Save changes"
-              : "Create product"}
+              : "Publish product"}
             </Button>
           </div>
         </>
@@ -1414,7 +1483,7 @@ export default function ProductFormModal({
         >
           <ProductColorVariantEditor
             groups={colorGroups}
-            onChange={setColorGroups}
+            onChange={updateColorGroups}
             suggestedColors={suggestedColors}
             productId={editingProduct?._id}
             baseSellPrice={form.price}
@@ -1652,6 +1721,113 @@ export default function ProductFormModal({
           )}
         </AdminOfferSection>
       </form>
+
+      {leaveDialogOpen ?
+        <div className='fixed inset-0 z-[60] flex items-center justify-center bg-navy-950/45 p-4'>
+          <div
+            className='w-full max-w-md rounded-2xl border border-gray-100 bg-white p-5 shadow-xl'
+            role='dialog'
+            aria-labelledby='product-leave-title'
+          >
+            <h3
+              id='product-leave-title'
+              className='text-base font-semibold text-gray-900'
+            >
+              Unsaved changes
+            </h3>
+            <p className='mt-2 text-sm leading-relaxed text-gray-600'>
+              {editingProduct ?
+                "Close without saving? Your changes may be lost."
+              : <>
+                  Would you like to save this product as a{" "}
+                  <strong>draft</strong>? It will be visible in the admin panel
+                  but will only appear on
+                  <strong>/premium</strong> once you set its status to{" "}
+                  <strong>Active</strong>.
+                </>
+              }
+            </p>
+            <div className='mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap'>
+              {editingProduct ?
+                <>
+                  <Button
+                    type='button'
+                    variant='brand'
+                    className='flex-1'
+                    loading={isSaving}
+                    disabled={motionVideoUploading}
+                    onClick={() => void persistProduct()}
+                  >
+                    Save changes
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='flex-1'
+                    onClick={() => {
+                      setLeaveDialogOpen(false);
+                      setFormDirty(false);
+                      onClose();
+                    }}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    className='flex-1'
+                    onClick={() => setLeaveDialogOpen(false)}
+                  >
+                    Keep editing
+                  </Button>
+                </>
+              : <>
+                  <Button
+                    type='button'
+                    variant='brand'
+                    className='flex-1'
+                    loading={isSaving}
+                    disabled={motionVideoUploading}
+                    onClick={() => void persistProduct({ asDraft: true })}
+                  >
+                    Haan, draft save karo
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='flex-1'
+                    loading={isSaving}
+                    disabled={motionVideoUploading}
+                    onClick={() => void persistProduct()}
+                  >
+                    Publish product
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='flex-1'
+                    onClick={() => {
+                      setLeaveDialogOpen(false);
+                      setFormDirty(false);
+                      onClose();
+                    }}
+                  >
+                    Nahi, discard
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    className='flex-1'
+                    onClick={() => setLeaveDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              }
+            </div>
+          </div>
+        </div>
+      : null}
     </AdminOfferModal>
   );
 }

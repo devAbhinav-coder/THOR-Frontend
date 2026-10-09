@@ -456,7 +456,20 @@ export default function AdminStorefrontPage() {
       categoryApi.getAll({ active: false }),
     ])
       .then(([settingsRes, categoriesRes]) => {
-        setSettings(settingsRes.data?.settings || null);
+        const raw = settingsRes.data?.settings;
+        if (!raw) {
+          setSettings(null);
+        } else {
+          setSettings({
+            ...(raw as StorefrontSettings),
+            premiumEditorial: {
+              ...((raw as StorefrontSettings).premiumEditorial || {}),
+            },
+            premiumStory: {
+              ...((raw as StorefrontSettings).premiumStory || {}),
+            },
+          });
+        }
         setCategories(categoriesRes.data?.categories || []);
       })
       .catch(() => toast.error("Failed to load storefront settings"))

@@ -208,26 +208,40 @@ export async function fetchPremiumProductsServer(
   }
 }
 
+async function fetchPremiumProductBySlugOnce(
+  slug: string,
+  cacheMode: "isr" | "no-store",
+): Promise<Product | null> {
+  const base = await getBuildSafeApiBase();
+  if (!base) return null;
+  const safe = encodeURIComponent(slug);
+  try {
+    const res = await serverFetch(`${base}/premium/products/${safe}`, {
+      ...(cacheMode === "isr" ?
+        {
+          next: {
+            revalidate: 60,
+            tags: [productPageCacheTag(slug)],
+          },
+        }
+      : { cache: "no-store" as const }),
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { product?: Product } };
+    const p = json?.data?.product;
+    return p && typeof p === "object" ? p : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Single premium PDP payload - deduped per request (metadata + page). */
 export const fetchPremiumProductBySlugServer = cache(
   async (slug: string): Promise<Product | null> => {
-    const base = await getBuildSafeApiBase();
-    if (!base) return null;
-    const safe = encodeURIComponent(slug);
-    try {
-      const res = await serverFetch(`${base}/premium/products/${safe}`, {
-        next: {
-          revalidate: 60,
-          tags: [productPageCacheTag(slug)],
-        },
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) return null;
-      const json = (await res.json()) as { data?: { product?: Product } };
-      const p = json?.data?.product;
-      return p && typeof p === "object" ? p : null;
-    } catch {
-      return null;
-    }
+    const cached = await fetchPremiumProductBySlugOnce(slug, "isr");
+    if (cached) return cached;
+    // Newly published premium SKUs may 404 in ISR until revalidate — one live fetch.
+    return fetchPremiumProductBySlugOnce(slug, "no-store");
   },
 );

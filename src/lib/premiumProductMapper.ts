@@ -44,7 +44,10 @@ function defaultEditorialOpen(p: Product): PremiumEditorialPanel {
         value: p.weaveHours ? `${p.weaveHours}+ hours handloom` : "Handloom",
       },
     ],
-    note: p.craftNote || p.shortDescription || p.description.slice(0, 180),
+    note:
+      p.craftNote ||
+      p.shortDescription ||
+      (p.description ?? "").slice(0, 180),
   };
 }
 
@@ -59,7 +62,7 @@ function defaultEditorialClose(p: Product): PremiumEditorialPanel {
           p.weaveHours ? `${p.weaveHours}+ hours handloom` : "Artisan woven",
       },
     ],
-    note: p.description.slice(0, 220),
+    note: (p.description ?? "").slice(0, 220),
   };
 }
 
@@ -88,7 +91,7 @@ export function mapApiProductToPremiumView(p: Product): PremiumProductView {
       imageUrls.length > 0 ? imageUrls
       : heroImage ? [heroImage]
       : [],
-    description: p.description,
+    description: p.description ?? "",
     shortDescription: p.shortDescription,
     category: p.category,
     subcategory: p.subcategory,

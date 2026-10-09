@@ -213,10 +213,10 @@ export default function AdminPremiumPage() {
                         className={
                           p.isActive ?
                             "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
-                          : "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
+                          : "rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800"
                         }
                       >
-                        {p.isActive ? "Active" : "Inactive"}
+                        {p.isActive ? "Active" : "Draft / inactive"}
                       </span>
                     </td>
                     <td className='px-4 py-3'>
@@ -229,15 +229,23 @@ export default function AdminPremiumPage() {
                           <Pencil className='h-3.5 w-3.5' />
                           Edit
                         </button>
-                        <Link
-                          href={`/premium/${encodeURIComponent(slug)}`}
-                          target='_blank'
-                          rel='noreferrer'
-                          className='inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand-300 hover:bg-brand-50'
-                        >
-                          View
-                          <ExternalLink className='h-3.5 w-3.5' />
-                        </Link>
+                        {p.isActive !== false ?
+                          <Link
+                            href={`/premium/${encodeURIComponent(slug)}`}
+                            target='_blank'
+                            rel='noreferrer'
+                            className='inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand-300 hover:bg-brand-50'
+                          >
+                            View
+                            <ExternalLink className='h-3.5 w-3.5' />
+                          </Link>
+                        : <span
+                            className='text-[10px] text-amber-700'
+                            title='Activate product to preview on /premium'
+                          >
+                            Publish to view
+                          </span>
+                        }
                       </div>
                     </td>
                   </tr>
