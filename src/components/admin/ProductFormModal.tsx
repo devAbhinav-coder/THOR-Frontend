@@ -210,6 +210,10 @@ export default function ProductFormModal({
   const [premiumHeroPreview, setPremiumHeroPreview] = useState<string | null>(
     null,
   );
+  const [savedPremiumHero, setSavedPremiumHero] = useState<{
+    url: string;
+    publicId: string;
+  } | null>(null);
 
   const toggleOccasion = (occasion: string) => {
     setForm((prev) => {
@@ -293,6 +297,7 @@ export default function ProductFormModal({
         setEditorialClose(defaultPremiumEditorialClose());
         setPremiumHeroFile(null);
         setPremiumHeroPreview(null);
+        setSavedPremiumHero(null);
         return;
       }
       setForm({
@@ -365,7 +370,12 @@ export default function ProductFormModal({
         : defaultPremiumEditorialClose(),
       );
       setPremiumHeroFile(null);
-      setPremiumHeroPreview(p.premiumHeroImage?.url ?? null);
+      const heroUrl = p.premiumHeroImage?.url?.trim();
+      const heroPublicId = p.premiumHeroImage?.publicId?.trim();
+      setPremiumHeroPreview(heroUrl || null);
+      setSavedPremiumHero(
+        heroUrl && heroPublicId ? { url: heroUrl, publicId: heroPublicId } : null,
+      );
       setFormDirty(false);
     },
     [defaultIsPremium],
@@ -709,9 +719,12 @@ export default function ProductFormModal({
           JSON.stringify(editorialPanelForSave(editorialClose)),
         );
       }
-      if (signedPremiumHero) {
-        fd.append("premiumHeroUrl", signedPremiumHero.url);
-        fd.append("premiumHeroPublicId", signedPremiumHero.publicId);
+      const heroForSave =
+        signedPremiumHero ??
+        (form.isPremium && savedPremiumHero ? savedPremiumHero : null);
+      if (heroForSave) {
+        fd.append("premiumHeroUrl", heroForSave.url);
+        fd.append("premiumHeroPublicId", heroForSave.publicId);
       }
       fd.append("seoTitle", form.seoTitle);
       fd.append("seoDescription", form.seoDescription);
@@ -1293,18 +1306,32 @@ export default function ProductFormModal({
                 className='sm:col-span-2'
               >
                 <p className='mb-2 text-xs text-gray-500'>
-                  Full-screen hero on the product page. Separate from gallery
-                  images - used in the carousel with the first gallery shot.
+                  Full-screen hero on /premium — alag from gallery photos. Save
+                  ke baad yahi image upar dikhegi (gallery se mix nahi hogi).
                 </p>
-                {premiumHeroPreview ?
+                {(
+                  premiumHeroPreview ||
+                  loadedProduct?.premiumHeroImage?.url ||
+                  editingProduct?.premiumHeroImage?.url
+                ) ?
                   <div className='relative mb-3 aspect-[3/4] max-w-[200px] overflow-hidden rounded-lg border border-amber-200/80 bg-white'>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={premiumHeroPreview}
+                      src={
+                        premiumHeroPreview ||
+                        loadedProduct?.premiumHeroImage?.url ||
+                        editingProduct?.premiumHeroImage?.url ||
+                        ""
+                      }
                       alt='Premium hero preview'
                       className='h-full w-full object-cover'
                     />
                   </div>
+                : null}
+                {savedPremiumHero && !premiumHeroFile ?
+                  <p className='mb-2 text-[11px] font-medium text-emerald-700'>
+                    Saved hero on server — change file below to replace.
+                  </p>
                 : null}
                 <input
                   type='file'
@@ -1313,6 +1340,7 @@ export default function ProductFormModal({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    markDirty();
                     setPremiumHeroFile(file);
                     setPremiumHeroPreview(URL.createObjectURL(file));
                   }}

@@ -161,20 +161,12 @@ function buildEditorialRows(
   return rows;
 }
 
-/** Hero carousel: main hero image + first product gallery image only. */
+/** Full-screen top: premium hero only (stable — no gallery carousel). */
 function buildHeroSlides(product: PremiumProductView): string[] {
-  const hero = product.heroImage;
-  const firstProductImage = product.images[0];
-
-  if (!firstProductImage) return [hero];
-  if (firstProductImage !== hero) return [hero, firstProductImage];
-
-  const secondProductImage = product.images[1];
-  if (secondProductImage && secondProductImage !== hero) {
-    return [hero, secondProductImage];
-  }
-
-  return [hero];
+  const hero = product.heroImage?.trim();
+  if (hero) return [hero];
+  const first = product.images[0]?.trim();
+  return first ? [first] : [];
 }
 
 function PremiumPriceInline({
