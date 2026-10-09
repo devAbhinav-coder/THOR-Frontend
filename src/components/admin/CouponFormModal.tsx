@@ -35,6 +35,13 @@ import {
   AdminOfferInfoBox,
 } from "@/components/admin/shared/AdminOfferFormUi";
 import PromoScopePicker from "@/components/admin/shared/PromoScopePicker";
+import VisitPopupOverlayFields from "@/components/admin/shared/VisitPopupOverlayFields";
+import {
+  DEFAULT_VISIT_POPUP_TEXT_COLOR,
+  DEFAULT_VISIT_POPUP_TEXT_STYLE,
+  visitPopupTextColorSaveError,
+  type VisitPopupTextStyleId,
+} from "@/lib/visitPopupOverlay";
 
 interface Props {
   coupon: Coupon | null;
@@ -51,12 +58,17 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [clearImage, setClearImage] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const existingImageUrl = clearImage ? null : coupon?.imageUrl || null;
 
   const [formData, setFormData] = useState({
     code: coupon?.code || "",
     description: coupon?.description || "",
     displayTitle: coupon?.displayTitle || "",
+    visitPopupOverlayText: coupon?.visitPopupOverlayText || "",
+    visitPopupTextColor: coupon?.visitPopupTextColor || DEFAULT_VISIT_POPUP_TEXT_COLOR,
+    visitPopupTextStyle:
+      coupon?.visitPopupTextStyle || DEFAULT_VISIT_POPUP_TEXT_STYLE,
     showOnStorefront: coupon?.showOnStorefront !== false,
     discountType:
       coupon?.discountType || ("percentage" as "percentage" | "flat" | "fixed"),
@@ -154,6 +166,16 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
     setClearImage(true);
   };
 
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.expiryDate) {
@@ -182,6 +204,12 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
       return;
     }
 
+    const popupColorErr = visitPopupTextColorSaveError(formData.visitPopupTextColor);
+    if (popupColorErr) {
+      toast.error(popupColorErr);
+      return;
+    }
+
     setIsSaving(true);
     try {
       const fd = new FormData();
@@ -189,6 +217,9 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
       if (formData.description) fd.append("description", formData.description);
       if (formData.displayTitle)
         fd.append("displayTitle", formData.displayTitle);
+      fd.append("visitPopupOverlayText", formData.visitPopupOverlayText.trim());
+      fd.append("visitPopupTextColor", formData.visitPopupTextColor.trim());
+      fd.append("visitPopupTextStyle", formData.visitPopupTextStyle);
       fd.append("showOnStorefront", String(formData.showOnStorefront));
       fd.append("discountType", formData.discountType);
       fd.append("discountValue", String(Number(formData.discountValue)));
@@ -341,6 +372,26 @@ export default function CouponFormModal({ coupon, onClose, onSave }: Props) {
               onRemoveExisting={removeImage}
               onChange={onPickImage}
             />
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <VisitPopupOverlayFields
+                overlayText={formData.visitPopupOverlayText}
+                textColor={formData.visitPopupTextColor}
+                textStyle={formData.visitPopupTextStyle}
+                onOverlayTextChange={(visitPopupOverlayText) =>
+                  setFormData((prev) => ({ ...prev, visitPopupOverlayText }))
+                }
+                onTextColorChange={(visitPopupTextColor) =>
+                  setFormData((prev) => ({ ...prev, visitPopupTextColor }))
+                }
+                onTextStyleChange={(visitPopupTextStyle: VisitPopupTextStyleId) =>
+                  setFormData((prev) => ({ ...prev, visitPopupTextStyle }))
+                }
+                description={formData.description}
+                imageUrl={imagePreviewUrl || existingImageUrl}
+                ctaLabel="Copy code"
+                showCouponCode={formData.code || "SAVE20"}
+              />
+            </div>
           </AdminOfferSection>
         : null}
 

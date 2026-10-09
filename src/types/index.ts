@@ -589,6 +589,9 @@ export interface Coupon {
   displayTitle?: string;
   imageUrl?: string;
   imagePublicId?: string;
+  visitPopupOverlayText?: string | null;
+  visitPopupTextColor?: string | null;
+  visitPopupTextStyle?: string | null;
   showOnStorefront?: boolean;
   discountType: "percentage" | "flat" | "fixed";
   discountValue: number;
@@ -620,6 +623,9 @@ export interface PublicCoupon {
   description?: string;
   displayTitle: string;
   imageUrl?: string | null;
+  visitPopupOverlayText?: string | null;
+  visitPopupTextColor?: string | null;
+  visitPopupTextStyle?: string | null;
   discountType: "percentage" | "flat" | "fixed";
   discountValue: number;
   minOrderAmount?: number;
@@ -639,6 +645,9 @@ export interface SaleCampaign {
   maxDiscountPerItem?: number;
   imageUrl?: string;
   imagePublicId?: string;
+  visitPopupOverlayText?: string | null;
+  visitPopupTextColor?: string | null;
+  visitPopupTextStyle?: string | null;
   showOnStorefront?: boolean;
   scopeType: PromoScopeType;
   categoryIds?: string[];
@@ -663,6 +672,9 @@ export interface Promotion {
   badgeText?: string;
   imageUrl?: string;
   imagePublicId?: string;
+  visitPopupOverlayText?: string | null;
+  visitPopupTextColor?: string | null;
+  visitPopupTextStyle?: string | null;
   promotionType: PromotionType;
   buyQuantity?: number;
   getQuantity?: number;
@@ -693,6 +705,9 @@ export interface PublicPromotion {
   termsAndConditions?: string;
   badgeText?: string | null;
   imageUrl?: string | null;
+  visitPopupOverlayText?: string | null;
+  visitPopupTextColor?: string | null;
+  visitPopupTextStyle?: string | null;
   promotionType: PromotionType;
   buyQuantity: number;
   getQuantity: number;
@@ -715,6 +730,9 @@ export interface PublicSale {
   discountType: "percentage" | "flat" | "fixed";
   discountValue: number;
   imageUrl?: string | null;
+  visitPopupOverlayText?: string | null;
+  visitPopupTextColor?: string | null;
+  visitPopupTextStyle?: string | null;
   startDate: string;
   endDate: string;
   scopeType: PromoScopeType;

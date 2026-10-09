@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import VisitPopupOverlayFields from "@/components/admin/shared/VisitPopupOverlayFields";
+import {
+  DEFAULT_VISIT_POPUP_TEXT_COLOR,
+  DEFAULT_VISIT_POPUP_TEXT_STYLE,
+  visitPopupTextColorSaveError,
+  type VisitPopupTextStyleId,
+} from "@/lib/visitPopupOverlay";
 import {
   Percent,
   Calendar,
@@ -78,10 +85,16 @@ export default function SaleCampaignFormModal({
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [clearImage, setClearImage] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const existingImageUrl = clearImage ? null : campaign?.imageUrl || null;
   const [formData, setFormData] = useState({
     name: campaign?.name || "",
     description: campaign?.description || "",
+    visitPopupOverlayText: campaign?.visitPopupOverlayText || "",
+    visitPopupTextColor:
+      campaign?.visitPopupTextColor || DEFAULT_VISIT_POPUP_TEXT_COLOR,
+    visitPopupTextStyle:
+      campaign?.visitPopupTextStyle || DEFAULT_VISIT_POPUP_TEXT_STYLE,
     badgeText: campaign?.badgeText || "Sale",
     discountType: (campaign?.discountType || "percentage") as DiscountType,
     discountValue: campaign?.discountValue?.toString() || "",
@@ -111,6 +124,16 @@ export default function SaleCampaignFormModal({
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   useEffect(() => {
     const ids = (campaign?.productIds || []).map(String);
@@ -203,11 +226,20 @@ export default function SaleCampaignFormModal({
       toast.error(scopeErr);
       return;
     }
+    const popupColorErr = visitPopupTextColorSaveError(formData.visitPopupTextColor);
+    if (popupColorErr) {
+      toast.error(popupColorErr);
+      return;
+    }
+
     setIsSaving(true);
     try {
       const fd = new FormData();
       fd.append("name", formData.name.trim());
       if (formData.description) fd.append("description", formData.description);
+      fd.append("visitPopupOverlayText", formData.visitPopupOverlayText.trim());
+      fd.append("visitPopupTextColor", formData.visitPopupTextColor.trim());
+      fd.append("visitPopupTextStyle", formData.visitPopupTextStyle);
       fd.append("badgeText", formData.badgeText || "Sale");
       fd.append("discountType", formData.discountType);
       fd.append("discountValue", String(Number(formData.discountValue)));
@@ -306,6 +338,25 @@ export default function SaleCampaignFormModal({
             onRemoveExisting={removeImage}
             onChange={onPickImage}
           />
+          <div className="mt-4 border-t border-gray-100 pt-4">
+            <VisitPopupOverlayFields
+              overlayText={formData.visitPopupOverlayText}
+              textColor={formData.visitPopupTextColor}
+              textStyle={formData.visitPopupTextStyle}
+              onOverlayTextChange={(visitPopupOverlayText) =>
+                setFormData((prev) => ({ ...prev, visitPopupOverlayText }))
+              }
+              onTextColorChange={(visitPopupTextColor) =>
+                setFormData((prev) => ({ ...prev, visitPopupTextColor }))
+              }
+              onTextStyleChange={(visitPopupTextStyle: VisitPopupTextStyleId) =>
+                setFormData((prev) => ({ ...prev, visitPopupTextStyle }))
+              }
+              description={formData.description}
+              imageUrl={imagePreviewUrl || existingImageUrl}
+              ctaLabel="Shop the sale"
+            />
+          </div>
         </AdminOfferSection>
 
         <AdminOfferSection

@@ -25,6 +25,13 @@ import { Input } from "@/components/ui/input";
 import ImageUploader from "@/components/ui/ImageUploader";
 import toast from "react-hot-toast";
 import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
+import VisitPopupOverlayFields from "@/components/admin/shared/VisitPopupOverlayFields";
+import {
+  DEFAULT_VISIT_POPUP_TEXT_COLOR,
+  DEFAULT_VISIT_POPUP_TEXT_STYLE,
+  visitPopupTextColorSaveError,
+  type VisitPopupTextStyleId,
+} from "@/lib/visitPopupOverlay";
 import { AdminAiPromotionTermsButton } from "@/components/admin/ai/AdminAiPromotionTermsButton";
 import {
   AdminOfferModal,
@@ -173,6 +180,11 @@ function defaultForm(promotion: Promotion | null) {
   return {
     name: promotion?.name || "",
     description: promotion?.description || "",
+    visitPopupOverlayText: promotion?.visitPopupOverlayText || "",
+    visitPopupTextColor:
+      promotion?.visitPopupTextColor || DEFAULT_VISIT_POPUP_TEXT_COLOR,
+    visitPopupTextStyle:
+      promotion?.visitPopupTextStyle || DEFAULT_VISIT_POPUP_TEXT_STYLE,
     termsAndConditions: promotion?.termsAndConditions || "",
     displayTitle: promotion?.displayTitle || "",
     badgeText: promotion?.badgeText || "Offer",
@@ -240,8 +252,19 @@ export default function PromotionFormModal({
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [clearImage, setClearImage] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const existingImageUrl = clearImage ? null : promotion?.imageUrl || null;
   const [formData, setFormData] = useState(defaultForm(promotion));
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   useEffect(() => {
     Promise.all([
@@ -360,11 +383,20 @@ export default function PromotionFormModal({
       return;
     }
 
+    const popupColorErr = visitPopupTextColorSaveError(formData.visitPopupTextColor);
+    if (popupColorErr) {
+      toast.error(popupColorErr);
+      return;
+    }
+
     setIsSaving(true);
     try {
       const fd = new FormData();
       fd.append("name", formData.name.trim());
       if (formData.description) fd.append("description", formData.description);
+      fd.append("visitPopupOverlayText", formData.visitPopupOverlayText.trim());
+      fd.append("visitPopupTextColor", formData.visitPopupTextColor.trim());
+      fd.append("visitPopupTextStyle", formData.visitPopupTextStyle);
       if (formData.termsAndConditions)
         fd.append("termsAndConditions", formData.termsAndConditions);
       if (formData.displayTitle)
@@ -513,6 +545,25 @@ export default function PromotionFormModal({
                 if (file) setClearImage(false);
               }}
             />
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <VisitPopupOverlayFields
+                overlayText={formData.visitPopupOverlayText}
+                textColor={formData.visitPopupTextColor}
+                textStyle={formData.visitPopupTextStyle}
+                onOverlayTextChange={(visitPopupOverlayText) =>
+                  setFormData((prev) => ({ ...prev, visitPopupOverlayText }))
+                }
+                onTextColorChange={(visitPopupTextColor) =>
+                  setFormData((prev) => ({ ...prev, visitPopupTextColor }))
+                }
+                onTextStyleChange={(visitPopupTextStyle: VisitPopupTextStyleId) =>
+                  setFormData((prev) => ({ ...prev, visitPopupTextStyle }))
+                }
+                description={formData.description}
+                imageUrl={imagePreviewUrl || existingImageUrl}
+                ctaLabel="Shop now"
+              />
+            </div>
           </AdminOfferSection>
         : null}
 
