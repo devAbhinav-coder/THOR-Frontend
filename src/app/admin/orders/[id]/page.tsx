@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import OrderLineThumbnail from "@/components/orders/OrderLineThumbnail";
 import OrderLineCogEditor from "@/components/admin/orders/OrderLineCogEditor";
+import AdminOrderLifecycleTimeline from "@/components/admin/orders/AdminOrderLifecycleTimeline";
+import { getOrderCancelReason } from "@/lib/orderLifecycle";
 import {
   isUsableOrderLineImage,
   isManualOfflineOrderLine,
@@ -1434,6 +1436,8 @@ export default function AdminOrderDetailsPage() {
     order.paymentStatus === "paid" &&
     order.status === "cancelled" &&
     !(order.refundData?.amount && order.refundData.amount > 0);
+  const customerCancelReason =
+    order.status === "cancelled" ? getOrderCancelReason(order) : undefined;
   const isB2bOrder = order.offlineMeta?.source === "b2b";
   const linkedTaxInvoiceId = getLinkedTaxInvoiceId(order);
 
@@ -1611,6 +1615,17 @@ export default function AdminOrderDetailsPage() {
             </div>
           }
         />
+
+        {customerCancelReason && (
+          <div className='rounded-2xl border border-amber-200 bg-amber-50/80 p-4 sm:p-5 shadow-sm'>
+            <p className='text-sm font-bold text-amber-950'>
+              Customer cancellation reason
+            </p>
+            <p className='text-sm text-amber-900 mt-1 whitespace-pre-wrap'>
+              {customerCancelReason}
+            </p>
+          </div>
+        )}
 
         {needsRazorpayRefund && (
           <div className='rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 via-white to-orange-50/80 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
@@ -2018,245 +2033,7 @@ export default function AdminOrderDetailsPage() {
               );
             })()}
 
-            {/* Horizontal Status Timeline */}
-            {(() => {
-              const o = order; // Local ref for null-safety
-              if (!o) return null;
-
-              return (
-                <div className='bg-white rounded-2xl border border-gray-200/80 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] overflow-hidden'>
-                  <div className='px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 via-white to-white'>
-                    <h2 className='font-semibold text-gray-900 flex items-center gap-2'>
-                      <Compass className='h-4 w-4 text-blue-600' /> Order
-                      Lifecycle
-                    </h2>
-                  </div>
-                  <div className='p-5 sm:p-8 w-full overflow-x-auto pb-4'>
-                    <div className='flex items-start min-w-[700px] relative mt-6 font-sans'>
-                      {(() => {
-                        const standardFlow = [
-                          "pending",
-                          "confirmed",
-                          "processing",
-                          "shipped",
-                          "delivered",
-                        ];
-                        const flow = [...standardFlow];
-
-                        // Check for post-delivery states
-                        const history = o.statusHistory || [];
-                        const hasHistory = (s: string) =>
-                          history.some((h) => h.status === s);
-
-                        const returnRequested = hasHistory("return_requested");
-                        const returnApproved = hasHistory("return_approved");
-                        const returnRejected = hasHistory("return_rejected");
-                        const isRefunded =
-                          o.status === "refunded" || hasHistory("refunded");
-                        const isCancelled = o.status === "cancelled";
-
-                        if (returnRequested) flow.push("return_requested");
-                        if (returnApproved) flow.push("return_approved");
-                        if (returnRejected) flow.push("return_rejected");
-                        if (isRefunded) flow.push("refunded");
-                        if (isCancelled && !returnRequested) {
-                          // Logic for pre-delivery cancellation
-                          const lastStatus = history
-                            .filter((h) => standardFlow.includes(h.status))
-                            .sort(
-                              (a, b) =>
-                                new Date(b.timestamp).getTime() -
-                                new Date(a.timestamp).getTime(),
-                            )[0]?.status;
-
-                          const lastIndex = standardFlow.indexOf(
-                            lastStatus || "pending",
-                          );
-                          const truncatedFlow = standardFlow.slice(
-                            0,
-                            lastIndex + 1,
-                          );
-                          truncatedFlow.push("cancelled");
-                          return renderFlow(truncatedFlow, true);
-                        }
-
-                        function renderFlow(
-                          activeFlow: string[],
-                          preDeliveryFailure = false,
-                        ) {
-                          const currentIndex = activeFlow.indexOf(o!.status);
-
-                          return activeFlow.map((step, index) => {
-                            const isCompleted =
-                              activeFlow.indexOf(o!.status) >= index;
-                            const historyItem = history.find(
-                              (h) => h.status === step,
-                            );
-                            const timestamp =
-                              historyItem ?
-                                formatDateTime(historyItem.timestamp)
-                              : "";
-
-                            const isFailureStep =
-                              step === "cancelled" ||
-                              step === "return_rejected";
-                            const isWarningStep =
-                              step === "return_requested" ||
-                              step === "refunded";
-
-                            let icon = null;
-                            if (step === "delivered" && isCompleted) {
-                              icon = (
-                                <div className='flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-full z-10 border border-emerald-100/50 relative top-0.5'>
-                                  <CheckCircle2 className='h-4 w-4 text-white fill-emerald-600' />
-                                  <span className='text-emerald-800 text-[13px] font-bold capitalize pt-px'>
-                                    {step.replace(/_/g, " ")}
-                                  </span>
-                                </div>
-                              );
-                            } else if (isFailureStep && isCompleted) {
-                              icon = (
-                                <div className='flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-full z-10 border border-red-100 relative top-0.5'>
-                                  <XCircle className='h-4 w-4 text-red-600 fill-red-600' />
-                                  <span className='text-red-800 text-[13px] font-bold capitalize pt-px'>
-                                    {step.replace(/_/g, " ")}
-                                  </span>
-                                </div>
-                              );
-                            } else if (isWarningStep && isCompleted) {
-                              /* Static Tailwind classes - dynamic `bg-${color}-50` is purged and renders white */
-                              icon =
-                                step === "refunded" ?
-                                  <div className='flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-full z-10 border border-orange-200 relative top-0.5 shadow-sm'>
-                                    <Undo2 className='h-4 w-4 text-orange-600 shrink-0' />
-                                    <span className='text-orange-900 text-[13px] font-bold capitalize pt-px'>
-                                      {step.replace(/_/g, " ")}
-                                    </span>
-                                  </div>
-                                : <div className='flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full z-10 border border-amber-200 relative top-0.5 shadow-sm'>
-                                    <RotateCcw className='h-4 w-4 text-amber-600 shrink-0' />
-                                    <span className='text-amber-900 text-[13px] font-bold capitalize pt-px'>
-                                      {step.replace(/_/g, " ")}
-                                    </span>
-                                  </div>;
-                            } else if (step === "shipped") {
-                              icon = (
-                                <div className='bg-white px-3 z-10'>
-                                  <Truck
-                                    className={cn(
-                                      "h-6 w-6 mt-1",
-                                      isCompleted ?
-                                        "text-blue-600 fill-blue-600"
-                                      : "text-gray-300",
-                                    )}
-                                  />
-                                </div>
-                              );
-                            } else if (isCompleted) {
-                              icon = (
-                                <div className='bg-white px-2 z-10'>
-                                  <CheckCircle2 className='h-6 w-6 text-white fill-emerald-600 rounded-full mt-1.5' />
-                                </div>
-                              );
-                            } else {
-                              icon = (
-                                <div className='bg-white px-2 z-10'>
-                                  <Circle className='h-2 w-2 text-gray-300 fill-gray-300 mt-3' />
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div
-                                key={step}
-                                className={cn(
-                                  "relative flex flex-col items-center",
-                                  index === activeFlow.length - 1 ?
-                                    "flex-[0.5]"
-                                  : "flex-1",
-                                )}
-                              >
-                                {/* Connecting Line */}
-                                {index < activeFlow.length - 1 && (
-                                  <div
-                                    className={cn(
-                                      "absolute top-5 left-[50%] right-[-50%] h-[2px] z-0",
-                                      activeFlow.indexOf(o!.status) > index ?
-                                        (
-                                          preDeliveryFailure &&
-                                          index >=
-                                            activeFlow.indexOf(o!.status) - 1
-                                        ) ?
-                                          "bg-red-200"
-                                        : "bg-emerald-600"
-                                      : "bg-gray-200",
-                                    )}
-                                  />
-                                )}
-
-                                {/* Node Icon */}
-                                <div className='relative z-10 flex justify-center h-10 items-center w-full'>
-                                  {icon}
-                                </div>
-
-                                {/* Node Label & Date */}
-                                <div
-                                  className={cn(
-                                    "mt-3 text-center",
-                                    (
-                                      (step === "delivered" && isCompleted) ||
-                                        (isFailureStep && isCompleted) ||
-                                        (isWarningStep && isCompleted)
-                                    ) ?
-                                      "mt-2"
-                                    : "mt-3",
-                                  )}
-                                >
-                                  {(!isCompleted ||
-                                    (step !== "delivered" &&
-                                      !isFailureStep &&
-                                      !isWarningStep)) && (
-                                    <p
-                                      className={cn(
-                                        "text-[14px] font-bold capitalize",
-                                        isCompleted ? "text-gray-900" : (
-                                          "text-gray-500"
-                                        ),
-                                      )}
-                                    >
-                                      {step.replace(/_/g, " ")}
-                                    </p>
-                                  )}
-                                  {timestamp && (
-                                    <p
-                                      className={cn(
-                                        "text-[11px] text-gray-500",
-                                        (
-                                          (step === "delivered" &&
-                                            isCompleted) ||
-                                            (isFailureStep && isCompleted) ||
-                                            (isWarningStep && isCompleted)
-                                        ) ?
-                                          "mt-0"
-                                        : "mt-1",
-                                      )}
-                                    >
-                                      {timestamp}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          });
-                        }
-
-                        return renderFlow(flow);
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            {order && <AdminOrderLifecycleTimeline order={order} />}
           </div>
 
           {/* Sidebar: customer, shipping, totals, tracking */}

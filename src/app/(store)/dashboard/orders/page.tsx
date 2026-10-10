@@ -10,6 +10,7 @@ import { Order } from '@/types';
 import { cn } from '@/lib/utils';
 import { OrderCardSkeleton } from '@/components/ui/SkeletonLoader';
 import OrderHistoryCard from '@/components/dashboard/OrderHistoryCard';
+import CancelOrderModal from '@/components/dashboard/orders/CancelOrderModal';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -33,7 +34,7 @@ export default function OrdersPage() {
   const searchParams = useSearchParams();
   const initialFilter = searchParams.get('filter') ?? '';
   const [activeFilter, setActiveFilter] = useState(initialFilter);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -98,9 +99,10 @@ export default function OrdersPage() {
   }, [hasNextPage, isLoading, isFetchingNextPage, fetchNextPage]);
 
   const cancelMutation = useMutation({
-    mutationFn: (orderId: string) =>
-      orderApi.cancel(orderId, 'Cancelled by customer'),
-    onSuccess: async (_res, orderId) => {
+    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) =>
+      orderApi.cancel(orderId, reason),
+    onSuccess: async (_res, { orderId }) => {
+      setCancelTarget(null);
       await useAuthStore.getState().fetchUser();
       toast.success('Order cancelled successfully');
       queryClient.setQueriesData(
@@ -131,7 +133,6 @@ export default function OrdersPage() {
     onError: () => {
       toast.error('Could not cancel order. Please try from order details.');
     },
-    onSettled: () => setCancellingId(null),
   });
 
   const handleFilterChange = (value: string) => {
@@ -140,10 +141,8 @@ export default function OrdersPage() {
     router.replace(url, { scroll: false });
   };
 
-  const handleCancelOrder = (orderId: string) => {
-    if (!window.confirm('Are you sure you want to cancel this order?')) return;
-    setCancellingId(orderId);
-    cancelMutation.mutate(orderId);
+  const handleCancelOrder = (order: Order) => {
+    setCancelTarget(order);
   };
 
   if (!isLoading && orders.length === 0 && activeFilter === '') {
@@ -218,7 +217,9 @@ export default function OrdersPage() {
               key={order._id}
               order={order}
               onCancelClick={
-                cancellingId === order._id ? undefined : handleCancelOrder
+                cancelMutation.isPending && cancelTarget?._id === order._id ?
+                  undefined
+                : handleCancelOrder
               }
             />
           ))
@@ -230,6 +231,20 @@ export default function OrdersPage() {
         <div className="flex items-center justify-center py-2">
           <span className="h-5 w-5 rounded-full border-2 border-account-outline-variant border-t-account-secondary animate-spin" />
         </div>
+      )}
+
+      {cancelTarget && (
+        <CancelOrderModal
+          order={cancelTarget}
+          open={!!cancelTarget}
+          isSubmitting={cancelMutation.isPending}
+          onClose={() => {
+            if (!cancelMutation.isPending) setCancelTarget(null);
+          }}
+          onConfirm={(reason) =>
+            cancelMutation.mutate({ orderId: cancelTarget._id, reason })
+          }
+        />
       )}
 
       {!isLoading && !hasNextPage && orders.length > 0 && (

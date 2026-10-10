@@ -1,21 +1,12 @@
 import { Order } from "@/types";
 import { formatDate } from "@/lib/utils";
+import {
+  buildOrderLifecycleTimeline,
+  buildSyntheticFulfillmentUpToCurrent,
+  OrderLifecycleEvent,
+} from "@/lib/orderLifecycle";
 
-export type TrackingEvent = {
-  key: string;
-  label: string;
-  detail?: string;
-  timestamp?: string;
-  state: "done" | "current" | "upcoming";
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Order Placed",
-  confirmed: "Order Confirmed",
-  processing: "Processing at Atelier",
-  shipped: "Order Shipped",
-  delivered: "Delivered",
-};
+export type TrackingEvent = OrderLifecycleEvent;
 
 export function getExpectedDeliveryLabel(order: Order): string | null {
   if (order.status === "delivered" && order.deliveredAt) {
@@ -41,47 +32,9 @@ export function getExpectedDeliveryLabel(order: Order): string | null {
 }
 
 export function buildTrackingTimeline(order: Order): TrackingEvent[] {
-  const scans = order.delhivery?.trackScansSnapshot ?? [];
-  if (scans.length > 0) {
-    return scans.map((scan, i) => ({
-      key: `scan-${i}`,
-      label: scan.status || "Update",
-      detail: [scan.location, scan.detail].filter(Boolean).join(" · ") || undefined,
-      timestamp: scan.time,
-      state: i < scans.length - 1 ? "done" : order.status === "delivered" ? "done" : "current",
-    }));
-  }
-
-  const history = [...(order.statusHistory || [])].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-  );
-
-  if (history.length > 0) {
-    const lastIdx = history.length - 1;
-    return history.map((h, i) => ({
-      key: `${h.status}-${i}`,
-      label: STATUS_LABELS[h.status] || h.status,
-      detail: h.note,
-      timestamp: h.timestamp,
-      state:
-        order.status === "delivered" ? "done"
-        : i < lastIdx ? "done"
-        : i === lastIdx ? "current"
-        : "upcoming",
-    }));
-  }
-
-  const steps = ["pending", "confirmed", "processing", "shipped", "delivered"];
-  const current = steps.indexOf(order.status);
-  return steps.map((step, i) => ({
-    key: step,
-    label: STATUS_LABELS[step] || step,
-    state:
-      current < 0 ? "upcoming"
-      : i < current ? "done"
-      : i === current ? "current"
-      : "upcoming",
-  }));
+  const fromHistory = buildOrderLifecycleTimeline(order);
+  if (fromHistory.length > 0) return fromHistory;
+  return buildSyntheticFulfillmentUpToCurrent(order.status);
 }
 
 export function maskPhone(phone: string): string {

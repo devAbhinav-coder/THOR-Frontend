@@ -18,6 +18,7 @@ import {
 } from "./orderDetailHelpers";
 import OrderTrackingTimeline from "./OrderTrackingTimeline";
 import { InlineStars, OrderReviewForm } from "./OrderItemReviewBlock";
+import { getOrderCancelReason } from "@/lib/orderLifecycle";
 
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
 
@@ -92,7 +93,13 @@ export default function OrderDetailLuxuryContent({
 }: Props) {
   const trackingEvents = buildTrackingTimeline(order);
   const expectedDelivery = getExpectedDeliveryLabel(order);
-  const showTracking = !isCancelledOrRefunded && trackingEvents.length > 0;
+  const showTracking = trackingEvents.length > 0;
+  const cancelReason =
+    order.status === "cancelled" ? getOrderCancelReason(order) : undefined;
+  const timelineTitle =
+    order.status === "shipped" || order.status === "delivered" ?
+      "Live tracking"
+    : "Order timeline";
   const canShowInvoice =
     !!order.invoice?.isGenerated &&
     (order.paymentStatus === "paid" || order.status === "delivered");
@@ -200,9 +207,25 @@ export default function OrderDetailLuxuryContent({
       {returnBanner}
 
       {isCancelledOrRefunded && (
-        <div className='bg-red-50 border border-red-200 p-4 flex items-center gap-3 text-sm text-red-800'>
-          <AlertCircle className='h-5 w-5 shrink-0' />
-          <span>This order has been {order.status}.</span>
+        <div className='bg-red-50 border border-red-200 p-4 flex gap-3 text-sm text-red-800'>
+          <AlertCircle className='h-5 w-5 shrink-0 mt-0.5' />
+          <div>
+            <p className='font-medium capitalize'>This order has been {order.status}.</p>
+            {cancelReason && (
+              <p className='mt-1 text-red-900/90'>
+                <span className='font-semibold'>Your reason:</span> {cancelReason}
+              </p>
+            )}
+            <p className='mt-2 text-red-800/90'>
+              Questions?{" "}
+              <a
+                href={`mailto:${SUPPORT_EMAIL}?subject=Order%20${encodeURIComponent(order.orderNumber)}`}
+                className='underline font-semibold'
+              >
+                Contact concierge
+              </a>
+            </p>
+          </div>
         </div>
       )}
 
@@ -383,7 +406,9 @@ export default function OrderDetailLuxuryContent({
 
           {customGiftSection}
 
-          {showTracking && <OrderTrackingTimeline events={trackingEvents} />}
+          {showTracking && (
+            <OrderTrackingTimeline events={trackingEvents} title={timelineTitle} />
+          )}
         </div>
 
         {/* Right column - summary */}

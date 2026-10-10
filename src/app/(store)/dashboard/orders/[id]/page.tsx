@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import OrderDetailLuxuryContent from "@/components/dashboard/orders/OrderDetailLuxuryContent";
+import CancelOrderModal from "@/components/dashboard/orders/CancelOrderModal";
 import {
   isPresetReviewTitle,
   titleForRating,
@@ -220,6 +221,7 @@ export default function OrderDetailPage() {
   const [returnIfsc, setReturnIfsc] = useState("");
   const [returnBankName, setReturnBankName] = useState("");
   const [isReturning, setIsReturning] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
   const { data: order = null, isLoading } = useQuery({
     queryKey: ["order", orderId],
@@ -329,10 +331,9 @@ export default function OrderDetailPage() {
     setReturnModalStep(1);
   };
 
-  const handleCancel = async () => {
+  const submitCancel = async (reason: string) => {
     if (!order || isCancelling || cancelLocked) return;
     if (!["pending", "confirmed"].includes(order.status)) return;
-    if (!confirm("Are you sure you want to cancel this order?")) return;
 
     const previous = order;
     setIsCancelling(true);
@@ -340,8 +341,9 @@ export default function OrderDetailPage() {
     setOrder({ ...order, status: "cancelled" });
 
     try {
-      const body = await orderApi.cancel(order._id);
+      const body = await orderApi.cancel(order._id, reason);
       setOrder(body.data.order as Order);
+      setCancelModalOpen(false);
       await useAuthStore.getState().fetchUser();
       invalidateOrderCaches();
       const msg = body.message || "";
@@ -356,6 +358,7 @@ export default function OrderDetailPage() {
         (err as { message?: string })?.message || "Failed to cancel order";
       if (message.toLowerCase().includes("already cancelled")) {
         setOrder({ ...previous, status: "cancelled" });
+        setCancelModalOpen(false);
         toast.success("This order was already cancelled");
       } else {
         toast.error(message);
@@ -596,7 +599,7 @@ export default function OrderDetailPage() {
         isCancelling={isCancelling}
         cancelLocked={cancelLocked}
         isReturnEligible={isReturnEligible}
-        onCancel={handleCancel}
+        onCancel={() => setCancelModalOpen(true)}
         onOpenReturn={() => {
           setReturnModalStep(1);
           setReturnModalOpen(true);
@@ -666,6 +669,18 @@ export default function OrderDetailPage() {
         onRemoveReviewImage={removeReviewImage}
         onSubmitReview={handleSubmitReview}
       />
+
+      {cancelModalOpen && order && (
+        <CancelOrderModal
+          order={order}
+          open={cancelModalOpen}
+          isSubmitting={isCancelling}
+          onClose={() => {
+            if (!isCancelling) setCancelModalOpen(false);
+          }}
+          onConfirm={(reason) => void submitCancel(reason)}
+        />
+      )}
 
       {returnModalOpen && order && (
         <div

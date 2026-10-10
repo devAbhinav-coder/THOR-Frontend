@@ -4,13 +4,19 @@ import { Check, Circle, MapPin } from "lucide-react";
 import { TrackingEvent } from "./orderDetailHelpers";
 import { formatDateTime, cn } from "@/lib/utils";
 
-export default function OrderTrackingTimeline({ events }: { events: TrackingEvent[] }) {
+export default function OrderTrackingTimeline({
+  events,
+  title = "Order timeline",
+}: {
+  events: TrackingEvent[];
+  title?: string;
+}) {
   if (!events.length) return null;
 
   return (
     <section className="bg-account-surface-container-lowest border border-account-outline-variant/30 p-6 md:p-8">
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-account-on-surface-variant mb-6">
-        Live Tracking
+        {title}
       </p>
       <ol className="space-y-0">
         {events.map((event, i) => {

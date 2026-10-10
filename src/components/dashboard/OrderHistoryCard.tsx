@@ -15,7 +15,7 @@ import {
 
 type Props = {
   order: Order;
-  onCancelClick?: (orderId: string) => void;
+  onCancelClick?: (order: Order) => void;
 };
 
 export default function OrderHistoryCard({ order, onCancelClick }: Props) {
@@ -146,7 +146,7 @@ export default function OrderHistoryCard({ order, onCancelClick }: Props) {
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onCancelClick(order._id);
+                onCancelClick(order);
               }}
               className="w-full border border-account-outline text-account-outline py-3 text-[11px] font-semibold uppercase tracking-widest hover:text-red-600 hover:border-red-400 transition-colors"
             >
