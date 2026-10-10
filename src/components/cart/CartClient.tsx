@@ -32,7 +32,7 @@ import shoppingCartGif from "@/assets/shopping-cart.gif";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 
 const SHIPPING_THRESHOLD = 1099;
-const SHIPPING_CHARGE = 99;
+const SHIPPING_CHARGE = 1;
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
 

@@ -1429,6 +1429,11 @@ export default function AdminOrderDetailsPage() {
   const invoiceEligible =
     order.paymentStatus === "paid" || order.status === "delivered";
   const isPaid = order.paymentStatus === "paid";
+  const needsRazorpayRefund =
+    order.paymentMethod === "razorpay" &&
+    order.paymentStatus === "paid" &&
+    order.status === "cancelled" &&
+    !(order.refundData?.amount && order.refundData.amount > 0);
   const isB2bOrder = order.offlineMeta?.source === "b2b";
   const linkedTaxInvoiceId = getLinkedTaxInvoiceId(order);
 
@@ -1606,6 +1611,30 @@ export default function AdminOrderDetailsPage() {
             </div>
           }
         />
+
+        {needsRazorpayRefund && (
+          <div className='rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 via-white to-orange-50/80 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+            <div>
+              <p className='text-sm font-bold text-red-950'>
+                Refund required — paid online order cancelled
+              </p>
+              <p className='text-sm text-red-900/90 mt-1'>
+                Customer paid via Razorpay. Process{" "}
+                <strong className='tabular-nums'>
+                  {formatPrice(refundPolicy?.maxRefundable ?? order.total)}
+                </strong>{" "}
+                back to the original payment method in one step.
+              </p>
+            </div>
+            <Button
+              variant='brand'
+              className='rounded-xl bg-red-600 hover:bg-red-700 border-red-600 shrink-0'
+              onClick={() => setRefundModalOpen(true)}
+            >
+              Process Razorpay refund
+            </Button>
+          </div>
+        )}
 
         {highlightNewB2b && isB2bOrder && !linkedTaxInvoiceId && (
           <div className='rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-emerald-50/60 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>

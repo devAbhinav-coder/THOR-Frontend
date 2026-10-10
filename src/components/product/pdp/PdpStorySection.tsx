@@ -32,7 +32,7 @@ type PdpStorySectionProps = {
   motionVideoUrl?: string;
   motionReelUrl?: string;
   motionPosterUrl?: string;
-  /** Premium: Fabric & Care above Product Details; both stay open. */
+  /** Premium: Fabric & Care first; exclusive accordion (one panel open). */
   layout?: "shop" | "premium";
 };
 
@@ -51,10 +51,9 @@ const PREMIUM_ACCORDION: {
   id: AccordionId;
   title: string;
   icon: typeof Lightbulb;
-  alwaysOpen?: boolean;
 }[] = [
-  { id: "fabric", title: "Fabric & Care", icon: Lightbulb, alwaysOpen: true },
-  { id: "details", title: "Product Details", icon: Package, alwaysOpen: true },
+  { id: "fabric", title: "Fabric & Care", icon: Lightbulb },
+  { id: "details", title: "Product Details", icon: Package },
   { id: "shipping", title: "Shipping & Returns", icon: Truck },
   { id: "disclaimer", title: "Disclaimer", icon: AlertTriangle },
 ];
@@ -93,14 +92,14 @@ export function PdpStorySection({
 }: PdpStorySectionProps) {
   const isPremiumLayout = layout === "premium";
   const accordionItems = isPremiumLayout ? PREMIUM_ACCORDION : SHOP_ACCORDION;
-  const [openId, setOpenId] = useState<AccordionId | null>(
-    isPremiumLayout ? null : "fabric",
-  );
+  const [openId, setOpenId] = useState<AccordionId | null>("fabric");
   const [motionVideoOpen, setMotionVideoOpen] = useState(false);
   const [motionReelOpen, setMotionReelOpen] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const highlights = getPdpHighlights(product);
   const careText = product.careInstructions?.trim() || DEFAULT_CARE;
+  const showDetailsDescription =
+    !isPremiumLayout && Boolean(product.description?.trim());
 
   const motion = useMemo(
     () =>
@@ -173,8 +172,7 @@ export function PdpStorySection({
         <div className='border border-gray-200 bg-white lg:col-span-4'>
           {accordionItems.map((item) => {
             const { id, title, icon: Icon } = item;
-            const alwaysOpen = "alwaysOpen" in item && item.alwaysOpen === true;
-            const isOpen = alwaysOpen || openId === id;
+            const isOpen = openId === id;
             return (
               <div
                 key={id}
@@ -182,15 +180,9 @@ export function PdpStorySection({
               >
                 <button
                   type='button'
-                  onClick={() => {
-                    if (alwaysOpen) return;
-                    toggle(id);
-                  }}
+                  onClick={() => toggle(id)}
                   aria-expanded={isOpen}
-                  className={cn(
-                    "flex w-full items-center gap-2 px-3 py-3 text-left transition-colors sm:gap-3 sm:px-5 sm:py-4",
-                    alwaysOpen ? "cursor-default" : "hover:bg-[#faf8f4]/80",
-                  )}
+                  className='flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-[#faf8f4]/80 sm:gap-3 sm:px-5 sm:py-4'
                 >
                   <Icon
                     className='h-3.5 w-3.5 shrink-0 text-[#c5a059] sm:h-4 sm:w-4'
@@ -200,9 +192,7 @@ export function PdpStorySection({
                   <span className='flex-1 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-navy-900 sm:text-[11px] sm:tracking-[0.18em]'>
                     {title}
                   </span>
-                  {alwaysOpen ?
-                    null
-                  : isOpen ?
+                  {isOpen ?
                     <ChevronUp className='h-3.5 w-3.5 shrink-0 text-gray-400 sm:h-4 sm:w-4' />
                   : <ChevronDown className='h-3.5 w-3.5 shrink-0 text-gray-400 sm:h-4 sm:w-4' />
                   }
@@ -251,7 +241,7 @@ export function PdpStorySection({
 
                     {id === "details" ?
                       <div className='space-y-3 sm:space-y-4'>
-                        {product.description ?
+                        {showDetailsDescription ?
                           <RichTextContent
                             text={product.description}
                             className='space-y-2 text-xs leading-relaxed text-gray-600 sm:space-y-3 sm:text-sm [&_p]:text-gray-600'
@@ -262,7 +252,7 @@ export function PdpStorySection({
                           <div
                             className={cn(
                               "space-y-2",
-                              product.description &&
+                              showDetailsDescription &&
                                 "border-t border-gray-100 pt-3",
                             )}
                           >
@@ -292,7 +282,7 @@ export function PdpStorySection({
                             className={cn(
                               "divide-y divide-gray-100",
                               (formSpecRows.length > 0 ||
-                                product.description) &&
+                                showDetailsDescription) &&
                                 "border-t border-gray-100 pt-1 sm:pt-2",
                             )}
                           >
@@ -318,7 +308,7 @@ export function PdpStorySection({
                               "space-y-2.5",
                               (formSpecRows.length > 0 ||
                                 specRows.length > 0 ||
-                                product.description) &&
+                                showDetailsDescription) &&
                                 "border-t border-gray-100 pt-3",
                             )}
                           >
