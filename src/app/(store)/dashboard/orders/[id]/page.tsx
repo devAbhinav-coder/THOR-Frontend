@@ -338,7 +338,18 @@ export default function OrderDetailPage() {
     const previous = order;
     setIsCancelling(true);
     setCancelLocked(true);
-    setOrder({ ...order, status: "cancelled" });
+    setOrder({
+      ...order,
+      status: "cancelled",
+      statusHistory: [
+        ...(order.statusHistory ?? []),
+        {
+          status: "cancelled",
+          timestamp: new Date().toISOString(),
+          note: reason,
+        },
+      ],
+    });
 
     try {
       const body = await orderApi.cancel(order._id, reason);

@@ -10,6 +10,11 @@ import {
   RETURN_REASON_OPTIONS,
 } from "@/lib/orderReturnHelpers";
 import {
+  CANCEL_REASON_OPTIONS,
+  getCancelReasonByIndex,
+  validateCancelReason,
+} from "@/lib/orderCancelHelpers";
+import {
   clearChatStorage,
   loadOpenState,
   loadStoredMessages,
@@ -507,7 +512,7 @@ export function useRaniCareChat() {
     }
   };
 
-  const presentCancelConfirm = (orderId: string) => {
+  const presentCancelReasonPick = (orderId: string) => {
     const o = recentOrdersRef.current.find((x) => x._id === orderId);
     if (!o) {
       pushBot("Open your order list again, then try to cancel.", [
@@ -523,11 +528,31 @@ export function useRaniCareChat() {
       return;
     }
 
-    setPending({ type: "cancel_order", orderId: o._id });
+    const actions = CANCEL_REASON_OPTIONS.map((label, idx) => ({
+      label: label.length > 28 ? `${label.slice(0, 26)}…` : label,
+      value: `cancel_reason:${orderId}:${idx}`,
+    }));
+    actions.push({ label: "Never mind", value: "cancel_abort" });
     pushBot(
-      `Cancel order **${o.orderNumber}**?\nOnly before dispatch. Reply **yes** to confirm or **no** to keep the order.`,
+      `**Step 1 of 2** — Order **${o.orderNumber}**\nWhy do you want to cancel? (Before dispatch only.)`,
+      actions,
+      undefined,
+      220,
+    );
+  };
+
+  const presentCancelFinalConfirm = (orderId: string, reason: string) => {
+    const o = recentOrdersRef.current.find((x) => x._id === orderId);
+    if (!o) return;
+    setPending({ type: "cancel_confirm", orderId, reason });
+    const enc = encodeURIComponent(reason);
+    pushBot(
+      `**Step 2 of 2** — Cancel **${o.orderNumber}**?\nReason: **${reason}**\nConfirm to proceed.`,
       [
-        { label: "Yes, cancel", value: `cancel_confirm:${o._id}` },
+        {
+          label: "Yes, cancel order",
+          value: `cancel_confirm:${orderId}:${enc}`,
+        },
         { label: "No, keep order", value: "cancel_abort" },
       ],
       undefined,
@@ -631,10 +656,16 @@ export function useRaniCareChat() {
     }
   };
 
-  const executeCancel = async (orderId: string) => {
+  const executeCancel = async (orderId: string, reason: string) => {
     setLoadingOrders(true);
     try {
-      await orderApi.cancel(orderId, "Cancelled via customer support chat");
+      const trimmed = reason.trim();
+      const err = validateCancelReason(trimmed);
+      if (err) {
+        pushBot(err, [{ label: "Try again", value: `cancel_ask:${orderId}` }]);
+        return;
+      }
+      await orderApi.cancel(orderId, `${trimmed} (via Rani Care chat)`);
       await useAuthStore.getState().fetchUser();
       await fetchRecentOrders();
       setPending(null);
@@ -744,15 +775,30 @@ export function useRaniCareChat() {
       return true;
     }
 
+    const pendingFreeform = resolvePending();
+    if (pendingFreeform?.type === "cancel_reason_freeform") {
+      const err = validateCancelReason(trimmed);
+      if (err) {
+        pushBot(`${err}\nPlease send your reason in one message.`, [
+          { label: "Never mind", value: "cancel_abort" },
+        ]);
+        return true;
+      }
+      setPending(null);
+      pushUser(trimmed);
+      presentCancelFinalConfirm(pendingFreeform.orderId, trimmed);
+      return true;
+    }
+
     const aff = matchAffirmation(trimmed);
     if (!aff) return false;
 
     const pending = resolvePending();
-    if (pending?.type === "cancel_order") {
+    if (pending?.type === "cancel_confirm") {
       setPending(null);
       if (aff === "yes") {
         pushUser("Yes");
-        await executeCancel(pending.orderId);
+        await executeCancel(pending.orderId, pending.reason);
       } else {
         pushUser("No");
         pushBot(
@@ -1021,13 +1067,38 @@ export function useRaniCareChat() {
     if (value.startsWith("cancel_ask:")) {
       const id = value.slice("cancel_ask:".length);
       pushUser("I want to cancel this order");
-      presentCancelConfirm(id);
+      presentCancelReasonPick(id);
+      return;
+    }
+    if (value.startsWith("cancel_reason:")) {
+      const body = value.slice("cancel_reason:".length);
+      const lastColon = body.lastIndexOf(":");
+      if (lastColon <= 0) return;
+      const orderId = body.slice(0, lastColon);
+      const idx = Number(body.slice(lastColon + 1));
+      if (!orderId || Number.isNaN(idx)) return;
+      const picked = getCancelReasonByIndex(idx);
+      if (!picked) return;
+      pushUser(picked);
+      if (picked === "Other") {
+        setPending({ type: "cancel_reason_freeform", orderId });
+        pushBot(
+          "Please type your cancellation reason in one message (at least 5 characters).",
+          [{ label: "Never mind", value: "cancel_abort" }],
+        );
+        return;
+      }
+      presentCancelFinalConfirm(orderId, picked);
       return;
     }
     if (value.startsWith("cancel_confirm:")) {
-      const id = value.slice("cancel_confirm:".length);
+      const rest = value.slice("cancel_confirm:".length);
+      const sep = rest.indexOf(":");
+      if (sep <= 0) return;
+      const id = rest.slice(0, sep);
+      const reason = decodeURIComponent(rest.slice(sep + 1));
       pushUser("Confirm cancellation");
-      await executeCancel(id);
+      await executeCancel(id, reason);
       return;
     }
     if (value === "cancel_abort") {

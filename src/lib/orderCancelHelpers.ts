@@ -24,6 +24,13 @@ export function composeCancelReason(
   return selected;
 }
 
+export function getCancelReasonByIndex(index: number): CancelReasonOption | undefined {
+  if (!Number.isInteger(index) || index < 0 || index >= CANCEL_REASON_OPTIONS.length) {
+    return undefined;
+  }
+  return CANCEL_REASON_OPTIONS[index];
+}
+
 export function validateCancelReason(reason: string): string | null {
   const trimmed = reason.trim();
   if (trimmed.length < 5) {

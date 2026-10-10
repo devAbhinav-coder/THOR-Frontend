@@ -471,6 +471,9 @@ export interface Order {
   };
   taxSalesInvoiceId?: string | { _id: string; invoiceNumber?: string };
   statusHistory: { status: string; timestamp: string; note?: string }[];
+  /** List API: last statusHistory entry (full history only on detail). */
+  latestStatus?: string;
+  latestStatusAt?: string;
   /** Delhivery automation metadata from backend */
   delhivery?: {
     provider?: string;

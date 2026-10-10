@@ -6,6 +6,7 @@ import Image from "next/image";
 import OrderLineThumbnail from "@/components/orders/OrderLineThumbnail";
 import OrderLineCogEditor from "@/components/admin/orders/OrderLineCogEditor";
 import AdminOrderLifecycleTimeline from "@/components/admin/orders/AdminOrderLifecycleTimeline";
+import AdminCancelOrderModal from "@/components/admin/orders/AdminCancelOrderModal";
 import { getOrderCancelReason } from "@/lib/orderLifecycle";
 import {
   isUsableOrderLineImage,
@@ -1205,6 +1206,7 @@ export default function AdminOrderDetailsPage() {
     trackingUrl?: string;
   }>({});
   const [trackingModalOpen, setTrackingModalOpen] = useState(false);
+  const [adminCancelModalOpen, setAdminCancelModalOpen] = useState(false);
 
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [refundNotes, setRefundNotes] = useState("");
@@ -1290,7 +1292,12 @@ export default function AdminOrderDetailsPage() {
       setTrackingModalOpen(true);
       return;
     }
+    if (status === "cancelled") {
+      setAdminCancelModalOpen(true);
+      return;
+    }
     if (!order) return;
+
     setUpdating(true);
     try {
       await adminApi.updateOrderStatus(order._id, { status });
@@ -1300,6 +1307,27 @@ export default function AdminOrderDetailsPage() {
     } catch (err: unknown) {
       toast.error(
         (err as { message?: string })?.message || "Failed to update status",
+      );
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const confirmAdminCancel = async (reason: string) => {
+    if (!order) return;
+    setUpdating(true);
+    try {
+      await adminApi.updateOrderStatus(order._id, {
+        status: "cancelled",
+        note: reason,
+      });
+      toast.success("Order cancelled");
+      setAdminCancelModalOpen(false);
+      const res = await adminApi.getOrderDetails(order._id);
+      setOrder(res.data.order);
+    } catch (err: unknown) {
+      toast.error(
+        (err as { message?: string })?.message || "Failed to cancel order",
       );
     } finally {
       setUpdating(false);
@@ -2298,6 +2326,18 @@ export default function AdminOrderDetailsPage() {
             </div>
           </div>
         </div>
+
+        {order && adminCancelModalOpen && (
+          <AdminCancelOrderModal
+            order={order}
+            open={adminCancelModalOpen}
+            isSubmitting={updating}
+            onClose={() => {
+              if (!updating) setAdminCancelModalOpen(false);
+            }}
+            onConfirm={(reason) => void confirmAdminCancel(reason)}
+          />
+        )}
 
         {trackingModalOpen && (
           <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60'>

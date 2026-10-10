@@ -57,53 +57,16 @@ export function getOrderCancelReason(order: Pick<Order, "statusHistory">): strin
   return undefined;
 }
 
-/**
- * Timeline from real statusHistory only — never paints processing/shipped/delivered
- * unless those statuses were actually recorded.
- */
-export function buildOrderLifecycleTimeline(order: Order): OrderLifecycleEvent[] {
-  const status = order.status;
-  const terminal = status === "cancelled" || status === "refunded";
-
-  const scans = order.delhivery?.trackScansSnapshot ?? [];
-  const useCourierScans =
-    scans.length > 0 &&
-    !terminal &&
-    (status === "shipped" || status === "delivered");
-
-  if (useCourierScans) {
-    return scans.map((scan, i) => ({
-      key: `scan-${i}`,
-      status: "courier_scan",
-      label: scan.status || "Courier update",
-      detail: [scan.location, scan.detail].filter(Boolean).join(" · ") || undefined,
-      timestamp: scan.time,
-      state:
-        i < scans.length - 1 ? "done"
-        : status === "delivered" ? "done"
-        : "current",
-    }));
-  }
-
-  let history = sortHistory(order);
-
-  if (history.length === 0 && order.createdAt) {
-    history = [
-      {
-        status: FULFILLMENT_STEPS.includes(status as (typeof FULFILLMENT_STEPS)[number])
-          ? status
-          : "pending",
-        timestamp: order.createdAt,
-      },
-    ];
-  }
-
+function historyToLifecycleEvents(
+  history: { status: string; timestamp: string; note?: string }[],
+  orderStatus: string,
+): OrderLifecycleEvent[] {
   if (history.length === 0) return [];
 
   const lastIdx = history.length - 1;
-  const allDelivered = status === "delivered";
+  const allDelivered = orderStatus === "delivered";
 
-  return history.map((h, i) => {
+  const events: OrderLifecycleEvent[] = history.map((h, i) => {
     const isLast = i === lastIdx;
     let state: OrderLifecycleEvent["state"];
     if (allDelivered) state = "done";
@@ -124,6 +87,83 @@ export function buildOrderLifecycleTimeline(order: Order): OrderLifecycleEvent[]
       state,
     };
   });
+
+  const lastHistoryStatus = history[lastIdx]?.status;
+  const terminal =
+    orderStatus === "cancelled" || orderStatus === "refunded";
+  if (!terminal && lastHistoryStatus && lastHistoryStatus !== orderStatus) {
+    if (events.length > 0) {
+      events[events.length - 1]!.state = "done";
+    }
+    const syncStep: OrderLifecycleEvent = {
+      key: `status-sync-${orderStatus}`,
+      status: orderStatus,
+      label: labelForStatus(orderStatus),
+      state: "current",
+    };
+    events.push(syncStep);
+  }
+
+  return events;
+}
+
+function courierScanEvents(
+  scans: NonNullable<Order["delhivery"]>["trackScansSnapshot"],
+  orderStatus: string,
+): OrderLifecycleEvent[] {
+  const list = scans ?? [];
+  return list.map((scan, i) => ({
+    key: `scan-${i}`,
+    status: "courier_scan",
+    label: scan.status || "Courier update",
+    detail: [scan.location, scan.detail].filter(Boolean).join(" · ") || undefined,
+    timestamp: scan.time,
+    state:
+      i < list.length - 1 ? "done"
+      : orderStatus === "delivered" ? "done"
+      : "current",
+  }));
+}
+
+/**
+ * Timeline from real statusHistory only — never paints processing/shipped/delivered
+ * unless those statuses were actually recorded.
+ */
+export function buildOrderLifecycleTimeline(order: Order): OrderLifecycleEvent[] {
+  const status = order.status;
+  const terminal = status === "cancelled" || status === "refunded";
+
+  let history = sortHistory(order);
+
+  if (history.length === 0 && order.createdAt) {
+    history = [
+      {
+        status: FULFILLMENT_STEPS.includes(status as (typeof FULFILLMENT_STEPS)[number])
+          ? status
+          : "pending",
+        timestamp: order.createdAt,
+      },
+    ];
+  }
+
+  const historyEvents = historyToLifecycleEvents(history, status);
+
+  const scans = order.delhivery?.trackScansSnapshot ?? [];
+  const useCourierScans =
+    scans.length > 0 &&
+    !terminal &&
+    (status === "shipped" || status === "delivered");
+
+  if (useCourierScans) {
+    const milestones = historyEvents.map((e) => ({ ...e, state: "done" as const }));
+    const scansEv = courierScanEvents(scans, status);
+    if (milestones.length === 0) return scansEv;
+    const lastScan = scansEv[scansEv.length - 1];
+    if (lastScan) lastScan.state = status === "delivered" ? "done" : "current";
+    return [...milestones, ...scansEv];
+  }
+
+  return historyEvents;
 }
 
 /** Legacy fallback: only steps up to current status (no future milestones). */

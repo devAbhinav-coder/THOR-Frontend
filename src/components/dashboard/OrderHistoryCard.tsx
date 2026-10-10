@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Download, Star } from "lucide-react";
 import { Order } from "@/types";
-import { formatPrice, formatDate, cn } from "@/lib/utils";
+import { formatPrice, formatDate, formatDateTime, cn } from "@/lib/utils";
+import { formatLifecycleStatus } from "@/lib/orderLifecycleLabels";
 import {
   getOrderStatusLabel,
   getOrderStatusBadgeClass,
@@ -77,6 +78,16 @@ export default function OrderHistoryCard({ order, onCancelClick }: Props) {
                 {order.items.length > 1 ?
                   `${order.items.length} pieces from your collection`
                 : primaryItem.name}
+              </p>
+            )}
+            {order.latestStatus && order.latestStatusAt && (
+              <p className="text-xs text-account-on-surface-variant mt-3">
+                Latest:{" "}
+                <span className="font-medium text-account-primary">
+                  {formatLifecycleStatus(order.latestStatus)}
+                </span>
+                {" · "}
+                {formatDateTime(order.latestStatusAt)}
               </p>
             )}
           </div>

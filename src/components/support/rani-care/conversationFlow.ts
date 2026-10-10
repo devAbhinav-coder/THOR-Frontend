@@ -5,7 +5,8 @@ import type { QuickAction } from "./types";
 export type OrderPickPurpose = "track" | "cancel" | "return" | "general";
 
 export type PendingPrompt =
-  | { type: "cancel_order"; orderId: string }
+  | { type: "cancel_confirm"; orderId: string; reason: string }
+  | { type: "cancel_reason_freeform"; orderId: string }
   | {
       type: "pick_order";
       orderIds: string[];
@@ -87,10 +88,15 @@ export function inferPendingFromActions(
   if (!actions?.length) return null;
   for (const a of actions) {
     if (a.value.startsWith("cancel_confirm:")) {
-      return {
-        type: "cancel_order",
-        orderId: a.value.slice("cancel_confirm:".length),
-      };
+      const rest = a.value.slice("cancel_confirm:".length);
+      const sep = rest.indexOf(":");
+      if (sep > 0) {
+        return {
+          type: "cancel_confirm",
+          orderId: rest.slice(0, sep),
+          reason: decodeURIComponent(rest.slice(sep + 1)),
+        };
+      }
     }
   }
   return null;
