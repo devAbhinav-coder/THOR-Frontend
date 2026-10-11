@@ -38,6 +38,7 @@ import BagIcon from "@/components/icons/BagIcon";
 import ProfileAvatarImg from "@/components/shared/ProfileAvatarImg";
 import dynamic from "next/dynamic";
 import BrowserNotificationPrompt from "@/components/layout/BrowserNotificationPrompt";
+import HomeScrollSideDock from "@/components/layout/HomeScrollSideDock";
 import { defaultAdminHomeHref, isAdminPanelUser } from "@/lib/adminAccess";
 
 const NavProfileDropdown = dynamic(
@@ -64,6 +65,7 @@ import { useNavDropdown } from "@/hooks/useNavDropdown";
 import { useMobileNavAutoHide } from "@/hooks/useMobileNavAutoHide";
 import { subscribeWindowScroll } from "@/lib/windowScrollBus";
 import {
+  isHomeImmersiveNavPath,
   isPremiumCollectionPath,
   isPremiumProductDetailPath,
   isStoreProductDetailPath,
@@ -102,6 +104,8 @@ type NavbarProps = {
 export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isNavHovered, setIsNavHovered] = useState(false);
+  const [isNavTouchActive, setIsNavTouchActive] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const shopMenu = useNavDropdown();
@@ -165,6 +169,13 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
       });
     });
   }, []);
+
+  /** At page top: immersive bar stays clear until hover/tap (like desktop leave). */
+  useEffect(() => {
+    if (isScrolled) return;
+    setIsNavHovered(false);
+    setIsNavTouchActive(false);
+  }, [isScrolled, pathname]);
 
   useEffect(() => {
     setIsMenuOpen(false);
@@ -262,26 +273,49 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
   const isPremiumProductPage = isPremiumProductDetailPath(pathname);
   const isPremiumCollectionPage = isPremiumCollectionPath(pathname);
   const isShopListingPage = isStoreShopListingPath(pathname);
+  const isHomeImmersiveNav = isHomeImmersiveNavPath(pathname);
   /** Shop listing only: search stays open. PDP uses the navbar search icon instead. */
   const persistMobileSearch = isShopListingPage;
   /** Shop listing + shop/premium PDP: cart/wishlist top-right (no bottom tab bar). */
   const showCommerceMobileShell =
     isProductDetailPage || isPremiumProductPage || isShopListingPage;
-  /** Premium collection + PDPs: hide on scroll-down / show on scroll-up (all viewports). */
-  const navAutoHideAllViewports =
-    isProductDetailPage || isPremiumProductPage || isPremiumCollectionPage;
+  /** Store pages (except checkout): hide/show on mobile + desktop. Home reveals only at top. */
+  const navAutoHideAllViewports = !isCheckoutFlow;
+  const navHeroOverlap = isHomeImmersiveNav;
   const navAutoHideEnabled =
-    !isCheckoutFlow &&
-    !isMenuOpen &&
-    !isSearchOpen &&
-    (isProductDetailPage ||
-      isPremiumProductPage ||
-      isPremiumCollectionPage ||
-      !showCommerceMobileShell);
+    !isCheckoutFlow && !isMenuOpen && !isSearchOpen;
   const navChromeVisible = useMobileNavAutoHide({
     enabled: navAutoHideEnabled,
     allViewports: navAutoHideAllViewports,
+    revealOnlyAtTop: isHomeImmersiveNav,
+    topReveal: isHomeImmersiveNav ? 40 : 80,
+    hideThreshold: 18,
+    revealThreshold: 14,
+    cooldownMs: 280,
   });
+
+  const navChromeRevealed =
+    !isHomeImmersiveNav ||
+    isCheckoutFlow ||
+    isNavHovered ||
+    isNavTouchActive ||
+    shopMenu.isOpen ||
+    userMenu.isOpen ||
+    isMenuOpen ||
+    isSearchOpen ||
+    persistMobileSearch;
+
+  const navShellVariant =
+    isCheckoutFlow || !isHomeImmersiveNav ? "solid" : "immersive";
+
+  const showHomeScrollSideDock =
+    isHomeImmersiveNav &&
+    navAutoHideEnabled &&
+    !navChromeVisible &&
+    !isMenuOpen &&
+    !isSearchOpen &&
+    !shopMenu.isOpen &&
+    !userMenu.isOpen;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -358,6 +392,8 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
         className={navMobileFlowSpacerClass(
           navAutoHideEnabled,
           navAutoHideAllViewports,
+          navHeroOverlap,
+          navChromeVisible,
         )}
         aria-hidden='true'
       />
@@ -369,7 +405,27 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
         )}
         data-store-sticky-nav
       >
-        <header className={navShellClass(isScrolled)}>
+        <header
+          className={navShellClass({
+            variant: navShellVariant,
+            revealed: navChromeRevealed,
+            elevated: isScrolled,
+          })}
+          onMouseEnter={() => {
+            if (isHomeImmersiveNav && !isCheckoutFlow) setIsNavHovered(true);
+          }}
+          onMouseLeave={() => {
+            setIsNavHovered(false);
+            if (!isScrolled) setIsNavTouchActive(false);
+          }}
+          onTouchStart={() => {
+            if (isHomeImmersiveNav && !isCheckoutFlow) setIsNavTouchActive(true);
+          }}
+          onTouchEnd={() => {
+            window.setTimeout(() => setIsNavTouchActive(false), 450);
+          }}
+          onTouchCancel={() => setIsNavTouchActive(false)}
+        >
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
             <div
               className={cn(
@@ -901,6 +957,14 @@ export default function Navbar({ initialNavCategories = [] }: NavbarProps) {
           </div>
         </div>
       )}
+
+      <HomeScrollSideDock
+        visible={showHomeScrollSideDock}
+        wishlistCount={wishlistCount}
+        cartCount={itemCount}
+        accountHref={isAuthedStable ? "/dashboard" : authHref("login")}
+        onWishlistClick={handleWishlistPress}
+      />
 
       {/* Mobile bottom navigation - solid bg (no backdrop-blur / alpha bg: avoids “white bar” + invisible white icons on iOS/WebKit) */}
       {showMobileBottomNav && (

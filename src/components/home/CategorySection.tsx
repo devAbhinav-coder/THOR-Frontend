@@ -15,6 +15,8 @@ import {
   resolvePremiumCard,
   resolveSaleCard,
 } from "@/lib/shopSpecialCollections";
+import { exploreHouseCardsFromEditions } from "@/lib/marketingEditions";
+import { useMarketingEditions } from "@/lib/marketingEditionsContext";
 import { Category, HomeExploreHouse } from "@/types";
 import CategorySectionSkeleton from "@/components/home/CategorySectionSkeleton";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
@@ -126,6 +128,12 @@ export default function CategorySection({
     [exploreHouseImages],
   );
 
+  const marketingEditions = useMarketingEditions();
+  const editionExploreCards = useMemo(
+    () => exploreHouseCardsFromEditions(marketingEditions),
+    [marketingEditions],
+  );
+
   const showcaseCards = useMemo<ExploreHouseCard[]>(() => {
     const catalogCards: ExploreHouseCard[] = filteredCategories.map((cat) => {
       const hasProducts = (cat.productCount ?? 0) > 0;
@@ -139,15 +147,15 @@ export default function CategorySection({
       };
     });
 
-    return [saleCard, ...catalogCards, premiumCard];
-  }, [filteredCategories, saleCard, premiumCard]);
+    return [saleCard, ...editionExploreCards, ...catalogCards, premiumCard];
+  }, [filteredCategories, saleCard, premiumCard, editionExploreCards]);
 
   if (loading) return <CategorySectionSkeleton />;
 
   if (showcaseCards.length === 0) return null;
 
   return (
-    <section className='bg-[#f9f9f9] py-4 sm:py-14 lg:py-16'>
+    <section className='bg-[#f9f9f9] py-4 '>
       <div className='mx-auto max-w-7xl px-3 sm:px-6 lg:px-8'>
         {/* Header */}
         <div className='mb-8 flex flex-col items-center justify-center text-center sm:mb-12'>
@@ -164,7 +172,7 @@ export default function CategorySection({
         <div
           data-lenis-prevent-horizontal
           className={cn(
-            "relative min-h-[230px] overflow-hidden sm:min-h-[420px] lg:min-h-[480px]",
+            "relative min-h-[230px] overflow-hidden sm:min-h-[300px]",
             isSwiperLocked && "[&_.swiper-wrapper]:justify-center",
           )}
           onMouseEnter={pauseAuto}

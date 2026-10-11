@@ -2,11 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import {
+  HOME_MIDDLE_BANNER_DESKTOP_ASPECT,
+  HOME_MIDDLE_BANNER_MOBILE_ASPECT,
+} from "@/lib/homeMiddleBannerLayout";
 import { cn } from "@/lib/utils";
 
 interface HomeMiddleBannerProps {
   banner: {
     image?: string;
+    imageDesktop?: string;
     title?: string;
     subtitle?: string;
     linkText?: string;
@@ -17,88 +22,165 @@ interface HomeMiddleBannerProps {
   };
 }
 
+function BannerOverlay({
+  isDarkText,
+  textAlignment,
+  variant,
+}: {
+  isDarkText: boolean;
+  textAlignment?: "left" | "center" | "right";
+  variant: "mobile" | "desktop";
+}) {
+  const isDesktop = variant === "desktop";
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-0 transition-opacity duration-500",
+        isDarkText ?
+          isDesktop ?
+            "bg-gradient-to-r from-white/55 via-white/20 to-transparent"
+          : "bg-gradient-to-r from-white/75 via-white/35 to-transparent sm:bg-gradient-to-t sm:from-white/45 sm:to-transparent"
+        : isDesktop ?
+          "bg-gradient-to-r from-black/55 via-black/25 to-transparent"
+        : "bg-gradient-to-r from-black/75 via-black/35 to-transparent sm:bg-gradient-to-t sm:from-black/55 sm:to-black/10",
+        textAlignment === "center" &&
+          (isDarkText ?
+            isDesktop ? "bg-white/15"
+            : "bg-white/20"
+          : isDesktop ? "bg-black/25"
+          : "bg-black/30"),
+      )}
+    />
+  );
+}
+
+function BannerCopy({
+  banner,
+  currentAlignClass,
+  variant,
+}: {
+  banner: HomeMiddleBannerProps["banner"];
+  currentAlignClass: string;
+  variant: "mobile" | "desktop";
+}) {
+  const isDesktop = variant === "desktop";
+
+  return (
+    <div
+      className={cn(
+        "absolute inset-0 z-10 flex flex-col justify-center",
+        isDesktop ? "px-12 py-2 xl:px-20" : "px-3 py-2 sm:px-12 ",
+        currentAlignClass,
+      )}
+    >
+      <div
+        className={cn(
+          "pointer-events-auto flex max-w-2xl flex-col",
+          currentAlignClass,
+        )}
+      >
+        {banner.title && (
+          <h2
+            className={cn(
+              "font-serif leading-tight tracking-wide drop-shadow-md text-[#c5a059]",
+              isDesktop ?
+                "mb-1.5 text-2xl xl:text-3xl"
+              : "mb-1 text-sm sm:mb-3 sm:text-3xl",
+            )}
+          >
+            {banner.title}
+          </h2>
+        )}
+
+        {banner.linkText && banner.linkUrl && (
+          <Link
+            href={banner.linkUrl}
+            className={cn(
+              "relative inline-flex w-fit items-center justify-center overflow-hidden border border-[#c5a059] font-semibold uppercase transition-all duration-500 text-[#c5a059] shadow-sm hover:bg-[#c5a059] hover:text-white",
+              isDesktop ?
+                "px-5 py-1.5 text-[10px] tracking-[0.18em] xl:px-7 xl:py-2 xl:text-[11px]"
+              : "mt-1 max-w-[10.5rem] px-2.5 py-1 text-[8px] tracking-[0.12em] sm:mt-0 sm:max-w-none sm:px-8 sm:py-3 sm:text-xs sm:tracking-[0.25em]",
+            )}
+          >
+            <span className='relative z-10'>{banner.linkText}</span>
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function HomeMiddleBanner({ banner }: HomeMiddleBannerProps) {
-  if (!banner?.isActive || !banner?.image) return null;
+  const mobileImage = banner?.image?.trim() || "";
+  const desktopImage = banner?.imageDesktop?.trim() || "";
+  const mobileSrc = mobileImage || desktopImage;
+  const desktopSrc = desktopImage || mobileImage;
+
+  if (!banner?.isActive || !mobileSrc) return null;
 
   const isDarkText = banner.textColor === "dark";
-
   const alignClasses = {
     left: "items-start text-left",
     center: "items-center text-center",
     right: "items-end text-right",
   };
-
   const currentAlignClass = alignClasses[banner.textAlignment || "center"];
+  const alt = banner.title || "Promotional Banner";
+  const frameClass =
+    "group relative w-full overflow-hidden border border-[#c5a059]/40 shadow-sm";
 
   return (
-    <section className='w-full bg-[#f9f9f9] pt-2 sm:pt-4 lg:pt-6 pb-8 sm:pb-10 '>
+    <section className='w-full bg-[#f9f9f9] py-2'>
       <div className='mx-auto max-w-[1536px] px-4 sm:px-6 lg:px-8'>
-        <div className='group relative aspect-[2.2/1] w-full overflow-hidden border border-[#c5a059]/40 shadow-sm'>
-          {/* Full Width Background Image */}
+        {/* Mobile only — tall panoramic (2.2:1). Use mobile upload. */}
+        <div
+          className={cn(frameClass, "lg:hidden")}
+          style={{ aspectRatio: `${HOME_MIDDLE_BANNER_MOBILE_ASPECT} / 1` }}
+        >
           <Image
-            src={banner.image}
-            alt={banner.title || "Promotional Banner"}
+            src={mobileSrc}
+            alt={alt}
             fill
-            className='object-cover transition-transform duration-[10000ms] ease-linear group-hover:scale-105'
-            sizes='(max-width: 1536px) 100vw, 1536px'
+            className='object-cover object-center transition-transform duration-[10000ms] ease-linear group-hover:scale-[1.02]'
+            sizes='100vw'
             priority
           />
-
-          {/* Subtle Gradient Overlay */}
-          <div
-            className={cn(
-              "absolute inset-0 transition-opacity duration-500",
-              isDarkText ?
-                "bg-gradient-to-r from-white/75 via-white/35 to-transparent sm:bg-gradient-to-t sm:from-white/45 sm:to-transparent"
-              : "bg-gradient-to-r from-black/75 via-black/35 to-transparent sm:bg-gradient-to-t sm:from-black/55 sm:to-black/10",
-              banner.textAlignment === "center" &&
-                (isDarkText ? "bg-white/20" : "bg-black/30"),
-            )}
+          <BannerOverlay
+            isDarkText={isDarkText}
+            textAlignment={banner.textAlignment}
+            variant='mobile'
           />
+          <BannerCopy
+            banner={banner}
+            currentAlignClass={currentAlignClass}
+            variant='mobile'
+          />
+        </div>
 
-          {/* Content Container */}
-          <div
-            className={cn(
-              "absolute inset-0 flex flex-col justify-center px-3 py-3 sm:px-12 sm:py-8 lg:px-24 lg:py-10",
-              currentAlignClass,
-            )}
-          >
-            <div
-              className={cn(
-                "flex flex-col max-w-2xl transform transition-all duration-700",
-                currentAlignClass,
-              )}
-            >
-              {/* Title */}
-              {banner.title && (
-                <h2 className='mb-1 sm:mb-3 lg:mb-4 font-serif text-sm sm:text-3xl lg:text-5xl xl:text-6xl leading-tight tracking-wide drop-shadow-md text-[#c5a059]'>
-                  {banner.title}
-                </h2>
-              )}
-
-              {/* Subtitle */}
-              {banner.subtitle && (
-                <p
-                  className={cn(
-                    "mb-2 sm:mb-6 lg:mb-7 text-[10px] sm:text-base lg:text-lg font-light tracking-wide leading-tight sm:leading-relaxed drop-shadow-sm",
-                    isDarkText ? "text-gray-800" : "text-white/90",
-                  )}
-                >
-                  {banner.subtitle}
-                </p>
-              )}
-
-              {/* CTA Button */}
-              {banner.linkText && banner.linkUrl && (
-                <Link
-                  href={banner.linkUrl}
-                  className='relative overflow-hidden border border-[#c5a059] px-3 py-1.5 sm:px-8 sm:py-3 lg:px-10 lg:py-3.5 text-[9px] sm:text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] sm:tracking-[0.25em] transition-all duration-500 text-[#c5a059] shadow-sm hover:bg-[#c5a059] hover:text-white'
-                >
-                  <span className='relative z-10'>{banner.linkText}</span>
-                </Link>
-              )}
-            </div>
-          </div>
+        {/* Laptop+ only — low strip (4.4:1 = half mobile height). Use desktop upload at same ratio. */}
+        <div
+          className={cn(frameClass, "hidden lg:block")}
+          style={{ aspectRatio: `${HOME_MIDDLE_BANNER_DESKTOP_ASPECT} / 1` }}
+        >
+          <Image
+            src={desktopSrc}
+            alt={alt}
+            fill
+            className='object-cover object-center transition-transform duration-[10000ms] ease-linear group-hover:scale-[1.02]'
+            sizes='(min-width: 1024px) min(100vw, 1536px)'
+            priority
+          />
+          <BannerOverlay
+            isDarkText={isDarkText}
+            textAlignment={banner.textAlignment}
+            variant='desktop'
+          />
+          <BannerCopy
+            banner={banner}
+            currentAlignClass={currentAlignClass}
+            variant='desktop'
+          />
         </div>
       </div>
     </section>

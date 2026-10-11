@@ -223,14 +223,15 @@ export default function OrderDetailPage() {
   const [isReturning, setIsReturning] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
-  const { data: order = null, isLoading } = useQuery({
+  const { data: order = null, isLoading, isFetching } = useQuery({
     queryKey: ["order", orderId],
     queryFn: async () => {
       const body = await orderApi.getById(orderId);
       return body.data.order as Order;
     },
     enabled: Boolean(orderId),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const setOrder = (next: Order | null) => {
@@ -559,7 +560,7 @@ export default function OrderDetailPage() {
     }));
   };
 
-  if (isLoading) {
+  if (isLoading && !order) {
     return (
       <div className='space-y-4 animate-pulse'>
         {[...Array(3)].map((_, i) => (
@@ -601,6 +602,11 @@ export default function OrderDetailPage() {
 
   return (
     <>
+      {isFetching && order && (
+        <p className='text-[11px] font-semibold uppercase tracking-widest text-account-on-surface-variant mb-2 animate-pulse'>
+          Refreshing order…
+        </p>
+      )}
       <OrderDetailLuxuryContent
         order={order}
         trackingHref={trackingHref}

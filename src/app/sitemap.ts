@@ -9,6 +9,7 @@ import {
   fetchSitemapMegaMenuCategories,
 } from "@/lib/sitemapData";
 import { SEO_SITEMAP_STATIC } from "@/lib/seoCrawl";
+import { fetchSitemapMarketingEditionUrls } from "@/lib/marketingEditionSeo";
 import type { MegaMenuCategory } from "@/types";
 
 type CategoryLite = {
@@ -58,12 +59,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!apiUrl) return baseRoutes;
 
   try {
-    const [products, blogs, premiumProducts, categories] = await Promise.all([
-      fetchAllSitemapProducts(),
-      fetchAllSitemapBlogs(),
-      fetchAllSitemapPremiumProducts(),
-      fetchSitemapMegaMenuCategories(),
-    ]);
+    const [products, blogs, premiumProducts, categories, marketingEditions] =
+      await Promise.all([
+        fetchAllSitemapProducts(),
+        fetchAllSitemapBlogs(),
+        fetchAllSitemapPremiumProducts(),
+        fetchSitemapMegaMenuCategories(),
+        fetchSitemapMarketingEditionUrls(),
+      ]);
 
     const emittedSlugs = new Set<string>();
 
@@ -166,9 +169,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
     );
 
+    const marketingEditionUrls: MetadataRoute.Sitemap =
+      marketingEditions.map((e) => ({
+        url: `${appUrl}${e.path}`,
+        lastModified: e.lastModified ?? now,
+        changeFrequency: "daily" as const,
+        priority: 0.88,
+      }));
+
     return dedupeSitemap([
       ...baseRoutes,
       ...categoryUrls,
+      ...marketingEditionUrls,
       ...productUrls,
       ...premiumProductUrls,
       ...blogUrls,

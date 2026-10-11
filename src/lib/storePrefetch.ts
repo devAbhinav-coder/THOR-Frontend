@@ -77,12 +77,12 @@ export async function fetchHomeLatestBlogs(limit = 3): Promise<Blog[] | null> {
   }
 }
 
-/** Featured products for home - same as `productApi.getFeatured()`. */
+/** Bestsellers for home (soldCount) - same as `productApi.getBestsellers()`. */
 export async function fetchHomeFeaturedProducts(): Promise<Product[] | null> {
   const base = await getBuildSafeApiBase();
   if (!base) return null;
   try {
-    const res = await serverFetch(`${base}/products/featured`, {
+    const res = await serverFetch(`${base}/products/bestsellers`, {
       next: { revalidate: 60 },
       headers: { Accept: "application/json" },
     });

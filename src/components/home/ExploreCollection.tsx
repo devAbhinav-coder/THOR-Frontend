@@ -102,7 +102,7 @@ export default function ExploreCollection({
       <div className={homeSectionStyles.container}>
         <div className='mb-4 text-center sm:mb-12'>
           <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs'>
-            Curation
+            Handpicked For You
           </p>
           <h2
             id='explore-collection-heading'
@@ -142,7 +142,7 @@ export default function ExploreCollection({
             href='/shop'
             className='mx-auto flex w-full max-w-sm items-center justify-center bg-navy-900 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-white transition-colors hover:bg-navy-800 sm:text-xs'
           >
-            Delve Deeper
+            View All Sarees
           </Link>
         </div>
       </div>

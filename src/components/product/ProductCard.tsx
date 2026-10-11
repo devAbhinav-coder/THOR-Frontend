@@ -30,6 +30,7 @@ import { productNeedsCustomization } from "@/lib/productCustomization";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { shopProductHref } from "@/lib/shopProductListing";
 import { trackAddToCart, trackAddToWishlist, pickMetaCatalogVariant } from "@/lib/metaPixel";
+import ProductMarketingBadge from "@/components/product/ProductMarketingBadge";
 
 interface ProductCardProps {
   product: Product;
@@ -354,6 +355,8 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
               />
             )}
           </Link>
+
+          <ProductMarketingBadge product={product} variant='corner' />
 
           {product.saleCampaignId && discountPercent >= 1 && !isOutOfStock && (
             <div className='absolute top-0 left-0 z-10 pointer-events-none'>

@@ -15,6 +15,9 @@ import {
 import { cartApi, productApi, reviewApi } from "@/lib/api";
 import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
+import { productNameClassName } from "@/lib/storefrontTypography";
+import PriceText from "@/components/ui/PriceText";
+import { SHIPPING_THRESHOLD } from "@/components/checkout/checkoutForm";
 import { getSelectedVariantPriceDisplay } from "@/lib/productPricing";
 import { sumVariantStock } from "@/lib/productStock";
 import { ProductDetailSkeleton } from "@/components/product/ProductDetailSkeleton";
@@ -36,6 +39,12 @@ import { productNeedsCustomization } from "@/lib/productCustomization";
 import { isFreeProductSize } from "@/lib/productCatalogOptions";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
+import {
+  MARKETING_EDITION_ACCENT_CLASS,
+  marketingEditionForTag,
+  resolveEditionShopLink,
+} from "@/lib/marketingEditions";
+import { useMarketingEditions } from "@/lib/marketingEditionsContext";
 import {
   trackViewContent,
   trackAddToCart,
@@ -205,6 +214,7 @@ export default function ProductDetailClient({
     searchParams.get("color")?.trim() || initialColor?.trim() || "";
 
   const queryClient = useQueryClient();
+  const marketingEditions = useMarketingEditions();
 
   const { data: rawProduct, isLoading: isMainLoading } = useQuery({
     queryKey: ["product", slug],
@@ -1117,6 +1127,10 @@ export default function ProductDetailClient({
             copied={copied}
             onWishlist={handleWishlist}
             onShare={handleShare}
+            editionBadgeProduct={{
+              tags: product.tags,
+              marketingBadge: product.marketingBadge,
+            }}
           />
 
           {/* Product Info */}
@@ -1125,7 +1139,11 @@ export default function ProductDetailClient({
               <p className='text-[10px] font-medium uppercase tracking-[0.22em] text-[#c5a059] sm:text-[11px] sm:tracking-[0.28em]'>
                 The {product.category} Collection
               </p>
-              <h1 className='mt-1 font-serif text-xl font-medium leading-tight text-navy-900 sm:mt-1.5 sm:text-3xl lg:text-4xl'>
+              <h1
+                className={productNameClassName(
+                  "mt-1 text-xl sm:mt-1.5 sm:text-3xl lg:text-4xl",
+                )}
+              >
                 {product.name}
               </h1>
               {productMetaLine ?
@@ -1198,18 +1216,20 @@ export default function ProductDetailClient({
 
               <div className='min-w-0 space-y-0.5'>
                 <div className='flex flex-wrap items-baseline gap-2 sm:gap-3'>
-                  <span className='font-serif text-2xl font-medium text-navy-900 sm:text-4xl'>
-                    {formatPrice(selectedPrice)}
-                  </span>
+                  <PriceText
+                    amount={selectedPrice}
+                    className='text-2xl font-semibold sm:text-4xl'
+                  />
                   {saveAmount > 0 ?
                     <span className='inline-flex items-center bg-[#c5a059]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6d3b]'>
                       Save {formatPrice(saveAmount)}
                     </span>
                   : null}
                   {selectedMrp != null && selectedMrp > selectedPrice ?
-                    <span className='text-base text-gray-400 line-through'>
-                      {formatPrice(selectedMrp)}
-                    </span>
+                    <PriceText
+                      amount={selectedMrp}
+                      className='text-base font-normal text-gray-400 line-through'
+                    />
                   : null}
                   {(
                     product.saleCampaignId &&
@@ -1224,7 +1244,8 @@ export default function ProductDetailClient({
                   : null}
                 </div>
                 <p className='text-[8px] font-semibold tracking-[0.12em] text-gray-400 sm:text-xs'>
-                  Inclusive of all taxes · Free delivery above Rs. 1099
+                  Inclusive of all taxes · Free delivery above{" "}
+                  {formatPrice(SHIPPING_THRESHOLD)}
                 </p>
               </div>
             </div>
@@ -1431,15 +1452,35 @@ export default function ProductDetailClient({
             {/* Tags */}
             {product.tags.length > 0 && (
               <div className='flex flex-wrap gap-2'>
-                {product.tags.map((tag) => (
-                  <Link
-                    key={tag}
-                    href={`/shop?search=${encodeURIComponent(tag)}`}
-                    className='text-xs text-gray-500 bg-gray-100 hover:bg-brand-50 hover:text-brand-700 px-2.5 py-1 rounded-full transition-colors'
-                  >
-                    #{tag}
-                  </Link>
-                ))}
+                {product.tags.map((tag) => {
+                  const edition = marketingEditionForTag(tag, marketingEditions);
+                  if (edition) {
+                    const label = edition.filterLabel || edition.label;
+                    return (
+                      <Link
+                        key={tag}
+                        href={resolveEditionShopLink(edition)}
+                        className={cn(
+                          "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] transition-opacity hover:opacity-90 sm:text-xs",
+                          MARKETING_EDITION_ACCENT_CLASS[
+                            edition.accent ?? "gold"
+                          ],
+                        )}
+                      >
+                        {label}
+                      </Link>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={tag}
+                      href={`/shop?search=${encodeURIComponent(tag)}`}
+                      className='rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-500 transition-colors hover:bg-brand-50 hover:text-brand-700'
+                    >
+                      #{tag}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

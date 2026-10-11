@@ -13,6 +13,7 @@ export type StorefrontSectionId =
   | "announcement"
   | "hero"
   | "exploreHouse"
+  | "marketingEditions"
   | "promo"
   | "blog"
   | "shopBanner"
@@ -57,6 +58,14 @@ export const STOREFRONT_SECTIONS: StorefrontSectionMeta[] = [
     group: "Homepage",
     description: "Sale and Premium Edit card images on the homepage",
     icon: LayoutGrid,
+  },
+  {
+    id: "marketingEditions",
+    label: "Marketing edits & tags",
+    group: "Homepage",
+    description:
+      "Tyohar / festival badges, shop filters, and Explore carousel cards (via product tags)",
+    icon: Megaphone,
   },
   {
     id: "promo",

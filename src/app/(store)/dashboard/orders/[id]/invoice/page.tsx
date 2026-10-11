@@ -8,6 +8,7 @@ import { orderApi } from '@/lib/api';
 import { Order } from '@/types';
 import OrderInvoiceDocument from '@/components/orders/OrderInvoiceDocument';
 import { Button } from '@/components/ui/button';
+import { isOrderInvoiceAvailable } from '@/lib/orderInvoiceHelpers';
 
 export default function UserInvoicePage() {
   const params = useParams();
@@ -20,13 +21,14 @@ export default function UserInvoicePage() {
       return res.data.order as Order;
     },
     enabled: Boolean(orderId),
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
-  const canShowInvoice = useMemo(() => {
-    if (!order) return false;
-    return !!order.invoice?.isGenerated && (order.paymentStatus === 'paid' || order.status === 'delivered');
-  }, [order]);
+  const canShowInvoice = useMemo(
+    () => (order ? isOrderInvoiceAvailable(order) : false),
+    [order],
+  );
 
   if (isLoading) {
     return <div className="py-4 text-sm text-account-on-surface-variant">Loading invoice…</div>;

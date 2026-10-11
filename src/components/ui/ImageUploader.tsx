@@ -8,7 +8,16 @@ import { Upload, X, AlertCircle, CheckCircle2, ZoomIn, ZoomOut, Crop, Loader2 } 
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────────── */
-export type AspectRatio = '1:1' | '3:4' | '4:3' | '16:9' | '4:5' | '5:1' | '21:9';
+export type AspectRatio =
+  | '1:1'
+  | '3:4'
+  | '4:3'
+  | '16:9'
+  | '4:5'
+  | '5:1'
+  | '11:5'
+  | '22:5'
+  | '21:9';
 
 interface PreviewFile {
   id: string;
@@ -43,6 +52,8 @@ const RATIO_NUM: Record<AspectRatio, number> = {
   '16:9': 16 / 9,
   '4:5': 4 / 5,
   '5:1': 5 / 1,
+  '11:5': 11 / 5,
+  '22:5': 22 / 5,
   '21:9': 21 / 9,
 };
 
@@ -53,6 +64,8 @@ const RATIO_CSS: Record<AspectRatio, string> = {
   '16:9': '16/9',
   '4:5': '4/5',
   '5:1': '5/1',
+  '11:5': '11/5',
+  '22:5': '22/5',
   '21:9': '21/9',
 };
 
@@ -63,6 +76,8 @@ const RATIO_LABEL: Record<AspectRatio, string> = {
   '16:9': '16:9 wide',
   '4:5': '4:5 portrait',
   '5:1': '5:1 banner',
+  '11:5': '2.2:1 mobile middle banner',
+  '22:5': '4.4:1 laptop middle strip',
   '21:9': '21:9 panoramic',
 };
 
@@ -172,7 +187,9 @@ export default function ImageUploader({
   const total = existingImages.length + previews.length;
   const slotsLeft = Math.max(0, maxFiles - total);
   const canAddMore = slotsLeft > 0;
-  const aspectCss = RATIO_CSS[aspectRatio];
+  const aspectCss = RATIO_CSS[aspectRatio] ?? '16/9';
+  const cropAspect = RATIO_NUM[aspectRatio] ?? 16 / 9;
+  const ratioLabel = RATIO_LABEL[aspectRatio] ?? aspectRatio;
   const showUploadOverlay = isUploading || (uploadProgress != null && uploadProgress >= 0);
 
   const revokeCropSrc = (src: string | null) => {
@@ -324,7 +341,7 @@ export default function ImageUploader({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label className="block text-sm font-medium text-gray-700">{label}</label>
           <span className="text-xs text-gray-400">
-            {RATIO_LABEL[aspectRatio]} · max {maxSizeMB} MB
+            {ratioLabel} · max {maxSizeMB} MB
             {maxFiles > 1 && ` · ${total}/${maxFiles} images`}
           </span>
         </div>
@@ -533,7 +550,7 @@ export default function ImageUploader({
                     Crop image{cropStepLabel ? ` (${cropStepLabel})` : ''}
                   </p>
                   <p className="text-xs text-gray-400 truncate">
-                    {RATIO_LABEL[aspectRatio]}
+                    {ratioLabel}
                     {pendingCropQueue.length > 0 && (
                       <> · {pendingCropQueue.length} more in queue</>
                     )}
@@ -555,7 +572,7 @@ export default function ImageUploader({
                 image={cropSrc!}
                 crop={crop}
                 zoom={zoom}
-                aspect={RATIO_NUM[aspectRatio]}
+                aspect={cropAspect}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}

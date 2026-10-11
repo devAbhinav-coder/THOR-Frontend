@@ -1135,12 +1135,15 @@ export default function ProductFormModal({
                 rows={3}
               />
             </AdminOfferField>
-            <AdminOfferField label='Tags' hint='Comma separated'>
+            <AdminOfferField
+              label='Tags'
+              hint='Comma separated. Marketing tyohar/edit badges: use the same slug as Admin → Storefront → Marketing edits (e.g. tyohar-edit).'
+            >
               <input
                 className={adminOfferInputCls}
                 value={form.tags}
                 onChange={(e) => set("tags", e.target.value)}
-                placeholder='silk, wedding, festive'
+                placeholder='silk, wedding, tyohar-edit'
               />
             </AdminOfferField>
           </div>

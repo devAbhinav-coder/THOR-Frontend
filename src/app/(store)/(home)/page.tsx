@@ -12,6 +12,7 @@ import {
 import {
   fetchStorefrontHomeBundle,
   fetchStorefrontHomePageBundle,
+  fetchStorefrontPublicOffers,
 } from "@/lib/storefrontServer";
 import { getSiteUrl } from "@/lib/siteUrl";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/lib/brandSeo";
 import { resolveBrandSameAs } from "@/lib/socialLinks";
 import { absolutePageTitle } from "@/lib/pageSeo";
+import { buildHomePromoMarqueeLines } from "@/lib/homePromoMarqueeLines";
 
 const CategorySection = dynamic(
   () => import("@/components/home/CategorySection"),
@@ -36,6 +38,9 @@ const SareeCollections = dynamic(
 );
 const HomeMiddleBanner = dynamic(
   () => import("@/components/home/HomeMiddleBanner"),
+);
+const HomePromoMarquee = dynamic(
+  () => import("@/components/home/HomePromoMarquee"),
 );
 const HomeBanner = dynamic(() => import("@/components/home/HomeBanner"));
 const ExploreCollection = dynamic(
@@ -92,7 +97,10 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const homeBundle = await fetchStorefrontHomePageBundle();
+  const [homeBundle, publicOffers] = await Promise.all([
+    fetchStorefrontHomePageBundle(),
+    fetchStorefrontPublicOffers(),
+  ]);
   const [
     categoryStatsFallback,
     featuredFallback,
@@ -125,6 +133,14 @@ export default async function HomePage() {
   const sareeSubcategories = homeBundle?.sareeSubcategories ?? sareeFallback;
   const homeTestimonials = homeBundle?.testimonials ?? testimonialsFallback;
   const exploreProducts = homeBundle?.exploreProducts ?? exploreFallback;
+
+  const homePromoMarqueeLines = buildHomePromoMarqueeLines(
+    storefrontSettings?.announcementMessages ?? [],
+    publicOffers,
+  );
+  const showHomeMiddlePromoBlock =
+    Boolean(storefrontSettings?.homeMiddleBanner?.isActive) ||
+    homePromoMarqueeLines.length > 0;
 
   /**
    * WebPage JSON-LD - references the Organization and WebSite nodes
@@ -206,10 +222,10 @@ export default async function HomePage() {
       {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        name: "Featured Sarees, Salwar Suits & Corsets - The House of Rani",
+        name: "Best Sellers - The House of Rani",
         description:
-          "Handpicked premium sarees, salwar suits, and corsets from The House of Rani.",
-        url: `${SITE_URL}/shop/collections`,
+          "Top-selling sarees, salwar suits, and corsets ranked by customer orders.",
+        url: `${SITE_URL}/shop/collections?bestsellers=true`,
         numberOfItems: featuredProducts.length,
         itemListElement: featuredProducts
           .filter((p) => p?.slug && p?.name)
@@ -323,13 +339,24 @@ export default async function HomePage() {
       <HeroSection
         initialSlides={heroSlides}
         announcementMessages={storefrontSettings?.announcementMessages ?? []}
+        underNavOverlap
       />
       <CategorySection
         initialCategories={categoryStats}
         exploreHouseImages={storefrontSettings?.homeExploreHouse}
       />
-      {storefrontSettings?.homeMiddleBanner && (
-        <HomeMiddleBanner banner={storefrontSettings.homeMiddleBanner} />
+      {showHomeMiddlePromoBlock && (
+        <>
+          <HomePromoMarquee
+            announcementMessages={
+              storefrontSettings?.announcementMessages ?? []
+            }
+            initialOffers={publicOffers}
+          />
+          {storefrontSettings?.homeMiddleBanner && (
+            <HomeMiddleBanner banner={storefrontSettings.homeMiddleBanner} />
+          )}
+        </>
       )}
       <SareeCollections subcategories={sareeSubcategories} />
       <FeaturedProducts initialProducts={featuredProducts} />

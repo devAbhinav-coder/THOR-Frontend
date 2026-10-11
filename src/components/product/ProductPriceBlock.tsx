@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { priceClassName } from '@/lib/storefrontTypography';
 import type { Product } from '@/types';
 import { getStorefrontPriceDisplay } from '@/lib/productPricing';
 
@@ -27,9 +28,9 @@ export default function ProductPriceBlock({
   const d = getStorefrontPriceDisplay(product, displayColor);
 
   const sellSize =
-    size === 'lg' ? 'text-3xl sm:text-4xl font-serif font-medium'
-    : size === 'md' ? 'text-sm font-semibold sm:text-[15px]'
-    : 'text-base font-bold';
+    size === 'lg' ? priceClassName('text-3xl sm:text-4xl font-semibold')
+    : size === 'md' ? 'text-sm font-semibold sm:text-[15px] tabular-nums'
+    : 'text-base font-bold tabular-nums';
 
   const mrpSize =
     size === 'lg' ? 'text-base'
@@ -50,7 +51,7 @@ export default function ProductPriceBlock({
       </span>
       {d.mrpLabel && (
         <span
-          className={cn(mrpSize, 'text-gray-400 line-through', mrpClassName)}
+          className={cn(mrpSize, 'tabular-nums text-gray-400 line-through', mrpClassName)}
           aria-label={`Original price: ${d.mrpLabel}`}
         >
           {d.mrpLabel}

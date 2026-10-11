@@ -4,9 +4,13 @@ import type {
   Category,
   HeroSlide,
   Product,
+  PublicCoupon,
+  PublicPromotion,
+  PublicSale,
   StorefrontSettings,
   Testimonial,
 } from "@/types";
+import type { StorefrontPublicOffersBundle } from "@/lib/homePromoMarqueeLines";
 import { STOREFRONT_SETTINGS_CACHE_TAG } from "@/lib/cacheTags";
 import { fallbackHeroSlides } from "@/lib/heroSlidesFallback";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
@@ -61,6 +65,39 @@ export async function fetchStorefrontHeroSlides(): Promise<HeroSlide[]> {
 export async function fetchStorefrontSettingsHome(): Promise<StorefrontSettings | null> {
   return fetchStorefrontSettingsCached();
 }
+
+type PublicOffersJson = {
+  data?: {
+    coupons?: PublicCoupon[];
+    campaigns?: PublicSale[];
+    promotions?: PublicPromotion[];
+  };
+};
+
+/** Active coupons, sales, and auto-offers for home promo marquee (SSR). */
+export const fetchStorefrontPublicOffers = cache(
+  async (): Promise<StorefrontPublicOffersBundle | null> => {
+    const base = await getBuildSafeApiBase();
+    if (!base) return null;
+    try {
+      const res = await serverFetch(`${base}/storefront/public-offers`, {
+        next: { revalidate: 60 },
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as PublicOffersJson;
+      const data = json?.data;
+      if (!data || typeof data !== "object") return null;
+      return {
+        coupons: Array.isArray(data.coupons) ? data.coupons : [],
+        campaigns: Array.isArray(data.campaigns) ? data.campaigns : [],
+        promotions: Array.isArray(data.promotions) ? data.promotions : [],
+      };
+    } catch {
+      return null;
+    }
+  },
+);
 
 export type StorefrontHomePageBundle = {
   heroSlides: HeroSlide[];

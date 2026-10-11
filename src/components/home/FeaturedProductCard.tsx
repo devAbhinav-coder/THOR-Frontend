@@ -22,6 +22,7 @@ import { trackAddToWishlist, pickMetaCatalogVariant } from "@/lib/metaPixel";
 import WishlistHeartButton from "@/components/wishlist/WishlistHeartButton";
 import { resolveShopCardImage } from "@/lib/pdpImages";
 import { shopProductHref } from "@/lib/shopProductListing";
+import ProductMarketingBadge from "@/components/product/ProductMarketingBadge";
 
 interface FeaturedProductCardProps {
   product: Product;
@@ -203,6 +204,8 @@ function FeaturedProductCardInner({
               </div>
             }
           </Link>
+
+          <ProductMarketingBadge product={product} variant='corner' />
 
           <WishlistHeartButton
             productId={product._id}

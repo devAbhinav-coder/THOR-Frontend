@@ -18,15 +18,20 @@ import { trackSearchDeduped } from "@/lib/metaPixel";
 import { trackGaSearch } from "@/lib/googleAnalytics";
 import { useInfiniteScrollTrigger } from "@/hooks/useInfiniteScrollTrigger";
 import { getNextNumericPage } from "@/lib/infiniteScrollPagination";
+import { cn } from "@/lib/utils";
 import { toShopCategorySlug } from "@/lib/shopCategorySeo";
 import { resolveShopListHeading } from "@/lib/pageHeadings";
 import { resolveShopHeroContent } from "@/lib/shopHeroCopy";
+import { filterEditionsForShopSidebar } from "@/lib/marketingEditions";
+import { parseEditionSlugFromShopPath } from "@/lib/marketingEditionSeo";
 import {
   SHOP_PAGE_LIMIT,
   type ShopCategoryContext,
   buildShopProductQueryParams,
+  clearShopFilterSection,
   countActiveShopFilters,
   parseShopFiltersFromUrl,
+  type ShopFilterSectionId,
   resolveClearShopFiltersNavigation,
   resolveNextShopFilters,
   resolveCanonicalShopUrl,
@@ -50,6 +55,8 @@ import { expandProductsForShopListing } from "@/lib/shopProductListing";
 import { isShopCatalogCategory } from "@/lib/categoryFilters";
 import { PREMIUM_HREF, SHOP_SALE_HREF } from "@/lib/shopSpecialCollections";
 import {
+  SHOP_FILTER_SIDEBAR_ASIDE_CLASS,
+  SHOP_FILTER_SIDEBAR_PANEL_CLASS,
   SHOP_PRODUCT_GRID_CLASS,
   SHOP_LOAD_MORE_SKELETON_COUNT,
 } from "@/lib/shopLayout";
@@ -259,8 +266,22 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   const [storefrontSettings, setStorefrontSettings] =
     useState<StorefrontSettings | null>(null);
 
+  const editionSlugFromPath = parseEditionSlugFromShopPath(pathname);
+
+  const mergeEditionPathIntoFilters = useCallback(
+    (parsed: ReturnType<typeof parseShopFiltersFromUrl>) => {
+      if (!editionSlugFromPath) return parsed;
+      const editions = [...parsed.editions];
+      if (!editions.some((s) => s.toLowerCase() === editionSlugFromPath)) {
+        editions.push(editionSlugFromPath);
+      }
+      return { ...parsed, editions };
+    },
+    [editionSlugFromPath],
+  );
+
   const [filters, setFilters] = useState(() =>
-    parseShopFiltersFromUrl(searchParams, null),
+    mergeEditionPathIntoFilters(parseShopFiltersFromUrl(searchParams, null)),
   );
 
   const [draftMinPrice, setDraftMinPrice] = useState(filters.minPrice);
@@ -269,7 +290,9 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
   const searchParamsKey = searchParams.toString();
 
   useEffect(() => {
-    const parsed = parseShopFiltersFromUrl(searchParams, categoryContext);
+    const parsed = mergeEditionPathIntoFilters(
+      parseShopFiltersFromUrl(searchParams, categoryContext),
+    );
     setFilters({
       ...parsed,
       categories: syncCategoryNamesWithOptions(
@@ -284,6 +307,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     searchParams,
     categoryContext,
     filterOptions?.categories,
+    mergeEditionPathIntoFilters,
   ]);
 
   /* Meta Pixel & GA4: Track Search */
@@ -315,9 +339,10 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
         ratings: filters.ratings,
         sort: filters.sort,
         search: filters.search.trim(),
-        isFeatured: filters.isFeatured,
+        bestsellers: filters.bestsellers,
         onSale: filters.onSale,
         hasOffer: filters.hasOffer,
+        editions: [...filters.editions].sort(),
       }),
     [filters, pathCategoryContext],
   );
@@ -512,6 +537,11 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     applyPriceFilters(minPrice, maxPrice);
   };
 
+  const revertPriceDraft = useCallback(() => {
+    setDraftMinPrice(filters.minPrice);
+    setDraftMaxPrice(filters.maxPrice);
+  }, [filters.minPrice, filters.maxPrice]);
+
   const categoryLabel = formatShopCategoriesLabel(filters.categories);
   const colorLabel = formatShopColorsLabel(filters.colors);
 
@@ -525,6 +555,19 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
       router.replace(path, { scroll: false });
     });
   }, [queryClient, router, startFilterTransition]);
+
+  const clearFilterSection = useCallback(
+    (section: ShopFilterSectionId) => {
+      const next = clearShopFilterSection(filters, section);
+      if (section === "price") {
+        setDraftMinPrice("");
+        setDraftMaxPrice("");
+      }
+      setFilters(next);
+      pushFilters(next);
+    },
+    [filters, pushFilters],
+  );
 
   const activeFilterCount = countActiveShopFilters(filters, categoryContext);
   const showClearFilters = shouldShowClearShopFilters(filters, categoryContext);
@@ -561,13 +604,30 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
       isActive: raw.isActive !== false,
     };
   }, [storefrontSettings]);
+
+  const shopMarketingEditions = useMemo(
+    () => filterEditionsForShopSidebar(storefrontSettings?.marketingEditions),
+    [storefrontSettings?.marketingEditions],
+  );
+
+  const editionBreadcrumb = useMemo(() => {
+    if (!filters.editions.length) return null;
+    const match = shopMarketingEditions.find((e) =>
+      filters.editions.some(
+        (slug) => slug.toLowerCase() === e.slug.toLowerCase(),
+      ),
+    );
+    if (match) return match.filterLabel || match.label;
+    return filters.editions.join(", ");
+  }, [filters.editions, shopMarketingEditions]);
+
   const heroContent = resolveShopHeroContent({
     categoryName: categoryLabel || categoryContext?.name,
     subcategoryName: categoryContext?.subcategory?.name,
     categoryDescription: categoryContext?.description,
     search: filters.search,
     color: colorLabel,
-    isFeatured: filters.isFeatured,
+    bestsellers: filters.bestsellers,
     onSale: filters.onSale,
     bannerTitle: shopBanner.title,
   });
@@ -576,7 +636,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     subcategoryName: categoryContext?.subcategory?.name,
     search: filters.search,
     color: colorLabel,
-    isFeatured: filters.isFeatured,
+    bestsellers: filters.bestsellers,
     onSale: filters.onSale,
   });
 
@@ -588,9 +648,10 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
       return `${Math.min(...filters.ratings.map(Number))}★ & Above`;
     }
     if (filters.minPrice || filters.maxPrice) return "Price Filter";
-    if (filters.isFeatured) return "Featured Products";
+    if (filters.bestsellers === "true") return "Best Sellers";
     if (filters.onSale === "true") return "On Sale";
     if (filters.hasOffer === "true") return "Coupon Offers";
+    if (editionBreadcrumb) return editionBreadcrumb;
     return "All Collections";
   }, [
     filters.search,
@@ -599,9 +660,10 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
     filters.ratings,
     filters.minPrice,
     filters.maxPrice,
-    filters.isFeatured,
+    filters.bestsellers,
     filters.onSale,
     filters.hasOffer,
+    editionBreadcrumb,
   ]);
   const productGridClass = SHOP_PRODUCT_GRID_CLASS;
 
@@ -712,6 +774,7 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
           filterOptions={filterOptions}
           categoryTree={categoryTree}
           occasionOptions={occasionOptions}
+          marketingEditions={shopMarketingEditions}
           subcategories={subcategoriesData?.data?.subcategories || []}
           activeFilterCount={activeFilterCount}
           showClearFilters={showClearFilters}
@@ -724,39 +787,66 @@ export default function ShopClient({ children }: { children?: React.ReactNode })
           onApplyPriceFilters={applyPriceFilters}
           quickColors={quickColors}
           productCountLabel={productCountLabel}
+          categoryContext={categoryContext}
+          onClearSection={clearFilterSection}
         />
 
-        <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:-mt-1 lg:px-8'>
-          <div className='grid grid-cols-1 items-start gap-5 lg:grid-cols-[250px_1fr] lg:gap-8'>
-            <aside 
-              data-lenis-prevent-vertical 
-              className='hidden lg:block lg:sticky lg:top-28 self-start overflow-y-auto max-h-[calc(100vh-7rem)] scrollbar-hide pr-2'
+        <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
+          <div className='grid grid-cols-1 items-start gap-5 lg:grid-cols-[min(100%,280px)_1fr] lg:gap-8'>
+            <aside
+              className={cn(
+                SHOP_FILTER_SIDEBAR_ASIDE_CLASS,
+                SHOP_FILTER_SIDEBAR_PANEL_CLASS,
+              )}
             >
-              <div className='flex items-center justify-between pb-4 border-b border-gray-200 mb-6'>
-                <h3 className='text-[13px] font-bold uppercase tracking-wider text-navy-900'>Filters</h3>
-                {showClearFilters && (
-                  <button
-                    onClick={clearFilters}
-                    className='text-[11px] uppercase font-bold tracking-wider text-[#c5a059] hover:text-[#a68648]'
-                  >
-                    Clear All
-                  </button>
-                )}
-              </div>
-              <ShopFilterPanel
-                filters={filters}
-                filterOptions={filterOptions}
-                categoryTree={categoryTree}
-                occasionOptions={occasionOptions}
-                subcategories={subcategoriesData?.data?.subcategories || []}
-                draftMinPrice={draftMinPrice}
-                draftMaxPrice={draftMaxPrice}
-                onUpdateFilter={updateFilter}
-                onMinPriceChange={setDraftMinPrice}
-                onMaxPriceChange={setDraftMaxPrice}
-                sidebar={true}
-                onApply={handleApplyPriceFilters}
-              />
+                <div className='mb-3 border-b border-[#c5a059]/12 pb-2.5'>
+                  <div className='flex items-start justify-between gap-3'>
+                    <div className='min-w-0'>
+                      <p className='text-[9px] font-semibold uppercase tracking-[0.28em] text-[#c5a059]'>
+                        Curate
+                      </p>
+                      <h3 className='mt-1 font-serif text-xl font-medium leading-none tracking-tight text-navy-900'>
+                        Refine
+                      </h3>
+                    </div>
+                    {(activeFilterCount > 0 || showClearFilters) ?
+                      <div className='flex shrink-0 flex-col items-end gap-1.5 pt-0.5'>
+                        {activeFilterCount > 0 ?
+                          <span className='bg-navy-900 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-white'>
+                            {activeFilterCount}
+                          </span>
+                        : null}
+                        {showClearFilters ?
+                          <button
+                            type='button'
+                            onClick={clearFilters}
+                            className='text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c5a059] transition-colors hover:text-[#a68648]'
+                          >
+                            Clear all
+                          </button>
+                        : null}
+                      </div>
+                    : null}
+                  </div>
+                </div>
+                <ShopFilterPanel
+                  filters={filters}
+                  filterOptions={filterOptions}
+                  categoryTree={categoryTree}
+                  occasionOptions={occasionOptions}
+                  marketingEditions={shopMarketingEditions}
+                  subcategories={subcategoriesData?.data?.subcategories || []}
+                  draftMinPrice={draftMinPrice}
+                  draftMaxPrice={draftMaxPrice}
+                  onUpdateFilter={updateFilter}
+                  onMinPriceChange={setDraftMinPrice}
+                  onMaxPriceChange={setDraftMaxPrice}
+                  sidebar={true}
+                  onApply={handleApplyPriceFilters}
+                  onRevertPriceDraft={revertPriceDraft}
+                  categoryContext={categoryContext}
+                  onClearSection={clearFilterSection}
+                />
             </aside>
 
             <section className='min-w-0 flex-1'>

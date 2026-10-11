@@ -8,6 +8,7 @@ import { ShopFilterPanelProvider } from "@/components/shop/ShopFilterPanelContex
 function isShopListingPath(pathname: string): boolean {
   if (pathname === "/shop") return true;
   if (pathname === "/shop/collections") return true;
+  if (pathname.startsWith("/shop/edits/")) return true;
   return pathname.startsWith("/shop/category/") || pathname.startsWith("/shop/collections/");
 }
 

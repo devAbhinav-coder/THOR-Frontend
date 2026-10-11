@@ -1,10 +1,41 @@
 import { cn } from "@/lib/utils";
 
-export function navShellClass(scrolled: boolean) {
+export type NavShellVariant = "solid" | "immersive";
+
+type NavShellOptions = {
+  variant: NavShellVariant;
+  /** Immersive (home): gradient fill on hover / menus. Solid: always filled. */
+  revealed: boolean;
+  /** Past scroll threshold — deepens shadow when chrome is visible. */
+  elevated: boolean;
+};
+
+export function navShellClass({
+  variant,
+  revealed,
+  elevated,
+}: NavShellOptions) {
+  if (variant === "solid") {
+    return cn(
+      "border-b border-navy-800 bg-navy-950",
+      "transition-[box-shadow,background-color] duration-300 ease-out motion-reduce:transition-none",
+      elevated && "shadow-[0_8px_32px_-8px_rgba(20,25,47,0.65)]",
+    );
+  }
+
+  if (!revealed) {
+    return cn(
+      "border-b-0 bg-transparent shadow-none backdrop-blur-none",
+      "transition-[background-color,box-shadow,backdrop-filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+    );
+  }
+
   return cn(
-    "border-b border-navy-800 bg-navy-950",
-    "transition-[box-shadow,background-color] duration-300 ease-out motion-reduce:transition-none",
-    scrolled && "shadow-[0_8px_32px_-8px_rgba(20,25,47,0.65)]",
+    "border-b-0 shadow-none",
+    "bg-gradient-to-b from-navy-950/98 via-navy-950/88 to-navy-950/50",
+    "backdrop-blur-[10px]",
+    "transition-[background-color,box-shadow,backdrop-filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+    elevated && "shadow-[0_10px_36px_-18px_rgba(20,25,47,0.55)]",
   );
 }
 
@@ -22,14 +53,14 @@ export function navStickyShellClass(
     if (autoHideAllViewports) {
       return cn(
         "fixed inset-x-0 top-0 z-50",
-        "transition-transform duration-300 ease-out motion-reduce:transition-none",
+        "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
         visible ? "translate-y-0" : "-translate-y-full pointer-events-none",
       );
     }
 
     return cn(
       "fixed inset-x-0 top-0 z-50 lg:sticky",
-      "transition-transform duration-200 ease-out motion-reduce:transition-none",
+      "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
       "lg:translate-y-0",
       visible ? "translate-y-0" : "-translate-y-full pointer-events-none",
     );
@@ -42,12 +73,22 @@ export function navStickyShellClass(
 export function navMobileFlowSpacerClass(
   autoHide: boolean,
   allViewports = false,
+  /** Hero sits under the fixed bar — no layout spacer. */
+  overlapHero = false,
+  /** When auto-hide chrome is off-screen, collapse spacer (no white band on scroll). */
+  chromeVisible = true,
 ) {
-  if (!autoHide) return "hidden";
+  if (!autoHide || overlapHero) return "hidden";
+  if (!chromeVisible) {
+    return "h-0 shrink-0 overflow-hidden transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
+  }
   return allViewports ?
-      "h-[4.25rem] shrink-0"
-    : "h-[4.25rem] shrink-0 lg:hidden";
+      "h-[4.25rem] shrink-0 transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+    : "h-[4.25rem] shrink-0 lg:hidden transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
 }
+
+/** Pull first hero under fixed transparent nav (matches header height). */
+export const navHeroUnderlapClass = "-mt-[4.25rem]";
 
 export function navLinkClass(active: boolean) {
   return cn(

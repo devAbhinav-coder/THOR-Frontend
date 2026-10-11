@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   ChevronDown,
@@ -9,15 +15,22 @@ import {
   ArrowUpDown,
   Package,
 } from "lucide-react";
-import { FilterOptions, FilterCategoryTreeItem } from "@/types";
+import { FilterOptions, FilterCategoryTreeItem, MarketingEdition } from "@/types";
 import { cn } from "@/lib/utils";
 import { lockBodyScroll, unlockBodyScroll } from "@/lib/bodyScrollLock";
-import type { ShopFilters } from "@/lib/shopFilters";
+import type {
+  ShopCategoryContext,
+  ShopFilters,
+} from "@/lib/shopFilters";
 import {
   isShopListFilterSelected,
   isShopCategoryFilterSelected,
+  isShopPriceDraftPending,
   resolveShopPriceDraft,
+  resolveShopFilterFocusSection,
+  shopFilterSectionHasActive,
   shopPriceDraftToFilterStrings,
+  type ShopFilterSectionId,
 } from "@/lib/shopFilters";
 import ShopPriceRangeFilter from "@/components/shop/ShopPriceRangeFilter";
 import {
@@ -28,7 +41,16 @@ import { variantSwatchBackground } from "@/lib/variantSwatch";
 import { catalogMatchKey } from "@/lib/catalogAttributes";
 
 const shopFilterCheckboxClass =
-  "h-4 w-4 shrink-0 rounded-none border-gray-300 accent-[#c5a059] text-[#c5a059] focus:ring-[#c5a059]";
+  "h-4 w-4 shrink-0 rounded-sm border-gray-300/90 accent-[#c5a059] text-[#c5a059] focus:ring-[#c5a059]/40";
+
+function sidebarFilterOptionClass(selected: boolean) {
+  return cn(
+    "flex min-w-0 cursor-pointer items-center gap-2.5 border px-2.5 py-2 transition-all duration-200",
+    selected ?
+      "border-[#c5a059]/35 bg-white font-medium text-[#9a7b42] shadow-[0_2px_8px_rgba(197,160,89,0.12)]"
+    : "border-transparent bg-white/40 text-navy-900/80 hover:border-[#c5a059]/15 hover:bg-white hover:text-[#c5a059]",
+  );
+}
 
 function resolveFilterColorCode(
   colorName: string,
@@ -114,6 +136,7 @@ type Props = {
   filterOptions: FilterOptions | null;
   categoryTree?: FilterCategoryTreeItem[];
   occasionOptions?: string[];
+  marketingEditions?: MarketingEdition[];
   subcategories?: Array<{ name?: string; slug?: string } | string>;
   activeFilterCount: number;
   showClearFilters: boolean;
@@ -126,6 +149,8 @@ type Props = {
   onApplyPriceFilters: (minPrice: string, maxPrice: string) => void;
   quickColors: string[];
   productCountLabel: string;
+  categoryContext?: ShopCategoryContext;
+  onClearSection?: (section: ShopFilterSectionId) => void;
 };
 
 function useHoverCapablePointer() {
@@ -148,6 +173,7 @@ export default function ShopFilterBar(props: Props) {
     filterOptions,
     categoryTree: categoryTreeProp,
     occasionOptions: occasionOptionsProp,
+    marketingEditions: marketingEditionsProp = [],
     subcategories,
     activeFilterCount,
     showClearFilters,
@@ -160,6 +186,8 @@ export default function ShopFilterBar(props: Props) {
     onApplyPriceFilters,
     quickColors,
     productCountLabel,
+    categoryContext = null,
+    onClearSection,
   } = props;
 
   const filterMenuId = useId();
@@ -242,6 +270,11 @@ export default function ShopFilterBar(props: Props) {
     onCloseFilter();
   }, [onClearFilters, onCloseFilter]);
 
+  const revertPriceDraft = useCallback(() => {
+    setDraftMinPrice(filters.minPrice);
+    setDraftMaxPrice(filters.maxPrice);
+  }, [filters.minPrice, filters.maxPrice]);
+
   /* Lock page scroll while mobile filter sheet is open. */
   useEffect(() => {
     if (!mounted || !isFilterOpen) return;
@@ -259,6 +292,7 @@ export default function ShopFilterBar(props: Props) {
       filterOptions={filterOptions}
       categoryTree={categoryTreeProp}
       occasionOptions={occasionOptionsProp}
+      marketingEditions={marketingEditionsProp}
       subcategories={subcategories}
       draftMinPrice={draftMinPrice}
       draftMaxPrice={draftMaxPrice}
@@ -267,6 +301,7 @@ export default function ShopFilterBar(props: Props) {
       onMaxPriceChange={setDraftMaxPrice}
       mobileSheet={false}
       onApply={handleApplyFilters}
+      categoryContext={categoryContext}
     />
   );
 
@@ -276,6 +311,7 @@ export default function ShopFilterBar(props: Props) {
       filterOptions={filterOptions}
       categoryTree={categoryTreeProp}
       occasionOptions={occasionOptionsProp}
+      marketingEditions={marketingEditionsProp}
       subcategories={subcategories}
       draftMinPrice={draftMinPrice}
       draftMaxPrice={draftMaxPrice}
@@ -283,6 +319,10 @@ export default function ShopFilterBar(props: Props) {
       onMinPriceChange={setDraftMinPrice}
       onMaxPriceChange={setDraftMaxPrice}
       mobileSheet
+      onRevertPriceDraft={revertPriceDraft}
+      filterSheetOpen={isFilterOpen}
+      categoryContext={categoryContext}
+      onClearSection={onClearSection}
     />
   );
 
@@ -336,7 +376,7 @@ export default function ShopFilterBar(props: Props) {
               />
               <div
                 id={filterMenuId}
-                data-lenis-prevent-vertical
+                data-lenis-prevent
                 className={cn(
                   "lg:hidden fixed inset-x-0 flex flex-col overflow-hidden border-t border-[#c5a059]/20 bg-white shadow-2xl",
                   MOBILE_FILTER_SHEET_Z,
@@ -371,7 +411,12 @@ export default function ShopFilterBar(props: Props) {
                   onApply={handleApplyFilters}
                   onClear={handleClearFiltersAndClose}
                   showClear={showClearFilters}
-                  className="shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
+                  pricePending={isShopPriceDraftPending(
+                    filters,
+                    draftMinPrice,
+                    draftMaxPrice,
+                  )}
+                  className="shrink-0"
                 />
               </div>
             </>
@@ -535,22 +580,187 @@ function ShopFilterToolbar({
   );
 }
 
+function collectionFilterRowClass(selected: boolean, compact: boolean) {
+  return cn(
+    "flex min-w-0 cursor-pointer items-center gap-2.5 transition-colors duration-200",
+    compact ? "px-2.5 py-2" : "rounded-md px-1 py-1.5",
+    selected ?
+      "font-medium text-[#c5a059]"
+    : compact ?
+      "text-navy-900/90 hover:text-[#c5a059]"
+    : "text-gray-600 hover:text-[#c5a059]",
+  );
+}
+
+function CollectionSubcategoryRows({
+  items,
+  filters,
+  onUpdateFilter,
+  compact,
+}: {
+  items: Array<{ name: string; slug?: string }>;
+  filters: ShopFilters;
+  onUpdateFilter: (key: string, value: string | number) => void;
+  compact: boolean;
+}) {
+  return (
+    <ul
+      className={cn(
+        "min-w-0 space-y-0.5 overflow-x-hidden",
+        compact ? "px-1.5 pb-2 pt-1" : "space-y-2 text-sm",
+      )}
+    >
+      {items.map((sub) => {
+        const subSelected = isShopListFilterSelected(
+          filters.subcategories,
+          sub.name,
+        );
+        const key = sub.slug || sub.name;
+        return (
+          <li key={key}>
+            <label
+              className={cn(
+                collectionFilterRowClass(subSelected, compact),
+                compact &&
+                  cn(
+                    subSelected ?
+                      "bg-white shadow-sm ring-1 ring-[#c5a059]/25"
+                    : "hover:bg-white/70",
+                  ),
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={subSelected}
+                onChange={() => onUpdateFilter("subcategories", sub.name)}
+                className={shopFilterCheckboxClass}
+              />
+              <span
+                className={cn(
+                  "min-w-0 flex-1 break-words leading-snug",
+                  compact ? "text-[12px] tracking-[0.01em]" : "text-[13px]",
+                )}
+              >
+                {sub.name}
+              </span>
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function CategoryTreeFilter({
   categoryTree,
   filters,
   onUpdateFilter,
   sidebar = false,
+  compact = false,
 }: {
   categoryTree: FilterCategoryTreeItem[];
   filters: ShopFilters;
   onUpdateFilter: (key: string, value: string | number) => void;
   sidebar?: boolean;
+  /** Sidebar + mobile sheet: card layout with expandable sub-types. */
+  compact?: boolean;
 }) {
+  const useCompact = compact || sidebar;
+
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      for (const cat of categoryTree) {
+        const key = cat.slug || cat.name;
+        const catSelected = isShopCategoryFilterSelected(
+          filters.categories,
+          cat.name,
+        );
+        const selectedSubCount = cat.subcategories.filter((sub) =>
+          isShopListFilterSelected(filters.subcategories, sub.name),
+        ).length;
+        if (catSelected || selectedSubCount > 0) {
+          next.add(key);
+        }
+      }
+      return next;
+    });
+  }, [categoryTree, filters.categories, filters.subcategories]);
+
   if (!categoryTree.length) return null;
 
+  const toggleExpanded = (key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  if (!useCompact) {
+    return (
+      <ul className="min-w-0 space-y-3 overflow-x-hidden">
+        {categoryTree.map((cat) => {
+          const catSelected = isShopCategoryFilterSelected(
+            filters.categories,
+            cat.name,
+          );
+          const hasSubs = cat.subcategories.length > 0;
+
+          return (
+            <li key={cat.slug || cat.name}>
+              <label
+                className={collectionFilterRowClass(catSelected, false)}
+              >
+                <input
+                  type="checkbox"
+                  checked={catSelected}
+                  onChange={() => onUpdateFilter("categories", cat.name)}
+                  className={shopFilterCheckboxClass}
+                />
+                <span className="flex-1 leading-snug">{cat.name}</span>
+              </label>
+              {hasSubs ?
+                <ul className="ml-3 mt-1.5 space-y-0.5 border-l-2 border-gray-100 pl-3">
+                  {cat.subcategories.map((sub) => {
+                    const subSelected = isShopListFilterSelected(
+                      filters.subcategories,
+                      sub.name,
+                    );
+                    return (
+                      <li key={`${cat.slug}-${sub.slug}`}>
+                        <label
+                          className={collectionFilterRowClass(subSelected, false)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={subSelected}
+                            onChange={() =>
+                              onUpdateFilter("subcategories", sub.name)
+                            }
+                            className={shopFilterCheckboxClass}
+                          />
+                          <span className="text-[13px] leading-snug">{sub.name}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              : null}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
   return (
-    <ul className={cn("space-y-1", sidebar ? "space-y-0.5" : "space-y-3")}>
+    <ul className="min-w-0 space-y-2 overflow-x-hidden">
       {categoryTree.map((cat) => {
+        const key = cat.slug || cat.name;
         const catSelected = isShopCategoryFilterSelected(
           filters.categories,
           cat.name,
@@ -559,77 +769,79 @@ function CategoryTreeFilter({
         const selectedSubCount = cat.subcategories.filter((sub) =>
           isShopListFilterSelected(filters.subcategories, sub.name),
         ).length;
+        const isExpanded = expandedKeys.has(key);
+        const isActiveGroup = catSelected || selectedSubCount > 0;
 
         return (
           <li
-            key={cat.slug || cat.name}
+            key={key}
             className={cn(
-              sidebar && "rounded-md",
-              sidebar && catSelected && "bg-[#c5a059]/5",
+              "overflow-hidden border transition-all duration-200",
+              isActiveGroup ?
+                "border-[#c5a059]/40 bg-gradient-to-b from-[#c5a059]/[0.07] to-white shadow-[0_1px_0_rgba(197,160,89,0.12)]"
+              : "border-gray-100/90 bg-white hover:border-[#c5a059]/20 hover:shadow-sm",
             )}
           >
-            <label
-              className={cn(
-                "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
-                catSelected ?
-                  "font-semibold text-[#c5a059]"
-                : "font-medium text-navy-900 hover:text-[#c5a059]",
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={catSelected}
-                onChange={() => onUpdateFilter("categories", cat.name)}
-                className={shopFilterCheckboxClass}
-              />
-              <span className="flex-1 leading-snug">{cat.name}</span>
-              {hasSubs && selectedSubCount > 0 ?
-                <span className="text-[10px] font-semibold tabular-nums text-[#c5a059]">
-                  {selectedSubCount}
-                </span>
-              : null}
-            </label>
-
-            {hasSubs && (
-              <ul
+            <div className="flex min-w-0 items-stretch">
+              <label
                 className={cn(
-                  "ml-3 space-y-0.5 border-l-2 pl-3",
-                  sidebar ?
-                    "mb-2 ml-4 border-[#c5a059]/25"
-                  : "mt-1.5 border-gray-100",
+                  "flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 px-3 py-2.5",
+                  catSelected ?
+                    "text-[#c5a059]"
+                  : "text-navy-900 hover:text-[#c5a059]",
                 )}
               >
-                {cat.subcategories.map((sub) => {
-                  const subSelected = isShopListFilterSelected(
-                    filters.subcategories,
-                    sub.name,
-                  );
-                  return (
-                    <li key={`${cat.slug}-${sub.slug}`}>
-                      <label
-                        className={cn(
-                          "flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 transition-colors",
-                          subSelected ?
-                            "font-medium text-[#c5a059]"
-                          : "text-gray-500 hover:text-[#c5a059]",
-                          sidebar && subSelected && "bg-[#c5a059]/5",
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={subSelected}
-                          onChange={() =>
-                            onUpdateFilter("subcategories", sub.name)
-                          }
-                          className={shopFilterCheckboxClass}
-                        />
-                        <span className="text-[13px] leading-snug">{sub.name}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+                <input
+                  type="checkbox"
+                  checked={catSelected}
+                  onChange={() => onUpdateFilter("categories", cat.name)}
+                  className={shopFilterCheckboxClass}
+                />
+                <span className="min-w-0 flex-1 font-serif text-[13px] leading-snug tracking-wide">
+                  {cat.name}
+                </span>
+                {selectedSubCount > 0 ?
+                  <span className="shrink-0 rounded-full bg-[#c5a059]/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#a68648]">
+                    {selectedSubCount}
+                  </span>
+                : null}
+              </label>
+              {hasSubs ?
+                <button
+                  type="button"
+                  onClick={() => toggleExpanded(key)}
+                  className={cn(
+                    "inline-flex shrink-0 items-center justify-center border-l px-2.5 transition-colors",
+                    isActiveGroup ?
+                      "border-[#c5a059]/20 text-[#c5a059] hover:bg-[#c5a059]/5"
+                    : "border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-[#c5a059]",
+                  )}
+                  aria-expanded={isExpanded}
+                  aria-label={`${isExpanded ? "Hide" : "Show"} ${cat.name} types`}
+                >
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 transition-transform duration-300 ease-out",
+                      isExpanded && "rotate-180",
+                    )}
+                  />
+                </button>
+              : null}
+            </div>
+
+            {hasSubs && isExpanded ?
+              <div className="border-t border-[#c5a059]/10 bg-[#faf8f5]/90">
+                <p className="px-3 pb-0.5 pt-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+                  Shop by type
+                </p>
+                <CollectionSubcategoryRows
+                  items={cat.subcategories}
+                  filters={filters}
+                  onUpdateFilter={onUpdateFilter}
+                  compact
+                />
+              </div>
+            : null}
           </li>
         );
       })}
@@ -641,25 +853,60 @@ function FlatCategoryFilter({
   categories,
   filters,
   onUpdateFilter,
+  compact = false,
 }: {
   categories: string[];
   filters: ShopFilters;
   onUpdateFilter: (key: string, value: string | number) => void;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <ul className="min-w-0 space-y-2 overflow-x-hidden">
+        {categories.map((cat) => {
+          const selected = isShopCategoryFilterSelected(filters.categories, cat);
+          return (
+            <li
+              key={cat}
+              className={cn(
+                "overflow-hidden border transition-all duration-200",
+                selected ?
+                  "border-[#c5a059]/40 bg-gradient-to-b from-[#c5a059]/[0.07] to-white"
+                : "border-gray-100/90 bg-white hover:border-[#c5a059]/20",
+              )}
+            >
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-2.5 px-3 py-2.5",
+                  selected ?
+                    "text-[#c5a059]"
+                  : "text-navy-900 hover:text-[#c5a059]",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={() => onUpdateFilter("categories", cat)}
+                  className={shopFilterCheckboxClass}
+                />
+                <span className="font-serif text-[13px] leading-snug tracking-wide">
+                  {cat}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
   return (
     <ul className="space-y-2 text-sm">
       {categories.map((cat) => {
         const selected = isShopCategoryFilterSelected(filters.categories, cat);
         return (
           <li key={cat}>
-            <label
-              className={cn(
-                "flex cursor-pointer items-center gap-2 transition-colors",
-                selected ?
-                  "font-medium text-[#c5a059]"
-                : "text-gray-600 hover:text-[#c5a059]",
-              )}
-            >
+            <label className={collectionFilterRowClass(selected, false)}>
               <input
                 type="checkbox"
                 checked={selected}
@@ -680,6 +927,7 @@ export function ShopFilterPanel({
   filterOptions,
   categoryTree: categoryTreeProp,
   occasionOptions: occasionOptionsProp,
+  marketingEditions: marketingEditionsProp = [],
   subcategories,
   draftMinPrice,
   draftMaxPrice,
@@ -689,11 +937,16 @@ export function ShopFilterPanel({
   mobileSheet = false,
   sidebar = false,
   onApply,
+  onRevertPriceDraft,
+  filterSheetOpen = false,
+  categoryContext = null,
+  onClearSection,
 }: {
   filters: ShopFilters;
   filterOptions: FilterOptions | null;
   categoryTree?: FilterCategoryTreeItem[];
   occasionOptions?: string[];
+  marketingEditions?: MarketingEdition[];
   subcategories?: any[];
   draftMinPrice: string;
   draftMaxPrice: string;
@@ -703,8 +956,104 @@ export function ShopFilterPanel({
   mobileSheet?: boolean;
   sidebar?: boolean;
   onApply?: () => void;
+  onRevertPriceDraft?: () => void;
+  filterSheetOpen?: boolean;
+  categoryContext?: ShopCategoryContext;
+  onClearSection?: (section: ShopFilterSectionId) => void;
 }) {
-  const columnDefaultOpen = mobileSheet || sidebar;
+  const useAccordion = sidebar || mobileSheet;
+  const pricePending = isShopPriceDraftPending(
+    filters,
+    draftMinPrice,
+    draftMaxPrice,
+  );
+
+  const [focusedSection, setFocusedSection] = useState<ShopFilterSectionId | null>(
+    () =>
+      useAccordion ?
+        resolveShopFilterFocusSection(filters, categoryContext)
+      : null,
+  );
+
+  const collectionRouteKey = categoryContext?.slug ?? "";
+  const prevCollectionRouteKey = useRef(collectionRouteKey);
+
+  useEffect(() => {
+    if (!useAccordion) return;
+    if (prevCollectionRouteKey.current !== collectionRouteKey) {
+      prevCollectionRouteKey.current = collectionRouteKey;
+      setFocusedSection(
+        resolveShopFilterFocusSection(filters, categoryContext),
+      );
+    }
+  }, [useAccordion, collectionRouteKey, filters, categoryContext]);
+
+  const filterSheetWasOpen = useRef(false);
+  useEffect(() => {
+    if (!mobileSheet) return;
+    if (filterSheetOpen && !filterSheetWasOpen.current) {
+      setFocusedSection(
+        resolveShopFilterFocusSection(filters, categoryContext),
+      );
+    }
+    filterSheetWasOpen.current = filterSheetOpen;
+  }, [mobileSheet, filterSheetOpen, filters, categoryContext]);
+
+  const sectionHasActive = useCallback(
+    (id: ShopFilterSectionId) =>
+      shopFilterSectionHasActive(id, filters, categoryContext),
+    [filters, categoryContext],
+  );
+
+  const isSectionOpen = useCallback(
+    (id: ShopFilterSectionId) => {
+      if (!useAccordion) return true;
+      return focusedSection === id;
+    },
+    [useAccordion, focusedSection],
+  );
+
+  const toggleSection = useCallback(
+    (id: ShopFilterSectionId) => {
+      if (!useAccordion) return;
+
+      if (focusedSection === id) {
+        setFocusedSection(null);
+        if (id === "price") onRevertPriceDraft?.();
+        return;
+      }
+
+      if (focusedSection === "price") onRevertPriceDraft?.();
+      setFocusedSection(id);
+    },
+    [useAccordion, focusedSection, onRevertPriceDraft],
+  );
+
+  const sectionShowsActive = useCallback(
+    (id: ShopFilterSectionId) => {
+      if (id === "price") {
+        return sectionHasActive(id) || pricePending;
+      }
+      return sectionHasActive(id);
+    },
+    [sectionHasActive, pricePending],
+  );
+
+  const accordionProps = (id: ShopFilterSectionId) => {
+    const hasActive = sectionShowsActive(id);
+    return useAccordion ?
+        {
+          accordion: true as const,
+          isOpen: isSectionOpen(id),
+          onToggle: () => toggleSection(id),
+          hasActiveSelection: hasActive,
+          onClearSection:
+            hasActive && onClearSection ?
+              () => onClearSection(id)
+            : undefined,
+        }
+      : {};
+  };
   const categoryTree =
     categoryTreeProp?.length ?
       categoryTreeProp
@@ -713,24 +1062,33 @@ export function ShopFilterPanel({
   const colors = filterOptions?.colors ?? [];
   const colorCodes = filterOptions?.colorCodes ?? {};
   const occasions = occasionOptionsProp ?? filterOptions?.occasions ?? [];
+  const marketingEditions = marketingEditionsProp ?? [];
 
   const filterCheckboxList = (
     items: string[],
     selectedList: string[],
     filterKey: string,
   ) => (
-    <ul className={cn("space-y-0.5", sidebar ? "" : "space-y-2 text-sm")}>
+    <ul
+      className={cn(
+        "min-w-0 space-y-0.5 overflow-x-hidden",
+        sidebar ? "" : "space-y-2 text-sm",
+      )}
+    >
       {items.map((item) => {
         const selected = isShopListFilterSelected(selectedList, item);
         return (
-          <li key={item}>
+          <li key={item} className="min-w-0">
             <label
               className={cn(
-                "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
-                selected ?
-                  "font-medium text-[#c5a059]"
-                : "text-gray-600 hover:text-[#c5a059]",
-                sidebar && selected && "bg-[#c5a059]/5",
+                sidebar ?
+                  sidebarFilterOptionClass(selected)
+                : cn(
+                    "flex min-w-0 cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
+                    selected ?
+                      "font-medium text-[#c5a059]"
+                    : "text-gray-600 hover:text-[#c5a059]",
+                  ),
               )}
             >
               <input
@@ -743,10 +1101,18 @@ export function ShopFilterPanel({
                 <ColorSwatch
                   colorName={item}
                   colorCode={resolveFilterColorCode(item, colorCodes)}
-                  className="h-3.5 w-3.5 shrink-0"
+                  className={cn(
+                    "shrink-0 ring-1 ring-navy-950/10",
+                    sidebar ? "h-4 w-4" : "h-3.5 w-3.5",
+                  )}
                 />
               )}
-              <span className={cn(sidebar ? "text-[13px] leading-snug" : "text-sm")}>
+              <span
+                className={cn(
+                  "min-w-0 break-words",
+                  sidebar ? "text-[13px] leading-snug" : "text-sm",
+                )}
+              >
                 {item}
               </span>
             </label>
@@ -759,22 +1125,30 @@ export function ShopFilterPanel({
   return (
     <div className={cn(
       sidebar ?
-        "flex flex-col gap-6"
+        "flex min-w-0 flex-col gap-2 overflow-x-hidden"
       : "grid gap-8",
       !sidebar && (mobileSheet ?
         "grid-cols-1 mx-auto max-w-7xl px-4 py-6 sm:px-6"
       : "mx-auto max-w-7xl grid-cols-1 md:grid-cols-2 lg:grid-cols-4 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"),
     )}>
-      <FilterColumn title="Offers" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+      <FilterColumn
+        title="Offers"
+        sidebar={sidebar}
+        mobileSheet={mobileSheet}
+        {...accordionProps("offers")}
+      >
         <ul className={cn("space-y-0.5", sidebar ? "" : "space-y-2 text-sm")}>
           <li>
             <label
               className={cn(
-                "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
-                filters.onSale === "true" ?
-                  "font-medium text-[#c5a059]"
-                : "text-gray-600 hover:text-[#c5a059]",
-                sidebar && filters.onSale === "true" && "bg-[#c5a059]/5",
+                sidebar ?
+                  sidebarFilterOptionClass(filters.onSale === "true")
+                : cn(
+                    "flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
+                    filters.onSale === "true" ?
+                      "font-medium text-[#c5a059]"
+                    : "text-gray-600 hover:text-[#c5a059]",
+                  ),
               )}
             >
               <input
@@ -791,45 +1165,135 @@ export function ShopFilterPanel({
         </ul>
       </FilterColumn>
 
-      <FilterColumn title="Collections" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+      {marketingEditions.length > 0 ?
+        <FilterColumn
+          title="Edits & tyohar"
+          sidebar={sidebar}
+          mobileSheet={mobileSheet}
+          {...accordionProps("editions")}
+        >
+          <ul className={cn("space-y-0.5", sidebar ? "" : "space-y-2 text-sm")}>
+            {marketingEditions.map((edition) => {
+              const selected = isShopListFilterSelected(
+                filters.editions,
+                edition.slug,
+              );
+              const label = edition.filterLabel || edition.label;
+              return (
+                <li key={edition.slug}>
+                  <label
+                    className={cn(
+                      sidebar ?
+                        sidebarFilterOptionClass(selected)
+                      : cn(
+                          "flex min-w-0 cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 transition-colors",
+                          selected ?
+                            "font-medium text-[#c5a059]"
+                          : "text-gray-600 hover:text-[#c5a059]",
+                        ),
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => onUpdateFilter("editions", edition.slug)}
+                      className={shopFilterCheckboxClass}
+                    />
+                    <span
+                      className={cn(
+                        sidebar ? "text-[13px] leading-snug" : "text-sm",
+                        "min-w-0 break-words",
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </FilterColumn>
+      : null}
+
+      <FilterColumn
+        title="Collections"
+        sidebar={sidebar}
+        mobileSheet={mobileSheet}
+        {...accordionProps("collections")}
+      >
         {categoryTree.length > 0 ?
           <CategoryTreeFilter
             categoryTree={categoryTree}
             filters={filters}
             onUpdateFilter={onUpdateFilter}
             sidebar={sidebar}
+            compact={sidebar || mobileSheet}
           />
         : flatCategories.length > 0 ?
           <FlatCategoryFilter
             categories={flatCategories}
             filters={filters}
             onUpdateFilter={onUpdateFilter}
+            compact={sidebar || mobileSheet}
           />
         : subcategories && subcategories.length > 0 ?
-          filterCheckboxList(
-            subcategories.map((sub: { name?: string } | string) =>
-              typeof sub === "string" ? sub : sub.name || "",
-            ).filter(Boolean),
-            filters.subcategories,
-            "subcategories",
-          )
-        : <p className="text-sm text-gray-400">No collections available</p>}
+          <div
+            className={cn(
+              sidebar || mobileSheet ?
+                "overflow-hidden border border-gray-100/90 bg-[#faf8f5]/50 p-1"
+              : "",
+            )}
+          >
+            {(sidebar || mobileSheet) ?
+              <p className="px-2.5 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+                Shop by type
+              </p>
+            : null}
+            <CollectionSubcategoryRows
+              items={subcategories
+                .map((sub: { name?: string; slug?: string } | string) =>
+                  typeof sub === "string" ?
+                    { name: sub }
+                  : { name: sub.name || "", slug: sub.slug },
+                )
+                .filter((s) => s.name)}
+              filters={filters}
+              onUpdateFilter={onUpdateFilter}
+              compact={sidebar || mobileSheet}
+            />
+          </div>
+        : <p className="text-[13px] text-gray-400">No collections available</p>}
       </FilterColumn>
 
-      <FilterColumn title="Color" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+      <FilterColumn
+        title="Color"
+        sidebar={sidebar}
+        mobileSheet={mobileSheet}
+        {...accordionProps("color")}
+      >
         {colors.length > 0 ?
           filterCheckboxList(colors, filters.colors, "colors")
         : <p className="text-sm text-gray-400">No colors available</p>}
       </FilterColumn>
 
-      <FilterColumn title="Occasion" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
+      <FilterColumn
+        title="Occasion"
+        sidebar={sidebar}
+        mobileSheet={mobileSheet}
+        {...accordionProps("occasion")}
+      >
         {occasions.length > 0 ?
           filterCheckboxList(occasions, filters.occasions, "occasions")
         : <p className="text-sm text-gray-400">No occasions available</p>}
       </FilterColumn>
 
-      <FilterColumn title="Rating" defaultOpen={columnDefaultOpen} sidebar={sidebar}>
-        <ul className="space-y-2 text-sm">
+      <FilterColumn
+        title="Rating"
+        sidebar={sidebar}
+        mobileSheet={mobileSheet}
+        {...accordionProps("rating")}
+      >
+        <ul className={cn("space-y-1", sidebar ? "" : "space-y-2 text-sm")}>
           {[4, 3, 2, 1].map((r) => {
             const selected = isShopListFilterSelected(
               filters.ratings,
@@ -839,10 +1303,14 @@ export function ShopFilterPanel({
               <li key={r}>
                 <label
                   className={cn(
-                    "flex cursor-pointer items-center gap-2 transition-colors",
-                    selected ?
-                      "font-medium text-[#c5a059]"
-                    : "text-gray-600 hover:text-[#c5a059]",
+                    sidebar ?
+                      sidebarFilterOptionClass(selected)
+                    : cn(
+                        "flex cursor-pointer items-center gap-2 transition-colors",
+                        selected ?
+                          "font-medium text-[#c5a059]"
+                        : "text-gray-600 hover:text-[#c5a059]",
+                      ),
                   )}
                 >
                   <input
@@ -859,20 +1327,25 @@ export function ShopFilterPanel({
         </ul>
       </FilterColumn>
 
-      <FilterColumn title="Price" isCollapsibleOnMobile={false} sidebar={sidebar}>
+      <FilterColumn
+        title="Price"
+        sidebar={sidebar}
+        mobileSheet={mobileSheet}
+        {...accordionProps("price")}
+      >
         <ShopPriceRangeFilter
           minPrice={draftMinPrice}
           maxPrice={draftMaxPrice}
           onMinPriceChange={onMinPriceChange}
           onMaxPriceChange={onMaxPriceChange}
         />
-        {!mobileSheet && onApply ?
+        {sidebar && onApply && pricePending ?
           <button
             type="button"
             onClick={onApply}
-            className="mt-6 w-full bg-navy-900 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-navy-800"
+            className="mt-3 w-full bg-navy-900 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-sm transition-colors hover:bg-navy-800"
           >
-            Apply Filters
+            Apply price
           </button>
         : null}
       </FilterColumn>
@@ -1033,44 +1506,49 @@ function FilterApplyFooter({
   onApply,
   onClear,
   showClear,
+  pricePending = false,
   className,
 }: {
   onApply: () => void;
   onClear: () => void;
   showClear: boolean;
+  pricePending?: boolean;
   className?: string;
 }) {
+  const applyLabel =
+    pricePending ? "Apply filters" : "Done";
+
   return (
     <div
       className={cn(
-        "border-t border-gray-100 bg-white px-4 py-4 sm:px-6 lg:px-8",
+        "border-t border-[#c5a059]/25 bg-white/98 px-4 py-3.5 backdrop-blur-md shadow-[0_-8px_28px_rgba(0,13,33,0.08)] sm:px-6",
         className,
       )}
     >
       <div
         className={cn(
-          "mx-auto flex max-w-7xl gap-3",
-          showClear ? "grid grid-cols-2" : "justify-end",
+          "mx-auto flex max-w-7xl gap-2.5",
+          showClear ? "grid grid-cols-2" : "justify-stretch",
         )}
       >
         {showClear ?
           <button
             type="button"
             onClick={onClear}
-            className="h-11 border border-gray-200 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-700 transition-colors hover:border-[#c5a059] hover:text-[#c5a059]"
+            className="h-11 border border-gray-200/90 bg-white text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-700 transition-all duration-200 hover:border-[#c5a059]/50 hover:text-[#c5a059] active:scale-[0.99]"
           >
-            Clear all filters
+            Clear all
           </button>
         : null}
         <button
           type="button"
           onClick={onApply}
           className={cn(
-            "h-11 bg-navy-900 text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-navy-800",
-            showClear ? "w-full" : "w-full sm:min-w-[12rem] sm:w-auto",
+            "h-11 bg-navy-900 text-[11px] font-semibold uppercase tracking-[0.14em] text-white shadow-sm transition-all duration-200 hover:bg-navy-800 active:scale-[0.99]",
+            showClear ? "w-full" : "w-full",
           )}
         >
-          Apply Filters
+          {applyLabel}
         </button>
       </div>
     </div>
@@ -1081,24 +1559,107 @@ function FilterColumn({
   title,
   children,
   defaultOpen = false,
-  isCollapsibleOnMobile = true,
   sidebar = false,
+  mobileSheet = false,
+  accordion = false,
+  isOpen: isOpenControlled,
+  onToggle,
+  hasActiveSelection = false,
+  onClearSection,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
-  isCollapsibleOnMobile?: boolean;
   sidebar?: boolean;
+  mobileSheet?: boolean;
+  accordion?: boolean;
+  isOpen?: boolean;
+  onToggle?: () => void;
+  hasActiveSelection?: boolean;
+  onClearSection?: () => void;
 }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isOpen = accordion ? Boolean(isOpenControlled) : internalOpen;
+  const useCompactAccordion = sidebar || (mobileSheet && accordion);
 
-  if (sidebar) {
+  const handleToggle = () => {
+    if (accordion) {
+      onToggle?.();
+      return;
+    }
+    setInternalOpen((o) => !o);
+  };
+
+  if (useCompactAccordion) {
+    const accentActive = isOpen || hasActiveSelection;
     return (
-      <div className="border-b border-gray-100 pb-5 last:border-b-0 last:pb-0">
-        <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#c5a059]">
-          {title}
-        </h4>
-        <div>{children}</div>
+      <div
+        className={cn(
+          "overflow-hidden border transition-all duration-200",
+          isOpen ?
+            "border-[#c5a059]/25 bg-white shadow-[0_4px_16px_rgba(0,13,33,0.05)]"
+          : hasActiveSelection ?
+            "border-[#c5a059]/20 bg-white/80"
+          : "border-navy-950/[0.06] bg-white/50 hover:border-[#c5a059]/15 hover:bg-white/90",
+        )}
+      >
+        <div className="flex w-full items-center gap-2.5 px-2.5 py-2.5">
+          <span
+            className={cn(
+              "h-7 w-0.5 shrink-0 transition-colors duration-200",
+              accentActive ? "bg-[#c5a059]" : "bg-navy-900/10",
+            )}
+            aria-hidden
+          />
+          <button
+            type="button"
+            onClick={handleToggle}
+            className="min-w-0 flex-1 text-left"
+            aria-expanded={isOpen}
+          >
+            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-navy-900">
+              {title}
+            </h4>
+          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {onClearSection ?
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClearSection();
+                }}
+                className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#c5a059] transition-colors hover:text-[#a68648]"
+              >
+                Clear
+              </button>
+            : null}
+            <button
+              type="button"
+              onClick={handleToggle}
+              className={cn(
+                "inline-flex h-7 w-7 shrink-0 items-center justify-center border transition-colors",
+                isOpen ?
+                  "border-[#c5a059]/30 bg-[#c5a059]/10 text-[#c5a059]"
+                : "border-navy-900/10 bg-[#faf8f5] text-navy-900/50",
+              )}
+              aria-label={`${isOpen ? "Collapse" : "Expand"} ${title}`}
+            >
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform duration-300 ease-out",
+                  isOpen && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </button>
+          </div>
+        </div>
+        {isOpen ?
+          <div className="overflow-x-hidden border-t border-[#c5a059]/10 px-2 pb-2.5 pt-2 animate-in fade-in duration-200">
+            {children}
+          </div>
+        : null}
       </div>
     );
   }
@@ -1107,39 +1668,22 @@ function FilterColumn({
     <div className="border-b border-gray-100 pb-5 sm:border-0 sm:pb-0">
       <button
         type="button"
-        onClick={() => {
-          if (isCollapsibleOnMobile) setIsOpen(!isOpen);
-        }}
-        className={cn(
-          "flex w-full items-center justify-between text-left",
-          isCollapsibleOnMobile ?
-            "sm:cursor-default"
-          : "pointer-events-none cursor-default",
-        )}
-        tabIndex={isCollapsibleOnMobile ? 0 : -1}
+        onClick={handleToggle}
+        className="flex w-full items-center justify-between text-left sm:cursor-default"
+        tabIndex={0}
       >
         <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c5a059] sm:mb-4">
           {title}
         </h4>
-        {isCollapsibleOnMobile && (
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 text-[#c5a059] transition-transform duration-200 sm:hidden",
-              isOpen ? "rotate-180" : "",
-            )}
-            aria-hidden
-          />
-        )}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-[#c5a059] transition-transform duration-200 sm:hidden",
+            isOpen ? "rotate-180" : "",
+          )}
+          aria-hidden
+        />
       </button>
-      <div
-        className={cn(
-          "mt-5 sm:mt-0",
-          isCollapsibleOnMobile ?
-            isOpen ? "block"
-            : "hidden sm:block"
-          : "block",
-        )}
-      >
+      <div className={cn("mt-5 sm:mt-0", isOpen ? "block" : "hidden sm:block")}>
         {children}
       </div>
     </div>

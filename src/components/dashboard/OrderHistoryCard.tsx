@@ -13,6 +13,7 @@ import {
   getProductShopHref,
   CANCELLABLE_ORDER_STATUSES,
 } from "@/lib/accountOrderStyles";
+import { isOrderInvoiceAvailable } from "@/lib/orderInvoiceHelpers";
 
 type Props = {
   order: Order;
@@ -28,6 +29,7 @@ export default function OrderHistoryCard({ order, onCancelClick }: Props) {
   const primaryItem = order.items[0];
   const orderHref = `/dashboard/orders/${encodeURIComponent(order._id)}`;
   const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
+  const showInvoice = isOrderInvoiceAvailable(order);
 
   const stopNav = (e: React.MouseEvent) => e.stopPropagation();
 
@@ -165,14 +167,16 @@ export default function OrderHistoryCard({ order, onCancelClick }: Props) {
             </button>
           )}
 
-          <Link
-            href={`/dashboard/orders/${encodeURIComponent(order._id)}/invoice`}
-            onClick={stopNav}
-            className="flex items-center justify-center gap-2 text-account-on-surface-variant text-[11px] font-semibold uppercase hover:text-account-secondary transition-colors mt-1"
-          >
-            <Download className="h-4 w-4" />
-            Invoice
-          </Link>
+          {showInvoice && (
+            <Link
+              href={`/dashboard/orders/${encodeURIComponent(order._id)}/invoice`}
+              onClick={stopNav}
+              className="flex items-center justify-center gap-2 text-account-on-surface-variant text-[11px] font-semibold uppercase hover:text-account-secondary transition-colors mt-1"
+            >
+              <Download className="h-4 w-4" />
+              Invoice
+            </Link>
+          )}
         </div>
       </div>
     </article>

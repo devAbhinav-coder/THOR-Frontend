@@ -51,7 +51,7 @@ export function resolveShopBannerH1(options: {
   subcategoryName?: string | null;
   search?: string | null;
   color?: string | null;
-  isFeatured?: string | null;
+  bestsellers?: string | null;
   onSale?: string | null;
   bannerTitle?: string | null;
 }): string {
@@ -73,8 +73,8 @@ export function resolveShopBannerH1(options: {
   }
   const color = String(options.color || "").trim();
   if (color) return `${color} Styles Online India`;
-  if (options.isFeatured === "true")
-    return "Featured Sarees, Salwar Suits & Corsets Online India";
+  if (options.bestsellers === "true")
+    return "Best Seller Sarees, Salwar Suits & Corsets Online India";
   if (options.onSale === "true")
     return "Sale Sarees, Salwar Suits & Corsets Online India";
   const banner = String(options.bannerTitle || "").trim();
@@ -88,7 +88,7 @@ export function resolveShopListHeading(options: {
   subcategoryName?: string | null;
   search?: string | null;
   color?: string | null;
-  isFeatured?: string | null;
+  bestsellers?: string | null;
   onSale?: string | null;
 }): string {
   const search = String(options.search || "").trim();
@@ -103,7 +103,7 @@ export function resolveShopListHeading(options: {
   if (category) return `${category} Collection`;
   const color = String(options.color || "").trim();
   if (color) return `${color} Collection`;
-  if (options.isFeatured === "true") return "Featured Picks";
+  if (options.bestsellers === "true") return "Best Sellers";
   if (options.onSale === "true") return "Sale & Offers";
   return "All Collections";
 }

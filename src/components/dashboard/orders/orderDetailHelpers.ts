@@ -9,6 +9,9 @@ import {
 export type TrackingEvent = OrderLifecycleEvent;
 
 export function getExpectedDeliveryLabel(order: Order): string | null {
+  if (order.status === "cancelled" || order.status === "refunded") {
+    return null;
+  }
   if (order.status === "delivered" && order.deliveredAt) {
     return `Delivered on ${formatDate(order.deliveredAt)}`;
   }

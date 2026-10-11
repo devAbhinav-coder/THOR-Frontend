@@ -104,6 +104,12 @@ export interface Product {
   variants: ProductVariant[];
   totalStock: number;
   tags: string[];
+  /** Storefront list API — resolved marketing edition for card badge. */
+  marketingBadge?: {
+    slug: string;
+    label: string;
+    accent?: MarketingEdition["accent"];
+  };
   isFeatured: boolean;
   isActive: boolean;
   // Gifting
@@ -1273,6 +1279,30 @@ export interface HomeExploreHouse {
   giftingSubtitle?: string;
 }
 
+/** Admin-defined marketing / festival edits — match product `tags` by slug. */
+export interface MarketingEdition {
+  slug: string;
+  label: string;
+  filterLabel?: string;
+  accent?: "gold" | "rose" | "festive" | "emerald" | "ink";
+  isActive?: boolean;
+  showOnCard?: boolean;
+  showInFilter?: boolean;
+  showInExploreHouse?: boolean;
+  exploreName?: string;
+  exploreSubtitle?: string;
+  exploreImage?: string;
+  exploreImagePublicId?: string;
+  shopLink?: string;
+  sortOrder?: number;
+  startsAt?: string;
+  endsAt?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  /** Google/sitemap — off for short internal tests. */
+  indexable?: boolean;
+}
+
 export interface StorefrontSettings {
   announcementMessages: string[];
   heroSlides: HeroSlide[];
@@ -1314,6 +1344,9 @@ export interface StorefrontSettings {
   homeMiddleBanner?: {
     image?: string;
     imagePublicId?: string;
+    /** Laptop / desktop — wide art, top-weighted crop (mobile uses `image`) */
+    imageDesktop?: string;
+    imageDesktopPublicId?: string;
     title?: string;
     subtitle?: string;
     linkText?: string;
@@ -1335,6 +1368,7 @@ export interface StorefrontSettings {
   };
   /** Home - “Explore Our House” Sale & Gifting category cards */
   homeExploreHouse?: HomeExploreHouse;
+  marketingEditions?: MarketingEdition[];
   giftingHeroBanners?: Array<{
     title?: string;
     description?: string;

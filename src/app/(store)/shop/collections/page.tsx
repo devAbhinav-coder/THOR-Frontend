@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
+import {
+  buildMarketingEditionMetadata,
+  fetchLiveMarketingEditionsForSeo,
+  findMarketingEditionBySlug,
+  parseEditionOnlySearchParams,
+} from "@/lib/marketingEditionSeo";
+import { marketingEditionPath } from "@/lib/marketingEditions";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getBuildSafeApiBase } from "@/lib/buildApiBase";
 import type { Category, Product } from "@/types";
@@ -37,6 +44,17 @@ export async function generateMetadata({
   searchParams: SearchParams;
 }): Promise<Metadata> {
   const sp = await searchParams;
+  const editionOnlySlug = parseEditionOnlySearchParams(sp);
+  if (editionOnlySlug) {
+    const editions = await fetchLiveMarketingEditionsForSeo();
+    const edition = findMarketingEditionBySlug(editions, editionOnlySlug);
+    if (edition) {
+      return buildMarketingEditionMetadata(edition, {
+        index: false,
+      });
+    }
+  }
+
   const dec = (s: string) => {
     try {
       return decodeURIComponent(s);
@@ -48,7 +66,8 @@ export async function generateMetadata({
   const fabric = typeof sp.fabric === "string" ? dec(sp.fabric) : "";
   const searchRaw = typeof sp.search === "string" ? dec(sp.search) : "";
   const search = searchRaw.slice(0, 48);
-  const featured = sp.isFeatured === "true";
+  const bestsellers =
+    sp.bestsellers === "true" || sp.isFeatured === "true";
   const onSale = sp.onSale === "true";
   const hasOffer = sp.hasOffer === "true";
   const hasAnyFilter = Object.values(sp).some((v) => {
@@ -85,8 +104,8 @@ export async function generateMetadata({
   let title = baseTitle;
   if (onSale) title = "Sale Sarees, Salwar Suits & Corsets Online India";
   else if (hasOffer) title = "Coupon Offers - Ethnic Wear Online India";
-  else if (featured)
-    title = "Featured Sarees, Salwar Suits & Corsets Online India";
+  else if (bestsellers)
+    title = "Best Seller Sarees, Salwar Suits & Corsets Online India";
   else if (cat) title = `${cat} - Shop Online India`;
   else if (fabric) title = `${fabric} Collection - Shop Online India`;
   else if (search) title = `Search: ${search}`;
@@ -106,9 +125,9 @@ export async function generateMetadata({
     description = clipMeta(
       `Search results for "${search}" - sarees, salwar suits & corsets at The House of Rani. Free delivery across India.`,
     );
-  } else if (featured) {
+  } else if (bestsellers) {
     description =
-      "Featured sarees, salwar suits & corsets at The House of Rani. Free delivery over ₹1,099 · 5-day returns · In stock.";
+      "Best seller sarees, salwar suits & corsets at The House of Rani — ranked by real customer orders. Free delivery over ₹1,099 · 5-day returns.";
   } else if (fabric) {
     description = clipMeta(
       `Shop ${fabric} styles - sarees, salwar suits & corsets at The House of Rani. Free delivery over ₹1,099.`,
@@ -202,6 +221,11 @@ export default async function ShopPage({
   searchParams: SearchParams;
 }) {
   const sp = await searchParams;
+  const editionOnlySlug = parseEditionOnlySearchParams(sp);
+  if (editionOnlySlug) {
+    permanentRedirect(marketingEditionPath(editionOnlySlug));
+  }
+
   const isFiltered = Object.values(sp).some((v) => v !== undefined);
 
   // Only inject rich JSON-LD on the unfiltered base /shop/collections page.

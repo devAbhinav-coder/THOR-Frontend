@@ -73,6 +73,8 @@ export default function OrdersPage() {
       const { currentPage, totalPages } = last.pagination;
       return currentPage < totalPages ? currentPage + 1 : undefined;
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const orders = data?.pages.flatMap((p) => p.orders) ?? [];
@@ -101,10 +103,15 @@ export default function OrdersPage() {
   const cancelMutation = useMutation({
     mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) =>
       orderApi.cancel(orderId, reason),
-    onSuccess: async (_res, { orderId }) => {
+    onSuccess: async (res, { orderId }) => {
       setCancelTarget(null);
       await useAuthStore.getState().fetchUser();
       toast.success('Order cancelled successfully');
+      const cancelled = res?.data?.order as Order | undefined;
+      if (cancelled) {
+        queryClient.setQueryData(['order', orderId], cancelled);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       queryClient.setQueriesData(
         { queryKey: ['my-orders'] },
         (old: unknown) => {

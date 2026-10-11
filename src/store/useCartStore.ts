@@ -1,6 +1,15 @@
 import { create } from "zustand";
 import { Cart, CartItem, Product } from "@/types";
 import { cartApi } from "@/lib/api";
+import { useAuthStore } from "@/store/useAuthStore";
+import {
+  clearGuestCartStorage,
+  guestLinesForMergeApi,
+  guestLinesToCart,
+  readGuestCartLines,
+  writeGuestCartLines,
+  type GuestCartLine,
+} from "@/lib/guestCartStorage";
 import { variantSellPrice } from "@/lib/productPricing";
 import {
   getOrCreateCartIdempotencyKey,
@@ -232,6 +241,49 @@ async function patchCartItemQuantity(
   }
 }
 
+function isGuestCartItemId(cartItemId: string): boolean {
+  return cartItemId.startsWith("guest-");
+}
+
+function upsertGuestStorageLine(
+  product: Product,
+  variant: CartItem["variant"],
+  quantity: number,
+  customFieldAnswers?: Array<{ label: string; value: string }>,
+): GuestCartLine[] {
+  const price = unitPriceForVariant(product, variant.sku);
+  const lines = readGuestCartLines();
+  const idx = lines.findIndex(
+    (it) =>
+      it.productId === product._id &&
+      it.variant.sku === variant.sku &&
+      answersMatch(it.customFieldAnswers, customFieldAnswers),
+  );
+  const snapshot: GuestCartLine = {
+    productId: product._id,
+    variant,
+    quantity,
+    customFieldAnswers,
+    productName: product.name,
+    productSlug: product.slug,
+    productImage: product.images?.[0]?.url || "",
+    isActive: product.isActive,
+    price,
+  };
+  if (idx >= 0) {
+    lines[idx] = {
+      ...lines[idx],
+      quantity: lines[idx].quantity + quantity,
+      price,
+      isActive: product.isActive,
+    };
+  } else {
+    lines.push(snapshot);
+  }
+  writeGuestCartLines(lines);
+  return lines;
+}
+
 function mergeOptimisticCart(
   previous: Cart | null,
   product: Product,
@@ -323,6 +375,13 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isLoading: true });
     const previousCode = get().appliedCouponCode;
     try {
+      if (!useAuthStore.getState().isAuthenticated) {
+        const lines = readGuestCartLines();
+        publishCart(lines.length ? guestLinesToCart(lines) : null, {
+          previousCoupon: previousCode,
+        });
+        return;
+      }
       const body = await cartApi.get();
       publishCart(body.data.cart, { previousCoupon: previousCode });
     } catch {
@@ -374,12 +433,25 @@ export const useCartStore = create<CartState>((set, get) => ({
         toast.success(toastMsg ?? "Added to cart!");
       }
     } catch (err: unknown) {
+      const error = err as CartApiError;
+      if (error.status === 401 && product) {
+        const lines = upsertGuestStorageLine(
+          product,
+          variant,
+          quantity,
+          customFieldAnswers,
+        );
+        publishCart(guestLinesToCart(lines), { previousCoupon });
+        const toastMsg = options?.successToast;
+        if (toastMsg !== false) {
+          toast.success(toastMsg ?? "Added to cart!");
+        }
+        return;
+      }
       if (product) {
         publishCart(previousCart, { previousCoupon });
-        // restore exact previous count if empty cart was null
         if (!previousCart) set({ itemCount: previousCount });
       }
-      const error = err as { message?: string };
       toast.error(error.message || "Failed to add to cart");
       throw err;
     } finally {
@@ -391,6 +463,21 @@ export const useCartStore = create<CartState>((set, get) => ({
     const previousCart = get().cart;
     if (!previousCart) return;
     const previousCoupon = get().appliedCouponCode;
+
+    if (
+      isGuestCartItemId(cartItemId) ||
+      !useAuthStore.getState().isAuthenticated
+    ) {
+      const lines = readGuestCartLines();
+      const idx = lines.findIndex(
+        (_, i) => `guest-${lines[i].productId}-${lines[i].variant.sku}-${i}` === cartItemId,
+      );
+      if (idx < 0) return;
+      lines[idx] = { ...lines[idx], quantity };
+      writeGuestCartLines(lines);
+      publishCart(guestLinesToCart(lines), { previousCoupon });
+      return;
+    }
 
     // Optimistic update
     const nextItems = previousCart.items.map((it) =>
@@ -429,6 +516,22 @@ export const useCartStore = create<CartState>((set, get) => ({
     const previousCart = get().cart;
     if (!previousCart) return;
     const previousCoupon = get().appliedCouponCode;
+
+    if (
+      isGuestCartItemId(cartItemId) ||
+      !useAuthStore.getState().isAuthenticated
+    ) {
+      const lines = readGuestCartLines();
+      const next = lines.filter(
+        (_, i) => `guest-${lines[i].productId}-${lines[i].variant.sku}-${i}` !== cartItemId,
+      );
+      writeGuestCartLines(next);
+      publishCart(next.length ? guestLinesToCart(next) : null, {
+        previousCoupon,
+      });
+      toast.success("Item removed from cart");
+      return;
+    }
 
     const isLastItem = previousCart.items.length === 1;
     const nextItems = previousCart.items.filter(
@@ -550,6 +653,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   purgeCartAfterCheckout: async () => {
     publishCart(null);
+    clearGuestCartStorage();
     try {
       await cartApi.clear();
     } catch {
@@ -570,6 +674,20 @@ export function readPersistedCartCouponCode(): string | null {
 }
 
 /** Use when placing an order from cart (not buy-now) so coupon is always sent to the API. */
+/** After guest checkout OTP — sync localStorage lines to Mongo cart. */
+export async function mergeGuestCartFromStorage(): Promise<void> {
+  const lines = readGuestCartLines();
+  if (!lines.length) return;
+  if (!useAuthStore.getState().isAuthenticated) return;
+  try {
+    const body = await cartApi.mergeGuest(guestLinesForMergeApi(lines));
+    clearGuestCartStorage();
+    publishCart(body.data.cart);
+  } catch {
+    /* checkout can still proceed with buy-now; user can retry from cart */
+  }
+}
+
 export function getCartAppliedCouponCodeForOrder(): string | null {
   const { appliedCouponCode, cart } = useCartStore.getState();
   const discount = cart?.discount ?? 0;

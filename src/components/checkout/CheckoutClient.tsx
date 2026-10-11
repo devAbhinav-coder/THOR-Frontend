@@ -37,6 +37,8 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { authApi, cartApi, couponApi, orderApi } from "@/lib/api";
 import { formatPrice, cn, loadRazorpayScript } from "@/lib/utils";
+import { productNameClassName } from "@/lib/storefrontTypography";
+import PriceText from "@/components/ui/PriceText";
 import { cartLineReactKey } from "@/lib/cartLineKey";
 import { Input } from "@/components/ui/input";
 import {
@@ -113,6 +115,7 @@ import {
   toE164IndianMobile,
 } from "./checkoutForm";
 import { CheckoutReviewRecap } from "./CheckoutReviewRecap";
+import GuestCheckoutEmailGate from "@/components/checkout/GuestCheckoutEmailGate";
 
 type ReviewAddressDisplay = {
   name: string;
@@ -196,7 +199,8 @@ export default function CheckoutClient() {
     removeItem,
     isLoading: isCartLoading,
   } = useCartStore();
-  const { user, isAuthenticated, setUser, fetchUser } = useAuthStore();
+  const { user, isAuthenticated, setUser, fetchUser, hasSessionChecked } =
+    useAuthStore();
   const router = useRouter();
 
   const {
@@ -287,12 +291,6 @@ export default function CheckoutClient() {
       window.removeEventListener("pageshow", onPageShow);
     };
   }, [orderId, buyNowItem, fetchCart]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace(loginUrlWithRedirect("/checkout"));
-    }
-  }, [isAuthenticated, router]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1613,7 +1611,37 @@ export default function CheckoutClient() {
     }
   }, [buyNowItem]);
 
-  if (!isAuthenticated || isOrderLoading)
+  if (!hasSessionChecked) {
+    return (
+      <div
+        className={cn(
+          "flex min-h-[50vh] flex-col items-center justify-center px-4 py-24",
+          heritagePageBg,
+        )}
+      >
+        <Loader2
+          className='mx-auto mb-4 h-10 w-10 animate-spin text-[#c5a059]'
+          aria-hidden
+        />
+        <p className='text-sm text-gray-600'>Preparing checkout…</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className={cn("min-h-[60vh]", heritagePageBg)}>
+        <GuestCheckoutEmailGate
+          onVerified={() => {
+            void fetchUser();
+            void fetchCart();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (isOrderLoading)
     return (
       <div
         className={cn(
@@ -2516,7 +2544,7 @@ export default function CheckoutClient() {
                           </div>
                           <div className='flex min-w-0 flex-1 flex-col justify-between py-1'>
                             <div>
-                              <p className='line-clamp-2 font-serif text-base font-medium leading-snug text-navy-900'>
+                              <p className={productNameClassName("line-clamp-2 text-base")}>
                                 {row.name || "Product"}
                               </p>
                               <p className='mt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500'>
@@ -2667,9 +2695,10 @@ export default function CheckoutClient() {
                             )}
                           </div>
                           <div className='flex shrink-0 flex-col items-end justify-between gap-1 self-stretch'>
-                            <p className='font-serif text-base font-medium tabular-nums text-[#c5a059]'>
-                              {formatPrice(row.price * row.quantity)}
-                            </p>
+                            <PriceText
+                              amount={row.price * row.quantity}
+                              className='text-base font-semibold text-[#c5a059]'
+                            />
                             {showRemovableLine && (
                               <button
                                 type='button'
@@ -2767,9 +2796,10 @@ export default function CheckoutClient() {
                       <span className='font-serif text-lg font-medium uppercase tracking-tight text-navy-900'>
                         Grand Total
                       </span>
-                      <span className='font-serif text-xl font-semibold tabular-nums text-navy-900'>
-                        {formatPrice(total)}
-                      </span>
+                      <PriceText
+                        amount={total}
+                        className='text-xl font-bold'
+                      />
                     </div>
                     {(shippingCharge > 0 || codFee > 0) && (
                       <p className='text-[10px] text-gray-500 mt-2 leading-snug'>

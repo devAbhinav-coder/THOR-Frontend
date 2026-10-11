@@ -24,7 +24,7 @@ export function resolveShopHeroContent(options: {
   categoryDescription?: string | null;
   search?: string | null;
   color?: string | null;
-  isFeatured?: string | null;
+  bestsellers?: string | null;
   onSale?: string | null;
   bannerTitle?: string | null;
 }): ShopHeroContent {
@@ -87,15 +87,14 @@ export function resolveShopHeroContent(options: {
     };
   }
 
-  if (options.isFeatured === "true") {
+  if (options.bestsellers === "true") {
     return {
-      eyebrow: "Editor's picks · Limited styles",
-      titleLine1: "Featured styles",
-      titleLine2: "our clients love",
+      eyebrow: "Customer favourites",
+      titleLine1: "Best",
+      titleLine2: "sellers",
       subtitle:
-        "A rotating selection of bestsellers and new arrivals - premium sarees, salwar suits, and corsets ready to ship.",
-      h1Accessible:
-        "Featured premium sarees, salwar suits, and corsets online India",
+        "Ranked by real orders — the sarees, salwar suits, and corsets our customers buy most.",
+      h1Accessible: "Best seller sarees, salwar suits, and corsets online India",
       perks: DEFAULT_PERKS,
     };
   }

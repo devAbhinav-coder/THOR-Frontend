@@ -6,7 +6,7 @@ import Image from "next/image";
 import type { HeroSlide } from "@/types";
 import { cn } from "@/lib/utils";
 import { getHeroSlideDisplayTitle } from "@/lib/pageHeadings";
-import { heroLayout } from "@/lib/heroSectionLayout";
+import { heroLayout, heroSlideImageClass } from "@/lib/heroSectionLayout";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 
 let hasPlayedHeroTextEntrance = false;
@@ -20,9 +20,14 @@ const TRUST_SIGNALS = [
 type Props = {
   initialSlides: HeroSlide[];
   announcementMessages?: readonly string[];
+  underNavOverlap?: boolean;
 };
 
-function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
+function HeroSection({
+  initialSlides,
+  announcementMessages = [],
+  underNavOverlap = false,
+}: Props) {
   const slides = initialSlides;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -35,14 +40,6 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
     [announcementMessages],
   );
 
-  const hasBadge = useMemo(
-    () => slides.some((s) => Boolean(s.badge?.trim())),
-    [slides],
-  );
-  const hasSubtitle = useMemo(
-    () => slides.some((s) => Boolean(s.subtitle?.trim())),
-    [slides],
-  );
   const hasDescription = useMemo(
     () => slides.some((s) => Boolean(s.description?.trim())),
     [slides],
@@ -109,13 +106,16 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
   const slide = slides[currentSlide] ?? slides[0];
   if (!slide || slides.length === 0) return null;
 
-  const badge = slide.badge?.trim() || "";
-  const subtitle = slide.subtitle?.trim() || "";
   const description = slide.description?.trim() || "";
   const headline = getHeroSlideDisplayTitle(slide.title);
 
   return (
-    <section className={heroLayout.section}>
+    <section
+      className={cn(
+        heroLayout.section,
+        underNavOverlap && heroLayout.sectionUnderNav,
+      )}
+    >
       <div className={heroLayout.media}>
         {slides.map((s, i) => {
           const shouldMount = i === 0 || revealAllSlides || i === currentSlide;
@@ -141,7 +141,7 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                   loading={i === 0 ? "eager" : "lazy"}
                   sizes='100vw'
                   quality={i === 0 ? 68 : 62}
-                  className='object-cover object-center sm:object-[center_25%]'
+                  className={heroSlideImageClass}
                 />
               : null}
             </div>
@@ -149,97 +149,64 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
         })}
 
         <div className={heroLayout.overlay} aria-hidden />
-        <div
-          className='pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-navy-950/70 via-transparent to-transparent'
-          aria-hidden
-        />
+        <div className={heroLayout.bottomFade} aria-hidden />
 
         <div className={heroLayout.content}>
           <div className={heroLayout.inner}>
             <div
               className={cn(
-                heroLayout.copy,
+                heroLayout.copyRow,
                 playEntrance && "motion-safe:animate-hero-text-in",
               )}
             >
-              {hasBadge && (
-                <div className={heroLayout.badgeSlot}>
-                  {badge ?
-                    <span
-                      key={`badge-${currentSlide}`}
-                      className='motion-safe:animate-hero-copy-in inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]'
-                    >
-                      {badge}
-                    </span>
-                  : null}
+              <div className={heroLayout.titleCol}>
+                <div className={cn(heroLayout.titleSlot, "overflow-hidden")}>
+                  <h1
+                    key={`title-${currentSlide}`}
+                    className='motion-safe:animate-hero-copy-in font-serif text-lg font-medium leading-[1.14] tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.1] [text-shadow:0_2px_24px_rgba(0,0,0,0.5)]'
+                  >
+                    {headline}
+                  </h1>
                 </div>
-              )}
-
-              {hasSubtitle && (
-                <div className={heroLayout.subtitleSlot}>
-                  {subtitle ?
-                    <p
-                      key={`subtitle-${currentSlide}`}
-                      className='motion-safe:animate-hero-copy-in text-[11px] font-medium tracking-[0.12em] text-gold-100 sm:text-sm [text-shadow:0_1px_14px_rgba(0,0,0,0.55)]'
-                    >
-                      {subtitle}
-                    </p>
-                  : null}
-                </div>
-              )}
-
-              <p className='hidden text-[10px] font-medium uppercase tracking-[0.32em] text-white/90 sm:block sm:text-[11px]'>
-                The House of Rani
-              </p>
-              <div
-                className='mt-3 hidden h-px w-14 bg-gradient-to-r from-gold-300/90 to-transparent sm:mt-4 sm:block sm:w-20'
-                aria-hidden
-              />
-
-              <div className={cn(heroLayout.titleSlot, "overflow-hidden")}>
-                <h1
-                  key={`title-${currentSlide}`}
-                  className='motion-safe:animate-hero-copy-in font-serif text-xl font-medium leading-[1.14] tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.1] [text-shadow:0_2px_24px_rgba(0,0,0,0.5)]'
-                >
-                  {headline}
-                </h1>
               </div>
 
-              {hasDescription && (
-                <div
-                  className={cn(
-                    heroLayout.descriptionSlot,
-                    "hidden overflow-hidden sm:block",
-                  )}
-                >
-                  {description ?
-                    <p
-                      key={`desc-${currentSlide}`}
-                      className='motion-safe:animate-hero-copy-in max-w-lg text-xs font-light leading-relaxed text-[#ece8e3] line-clamp-2 sm:text-sm sm:line-clamp-3 [text-shadow:0_1px_18px_rgba(0,0,0,0.55)]'
-                    >
-                      {description}
-                    </p>
-                  : null}
-                </div>
-              )}
+              <div className={heroLayout.rightCol}>
+                {hasDescription && (
+                  <div
+                    className={cn(
+                      heroLayout.descriptionSlot,
+                      "hidden overflow-hidden sm:block",
+                    )}
+                  >
+                    {description ?
+                      <p
+                        key={`desc-${currentSlide}`}
+                        className='motion-safe:animate-hero-copy-in text-[11px] font-light leading-relaxed text-[#ece8e3] line-clamp-2 sm:text-sm sm:line-clamp-3 [text-shadow:0_1px_18px_rgba(0,0,0,0.55)]'
+                      >
+                        {description}
+                      </p>
+                    : null}
+                  </div>
+                )}
 
-              <div className={heroLayout.ctaSlot}>
-                <div
-                  key={`cta-${currentSlide}`}
-                  className='motion-safe:animate-hero-copy-in flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8'
-                >
-                  <Link
-                    href={slide.ctaLink || "/shop/collections"}
-                    className='border-b border-white/65 pb-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white transition-colors hover:border-gold-200 hover:text-gold-100 sm:text-xs'
+                <div className={heroLayout.ctaSlot}>
+                  <div
+                    key={`cta-${currentSlide}`}
+                    className='motion-safe:animate-hero-copy-in flex flex-col items-end gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-5 sm:gap-y-1.5 lg:gap-x-6'
                   >
-                    {slide.ctaText || "Explore collection"}
-                  </Link>
-                  <Link
-                    href={slide.secondaryCtaLink || "/premium"}
-                    className='text-[11px] font-medium uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white sm:text-xs'
-                  >
-                    {slide.secondaryCtaText || "Premium edit"}
-                  </Link>
+                    <Link
+                      href={slide.ctaLink || "/shop/collections"}
+                      className='border-b border-white/65 pb-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-white transition-colors hover:border-gold-200 hover:text-gold-100 sm:pb-1 sm:text-[10px] sm:tracking-[0.22em] lg:text-[11px]'
+                    >
+                      {slide.ctaText || "Explore collection"}
+                    </Link>
+                    <Link
+                      href={slide.secondaryCtaLink || "/premium"}
+                      className='text-[9px] font-medium uppercase tracking-[0.18em] text-white/80 transition-colors hover:text-white sm:text-[10px] sm:tracking-[0.22em] lg:text-[11px]'
+                    >
+                      {slide.secondaryCtaText || "Premium edit"}
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -279,16 +246,16 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
 
               {slides.length > 1 && (
                 <div
-                  className='flex shrink-0 items-center justify-end gap-3 sm:justify-start'
+                  className='ml-auto flex shrink-0 items-center justify-end gap-2 sm:ml-0 sm:justify-start sm:gap-3'
                   role='tablist'
                   aria-label='Hero slides'
                 >
-                  <span className='text-[10px] tabular-nums tracking-[0.2em] text-white/70'>
+                  <span className='text-[8px] tabular-nums tracking-[0.16em] text-white/70 sm:text-[10px] sm:tracking-[0.2em]'>
                     {String(currentSlide + 1).padStart(2, "0")}
-                    <span className='mx-1.5 text-white/40'>/</span>
+                    <span className='mx-1 text-white/40 sm:mx-1.5'>/</span>
                     {String(slides.length).padStart(2, "0")}
                   </span>
-                  <div className='flex gap-1.5'>
+                  <div className='flex gap-1 sm:gap-1.5'>
                     {slides.map((s, i) => {
                       const isActive = i === currentSlide;
                       return (
@@ -300,13 +267,13 @@ function HeroSection({ initialSlides, announcementMessages = [] }: Props) {
                           aria-current={isActive ? "true" : undefined}
                           aria-label={`Show slide ${i + 1} of ${slides.length}${s.title ? `: ${s.title}` : ""}`}
                           onClick={() => goToSlide(i)}
-                          className='group relative h-7 w-7 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 sm:h-8 sm:w-8'
+                          className='group relative h-5 w-5 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 sm:h-8 sm:w-8'
                         >
                           <span
                             className={cn(
                               "absolute left-1/2 top-1/2 block h-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/45 transition-[width,background-color] duration-500",
-                              isActive ? "w-8 bg-gold-200" : (
-                                "w-3 group-hover:w-5 group-hover:bg-white/70"
+                              isActive ? "w-5 bg-gold-200 sm:w-8" : (
+                                "w-2 group-hover:w-4 group-hover:bg-white/70 sm:w-3 sm:group-hover:w-5"
                               ),
                             )}
                           />

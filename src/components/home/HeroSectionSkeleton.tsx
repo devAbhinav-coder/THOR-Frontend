@@ -2,39 +2,44 @@ import { Skeleton } from "@/components/ui/SkeletonLoader";
 import { heroLayout } from "@/lib/heroSectionLayout";
 import { cn } from "@/lib/utils";
 
+type Props = { underNavOverlap?: boolean };
+
 /** Pixel-matched hero shimmer - image + transparent bottom dock overlay. */
-export default function HeroSectionSkeleton() {
+export default function HeroSectionSkeleton({
+  underNavOverlap = false,
+}: Props) {
   return (
-    <section className={heroLayout.section}>
+    <section
+      className={cn(
+        heroLayout.section,
+        underNavOverlap && heroLayout.sectionUnderNav,
+      )}
+    >
       <div className={heroLayout.media}>
         <Skeleton className='absolute inset-0 h-full w-full rounded-none border-0 bg-navy-900/90' />
         <div className={heroLayout.overlay} aria-hidden />
         <div className={heroLayout.content}>
           <div className={heroLayout.inner}>
-            <div className={heroLayout.copy}>
-              <div className={heroLayout.badgeSlot}>
-                <Skeleton className='h-7 w-28 rounded-full bg-white/15 sm:h-8 sm:w-32' />
-              </div>
-              <div className={heroLayout.subtitleSlot}>
-                <Skeleton className='h-4 w-44 rounded-sm bg-gold-200/25 sm:h-5 sm:w-52' />
-              </div>
-              <Skeleton className='hidden h-3 w-36 rounded-sm bg-white/25 sm:block sm:w-44' />
-              <Skeleton className='mt-3 hidden h-px w-14 bg-white/25 sm:mt-4 sm:block sm:w-20' />
-              <div className={heroLayout.titleSlot}>
-                <Skeleton className='h-full w-full max-w-xl rounded-md bg-white/22' />
-              </div>
-              <div
-                className={cn(heroLayout.descriptionSlot, "hidden sm:block")}
-              >
-                <div className='space-y-2'>
-                  <Skeleton className='h-3 w-full max-w-lg rounded-sm bg-white/18' />
-                  <Skeleton className='h-3 w-[88%] max-w-md rounded-sm bg-white/14' />
+            <div className={heroLayout.copyRow}>
+              <div className={heroLayout.titleCol}>
+                <div className={heroLayout.titleSlot}>
+                  <Skeleton className='h-full w-full max-w-[11rem] rounded-md bg-white/22 sm:max-w-xl' />
                 </div>
               </div>
-              <div className={heroLayout.ctaSlot}>
-                <div className='flex gap-6 sm:gap-8'>
-                  <Skeleton className='h-4 w-32 rounded-sm bg-white/22' />
-                  <Skeleton className='h-4 w-24 rounded-sm bg-white/15' />
+              <div className={heroLayout.rightCol}>
+                <div
+                  className={cn(heroLayout.descriptionSlot, "hidden sm:block")}
+                >
+                  <div className='space-y-2'>
+                    <Skeleton className='ml-auto h-2.5 w-full max-w-[12rem] rounded-sm bg-white/18 lg:max-w-[14rem]' />
+                    <Skeleton className='ml-auto h-2.5 w-[88%] max-w-[10rem] rounded-sm bg-white/14' />
+                  </div>
+                </div>
+                <div className={heroLayout.ctaSlot}>
+                  <div className='flex flex-col items-end gap-1 sm:flex-row sm:gap-5'>
+                    <Skeleton className='h-3 w-20 rounded-sm bg-white/22 sm:h-3.5 sm:w-28' />
+                    <Skeleton className='h-3 w-16 rounded-sm bg-white/15 sm:h-3.5 sm:w-20' />
+                  </div>
                 </div>
               </div>
             </div>
@@ -52,11 +57,11 @@ export default function HeroSectionSkeleton() {
                 <Skeleton className='h-3 w-28 rounded-sm bg-white/18' />
                 <Skeleton className='h-3 w-28 rounded-sm bg-white/18' />
               </div>
-              <div className='flex items-center justify-end gap-3 sm:justify-start'>
-                <Skeleton className='h-3 w-10 rounded-sm bg-white/18' />
-                <Skeleton className='h-px w-8 rounded-full bg-white/25' />
-                <Skeleton className='h-px w-3 rounded-full bg-white/18' />
-                <Skeleton className='h-px w-3 rounded-full bg-white/18' />
+              <div className='ml-auto flex items-center justify-end gap-2 sm:ml-0 sm:justify-start sm:gap-3'>
+                <Skeleton className='h-2 w-8 rounded-sm bg-white/18 sm:h-3 sm:w-10' />
+                <Skeleton className='h-px w-5 rounded-full bg-white/25 sm:w-8' />
+                <Skeleton className='h-px w-2 rounded-full bg-white/18 sm:w-3' />
+                <Skeleton className='h-px w-2 rounded-full bg-white/18 sm:w-3' />
               </div>
             </div>
           </div>

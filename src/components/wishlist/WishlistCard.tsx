@@ -16,6 +16,7 @@ import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { hasInStockVariant } from "@/lib/productStock";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { trackAddToCart } from "@/lib/metaPixel";
+import ProductMarketingBadge from "@/components/product/ProductMarketingBadge";
 
 interface WishlistCardProps {
   product: Product;
@@ -221,6 +222,8 @@ function WishlistCardInner({
             </div>
           }
         </Link>
+
+        <ProductMarketingBadge product={product} variant='corner' />
 
         {product.isFeatured && !isOutOfStock && (
           <span className='pointer-events-none absolute left-2 top-2 z-[1] bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-white sm:left-4 sm:top-4 sm:px-3 sm:py-1 sm:text-[10px]'>

@@ -8,9 +8,13 @@ import { cn } from "@/lib/utils";
 import { useFinePointerHover } from "@/hooks/useFinePointerHover";
 import ProductImageLightbox from "@/components/product/ProductImageLightbox";
 import { PDP_MAIN_LENS_PX, PDP_MAIN_LENS_ZOOM } from "./constants";
+import ProductMarketingBadge from "@/components/product/ProductMarketingBadge";
+import type { Product } from "@/types";
 
 export interface PdpImageGalleryProps {
   productId: string;
+  /** Tyohar / marketing edition corner badge (same as shop cards). */
+  editionBadgeProduct?: Pick<Product, "tags" | "marketingBadge">;
   /** Changes when color/images switch - resets selected thumbnail. */
   galleryKey?: string;
   name: string;
@@ -42,6 +46,7 @@ export function PdpImageGallery({
   copied,
   onWishlist,
   onShare,
+  editionBadgeProduct,
 }: PdpImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
@@ -413,6 +418,13 @@ export function PdpImageGallery({
                   onClick={() => setImageLightboxOpen(true)}
                 />
               )}
+
+              {editionBadgeProduct ?
+                <ProductMarketingBadge
+                  product={editionBadgeProduct}
+                  variant='corner'
+                />
+              : null}
 
               <div className='pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-1.5'>
                 {isFeatured && (

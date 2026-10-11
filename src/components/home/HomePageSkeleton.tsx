@@ -138,7 +138,7 @@ function WhyChooseUsSkeleton() {
 export default function HomePageSkeleton() {
   return (
     <div className='min-h-screen bg-white'>
-      <HeroSectionSkeleton />
+      <HeroSectionSkeleton underNavOverlap />
       <CategorySectionSkeleton />
 
       <section className='bg-[#000d21] py-14 sm:py-20'>

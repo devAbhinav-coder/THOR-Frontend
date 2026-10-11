@@ -19,6 +19,7 @@ import {
 import OrderTrackingTimeline from "./OrderTrackingTimeline";
 import { InlineStars, OrderReviewForm } from "./OrderItemReviewBlock";
 import { getOrderCancelReason } from "@/lib/orderLifecycle";
+import { isOrderInvoiceAvailable } from "@/lib/orderInvoiceHelpers";
 
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
 
@@ -93,16 +94,15 @@ export default function OrderDetailLuxuryContent({
 }: Props) {
   const trackingEvents = buildTrackingTimeline(order);
   const expectedDelivery = getExpectedDeliveryLabel(order);
-  const showTracking = trackingEvents.length > 0;
+  const showTracking =
+    !isCancelledOrRefunded && trackingEvents.length > 0;
   const cancelReason =
     order.status === "cancelled" ? getOrderCancelReason(order) : undefined;
   const timelineTitle =
     order.status === "shipped" || order.status === "delivered" ?
       "Live tracking"
     : "Order timeline";
-  const canShowInvoice =
-    !!order.invoice?.isGenerated &&
-    (order.paymentStatus === "paid" || order.status === "delivered");
+  const canShowInvoice = isOrderInvoiceAvailable(order);
 
   const hasReviewableItem =
     isDelivered &&
@@ -470,7 +470,9 @@ export default function OrderDetailLuxuryContent({
             </div>
 
             <div className='mt-6 flex flex-col gap-3'>
-              {trackingHref && order.status !== "delivered" && (
+              {trackingHref &&
+                !isCancelledOrRefunded &&
+                order.status !== "delivered" && (
                 <a
                   href={trackingHref}
                   target='_blank'

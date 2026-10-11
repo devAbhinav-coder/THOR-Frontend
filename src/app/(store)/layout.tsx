@@ -9,6 +9,7 @@ import WishlistRehydrator from "@/components/wishlist/WishlistRehydrator";
 import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
 import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
 import Navbar from "@/components/layout/Navbar";
+import { MarketingEditionsProvider } from "@/lib/marketingEditionsContext";
 
 const OfferVisitPopup = dynamic(() => import("@/components/coupons/OfferVisitPopup"));
 
@@ -28,7 +29,11 @@ export default async function StoreLayout({
       <StoreVisitTracker />
       <Navbar initialNavCategories={initialNavCategories} />
       <main className='isolate min-h-screen flex flex-col bg-background pb-0 lg:pb-0'>
-        <StoreErrorBoundary>{children}</StoreErrorBoundary>
+        <MarketingEditionsProvider
+          editions={initialStorefrontSettings?.marketingEditions}
+        >
+          <StoreErrorBoundary>{children}</StoreErrorBoundary>
+        </MarketingEditionsProvider>
       </main>
       <Footer
         initialNavCategories={initialNavCategories}

@@ -10,7 +10,11 @@ import {
   parseApiClientError,
 } from "@/lib/authOtpClient";
 
-export type OtpFlowType = "signup" | "login" | "forgot_password";
+export type OtpFlowType =
+  | "signup"
+  | "login"
+  | "forgot_password"
+  | "guest_checkout";
 
 type Props = {
   email: string;

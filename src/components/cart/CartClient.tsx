@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,8 @@ import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { formatPrice, cn } from "@/lib/utils";
+import { productNameClassName, priceClassName } from "@/lib/storefrontTypography";
+import PriceText from "@/components/ui/PriceText";
 import { Button } from "@/components/ui/button";
 import { CartItem, type NearEligibleCoupon } from "@/types";
 import { trackCartQuantityAdd } from "@/lib/metaPixel";
@@ -78,7 +80,8 @@ export default function CartClient() {
     removeCoupon,
     appliedCouponCode,
   } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, hasSessionChecked } = useAuthStore();
+  const { fetchCart } = useCartStore();
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const router = useRouter();
   const checkoutBtnRef = useRef<HTMLButtonElement>(null);
@@ -86,6 +89,13 @@ export default function CartClient() {
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hasSessionChecked) return;
+    if (!isAuthenticated) {
+      void fetchCart();
+    }
+  }, [hasSessionChecked, isAuthenticated, fetchCart]);
 
   const cartItemsKey =
     cart?.items
@@ -160,22 +170,37 @@ export default function CartClient() {
     }
   };
 
-  if (!isAuthenticated) {
+  if (!hasSessionChecked || isLoading) {
     return (
       <EmptyStateShell
         title='Shopping Bag'
-        description='Please sign in to review your selected pieces of heritage craftsmanship.'
+        description='Loading your bag…'
       >
-        <Button
-          asChild
-          variant='brand'
-          size='lg'
-          className='min-w-[220px] uppercase tracking-[0.14em]'
-        >
-          <Link href={loginUrlWithRedirect("/cart")} scroll={false}>
-            Sign In
+        <span className='text-sm text-gray-500'>One moment</span>
+      </EmptyStateShell>
+    );
+  }
+
+  if (!isAuthenticated && (!cart || cart.items.length === 0)) {
+    return (
+      <EmptyStateShell
+        title='Shopping Bag'
+        description='Your bag is empty, or sign in to sync saved items across devices.'
+      >
+        <div className='flex flex-col items-center gap-3 sm:flex-row'>
+          <Link
+            href='/shop'
+            className='inline-block border-b border-navy-900 pb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-navy-900'
+          >
+            Explore Collections
           </Link>
-        </Button>
+          <Link
+            href={loginUrlWithRedirect("/cart")}
+            className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c5a059]'
+          >
+            Sign in
+          </Link>
+        </div>
       </EmptyStateShell>
     );
   }
@@ -317,13 +342,16 @@ export default function CartClient() {
                           <div className='mb-2 flex items-start justify-between gap-3'>
                             <Link
                               href={productHref}
-                              className='font-serif text-lg font-medium leading-snug text-navy-900 transition-colors hover:text-[#c5a059] sm:text-xl'
+                              className={productNameClassName(
+                                "text-lg transition-colors hover:text-[#c5a059] sm:text-xl",
+                              )}
                             >
                               {item.productName || "Product"}
                             </Link>
-                            <span className='shrink-0 font-serif text-lg font-medium text-navy-900 sm:text-xl'>
-                              {formatPrice(item.price * item.quantity)}
-                            </span>
+                            <PriceText
+                              amount={item.price * item.quantity}
+                              className='shrink-0 text-lg font-semibold sm:text-xl'
+                            />
                           </div>
 
                           {variantLine && (
@@ -677,10 +705,23 @@ export default function CartClient() {
                   <p className='mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ffdea5]'>
                     Total
                   </p>
-                  <p className='font-serif text-3xl text-white sm:text-4xl'>
+                  <p className={priceClassName("text-3xl font-semibold text-white sm:text-4xl")}>
                     {formatPrice(estimatedTotal)}
                   </p>
                 </div>
+
+                {!isAuthenticated ?
+                  <p className='mb-3 text-center text-[11px] leading-relaxed text-white/70 max-lg:hidden'>
+                    Guest checkout: verify your email on the next step (one-time
+                    code).{" "}
+                    <Link
+                      href={loginUrlWithRedirect("/checkout")}
+                      className='text-[#ffdea5] underline-offset-2 hover:underline'
+                    >
+                      Sign in instead
+                    </Link>
+                  </p>
+                : null}
 
                 <button
                   ref={checkoutBtnRef}

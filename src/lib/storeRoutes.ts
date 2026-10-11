@@ -25,6 +25,16 @@ export function isPremiumProductDetailPath(pathname: string): boolean {
   return true;
 }
 
+/** Homepage only — transparent nav + gradient on hover over hero. */
+export function isHomeImmersiveNavPath(pathname: string): boolean {
+  return pathname === "/";
+}
+
+/** @deprecated Use isHomeImmersiveNavPath — kept for hero overlap call sites. */
+export function isImmersiveStoreNavPath(pathname: string): boolean {
+  return isHomeImmersiveNavPath(pathname);
+}
+
 /** Main shop grid - `/shop`, `/shop/collections`, and legacy `/shop/category/...`. */
 export function isStoreShopListingPath(pathname: string): boolean {
   if (pathname === "/shop") return true;

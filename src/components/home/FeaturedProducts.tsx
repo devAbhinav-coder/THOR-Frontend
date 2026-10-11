@@ -24,8 +24,8 @@ export default function FeaturedProducts({
   initialProducts,
 }: FeaturedProductsProps = {}) {
   const { data: products = [], isLoading } = useQuery<Product[]>({
-    queryKey: ["featured-products"],
-    queryFn: () => productApi.getFeatured().then((r) => r.data.products),
+    queryKey: ["bestseller-products"],
+    queryFn: () => productApi.getBestsellers().then((r) => r.data.products),
     // Skip client fetch if SSR already provided data
     initialData: Array.isArray(initialProducts) ? initialProducts : undefined,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -38,28 +38,28 @@ export default function FeaturedProducts({
 
   return (
     <section
-      className='bg-[#000d21] py-14 sm:py-20 lg:py-24'
+      className='bg-[#000d21] py-14'
       aria-labelledby='featured-products-heading'
     >
       <div className={homeSectionStyles.container}>
         <div className='mb-10 flex flex-col gap-6 sm:mb-14 sm:flex-row sm:items-end sm:justify-between'>
           <div className='text-left'>
             <p className='text-[11px] font-medium uppercase tracking-[0.28em] text-[#c5a059] sm:text-xs'>
-              Curated Selection
+              Bestsellers
             </p>
             <h2
               id='featured-products-heading'
               className='mt-3 font-serif text-3xl font-medium leading-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]'
             >
-              Featured Masterpieces
+              Our Most Selling Items
             </h2>
           </div>
 
           <Link
-            href='/shop?isFeatured=true'
+            href='/shop/collections?isFeatured=true&sort=-soldCount'
             className='shrink-0 self-start text-[11px] font-medium uppercase tracking-[0.22em] text-white underline decoration-white/80 underline-offset-[6px] transition-colors hover:text-[#c5a059] hover:decoration-[#c5a059] sm:self-auto sm:text-xs'
           >
-            View All Works
+            View all bestsellers
           </Link>
         </div>
 

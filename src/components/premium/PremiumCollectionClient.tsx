@@ -20,6 +20,7 @@ import { PREMIUM_PAGE_COPY } from "@/lib/premiumSeo";
 import { formatPrice } from "@/lib/utils";
 import { premiumApi } from "@/lib/api";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 type Props = {
   products: PremiumProductView[];
@@ -101,7 +102,12 @@ export default function PremiumCollectionClient({
   return (
     <div className='bg-[#fcf9f8] text-[#1a1a1a]'>
       {/* Hero - 21:9 Aspect Ratio on Laptop/Desktop, Comfortable Height on Mobile/Tablet */}
-      <header className='relative w-full h-[400px] sm:h-[460px] md:h-[500px] min-h-[380px] lg:h-auto lg:max-h-none lg:aspect-[21/9] xl:aspect-[21/9] overflow-hidden bg-black'>
+      <header
+        className={cn(
+          "relative w-full overflow-hidden bg-black",
+          "h-[400px] sm:h-[460px] md:h-[500px] min-h-[380px] lg:h-auto lg:max-h-none lg:aspect-[21/9] xl:aspect-[21/9]",
+        )}
+      >
         {activeBanners.length > 0 ?
           activeBanners.map((banner: any, idx: number) => (
             <div

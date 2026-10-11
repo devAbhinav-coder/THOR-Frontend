@@ -14,6 +14,8 @@ type Options = {
   hideThreshold?: number;
   /** Cumulative scroll-up (px) before revealing. */
   revealThreshold?: number;
+  /** When true, ignore scroll-up reveal — show again only when y <= topReveal (homepage). */
+  revealOnlyAtTop?: boolean;
   /** Ignore toggles for this long after a hide/show (ms). */
   cooldownMs?: number;
 };
@@ -28,6 +30,7 @@ export function useMobileNavAutoHide({
   topReveal = 80,
   hideThreshold = 24,
   revealThreshold = 24,
+  revealOnlyAtTop = false,
   cooldownMs = 300,
 }: Options = {}) {
   const pathname = usePathname();
@@ -98,11 +101,24 @@ export function useMobileNavAutoHide({
 
       if (accumulated.current >= hideThreshold && visibleRef.current) {
         setChromeVisible(false);
-      } else if (accumulated.current <= -revealThreshold && !visibleRef.current) {
+      } else if (
+        !revealOnlyAtTop &&
+        accumulated.current <= -revealThreshold &&
+        !visibleRef.current
+      ) {
         setChromeVisible(true);
       }
     });
-  }, [enabled, allViewports, topReveal, hideThreshold, revealThreshold, cooldownMs, pathname]);
+  }, [
+    enabled,
+    allViewports,
+    topReveal,
+    hideThreshold,
+    revealThreshold,
+    revealOnlyAtTop,
+    cooldownMs,
+    pathname,
+  ]);
 
   return visible;
 }

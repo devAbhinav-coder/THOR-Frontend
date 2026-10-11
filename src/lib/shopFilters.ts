@@ -75,9 +75,12 @@ export type ShopFilters = {
   ratings: string[];
   sort: string;
   search: string;
-  isFeatured: string;
+  /** Storefront bestsellers PLP (`?bestsellers=true`, sorted by soldCount). */
+  bestsellers: string;
   onSale: string;
   hasOffer: string;
+  /** Marketing / festival edition slugs (`?edition=`). */
+  editions: string[];
 };
 
 export type ShopCategoryContext = {
@@ -93,7 +96,8 @@ export type ShopMultiFilterKey =
   | "fabrics"
   | "ratings"
   | "subcategories"
-  | "occasions";
+  | "occasions"
+  | "editions";
 
 export const EMPTY_SHOP_FILTERS: ShopFilters = {
   categories: [],
@@ -106,9 +110,10 @@ export const EMPTY_SHOP_FILTERS: ShopFilters = {
   ratings: [],
   sort: SHOP_DEFAULT_SORT,
   search: "",
-  isFeatured: "",
+  bestsellers: "",
   onSale: "",
   hasOffer: "",
+  editions: [],
 };
 
 type SearchParamsLike =
@@ -215,18 +220,24 @@ export function toggleShopCategoryFilter(
   const trimmed = String(categoryName || "").trim();
   if (!trimmed) return filters;
   const wantedSlug = toShopCategorySlug(trimmed);
-  const without = filters.categories.filter(
-    (c) => toShopCategorySlug(c) !== wantedSlug,
-  );
   const wasSelected = filters.categories.some(
     (c) => toShopCategorySlug(c) === wantedSlug,
   );
   if (wasSelected) {
-    return { ...filters, categories: dedupeShopFilterValues(without) };
+    const without = filters.categories.filter(
+      (c) => toShopCategorySlug(c) !== wantedSlug,
+    );
+    return {
+      ...filters,
+      categories: dedupeShopFilterValues(without),
+      subcategories: [],
+    };
   }
+  /** One primary collection at a time — switch route/filters cleanly (e.g. Sarees → Suit Sets). */
   return {
     ...filters,
-    categories: dedupeShopFilterValues([...without, trimmed]),
+    categories: [trimmed],
+    subcategories: [],
   };
 }
 
@@ -270,6 +281,7 @@ export function parseShopFiltersFromUrl(
     "subcategory",
   );
   const occasions = readListParam(searchParams, "occasions", "occasion");
+  const editions = readListParam(searchParams, "editions", "edition");
   const fabrics = readListParam(searchParams, "fabrics", "fabric");
   const colors = readListParam(searchParams, "colors", "color");
   const ratings = readListParam(searchParams, "ratings", "rating", "minRating");
@@ -284,6 +296,7 @@ export function parseShopFiltersFromUrl(
       : categoryContext?.subcategory ? [categoryContext.subcategory.name]
       : [],
     occasions,
+    editions,
     fabrics,
     colors,
     minPrice: readScalarParam(searchParams, "minPrice"),
@@ -297,10 +310,21 @@ export function parseShopFiltersFromUrl(
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, SHOP_SEARCH_MAX_LEN),
-    isFeatured: readScalarParam(searchParams, "isFeatured"),
+    bestsellers:
+      readScalarParam(searchParams, "bestsellers") === "true" ||
+      readScalarParam(searchParams, "isFeatured") === "true" ?
+        "true"
+      : "",
     onSale: readScalarParam(searchParams, "onSale"),
     hasOffer: readScalarParam(searchParams, "hasOffer"),
   };
+
+  if (
+    parsed.bestsellers === "true" &&
+    (parsed.sort === SHOP_DEFAULT_SORT || parsed.sort === "-createdAt")
+  ) {
+    parsed.sort = "-soldCount";
+  }
 
   return mergeCategoryContextFilters(parsed, categoryContext);
 }
@@ -340,11 +364,19 @@ export function buildShopQueryString(
   if (filters.minPrice) params.set("minPrice", filters.minPrice);
   if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
   if (filters.search) params.set("search", filters.search);
-  if (filters.isFeatured) params.set("isFeatured", filters.isFeatured);
+  if (filters.bestsellers) params.set("bestsellers", filters.bestsellers);
   if (filters.onSale) params.set("onSale", filters.onSale);
   if (filters.hasOffer) params.set("hasOffer", filters.hasOffer);
-  if (filters.sort && filters.sort !== SHOP_DEFAULT_SORT) {
-    params.set("sort", filters.sort);
+  if (filters.editions.length) {
+    params.set("edition", filters.editions.join(","));
+  }
+  const sortForUrl =
+    filters.bestsellers === "true" &&
+    (filters.sort === SHOP_DEFAULT_SORT || filters.sort === "-createdAt") ?
+      "-soldCount"
+    : filters.sort;
+  if (sortForUrl && sortForUrl !== SHOP_DEFAULT_SORT) {
+    params.set("sort", sortForUrl);
   }
   return params.toString();
 }
@@ -353,13 +385,14 @@ export function hasSecondaryShopFilters(filters: ShopFilters): boolean {
   return (
     filters.subcategories.length > 0 ||
     filters.occasions.length > 0 ||
+    filters.editions.length > 0 ||
     filters.fabrics.length > 0 ||
     filters.colors.length > 0 ||
     filters.ratings.length > 0 ||
     Boolean(filters.minPrice) ||
     Boolean(filters.maxPrice) ||
     Boolean(filters.search) ||
-    Boolean(filters.isFeatured) ||
+    Boolean(filters.bestsellers) ||
     Boolean(filters.onSale) ||
     Boolean(filters.hasOffer) ||
     filters.sort !== SHOP_DEFAULT_SORT
@@ -371,13 +404,14 @@ export function shouldUseCategoryPath(filters: ShopFilters): boolean {
     filters.categories.length === 1 &&
     filters.subcategories.length === 0 &&
     filters.occasions.length === 0 &&
+    filters.editions.length === 0 &&
     filters.fabrics.length === 0 &&
     filters.colors.length === 0 &&
     !filters.minPrice &&
     !filters.maxPrice &&
     filters.ratings.length === 0 &&
     !filters.search &&
-    !filters.isFeatured &&
+    !filters.bestsellers &&
     !filters.onSale &&
     !filters.hasOffer &&
     filters.sort === SHOP_DEFAULT_SORT
@@ -389,13 +423,14 @@ export function shouldUseSubcategoryPath(filters: ShopFilters): boolean {
     filters.categories.length === 1 &&
     filters.subcategories.length === 1 &&
     filters.occasions.length === 0 &&
+    filters.editions.length === 0 &&
     filters.fabrics.length === 0 &&
     filters.colors.length === 0 &&
     !filters.minPrice &&
     !filters.maxPrice &&
     filters.ratings.length === 0 &&
     !filters.search &&
-    !filters.isFeatured &&
+    !filters.bestsellers &&
     !filters.onSale &&
     !filters.hasOffer &&
     filters.sort === SHOP_DEFAULT_SORT
@@ -416,6 +451,7 @@ export function countActiveShopFilters(
   count += categoryCount;
   count += filters.subcategories.length;
   count += filters.occasions.length;
+  count += filters.editions.length;
   count += filters.fabrics.length;
   count += filters.colors.length;
   count += filters.ratings.length;
@@ -462,7 +498,8 @@ export function resolveNextShopFilters(
     key === "fabrics" ||
     key === "ratings" ||
     key === "subcategories" ||
-    key === "occasions"
+    key === "occasions" ||
+    key === "editions"
   ) {
     return toggleShopListFilter(filters, key, String(value));
   }
@@ -542,6 +579,86 @@ export function shopPriceDraftToFilterStrings(
   return { minPrice: String(min), maxPrice: String(max) };
 }
 
+export function isShopPriceDraftPending(
+  filters: ShopFilters,
+  draftMinPrice: string,
+  draftMaxPrice: string,
+): boolean {
+  const { min, max } = resolveShopPriceDraft(draftMinPrice, draftMaxPrice);
+  const { minPrice, maxPrice } = shopPriceDraftToFilterStrings(min, max);
+  return minPrice !== filters.minPrice || maxPrice !== filters.maxPrice;
+}
+
+export type ShopFilterSectionId =
+  | "offers"
+  | "editions"
+  | "collections"
+  | "color"
+  | "occasion"
+  | "rating"
+  | "price";
+
+export function shopFilterSectionHasActive(
+  section: ShopFilterSectionId,
+  filters: ShopFilters,
+  categoryContext: ShopCategoryContext = null,
+): boolean {
+  switch (section) {
+    case "offers":
+      return filters.onSale === "true";
+    case "editions":
+      return filters.editions.length > 0;
+    case "collections": {
+      const merged = mergeCategoryContextFilters(filters, categoryContext);
+      return merged.categories.length > 0 || merged.subcategories.length > 0;
+    }
+    case "color":
+      return filters.colors.length > 0;
+    case "occasion":
+      return filters.occasions.length > 0;
+    case "rating":
+      return filters.ratings.length > 0;
+    case "price":
+      return Boolean(filters.minPrice || filters.maxPrice);
+    default:
+      return false;
+  }
+}
+
+/** Reset one filter accordion group (sidebar section clear). */
+export function clearShopFilterSection(
+  filters: ShopFilters,
+  section: ShopFilterSectionId,
+): ShopFilters {
+  switch (section) {
+    case "offers":
+      return { ...filters, onSale: "" };
+    case "editions":
+      return { ...filters, editions: [] };
+    case "collections":
+      return { ...filters, categories: [], subcategories: [] };
+    case "color":
+      return { ...filters, colors: [] };
+    case "occasion":
+      return { ...filters, occasions: [] };
+    case "rating":
+      return { ...filters, ratings: [] };
+    case "price":
+      return { ...filters, minPrice: "", maxPrice: "" };
+    default:
+      return filters;
+  }
+}
+
+/** Expand Collections only on a collection route; otherwise all sections start collapsed. */
+export function resolveShopFilterFocusSection(
+  _filters: ShopFilters,
+  categoryContext: ShopCategoryContext = null,
+): ShopFilterSectionId | null {
+  if (categoryContext?.slug) return "collections";
+  return null;
+}
+
 export function resolveEffectiveMinRating(
   ratings: string[],
 ): number | undefined {
@@ -564,7 +681,12 @@ export function buildShopProductQueryParams(
   const effective = mergeCategoryContextFilters(filters, categoryContext);
   const search = effective.search.trim().slice(0, SHOP_SEARCH_MAX_LEN);
   const minRating = resolveEffectiveMinRating(effective.ratings);
-  const sortParams = resolveShopSortForApi(effective.sort);
+  const sortForApi =
+    effective.bestsellers === "true" &&
+    (effective.sort === SHOP_DEFAULT_SORT || effective.sort === "-createdAt") ?
+      "-soldCount"
+    : effective.sort;
+  const sortParams = resolveShopSortForApi(sortForApi);
 
   if (search) {
     const params: Record<string, string | number> = {
@@ -590,10 +712,13 @@ export function buildShopProductQueryParams(
     if (effective.occasions.length) {
       params.occasions = effective.occasions.join(",");
     }
+    if (effective.editions.length) {
+      params.edition = effective.editions.join(",");
+    }
     if (minRating !== undefined) params.minRating = minRating;
     if (effective.minPrice) params.minPrice = Number(effective.minPrice);
     if (effective.maxPrice) params.maxPrice = Number(effective.maxPrice);
-    if (effective.isFeatured) params.isFeatured = effective.isFeatured;
+    if (effective.bestsellers) params.bestsellers = effective.bestsellers;
     if (effective.onSale) params.onSale = effective.onSale;
     if (effective.hasOffer) params.hasOffer = effective.hasOffer;
 
@@ -622,10 +747,13 @@ export function buildShopProductQueryParams(
   if (effective.occasions.length) {
     params.occasions = effective.occasions.join(",");
   }
+  if (effective.editions.length) {
+    params.edition = effective.editions.join(",");
+  }
   if (minRating !== undefined) params.minRating = minRating;
   if (effective.minPrice) params["price[gte]"] = effective.minPrice;
   if (effective.maxPrice) params["price[lte]"] = effective.maxPrice;
-  if (effective.isFeatured) params.isFeatured = effective.isFeatured;
+  if (effective.bestsellers) params.bestsellers = effective.bestsellers;
   if (effective.onSale) params.onSale = effective.onSale;
   if (effective.hasOffer) params.hasOffer = effective.hasOffer;
 
@@ -637,7 +765,11 @@ export function resolveCanonicalShopUrl(
   categoryContext: ShopCategoryContext = null,
 ): string {
   const catSlug =
-    toShopCategorySlug(filters.categories[0]) || categoryContext?.slug;
+    filters.categories.length > 0 ?
+      toShopCategorySlug(filters.categories[0])
+    : categoryContext?.slug ?
+      toShopCategorySlug(categoryContext.slug)
+    : undefined;
 
   if (shouldUseSubcategoryPath(filters) && catSlug) {
     const subSlug =

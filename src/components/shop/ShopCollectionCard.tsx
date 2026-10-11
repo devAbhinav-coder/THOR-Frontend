@@ -21,6 +21,7 @@ import { resolveShopCardImage } from "@/lib/pdpImages";
 import { isInStockForColor, shopProductHref } from "@/lib/shopProductListing";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { trackAddToWishlist, pickMetaCatalogVariant } from "@/lib/metaPixel";
+import ProductMarketingBadge from "@/components/product/ProductMarketingBadge";
 
 interface ShopCollectionCardProps {
   product: Product;
@@ -167,7 +168,7 @@ function ShopCollectionCardInner({
       )}
 
       <div className='flex h-full min-h-0 flex-col'>
-        <div className='relative mb-3 aspect-[3/4] shrink-0 overflow-hidden bg-gray-100 sm:mb-4'>
+        <div className='relative mb-3 aspect-[3/4] shrink-0 overflow-hidden rounded-sm bg-gray-100 sm:mb-4'>
           <Link
             href={productHref}
             className='absolute inset-0 z-0 block outline-none focus-visible:ring-2 focus-visible:ring-[#c5a059]/40 focus-visible:ring-offset-2'
@@ -193,6 +194,8 @@ function ShopCollectionCardInner({
               </div>
             }
           </Link>
+
+          <ProductMarketingBadge product={product} variant='corner' />
 
           {product.saleCampaignId && discountPercent >= 1 && !isOutOfStock && (
             <span className='pointer-events-none absolute left-0 top-0 z-10 bg-[#c5a059] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white sm:px-2.5 sm:py-1 sm:text-[10px]'>

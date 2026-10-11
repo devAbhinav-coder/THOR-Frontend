@@ -17,6 +17,7 @@ import {
 } from "@/types";
 import ImageUploader from "@/components/ui/ImageUploader";
 import ExploreHouseShowcaseCard from "@/components/home/ExploreHouseShowcaseCard";
+import MarketingEditionsAdminPanel from "@/components/admin/storefront/MarketingEditionsAdminPanel";
 import {
   resolveGiftingCard,
   resolveGiftingCardImage,
@@ -213,7 +214,7 @@ function QuickLinkChips({ onPick }: { onPick: (value: string) => void }) {
   const presets: Array<[string, string]> = [
     ["Shop All", "/shop"],
     ["New Arrivals", "/shop?sort=-createdAt"],
-    ["Featured", "/shop?isFeatured=true"],
+    ["Bestsellers", "/shop/collections?bestsellers=true&sort=-soldCount"],
   ];
   return (
     <div className='flex flex-wrap items-center gap-1.5 text-xs'>
@@ -330,6 +331,8 @@ export default function AdminStorefrontPage() {
   const [homeMiddleBannerFile, setHomeMiddleBannerFile] = useState<File | null>(
     null,
   );
+  const [homeMiddleBannerDesktopFile, setHomeMiddleBannerDesktopFile] =
+    useState<File | null>(null);
   const [homePremiumShowcaseFile, setHomePremiumShowcaseFile] =
     useState<File | null>(null);
   const [homeExploreHouseSaleFile, setHomeExploreHouseSaleFile] =
@@ -337,6 +340,9 @@ export default function AdminStorefrontPage() {
   const [homeExploreHouseGiftingFile, setHomeExploreHouseGiftingFile] =
     useState<File | null>(null);
   const [homeEditorialTileFiles, setHomeEditorialTileFiles] = useState<
+    Record<number, File | null>
+  >({});
+  const [marketingEditionImageFiles, setMarketingEditionImageFiles] = useState<
     Record<number, File | null>
   >({});
   const [premiumAudienceBannerFiles, setPremiumAudienceBannerFiles] = useState<
@@ -699,6 +705,9 @@ export default function AdminStorefrontPage() {
         fd.append("shopBannerRightImage", shopBannerRightFile);
       if (homeMiddleBannerFile)
         fd.append("homeMiddleBanner", homeMiddleBannerFile);
+      if (homeMiddleBannerDesktopFile) {
+        fd.append("homeMiddleBannerDesktop", homeMiddleBannerDesktopFile);
+      }
       if (homePremiumShowcaseFile) {
         fd.append("homePremiumShowcaseImage", homePremiumShowcaseFile);
       }
@@ -710,6 +719,9 @@ export default function AdminStorefrontPage() {
       }
       Object.entries(homeEditorialTileFiles).forEach(([index, file]) => {
         if (file) fd.append(`homeEditorialTileImage_${index}`, file);
+      });
+      Object.entries(marketingEditionImageFiles).forEach(([index, file]) => {
+        if (file) fd.append(`marketingEditionImage_${index}`, file);
       });
       Object.entries(premiumAudienceBannerFiles).forEach(([index, file]) => {
         if (file) fd.append(`premiumAudienceImage_${index}`, file);
@@ -731,10 +743,12 @@ export default function AdminStorefrontPage() {
       setShopBannerCenterFile(null);
       setShopBannerRightFile(null);
       setHomeMiddleBannerFile(null);
+      setHomeMiddleBannerDesktopFile(null);
       setHomePremiumShowcaseFile(null);
       setHomeExploreHouseSaleFile(null);
       setHomeExploreHouseGiftingFile(null);
       setHomeEditorialTileFiles({});
+      setMarketingEditionImageFiles({});
       setPremiumAudienceBannerFiles({});
       setPremiumEditorialFile(null);
       setPremiumStoryFile(null);
@@ -957,29 +971,6 @@ export default function AdminStorefrontPage() {
                         placeholder='e.g. Elegance in Every Thread'
                       />
                     </Field>
-                    <Field label='Subtitle'>
-                      <input
-                        className={inputCls}
-                        value={slide.subtitle || ""}
-                        onChange={(e) =>
-                          updateSlide(index, { subtitle: e.target.value })
-                        }
-                        placeholder='e.g. New Silk Saree Collection'
-                      />
-                    </Field>
-                    <Field
-                      label='Badge'
-                      hint='Small tag shown on the slide, e.g. “New Collection”.'
-                    >
-                      <input
-                        className={inputCls}
-                        value={slide.badge || ""}
-                        onChange={(e) =>
-                          updateSlide(index, { badge: e.target.value })
-                        }
-                        placeholder='e.g. New Collection'
-                      />
-                    </Field>
                     <Field label='Primary button text'>
                       <input
                         className={inputCls}
@@ -1071,13 +1062,36 @@ export default function AdminStorefrontPage() {
                       }));
                       markDirty();
                     }}
-                    label='Slide background image'
-                    hint='Uploads when you press Save. Tap the × on a thumbnail to remove it.'
+                    label='Slide background image (16:9)'
+                    hint='Crop 16:9 in the uploader (1920×1080+). That full frame shows on the homepage with no crop. Saves when you press Save.'
                   />
                 </ItemCard>
               </div>
             ))}
           </div>
+        </StorefrontSectionPanel>
+      )}
+
+      {activeSection === "marketingEditions" && settings && (
+        <StorefrontSectionPanel
+          title={sectionMeta.label}
+          description={sectionMeta.description}
+          icon={sectionMeta.icon}
+        >
+          <MarketingEditionsAdminPanel
+            editions={settings.marketingEditions ?? []}
+            onChange={(marketingEditions) =>
+              mutate((s) => ({ ...s, marketingEditions }))
+            }
+            editionImageFiles={marketingEditionImageFiles}
+            onEditionImageFile={(index, file) => {
+              setMarketingEditionImageFiles((prev) => ({
+                ...prev,
+                [index]: file,
+              }));
+              markDirty();
+            }}
+          />
         </StorefrontSectionPanel>
       )}
 
@@ -1758,7 +1772,7 @@ export default function AdminStorefrontPage() {
 
             <ImageUploader
               maxFiles={1}
-              aspectRatio='21:9'
+              aspectRatio='11:5'
               maxSizeMB={5}
               existingImages={
                 homeMiddleBannerFile ? []
@@ -1774,8 +1788,33 @@ export default function AdminStorefrontPage() {
                 setHomeMiddleBannerFile(files[0] || null);
                 markDirty();
               }}
-              label='Middle banner background image (Recommended: 21:9 panoramic / ~2.2:1)'
-              hint='Upload a wide banner photo (e.g. 1920×820 px or 2560×1080 px). This aspect ratio matches the desktop homepage middle banner perfectly without any cropping.'
+              label='Middle banner — mobile only (2.2:1 panoramic)'
+              hint='Export exactly 1100×500 px (or any 2.2:1). Shown only below lg — matches the live mobile frame, no surprise crop if ratio is exact.'
+            />
+
+            <ImageUploader
+              maxFiles={1}
+              aspectRatio='22:5'
+              maxSizeMB={5}
+              existingImages={
+                homeMiddleBannerDesktopFile ? []
+                : settings.homeMiddleBanner?.imageDesktop ?
+                  [settings.homeMiddleBanner.imageDesktop]
+                : []
+              }
+              onRemoveExisting={() => {
+                patchMiddleBanner({
+                  imageDesktop: "",
+                  imageDesktopPublicId: undefined,
+                });
+                setHomeMiddleBannerDesktopFile(null);
+              }}
+              onChange={(files) => {
+                setHomeMiddleBannerDesktopFile(files[0] || null);
+                markDirty();
+              }}
+              label='Middle banner — laptop only (4.4:1 low strip, half mobile height)'
+              hint='Separate file from mobile. Export 1920×436 px (4.4:1 = same width, half height). Shown from lg+ only. Optional fallback: mobile art is cropped into this strip if empty.'
             />
 
             <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
@@ -1787,7 +1826,10 @@ export default function AdminStorefrontPage() {
                   placeholder='e.g. Timeless Craftsmanship'
                 />
               </Field>
-              <Field label='Banner subtitle'>
+              <Field
+                label='Banner subtitle'
+                hint='Saved in CMS but not shown on the homepage (title + button only).'
+              >
                 <input
                   className={inputCls}
                   value={settings.homeMiddleBanner?.subtitle || ""}

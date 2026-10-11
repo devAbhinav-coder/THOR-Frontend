@@ -92,6 +92,8 @@ interface AuthState {
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setUser: (user: User) => void;
+  /** After OTP / cookie auth — marks session active (guest checkout, etc.). */
+  establishSession: (user: User) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -302,6 +304,16 @@ export const useAuthStore = create<AuthState>()(
         setUser: (user) => {
           syncAuthGateCookie(user, true);
           set({ user });
+        },
+
+        establishSession: (user) => {
+          syncAuthGateCookie(user, true);
+          set({
+            user,
+            token: null,
+            isAuthenticated: true,
+            hasSessionChecked: true,
+          });
         },
       };
     },

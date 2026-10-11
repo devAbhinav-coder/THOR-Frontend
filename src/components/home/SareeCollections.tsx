@@ -53,12 +53,7 @@ export default function SareeCollections({
   if (!sortedSubcategories.length) return null;
 
   return (
-    <section
-      className={cn(
-        homeSectionStyles.pageBg,
-        "pt-2 sm:pt-4 lg:pt-6 pb-12 sm:pb-14 lg:pb-16",
-      )}
-    >
+    <section className={cn(homeSectionStyles.pageBg, "py-2 sm:py-4")}>
       <div className='mx-auto max-w-7xl px-3 sm:px-6 lg:px-8'>
         {/* Header */}
         <div className='mb-8 flex flex-col items-center gap-4 px-1 sm:mb-10 lg:flex-row lg:items-end lg:justify-between lg:px-0'>
@@ -81,7 +76,7 @@ export default function SareeCollections({
         <div
           data-lenis-prevent-horizontal
           className={cn(
-            "relative min-h-[230px] overflow-hidden sm:min-h-[420px] lg:min-h-[480px]",
+            "relative min-h-[230px] overflow-hidden sm:min-h-[300px] ",
             isSwiperLocked && "[&_.swiper-wrapper]:justify-center",
           )}
           onMouseEnter={pauseAuto}

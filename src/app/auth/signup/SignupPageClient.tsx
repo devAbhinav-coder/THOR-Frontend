@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthNavLink from "@/components/auth/AuthNavLink";
 import AuthGoogleButton from "@/components/auth/AuthGoogleButton";
@@ -110,6 +110,7 @@ export default function SignupPageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect")) || "/";
+  const prefillEmail = searchParams.get("email");
 
   const navigateAfterAuth = useCallback(() => {
     if (onSuccess) {
@@ -122,6 +123,13 @@ export default function SignupPageClient({
   const form = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
   });
+
+  useEffect(() => {
+    const raw = prefillEmail?.trim().toLowerCase();
+    if (raw && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+      form.setValue("email", raw);
+    }
+  }, [prefillEmail, form]);
 
   const otpForm = useForm<OtpForm>({
     resolver: zodResolver(otpSchema),

@@ -199,6 +199,7 @@ export const authApi = {
         }
       | { type: "login"; email: string }
       | { type: "forgot_password"; email: string }
+      | { type: "guest_checkout"; email: string }
     >,
   ) =>
     unwrapAxios(
@@ -209,7 +210,7 @@ export const authApi = {
   resendOtp: (
     data: WithTurnstile<{
       email: string;
-      type: "signup" | "login" | "forgot_password";
+      type: "signup" | "login" | "forgot_password" | "guest_checkout";
     }>,
   ) =>
     unwrapAxios(
@@ -227,6 +228,12 @@ export const authApi = {
     unwrapAxios(
       "auth.verifyOtpLogin",
       api.post("/auth/verify-otp", { ...data, type: "login" }),
+      schemas.authWithUser,
+    ),
+  verifyOtpGuestCheckout: (data: WithTurnstile<{ email: string; otp: string }>) =>
+    unwrapAxios(
+      "auth.verifyOtpGuestCheckout",
+      api.post("/auth/verify-otp", { ...data, type: "guest_checkout" }),
       schemas.authWithUser,
     ),
   verifyOtpForgot: (data: WithTurnstile<{ email: string; otp: string }>) =>
@@ -359,10 +366,10 @@ export const productApi = {
       api.get(`/products/${slug}`),
       schemas.productSingle,
     ),
-  getFeatured: () =>
+  getBestsellers: () =>
     unwrapAxios(
-      "products.featured",
-      api.get("/products/featured"),
+      "products.bestsellers",
+      api.get("/products/bestsellers"),
       schemas.productsFeatured,
     ),
   getByCategory: (category: string, params?: Record<string, string | number>) =>
@@ -479,6 +486,19 @@ export const cartApi = {
     unwrapAxios(
       "cart.remove",
       api.delete(`/cart/item/${cartItemId}`),
+      schemas.cartPayload,
+    ),
+  mergeGuest: (
+    items: Array<{
+      productId: string;
+      variant: object;
+      quantity: number;
+      customFieldAnswers?: Array<{ label: string; value: string }>;
+    }>,
+  ) =>
+    unwrapAxios(
+      "cart.mergeGuest",
+      api.post("/cart/merge-guest", { items }),
       schemas.cartPayload,
     ),
   clear: () =>

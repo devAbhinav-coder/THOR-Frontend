@@ -88,6 +88,12 @@
     overscroll-behavior-x: contain;
     overscroll-behavior-y: auto;
   }
+
+  /* Nested scroll regions (shop filters, modals): keep wheel/touch on the panel. */
+  [data-lenis-prevent],
+  [data-shop-filter-scroll] {
+    overscroll-behavior: contain;
+  }
   html {
     scroll-padding-top: 4rem;
     /* Match body so overscroll / pull-down gaps are not harsh white (Phase 2). */
@@ -447,6 +453,26 @@ html.lenis body {
 
 @media (prefers-reduced-motion: reduce) {
   .about-page .about-marquee {
+    animation: none;
+  }
+}
+
+/* Home promo strip — full-width ticker above middle banner */
+@keyframes home-promo-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.home-promo-marquee-track {
+  animation: home-promo-marquee 32s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-promo-marquee-track {
     animation: none;
   }
 }
