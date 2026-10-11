@@ -7,7 +7,7 @@ import OrderLineThumbnail from "@/components/orders/OrderLineThumbnail";
 import OrderLineCogEditor from "@/components/admin/orders/OrderLineCogEditor";
 import AdminOrderLifecycleTimeline from "@/components/admin/orders/AdminOrderLifecycleTimeline";
 import AdminCancelOrderModal from "@/components/admin/orders/AdminCancelOrderModal";
-import { getOrderCancelReason } from "@/lib/orderLifecycle";
+import { getOrderCancellationInfo } from "@/lib/orderLifecycle";
 import {
   isUsableOrderLineImage,
   isManualOfflineOrderLine,
@@ -1464,8 +1464,8 @@ export default function AdminOrderDetailsPage() {
     order.paymentStatus === "paid" &&
     order.status === "cancelled" &&
     !(order.refundData?.amount && order.refundData.amount > 0);
-  const customerCancelReason =
-    order.status === "cancelled" ? getOrderCancelReason(order) : undefined;
+  const cancellationInfo =
+    order.status === "cancelled" ? getOrderCancellationInfo(order) : undefined;
   const isB2bOrder = order.offlineMeta?.source === "b2b";
   const linkedTaxInvoiceId = getLinkedTaxInvoiceId(order);
 
@@ -1644,13 +1644,38 @@ export default function AdminOrderDetailsPage() {
           }
         />
 
-        {customerCancelReason && (
-          <div className='rounded-2xl border border-amber-200 bg-amber-50/80 p-4 sm:p-5 shadow-sm'>
-            <p className='text-sm font-bold text-amber-950'>
-              Customer cancellation reason
+        {cancellationInfo?.reason && (
+          <div
+            className={cn(
+              "rounded-2xl border p-4 sm:p-5 shadow-sm",
+              cancellationInfo.initiatedBy === "admin" ?
+                "border-slate-200 bg-slate-50/90"
+              : "border-amber-200 bg-amber-50/80",
+            )}
+          >
+            <p
+              className={cn(
+                "text-sm font-bold",
+                cancellationInfo.initiatedBy === "admin" ?
+                  "text-slate-900"
+                : "text-amber-950",
+              )}
+            >
+              {cancellationInfo.initiatedBy === "admin" ?
+                "Cancelled by admin team"
+              : cancellationInfo.initiatedBy === "customer" ?
+                "Cancelled by customer"
+              : "Cancellation reason"}
             </p>
-            <p className='text-sm text-amber-900 mt-1 whitespace-pre-wrap'>
-              {customerCancelReason}
+            <p
+              className={cn(
+                "text-sm mt-1 whitespace-pre-wrap",
+                cancellationInfo.initiatedBy === "admin" ?
+                  "text-slate-800"
+                : "text-amber-900",
+              )}
+            >
+              {cancellationInfo.reason}
             </p>
           </div>
         )}

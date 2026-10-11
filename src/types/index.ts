@@ -476,7 +476,12 @@ export interface Order {
     generatedAt?: string;
   };
   taxSalesInvoiceId?: string | { _id: string; invoiceNumber?: string };
-  statusHistory: { status: string; timestamp: string; note?: string }[];
+  statusHistory: {
+    status: string;
+    timestamp: string;
+    note?: string;
+    actor?: "customer" | "admin";
+  }[];
   /** List API: last statusHistory entry (full history only on detail). */
   latestStatus?: string;
   latestStatusAt?: string;

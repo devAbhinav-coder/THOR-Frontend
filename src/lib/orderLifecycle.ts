@@ -38,27 +38,60 @@ function labelForStatus(status: string): string {
   );
 }
 
-function sortHistory(order: Order): { status: string; timestamp: string; note?: string }[] {
+export type OrderCancelInitiatedBy = "customer" | "admin";
+
+export type OrderCancellationInfo = {
+  reason?: string;
+  initiatedBy?: OrderCancelInitiatedBy;
+};
+
+function sortHistory(
+  order: Order,
+): {
+  status: string;
+  timestamp: string;
+  note?: string;
+  actor?: OrderCancelInitiatedBy;
+}[] {
   const raw = order.statusHistory ?? [];
   return [...raw].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
   );
 }
 
-/** Customer cancellation reason stored on the cancelled statusHistory entry. */
-export function getOrderCancelReason(order: Pick<Order, "statusHistory">): string | undefined {
+/** Latest cancelled statusHistory entry (reason + who initiated). */
+export function getOrderCancellationInfo(
+  order: Pick<Order, "statusHistory">,
+): OrderCancellationInfo {
   const entries = order.statusHistory ?? [];
   for (let i = entries.length - 1; i >= 0; i--) {
     const h = entries[i];
-    if (h.status === "cancelled" && h.note?.trim()) {
-      return h.note.trim();
+    if (h.status === "cancelled") {
+      const reason = h.note?.trim() || undefined;
+      const initiatedBy =
+        h.actor === "admin" || h.actor === "customer" ? h.actor : undefined;
+      if (reason || initiatedBy) {
+        return { reason, initiatedBy };
+      }
     }
   }
-  return undefined;
+  return {};
+}
+
+/** @deprecated Prefer getOrderCancellationInfo for initiatedBy-aware UI. */
+export function getOrderCancelReason(
+  order: Pick<Order, "statusHistory">,
+): string | undefined {
+  return getOrderCancellationInfo(order).reason;
 }
 
 function historyToLifecycleEvents(
-  history: { status: string; timestamp: string; note?: string }[],
+  history: {
+    status: string;
+    timestamp: string;
+    note?: string;
+    actor?: OrderCancelInitiatedBy;
+  }[],
   orderStatus: string,
 ): OrderLifecycleEvent[] {
   if (history.length === 0) return [];
@@ -73,10 +106,19 @@ function historyToLifecycleEvents(
     else if (isLast) state = "current";
     else state = "done";
 
-    const detail =
-      h.status === "cancelled" && h.note?.trim() ?
-        `Reason: ${h.note.trim()}`
-      : h.note?.trim() || undefined;
+    const detail = (() => {
+      if (h.status !== "cancelled" || !h.note?.trim()) {
+        return h.note?.trim() || undefined;
+      }
+      const note = h.note.trim();
+      if (h.actor === "admin") {
+        return `Cancelled by team — ${note}`;
+      }
+      if (h.actor === "customer") {
+        return `Customer reason — ${note}`;
+      }
+      return `Reason: ${note}`;
+    })();
 
     return {
       key: `${h.status}-${i}-${h.timestamp}`,

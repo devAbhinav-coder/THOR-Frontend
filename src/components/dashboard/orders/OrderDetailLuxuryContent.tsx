@@ -18,7 +18,7 @@ import {
 } from "./orderDetailHelpers";
 import OrderTrackingTimeline from "./OrderTrackingTimeline";
 import { InlineStars, OrderReviewForm } from "./OrderItemReviewBlock";
-import { getOrderCancelReason } from "@/lib/orderLifecycle";
+import { getOrderCancellationInfo } from "@/lib/orderLifecycle";
 import { isOrderInvoiceAvailable } from "@/lib/orderInvoiceHelpers";
 
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
@@ -96,8 +96,8 @@ export default function OrderDetailLuxuryContent({
   const expectedDelivery = getExpectedDeliveryLabel(order);
   const showTracking =
     !isCancelledOrRefunded && trackingEvents.length > 0;
-  const cancelReason =
-    order.status === "cancelled" ? getOrderCancelReason(order) : undefined;
+  const cancellationInfo =
+    order.status === "cancelled" ? getOrderCancellationInfo(order) : undefined;
   const timelineTitle =
     order.status === "shipped" || order.status === "delivered" ?
       "Live tracking"
@@ -211,11 +211,26 @@ export default function OrderDetailLuxuryContent({
           <AlertCircle className='h-5 w-5 shrink-0 mt-0.5' />
           <div>
             <p className='font-medium capitalize'>This order has been {order.status}.</p>
-            {cancelReason && (
+            {cancellationInfo?.reason && (
               <p className='mt-1 text-red-900/90'>
-                <span className='font-semibold'>Your reason:</span> {cancelReason}
+                <span className='font-semibold'>
+                  {cancellationInfo.initiatedBy === "admin" ?
+                    "Note from our team:"
+                  : cancellationInfo.initiatedBy === "customer" ?
+                    "Your reason:"
+                  : "Reason:"}
+                </span>{" "}
+                {cancellationInfo.reason}
               </p>
             )}
+            {order.status === "cancelled" &&
+              cancellationInfo?.initiatedBy === "admin" &&
+              !cancellationInfo.reason && (
+                <p className='mt-1 text-red-900/90'>
+                  This order was cancelled by our team. Contact concierge if you
+                  have questions.
+                </p>
+              )}
             <p className='mt-2 text-red-800/90'>
               Questions?{" "}
               <a
