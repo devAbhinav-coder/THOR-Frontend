@@ -20,6 +20,8 @@ type Props = {
   orderId: string | null;
   /** Keep overlay open while the order API is processing. */
   isOpen?: boolean;
+  /** Guest checkout profile — prompt to set a password after redirect. */
+  guestLeadCheckout?: boolean;
 };
 
 type Phase = "processing" | "confirmed";
@@ -35,6 +37,7 @@ const STEPS: { id: Phase; label: string }[] = [
 export default function OrderPlacementSuccessOverlay({
   orderId,
   isOpen,
+  guestLeadCheckout = false,
 }: Props) {
   const router = useRouter();
   const isVisible = Boolean(isOpen ?? orderId);
@@ -97,18 +100,24 @@ export default function OrderPlacementSuccessOverlay({
   const isConfirmed = phase === "confirmed";
 
   const title =
-    isConfirmed ? "Order Confirmed"
-    : orderId ? "Confirming Your Order"
-    : "Processing Your Order";
+    isConfirmed ?
+      guestLeadCheckout ? "Order confirmed"
+      : "Order Confirmed"
+    : orderId ? "Confirming your order"
+    : "Processing your order";
 
   const description =
     isConfirmed ?
-      "Thank you for your purchase. We are taking you to your order details."
-    : orderId ? "Securing your payment and reserving your heritage piece…"
-    : "Please wait while we prepare and place your order…";
+      guestLeadCheckout ?
+        "Your email is verified and your session is active on this device. We are opening your order details now. To sign in on another device later, set a password from that page or use the link in your confirmation email."
+      : "Thank you for your purchase. We are taking you to your order details."
+    : orderId ? "Securing your payment and reserving your items…"
+    : "Please wait while we place your order…";
 
   const statusLabel =
-    isConfirmed ? "Redirecting to your order"
+    isConfirmed ?
+      guestLeadCheckout ? "Opening order details"
+      : "Redirecting to your order"
     : orderId ? "Almost there"
     : "Please wait";
 

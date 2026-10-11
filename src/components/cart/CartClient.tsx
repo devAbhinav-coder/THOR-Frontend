@@ -32,9 +32,10 @@ import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import { clearBuyNowSession } from "@/lib/buyNowCheckoutSession";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
-
-const SHIPPING_THRESHOLD = 1099;
-const SHIPPING_CHARGE = 1;
+import {
+  SHIPPING_CHARGE,
+  SHIPPING_THRESHOLD,
+} from "@/components/checkout/checkoutForm";
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70";
 
@@ -712,8 +713,8 @@ export default function CartClient() {
 
                 {!isAuthenticated ?
                   <p className='mb-3 text-center text-[11px] leading-relaxed text-white/70 max-lg:hidden'>
-                    Guest checkout: verify your email on the next step (one-time
-                    code).{" "}
+                    Checkout as a guest: verify your email at the next step with
+                    a one-time code.{" "}
                     <Link
                       href={loginUrlWithRedirect("/checkout")}
                       className='text-[#ffdea5] underline-offset-2 hover:underline'

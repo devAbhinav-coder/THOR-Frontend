@@ -1749,6 +1749,7 @@ export default function CheckoutClient() {
       <OrderPlacementSuccessOverlay
         isOpen={isPlacingOrder || Boolean(pendingOrderSuccessId)}
         orderId={pendingOrderSuccessId}
+        guestLeadCheckout={Boolean(user?.offlineLead)}
       />
       <div className='mx-auto box-border min-w-0 max-w-7xl px-4 pt-3 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-10 sm:pb-18 lg:px-8 lg:py-6'>
         <header className='mb-1 lg:mb-2.5'>

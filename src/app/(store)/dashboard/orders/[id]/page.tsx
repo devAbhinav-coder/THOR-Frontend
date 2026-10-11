@@ -30,6 +30,7 @@ import {
 } from "@/lib/orderReturnHelpers";
 import { getMaxRefundableInr } from "@/lib/orderRefundPolicy";
 import { useAuthStore } from "@/store/useAuthStore";
+import GuestAccountFinishBanner from "@/components/account/GuestAccountFinishBanner";
 
 const EMOTIONAL_MESSAGES = [
   {
@@ -607,6 +608,7 @@ export default function OrderDetailPage() {
           Refreshing order…
         </p>
       )}
+      <GuestAccountFinishBanner />
       <OrderDetailLuxuryContent
         order={order}
         trackingHref={trackingHref}
