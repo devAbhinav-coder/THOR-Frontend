@@ -494,7 +494,6 @@ export default function PremiumProductClient({
       });
       return;
     }
-    if (!isAuthenticated) return requireAuth("Sign in to add items to cart");
     if (selectedVariant.stock <= 0) {
       toast.error("Please select an available size");
       return;
@@ -539,7 +538,6 @@ export default function PremiumProductClient({
       });
       return;
     }
-    if (!isAuthenticated) return requireAuth("Sign in to buy now");
     if (selectedVariant.stock <= 0) {
       toast.error("Please select an available size");
       return;

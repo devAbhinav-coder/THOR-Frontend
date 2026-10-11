@@ -727,7 +727,6 @@ export default function ProductDetailClient({
   };
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) return requireAuth("Sign in to add items to cart");
     if (!selectedVariant || isOutOfStock) return;
 
     // Validate inline fields (if any)
@@ -770,7 +769,6 @@ export default function ProductDetailClient({
   };
 
   const handleBuyNow = async () => {
-    if (!isAuthenticated) return requireAuth("Sign in to buy now");
     if (!selectedVariant || isOutOfStock) return;
 
     // Validate inline fields (if any)

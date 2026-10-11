@@ -10,7 +10,11 @@ import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { isPostCheckoutAuthGuardActive } from "@/lib/checkoutSuccessGuard";
 import { unwrapAxios, parseApiResponse } from "@/lib/parseApi";
 import * as schemas from "@/lib/api-schemas";
-import { isAuthPublicRequest, isAuthMeRequest } from "@/lib/authRequestPaths";
+import {
+  isAuthPublicRequest,
+  isAuthMeRequest,
+  isGuestCartApiRequest,
+} from "@/lib/authRequestPaths";
 import type {
   AdminCreateOfflineOrderBody,
   AdminCreateB2bOrderBody,
@@ -88,6 +92,9 @@ api.interceptors.response.use(
       }
       if (isPostCheckoutAuthGuardActive()) {
         return Promise.reject({ message: "Session expired", status: 401 });
+      }
+      if (isGuestCartApiRequest(originalRequest)) {
+        return Promise.reject({ message: "Sign in to sync cart", status: 401 });
       }
       const path = `${window.location.pathname}${window.location.search || ""}`;
       if (!path.startsWith("/auth") && !isAuthMeRequest(originalRequest)) {

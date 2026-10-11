@@ -6,6 +6,7 @@ import { StoreRaniCare } from "@/components/support/StoreRaniCare";
 import StoreAuthModal from "@/components/auth/StoreAuthModal";
 import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
 import WishlistRehydrator from "@/components/wishlist/WishlistRehydrator";
+import GuestCartHydrator from "@/components/cart/GuestCartHydrator";
 import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
 import { fetchStorefrontSettingsHome } from "@/lib/storefrontServer";
 import Navbar from "@/components/layout/Navbar";
@@ -26,6 +27,7 @@ export default async function StoreLayout({
   return (
     <>
       <WishlistRehydrator />
+      <GuestCartHydrator />
       <StoreVisitTracker />
       <Navbar initialNavCategories={initialNavCategories} />
       <main className='isolate min-h-screen flex flex-col bg-background pb-0 lg:pb-0'>

@@ -406,6 +406,31 @@ export const useCartStore = create<CartState>((set, get) => ({
     const previousCount = get().itemCount;
     const previousCoupon = get().appliedCouponCode;
 
+    /** Guest bag: localStorage only — never hit protected /cart APIs (avoids 401 → login redirect). */
+    if (!useAuthStore.getState().isAuthenticated) {
+      if (!product) {
+        toast.error("Could not add to bag. Open the product page and try again.");
+        return;
+      }
+      addCartInFlight.add(key);
+      try {
+        const lines = upsertGuestStorageLine(
+          product,
+          variant,
+          quantity,
+          customFieldAnswers,
+        );
+        publishCart(guestLinesToCart(lines), { previousCoupon });
+        const toastMsg = options?.successToast;
+        if (toastMsg !== false) {
+          toast.success(toastMsg ?? "Added to cart!");
+        }
+      } finally {
+        addCartInFlight.delete(key);
+      }
+      return;
+    }
+
     if (product) {
       addCartInFlight.add(key);
       const optimistic = mergeOptimisticCart(
@@ -433,25 +458,11 @@ export const useCartStore = create<CartState>((set, get) => ({
         toast.success(toastMsg ?? "Added to cart!");
       }
     } catch (err: unknown) {
-      const error = err as CartApiError;
-      if (error.status === 401 && product) {
-        const lines = upsertGuestStorageLine(
-          product,
-          variant,
-          quantity,
-          customFieldAnswers,
-        );
-        publishCart(guestLinesToCart(lines), { previousCoupon });
-        const toastMsg = options?.successToast;
-        if (toastMsg !== false) {
-          toast.success(toastMsg ?? "Added to cart!");
-        }
-        return;
-      }
       if (product) {
         publishCart(previousCart, { previousCoupon });
         if (!previousCart) set({ itemCount: previousCount });
       }
+      const error = err as CartApiError;
       toast.error(error.message || "Failed to add to cart");
       throw err;
     } finally {

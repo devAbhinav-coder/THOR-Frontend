@@ -23,3 +23,20 @@ export function isAuthMeRequest(config: InternalAxiosRequestConfig): boolean {
   const path = (config.url || "").split("?")[0];
   return path === "/auth/me" || path === "auth/me" || path.endsWith("/auth/me");
 }
+
+/** Cart calls while browsing as guest must fail softly (local bag), not hard-redirect to login. */
+export function isGuestCartApiRequest(
+  config: InternalAxiosRequestConfig,
+): boolean {
+  const path = (config.url || "").split("?")[0];
+  return (
+    path === "/cart" ||
+    path.endsWith("/cart") ||
+    path.includes("/cart/add") ||
+    path.includes("/cart/merge-guest") ||
+    path.includes("/cart/item/") ||
+    path.includes("/cart/apply-coupon") ||
+    path.includes("/cart/coupon") ||
+    path.includes("/cart/promotion-preview")
+  );
+}
