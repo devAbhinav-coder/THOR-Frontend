@@ -40,3 +40,11 @@ export function isGuestCartApiRequest(
     path.includes("/cart/promotion-preview")
   );
 }
+
+/** Guest order confirm/resend/contact — token auth, not session; never hard-redirect to login. */
+export function isGuestOrderApiRequest(
+  config: InternalAxiosRequestConfig,
+): boolean {
+  const path = (config.url || "").split("?")[0];
+  return path.includes("/guest-orders/");
+}

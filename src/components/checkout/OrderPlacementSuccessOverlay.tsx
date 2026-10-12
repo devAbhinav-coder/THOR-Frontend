@@ -6,6 +6,8 @@ import { Check, Loader2, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lockBodyScroll, unlockBodyScroll } from "@/lib/bodyScrollLock";
 import { clearPostCheckoutAuthGuard } from "@/lib/checkoutSuccessGuard";
+import { formatPrice } from "@/lib/utils";
+import { guestVerificationCopy } from "@/lib/guestVerificationCopy";
 import {
   heritageOverlayBody,
   heritageOverlayCard,
@@ -20,8 +22,17 @@ type Props = {
   orderId: string | null;
   /** Keep overlay open while the order API is processing. */
   isOpen?: boolean;
-  /** Guest checkout profile — prompt to set a password after redirect. */
-  guestLeadCheckout?: boolean;
+  /** Guest checkout — contact confirmation still pending. */
+  guestAwaitingContactConfirm?: boolean;
+  /** Override post-success navigation (e.g. guest confirm page). */
+  redirectPath?: string | null;
+  /** Minimal recap for guests on the success step. */
+  orderSummary?: {
+    orderNumber: string;
+    total: number;
+    itemCount: number;
+    paymentMethod?: string;
+  } | null;
 };
 
 type Phase = "processing" | "confirmed";
@@ -37,7 +48,9 @@ const STEPS: { id: Phase; label: string }[] = [
 export default function OrderPlacementSuccessOverlay({
   orderId,
   isOpen,
-  guestLeadCheckout = false,
+  guestAwaitingContactConfirm = false,
+  redirectPath = null,
+  orderSummary = null,
 }: Props) {
   const router = useRouter();
   const isVisible = Boolean(isOpen ?? orderId);
@@ -74,12 +87,22 @@ export default function OrderPlacementSuccessOverlay({
         () => setPhase("confirmed"),
         reduceMotion ? 320 : 1200,
       );
+      const target =
+        redirectPath ||
+        `/dashboard/orders/${encodeURIComponent(orderId)}`;
+      const guestConfirmTarget = target.includes("/order/confirm");
       redirectTimer = window.setTimeout(
         () => {
           clearPostCheckoutAuthGuard();
-          router.push(`/dashboard/orders/${encodeURIComponent(orderId)}`);
+          if (guestConfirmTarget) {
+            router.replace(target);
+          } else {
+            router.push(target);
+          }
         },
-        reduceMotion ? 1200 : 3600,
+        reduceMotion ?
+          guestConfirmTarget ? 900 : 1200
+        : guestConfirmTarget ? 2200 : 3600,
       );
     }
 
@@ -89,7 +112,7 @@ export default function OrderPlacementSuccessOverlay({
       if (confirmTimer) window.clearTimeout(confirmTimer);
       if (redirectTimer) window.clearTimeout(redirectTimer);
     };
-  }, [isVisible, orderId, router]);
+  }, [isVisible, orderId, redirectPath, router]);
 
   if (!isVisible) return null;
 
@@ -101,22 +124,24 @@ export default function OrderPlacementSuccessOverlay({
 
   const title =
     isConfirmed ?
-      guestLeadCheckout ? "Order confirmed"
-      : "Order Confirmed"
+      guestAwaitingContactConfirm ?
+        guestVerificationCopy.checkEmailHeadline
+      : "Order confirmed"
     : orderId ? "Confirming your order"
     : "Processing your order";
 
   const description =
     isConfirmed ?
-      guestLeadCheckout ?
-        "Your email is verified and your session is active on this device. We are opening your order details now. To sign in on another device later, set a password from that page or use the link in your confirmation email."
+      guestAwaitingContactConfirm ?
+        guestVerificationCopy.overlayDescription
       : "Thank you for your purchase. We are taking you to your order details."
     : orderId ? "Securing your payment and reserving your items…"
     : "Please wait while we place your order…";
 
   const statusLabel =
     isConfirmed ?
-      guestLeadCheckout ? "Opening order details"
+      guestAwaitingContactConfirm ?
+        guestVerificationCopy.overlayStatusLabel
       : "Redirecting to your order"
     : orderId ? "Almost there"
     : "Please wait";
@@ -219,6 +244,27 @@ export default function OrderPlacementSuccessOverlay({
         <p id='order-success-desc' className={heritageOverlayBody}>
           {description}
         </p>
+
+        {isConfirmed && orderSummary ?
+          <div className='mx-auto mt-6 max-w-sm border border-gray-100 bg-gray-50/90 px-4 py-3 text-left text-sm'>
+            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500'>
+              Order summary
+            </p>
+            <p className='mt-1 font-medium text-navy-900'>
+              {orderSummary.orderNumber}
+            </p>
+            <p className='mt-1 text-gray-600'>
+              {orderSummary.itemCount}{" "}
+              {orderSummary.itemCount === 1 ? "item" : "items"} ·{" "}
+              {formatPrice(orderSummary.total)}
+              {orderSummary.paymentMethod === "cod" ?
+                " · Cash on delivery"
+              : orderSummary.paymentMethod === "razorpay" ?
+                " · Paid online"
+              : null}
+            </p>
+          </div>
+        : null}
 
         <div className='mx-auto mt-8 max-w-xs'>
           <div className='h-1 w-full overflow-hidden bg-gray-100'>

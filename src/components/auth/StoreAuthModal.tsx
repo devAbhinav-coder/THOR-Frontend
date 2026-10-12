@@ -48,6 +48,12 @@ export default function StoreAuthModal() {
     () => safeRedirectPath(redirectRaw?.split("?")[0] || "/") || "/",
     [redirectRaw],
   );
+  const guestFinish = searchParams.get("guestFinish") === "1";
+  const authUser = useAuthStore((s) => s.user);
+  const guestPasswordModal =
+    guestFinish &&
+    authUser?.offlineLead === true &&
+    authUser.emailVerified === true;
 
   const dismissModal = useCallback(() => {
     router.replace(closeAuthModalUrl(pathname, search), { scroll: false });
@@ -77,19 +83,40 @@ export default function StoreAuthModal() {
   }, [pathname, redirect, router, search]);
 
   useEffect(() => {
-    if (!view || !sessionReady || !isAuthenticated || admin2faPending) return;
-    dismissModal();
-  }, [view, sessionReady, isAuthenticated, admin2faPending, dismissModal]);
+    if (!view || !sessionReady || admin2faPending) return;
+    if (isAuthenticated && !guestPasswordModal) {
+      dismissModal();
+    }
+  }, [
+    view,
+    sessionReady,
+    isAuthenticated,
+    admin2faPending,
+    guestPasswordModal,
+    dismissModal,
+  ]);
 
   if (!view && !admin2faPending) return null;
 
-  if (sessionReady && isAuthenticated && !admin2faPending) return null;
+  if (
+    sessionReady &&
+    isAuthenticated &&
+    !admin2faPending &&
+    !guestPasswordModal
+  ) {
+    return null;
+  }
 
   const modalView = admin2faPending ? "login" : view!;
-  const modalTitle = admin2faPending ? "Admin two-factor" : TITLES[view!];
+  const modalTitle =
+    admin2faPending ? "Admin two-factor"
+    : guestPasswordModal ? "Create your password"
+    : TITLES[view!];
   const modalSubtitle =
     admin2faPending ?
       "Enter the code from your authenticator app"
+    : guestPasswordModal ?
+      "Your order is verified — set a password to save this account."
     : SUBTITLES[view!];
 
   return (

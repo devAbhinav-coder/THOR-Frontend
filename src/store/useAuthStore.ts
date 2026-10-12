@@ -73,6 +73,13 @@ interface AuthState {
     password: string;
     phone: string;
     turnstileToken?: string;
+  }) => Promise<{ data?: { skipOtp?: boolean; offlineLeadFinish?: boolean } }>;
+  finishOfflineLeadSignup: (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    turnstileToken?: string;
   }) => Promise<void>;
   signupVerify: (
     email: string,
@@ -157,7 +164,23 @@ export const useAuthStore = create<AuthState>()(
         signupStart: async (data) => {
           set({ isLoading: true });
           try {
-            await authApi.signupStart(data);
+            return await authApi.signupStart(data);
+          } finally {
+            set({ isLoading: false });
+          }
+        },
+
+        finishOfflineLeadSignup: async (data) => {
+          set({ isLoading: true });
+          try {
+            const body = await authApi.finishOfflineLeadSignup(data);
+            set({
+              user: body.data.user,
+              token: null,
+              isAuthenticated: true,
+              hasSessionChecked: true,
+            });
+            syncAuthGateCookie(body.data.user, true);
           } finally {
             set({ isLoading: false });
           }

@@ -62,6 +62,9 @@ import { AdminAiExplainButton } from "@/components/admin/ai";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import OrderMarketingAttributionCard from "@/components/admin/orders/OrderMarketingAttributionCard";
 import OrderReviewInvitePanel from "@/components/admin/OrderReviewInvitePanel";
+import AdminGuestCheckoutPanel, {
+  type AdminGuestCheckoutMeta,
+} from "@/components/admin/orders/AdminGuestCheckoutPanel";
 
 function adminPaymentMethodLabel(pm: Order["paymentMethod"]): string {
   switch (pm) {
@@ -1217,6 +1220,8 @@ export default function AdminOrderDetailsPage() {
   const [resolvingReturn, setResolvingReturn] = useState(false);
   const [returnAdminNote, setReturnAdminNote] = useState("");
   const [customerSegment, setCustomerSegment] = useState<string | null>(null);
+  const [guestCheckout, setGuestCheckout] =
+    useState<AdminGuestCheckoutMeta | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const trackingHref = useMemo(() => {
@@ -1235,28 +1240,33 @@ export default function AdminOrderDetailsPage() {
     };
   }, [order]);
 
+  const loadOrder = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setIsLoading(true);
+    try {
+      const res = await adminApi.getOrderDetails(id);
+      const o: Order = res.data.order;
+      setOrder(o);
+      const gc = (res.data as { guestCheckout?: AdminGuestCheckoutMeta })
+        .guestCheckout;
+      setGuestCheckout(gc ?? null);
+      setTracking({
+        shippingCarrier: o.shippingCarrier || "",
+        trackingNumber: o.trackingNumber || "",
+        trackingUrl: o.trackingUrl || "",
+        note: "",
+      });
+    } catch (err: unknown) {
+      toast.error(
+        (err as { message?: string })?.message || "Failed to load order",
+      );
+    } finally {
+      if (!opts?.silent) setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const run = async () => {
-      setIsLoading(true);
-      try {
-        const res = await adminApi.getOrderDetails(id);
-        const o: Order = res.data.order;
-        setOrder(o);
-        setTracking({
-          shippingCarrier: o.shippingCarrier || "",
-          trackingNumber: o.trackingNumber || "",
-          trackingUrl: o.trackingUrl || "",
-          note: "",
-        });
-      } catch (err: unknown) {
-        toast.error(
-          (err as { message?: string })?.message || "Failed to load order",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    run();
+    void loadOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when order id changes
   }, [id]);
 
   useEffect(() => {
@@ -2124,6 +2134,13 @@ export default function AdminOrderDetailsPage() {
                 <p className='text-xs text-gray-500 mt-1'>{user.phone}</p>
               )}
             </div>
+
+            {guestCheckout ?
+              <AdminGuestCheckoutPanel
+                meta={guestCheckout}
+                onUpdated={() => loadOrder({ silent: true })}
+              />
+            : null}
 
             {isB2bOrder && (
               <div className='bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow'>

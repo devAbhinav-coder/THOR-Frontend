@@ -57,6 +57,14 @@ import {
 
 type UserInsight = {
   user: User;
+  guestVerification?: {
+    contactVerified: boolean;
+    verifiedVia?: string | null;
+    confirmedAt?: string | null;
+    confirmEmailSentAt?: string | null;
+    confirmEmailSendCount?: number;
+    latestOrderNumber?: string | null;
+  } | null;
   metrics: {
     orderCount: number;
     paidOrderCount: number;
@@ -207,6 +215,9 @@ export default function AdminUsersPage() {
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const debouncedAdminSearch = useDebouncedValue(adminSearch.trim(), 300);
   const [userPage, setUserPage] = useState(1);
+  const [guestFilter, setGuestFilter] = useState<
+    "all" | "web_guest_all" | "web_guest_verified" | "web_guest_unverified"
+  >("all");
   const [adminPage, setAdminPage] = useState(1);
   const [teamAccessTarget, setTeamAccessTarget] = useState<User | null>(null);
   const [teamAccessMode, setTeamAccessMode] = useState<"create" | "edit">(
@@ -224,13 +235,14 @@ export default function AdminUsersPage() {
     isLoading,
     isError: listError,
   } = useQuery({
-    queryKey: ["admin-users", userPage, debouncedSearch],
+    queryKey: ["admin-users", userPage, debouncedSearch, guestFilter],
     queryFn: async () => {
       const res = await adminApi.getUsers({
         page: userPage,
         limit: 20,
         role: "user",
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(guestFilter !== "all" ? { guestStatus: guestFilter } : {}),
       });
       return res;
     },
@@ -401,6 +413,33 @@ export default function AdminUsersPage() {
       void queryClient.invalidateQueries({ queryKey: ["admin-admins"] });
     },
     onError: () => toast.error("Failed to save note"),
+  });
+
+  const verifyGuestMutation = useMutation({
+    mutationFn: (userId: string) => adminApi.verifyGuestContact(userId),
+    onSuccess: () => {
+      toast.success("Guest contact marked verified");
+      void queryClient.invalidateQueries({ queryKey: ["admin-user-insights"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (err: unknown) => {
+      toast.error(
+        err instanceof Error ? err.message : "Could not verify guest contact",
+      );
+    },
+  });
+
+  const resendGuestConfirmMutation = useMutation({
+    mutationFn: (userId: string) => adminApi.resendGuestConfirmEmail(userId),
+    onSuccess: () => {
+      toast.success("Confirmation email queued");
+      void queryClient.invalidateQueries({ queryKey: ["admin-user-insights"] });
+    },
+    onError: (err: unknown) => {
+      toast.error(
+        err instanceof Error ? err.message : "Could not resend email",
+      );
+    },
   });
 
   const toggleStatus = (userId: string) => {
@@ -1067,14 +1106,43 @@ export default function AdminUsersPage() {
                 </p>
               </div>
             </div>
-            <div className='mt-4 max-w-md'>
-              <SearchField
-                value={search}
-                onChange={setSearch}
-                placeholder='Name, email, or phone…'
-                isLoading={search.trim() !== debouncedSearch}
-                aria-label='Search users'
-              />
+            <div className='mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+              <div className='flex flex-wrap gap-2'>
+                {(
+                  [
+                    ["all", "All customers"],
+                    ["web_guest_all", "Web guests"],
+                    ["web_guest_verified", "Guest · verified"],
+                    ["web_guest_unverified", "Guest · unverified"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type='button'
+                    onClick={() => {
+                      setGuestFilter(id);
+                      setUserPage(1);
+                    }}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide border transition-colors",
+                      guestFilter === id ?
+                        "border-navy-900 bg-navy-900 text-white"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-brand-300",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className='w-full max-w-md sm:w-72'>
+                <SearchField
+                  value={search}
+                  onChange={setSearch}
+                  placeholder='Name, email, or phone…'
+                  isLoading={search.trim() !== debouncedSearch}
+                  aria-label='Search users'
+                />
+              </div>
             </div>
           </div>
 
@@ -1108,6 +1176,21 @@ export default function AdminUsersPage() {
                         <p className='text-sm font-semibold text-gray-900 truncate'>
                           {user.name}
                         </p>
+                        {user.offlineLead ?
+                          <Badge
+                            variant='outline'
+                            className={cn(
+                              "mt-1 text-[10px]",
+                              user.emailVerified ?
+                                "border-emerald-300 text-emerald-800"
+                              : "border-amber-300 text-amber-900",
+                            )}
+                          >
+                            {user.emailVerified ?
+                              "Web guest · verified"
+                            : "Web guest · unverified"}
+                          </Badge>
+                        : null}
                         <p className='text-xs text-gray-500 truncate'>
                           {directoryCustomerSubtitle(user)}
                         </p>
@@ -1221,6 +1304,20 @@ export default function AdminUsersPage() {
                             <p className='font-semibold text-gray-900 truncate'>
                               {user.name}
                             </p>
+                            {user.offlineLead ?
+                              <span
+                                className={cn(
+                                  "mt-0.5 inline-block text-[10px] font-semibold uppercase tracking-wide",
+                                  user.emailVerified ?
+                                    "text-emerald-700"
+                                  : "text-amber-800",
+                                )}
+                              >
+                                {user.emailVerified ?
+                                  "Web guest · verified"
+                                : "Web guest · unverified"}
+                              </span>
+                            : null}
                             <p className='text-xs text-gray-400 truncate'>
                               {directoryCustomerSubtitle(user)}
                             </p>
@@ -1405,6 +1502,18 @@ export default function AdminUsersPage() {
 
                   <div className='flex flex-wrap items-center gap-2'>
                     {tierBadge(insight.metrics.userSegment)}
+                    {insight.user.offlineLead && insight.user.emailVerified ?
+                      <Badge className='bg-emerald-100 text-emerald-900 hover:bg-emerald-100'>
+                        Web guest · verified
+                        {insight.guestVerification?.verifiedVia ?
+                          ` (${insight.guestVerification.verifiedVia})`
+                        : ""}
+                      </Badge>
+                    : insight.user.offlineLead ?
+                      <Badge className='bg-amber-100 text-amber-900 hover:bg-amber-100'>
+                        Web guest · unverified
+                      </Badge>
+                    : null}
                     {insight.metrics.lastOrderAt && (
                       <span className='text-xs text-gray-500 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1'>
                         <Clock3 className='h-3.5 w-3.5' /> Last order{" "}
@@ -1412,6 +1521,63 @@ export default function AdminUsersPage() {
                       </span>
                     )}
                   </div>
+
+                  {insight.user.offlineLead && insight.user.emailVerified ?
+                    <div className='rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-4'>
+                      <p className='text-sm font-medium text-emerald-950'>
+                        Guest contact verified
+                      </p>
+                      <p className='mt-1 text-xs text-emerald-900/80'>
+                        {insight.guestVerification?.verifiedVia === "customer" ?
+                          "Customer confirmed via email link."
+                        : insight.guestVerification?.verifiedVia === "admin" ?
+                          "Marked verified by your team."
+                        : "Contact is verified."}
+                        {insight.guestVerification?.confirmedAt ?
+                          ` · ${formatDate(insight.guestVerification.confirmedAt)}`
+                        : null}
+                      </p>
+                    </div>
+                  : insight.user.offlineLead ?
+                    <div className='rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 space-y-3'>
+                      <div>
+                        <p className='text-sm font-medium text-amber-950'>
+                          Awaiting guest email confirmation
+                        </p>
+                        <p className='mt-1 text-xs text-amber-900/80'>
+                          {insight.guestVerification?.confirmEmailSentAt ?
+                            `Last confirmation email queued: ${formatDate(insight.guestVerification.confirmEmailSentAt)} · sent ${insight.guestVerification.confirmEmailSendCount ?? 0} time(s)`
+                          : "No confirmation email recorded yet — resend after checkout or call the customer."}
+                          {insight.guestVerification?.latestOrderNumber ?
+                            ` · Order ${insight.guestVerification.latestOrderNumber}`
+                          : null}
+                        </p>
+                      </div>
+                      <div className='flex flex-wrap gap-2'>
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='outline'
+                          disabled={resendGuestConfirmMutation.isPending}
+                          onClick={() =>
+                            resendGuestConfirmMutation.mutate(selectedUser._id)
+                          }
+                        >
+                          Resend confirmation email
+                        </Button>
+                        <Button
+                          type='button'
+                          size='sm'
+                          disabled={verifyGuestMutation.isPending}
+                          onClick={() =>
+                            verifyGuestMutation.mutate(selectedUser._id)
+                          }
+                        >
+                          Mark verified (call / WhatsApp)
+                        </Button>
+                      </div>
+                    </div>
+                  : null}
 
                   <div className='rounded-2xl border border-gray-200 bg-white p-4 shadow-sm'>
                     <div className='flex items-center gap-2 mb-2'>

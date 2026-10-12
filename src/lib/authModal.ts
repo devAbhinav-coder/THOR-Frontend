@@ -33,6 +33,28 @@ export function closeAuthModalUrl(pathname: string, currentSearch: string): stri
   const params = new URLSearchParams(currentSearch);
   params.delete("auth");
   params.delete("redirect");
+  params.delete("guestFinish");
+  params.delete("email");
+  const q = params.toString();
+  return q ? `${pathname}?${q}` : pathname;
+}
+
+/** Guest verified on order page — password step in auth modal (same as navbar signup overlay). */
+export function openGuestPasswordModalUrl(
+  pathname: string,
+  currentSearch: string,
+  opts: { email: string; redirectPath?: string },
+): string {
+  const params = new URLSearchParams(currentSearch);
+  params.set("auth", "signup");
+  params.set("guestFinish", "1");
+  params.set("email", opts.email.trim().toLowerCase());
+  if (opts.redirectPath) {
+    const trimmed = opts.redirectPath.trim();
+    if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+      params.set("redirect", trimmed);
+    }
+  }
   const q = params.toString();
   return q ? `${pathname}?${q}` : pathname;
 }

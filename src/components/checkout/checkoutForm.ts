@@ -39,6 +39,33 @@ export const addressSchema = z.object({
 
 export type AddressForm = z.infer<typeof addressSchema>;
 
+export const checkoutFormSchema = addressSchema.extend({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Enter a valid email address"),
+});
+
+/** Signed-in customers: email comes from the account, not the address form. */
+export const loggedInCheckoutSchema = addressSchema.extend({
+  email: z.string().optional(),
+});
+
+export type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
+
+export const CHECKOUT_SHIPPING_FIELD_NAMES = [
+  "name",
+  "phone",
+  "street",
+  "city",
+  "state",
+  "pincode",
+  "country",
+  "house",
+  "landmark",
+] as const;
+
 export const MONGO_OBJECT_ID_HEX = /^[a-fA-F0-9]{24}$/;
 
 export function normalizeCheckoutMongoId(value: unknown): string | null {

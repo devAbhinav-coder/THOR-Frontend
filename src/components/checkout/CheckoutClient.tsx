@@ -104,8 +104,10 @@ import {
   getClientApiError,
 } from "@/lib/clientApiError";
 import {
-  addressSchema,
-  type AddressForm,
+  checkoutFormSchema,
+  loggedInCheckoutSchema,
+  CHECKOUT_SHIPPING_FIELD_NAMES,
+  type CheckoutFormValues,
   normalizeCheckoutMongoId,
   SHIPPING_THRESHOLD,
   SHIPPING_CHARGE,
@@ -115,7 +117,14 @@ import {
   toE164IndianMobile,
 } from "./checkoutForm";
 import { CheckoutReviewRecap } from "./CheckoutReviewRecap";
-import GuestCheckoutEmailGate from "@/components/checkout/GuestCheckoutEmailGate";
+import {
+  guestLinesForMergeApi,
+  readGuestCartLines,
+} from "@/lib/guestCartStorage";
+import {
+  readGuestCheckoutProfile,
+  saveGuestCheckoutProfile,
+} from "@/lib/guestCheckoutProfile";
 
 type ReviewAddressDisplay = {
   name: string;
@@ -153,6 +162,18 @@ export default function CheckoutClient() {
   const [pendingOrderSuccessId, setPendingOrderSuccessId] = useState<
     string | null
   >(null);
+  const [postCheckoutRedirect, setPostCheckoutRedirect] = useState<
+    string | null
+  >(null);
+  const [guestAwaitingContactConfirm, setGuestAwaitingContactConfirm] =
+    useState(false);
+  const [postCheckoutOrderSummary, setPostCheckoutOrderSummary] = useState<{
+    orderNumber: string;
+    total: number;
+    itemCount: number;
+    paymentMethod?: string;
+  } | null>(null);
+  const guestRazorpayTokenRef = useRef<string | null>(null);
   const [lineBusySku, setLineBusySku] = useState<string | null>(null);
   const [showShippingForm, setShowShippingForm] = useState(false);
   const shippingFieldsRef = useRef<HTMLDivElement>(null);
@@ -203,6 +224,9 @@ export default function CheckoutClient() {
     useAuthStore();
   const router = useRouter();
 
+  const useGuestCheckoutForm =
+    hasSessionChecked && !isAuthenticated && !orderId;
+
   const {
     register,
     handleSubmit,
@@ -212,9 +236,11 @@ export default function CheckoutClient() {
     trigger,
     getValues,
     watch,
-  } = useForm<AddressForm>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: { country: "India" },
+  } = useForm<CheckoutFormValues>({
+    resolver: zodResolver(
+      useGuestCheckoutForm ? checkoutFormSchema : loggedInCheckoutSchema,
+    ),
+    defaultValues: { country: "India", email: "" },
     shouldUnregister: false,
     mode: "onTouched",
     reValidateMode: "onChange",
@@ -229,7 +255,13 @@ export default function CheckoutClient() {
   const watchedCity = watch("city");
   const watchedState = watch("state");
   const watchedPincode = watch("pincode");
+  const showSavedAddressBook =
+    isAuthenticated &&
+    !user?.offlineLead &&
+    (user?.addresses?.length ?? 0) > 0;
+
   const showManualAddressPreview =
+    showSavedAddressBook &&
     !showShippingForm &&
     !selectedAddressId &&
     Boolean((watchedStreet || "").trim());
@@ -293,6 +325,25 @@ export default function CheckoutClient() {
   }, [orderId, buyNowItem, fetchCart]);
 
   useEffect(() => {
+    if (!hasSessionChecked) return;
+    if (!isAuthenticated && !orderId) {
+      void fetchCart().catch(() => {});
+    }
+  }, [hasSessionChecked, isAuthenticated, orderId, fetchCart]);
+
+  useEffect(() => {
+    if (user?.email && !useGuestCheckoutForm) {
+      setValue("email", user.email, { shouldValidate: false });
+      return;
+    }
+    if (!useGuestCheckoutForm) return;
+    const profile = readGuestCheckoutProfile();
+    if (profile?.email) setValue("email", profile.email);
+    if (profile?.name) setValue("name", profile.name);
+    if (profile?.phone) setValue("phone", profile.phone);
+  }, [user?.email, useGuestCheckoutForm, setValue]);
+
+  useEffect(() => {
     if (!isAuthenticated) return;
     if (orderId) {
       const fetchOrder = async () => {
@@ -326,7 +377,7 @@ export default function CheckoutClient() {
 
   /** Live buy-now price + auto-offer preview (sale-aware, matches checkout). */
   useEffect(() => {
-    if (!isAuthenticated || !buyNowItem) {
+    if (!buyNowItem) {
       setBuyNowPromotion(null);
       setBuyNowPromotionDiscount(0);
       setBuyNowPromotionHint(null);
@@ -403,17 +454,11 @@ export default function CheckoutClient() {
     return () => {
       cancelled = true;
     };
-  }, [
-    isAuthenticated,
-    buyNowItem?.productId,
-    buyNowItem?.quantity,
-    buyNowItem?.variant?.sku,
-    router,
-  ]);
+  }, [buyNowItem?.productId, buyNowItem?.quantity, buyNowItem?.variant?.sku, router]);
 
   /** Mobile Safari / bfcache: re-sync buy-now or cart when user returns to checkout tab. */
   useEffect(() => {
-    if (!isAuthenticated || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       if (buyNowItem) {
@@ -447,7 +492,9 @@ export default function CheckoutClient() {
             });
           })
           .catch(() => {});
-      } else if (!orderId) {
+      } else if (!orderId && isAuthenticated) {
+        void fetchCart().catch(() => {});
+      } else if (!orderId && !isAuthenticated) {
         void fetchCart().catch(() => {});
       }
     };
@@ -885,7 +932,18 @@ export default function CheckoutClient() {
   );
 
   useEffect(() => {
-    if (!user || orderId) return;
+    if (useGuestCheckoutForm || !user || orderId) {
+      if (useGuestCheckoutForm) {
+        setShowShippingForm(true);
+        setSelectedAddressId("");
+      }
+      return;
+    }
+    if (user.offlineLead) {
+      setShowShippingForm(true);
+      setSelectedAddressId("");
+      return;
+    }
     const addrs = user.addresses;
     if (addrs && addrs.length > 0) {
       setShowShippingForm(false);
@@ -898,7 +956,7 @@ export default function CheckoutClient() {
       didInitDefaultSavedAddress.current = false;
       setShowShippingForm(true);
     }
-  }, [user, orderId, loadAddress]);
+  }, [user, orderId, loadAddress, useGuestCheckoutForm]);
 
   useEffect(() => {
     if (existingOrder?.shippingAddress?.name) {
@@ -908,11 +966,16 @@ export default function CheckoutClient() {
 
   /** Opens shipping fields if needed so focus + inline errors work (saved-address collapsed UI). */
   const validateAddressFields = useCallback(async (): Promise<boolean> => {
-    let ok = await trigger(undefined, { shouldFocus: true });
+    const fields: (keyof CheckoutFormValues)[] = [
+      ...CHECKOUT_SHIPPING_FIELD_NAMES,
+    ];
+    if (useGuestCheckoutForm) fields.push("email");
+
+    let ok = await trigger(fields, { shouldFocus: true });
     if (!ok) {
       setShowShippingForm(true);
       await new Promise<void>((r) => requestAnimationFrame(() => r()));
-      ok = await trigger(undefined, { shouldFocus: true });
+      ok = await trigger(fields, { shouldFocus: true });
       if (!ok) {
         toast.error(
           "Please fix the highlighted fields in your delivery address.",
@@ -926,7 +989,7 @@ export default function CheckoutClient() {
       }
     }
     return ok;
-  }, [trigger]);
+  }, [trigger, useGuestCheckoutForm]);
 
   const confirmShippingForm = useCallback(async () => {
     const ok = await trigger(undefined, { shouldFocus: true });
@@ -1129,9 +1192,62 @@ export default function CheckoutClient() {
   }, [cart, subtotalAfterDiscount, buyNowItem, existingOrder]);
 
   const finalizeSuccessfulOrder = useCallback(
-    async (order: Order) => {
+    async (
+      order: Order,
+      opts?: {
+        guestAccessToken?: string;
+        needsContactConfirm?: boolean;
+        contactEmail?: string;
+        contactName?: string;
+        contactPhone?: string;
+      },
+    ) => {
       armPostCheckoutAuthGuard();
       setPendingOrderSuccessId(order._id);
+      const itemCount = Array.isArray(order.items) ? order.items.length : 0;
+      setPostCheckoutOrderSummary({
+        orderNumber: String(order.orderNumber || order._id),
+        total: Number(order.total) || 0,
+        itemCount,
+        paymentMethod: order.paymentMethod,
+      });
+
+      const confirmToken =
+        opts?.guestAccessToken?.trim() ||
+        readGuestCheckoutProfile()?.confirmToken?.trim() ||
+        "";
+
+      if (opts?.contactEmail) {
+        saveGuestCheckoutProfile({
+          email: opts.contactEmail,
+          name: opts.contactName,
+          phone: opts.contactPhone,
+          ...(confirmToken ? { confirmToken } : {}),
+        });
+      }
+
+      const guestNeedsConfirm =
+        !isAuthenticated &&
+        Boolean(opts?.needsContactConfirm || confirmToken);
+      const awaitingConfirm = guestNeedsConfirm && Boolean(confirmToken);
+      setGuestAwaitingContactConfirm(awaitingConfirm);
+
+      if (awaitingConfirm) {
+        setPostCheckoutRedirect(
+          `/order/confirm?token=${encodeURIComponent(confirmToken)}`,
+        );
+      } else if (!isAuthenticated) {
+        setPostCheckoutRedirect(
+          confirmToken ?
+            `/order/confirm?token=${encodeURIComponent(confirmToken)}`
+          : "/order/confirm",
+        );
+        setGuestAwaitingContactConfirm(Boolean(confirmToken));
+      } else {
+        setPostCheckoutRedirect(
+          `/dashboard/orders/${encodeURIComponent(order._id)}`,
+        );
+      }
       trackPurchase(order);
       trackGaPurchase(order);
       if (buyNowItem) {
@@ -1144,8 +1260,9 @@ export default function CheckoutClient() {
       }
       void fetchUser().catch(() => {});
       setIsPlacingOrder(false);
+      guestRazorpayTokenRef.current = null;
     },
-    [buyNowItem, purgeCartAfterCheckout, fetchUser],
+    [buyNowItem, purgeCartAfterCheckout, fetchUser, isAuthenticated],
   );
 
   const recoverFromAbortedPayment = useCallback(
@@ -1217,7 +1334,7 @@ export default function CheckoutClient() {
   );
 
   const onSubmit = useCallback(
-    async (addressData: AddressForm) => {
+    async (addressData: CheckoutFormValues) => {
       if (placeOrderLockRef.current || isSubmittingOrder || isPlacingOrder) {
         return;
       }
@@ -1227,13 +1344,24 @@ export default function CheckoutClient() {
       let openedRazorpay = false;
       let buyNowForOrder = buyNowItem;
       try {
-        if (buyNowForOrder) {
+        if (buyNowForOrder && isAuthenticated) {
           buyNowForOrder = await refreshBuyNowForPlaceOrder(buyNowForOrder);
         } else {
           await fetchCart();
         }
 
+        const contactEmail = (
+          isAuthenticated ?
+            user?.email || addressData.email
+          : addressData.email
+        )
+          .trim()
+          .toLowerCase();
         const normalizedPhone = toE164IndianMobile(addressData.phone);
+        const guestCartPayload =
+          !isAuthenticated && !buyNowForOrder ?
+            guestLinesForMergeApi(readGuestCartLines())
+          : undefined;
         const metaBrowser = getMetaBrowserIdentifiers();
 
         if (existingOrder) {
@@ -1319,14 +1447,23 @@ export default function CheckoutClient() {
           const marketingAttribution = getMarketingAttributionForCheckout();
           const shopSessionKey = getShopSessionKey() ?? undefined;
 
+          const { email: _checkoutEmail, ...shippingFields } = addressData;
           const res = await orderApi.create(
             {
-              shippingAddress: { ...addressData, phone: normalizedPhone },
+              shippingAddress: { ...shippingFields, phone: normalizedPhone },
               paymentMethod: paymentMethodForApi,
               ...(couponCodeForOrder ? { couponCode: couponCodeForOrder } : {}),
               ...(shopSessionKey ? { shopSessionKey } : {}),
               ...(marketingAttribution ? { marketingAttribution } : {}),
               metaBrowser,
+              ...(!isAuthenticated ?
+                {
+                  contactEmail,
+                  ...(guestCartPayload?.length ?
+                    { guestCartItems: guestCartPayload }
+                  : {}),
+                }
+              : {}),
               ...(buyNowForOrder ?
                 {
                   buyNowItem: {
@@ -1342,7 +1479,23 @@ export default function CheckoutClient() {
           );
 
           if ("razorpayOrder" in res.data) {
-            const { razorpayOrder } = res.data;
+            const razorpayOrder = (
+              res.data as {
+                razorpayOrder: {
+                  id: string;
+                  amount: number;
+                  currency?: string;
+                  keyId?: string;
+                };
+              }
+            ).razorpayOrder;
+            guestRazorpayTokenRef.current =
+              (
+                typeof (res.data as { guestAccessToken?: string })
+                  .guestAccessToken === "string"
+              ) ?
+                (res.data as { guestAccessToken: string }).guestAccessToken
+              : null;
             const checkoutIntentId = normalizeCheckoutMongoId(
               "checkoutIntentId" in res.data ?
                 (res.data as { checkoutIntentId?: unknown }).checkoutIntentId
@@ -1413,9 +1566,29 @@ export default function CheckoutClient() {
                       razorpayPaymentId: response.razorpay_payment_id,
                       razorpaySignature: response.razorpay_signature,
                       metaBrowser,
+                      ...(guestRazorpayTokenRef.current ?
+                        { guestAccessToken: guestRazorpayTokenRef.current }
+                      : {}),
                     });
                     holdPlacingUntilOverlay = true;
-                    await finalizeSuccessfulOrder(verifyRes.data.order);
+                    const paidPayload = verifyRes.data as {
+                      order: Order;
+                      guestAccessToken?: string;
+                      needsContactConfirmation?: boolean;
+                    };
+                    await finalizeSuccessfulOrder(paidPayload.order, {
+                      guestAccessToken:
+                        paidPayload.guestAccessToken ??
+                        guestRazorpayTokenRef.current ??
+                        undefined,
+                      needsContactConfirm:
+                        paidPayload.needsContactConfirmation ??
+                        Boolean(guestRazorpayTokenRef.current),
+                      contactEmail:
+                        !isAuthenticated ? contactEmail : undefined,
+                      contactName: addressData.name,
+                      contactPhone: normalizedPhone,
+                    });
                   } catch (err: unknown) {
                     const msg =
                       err instanceof Error ?
@@ -1439,7 +1612,7 @@ export default function CheckoutClient() {
                 },
                 prefill: {
                   name: addressData.name,
-                  email: user?.email,
+                  email: user?.email || contactEmail,
                   contact: normalizedPhone,
                 },
                 theme: { color: RAZORPAY_THEME_COLOR },
@@ -1462,14 +1635,34 @@ export default function CheckoutClient() {
             return;
           } else {
             setIsPlacingOrder(true);
-            const { order } = res.data;
+            const codPayload = res.data as {
+              order: Order;
+              guestAccessToken?: string;
+              needsContactConfirmation?: boolean;
+            };
             holdPlacingUntilOverlay = true;
-            await finalizeSuccessfulOrder(order);
+            await finalizeSuccessfulOrder(codPayload.order, {
+              guestAccessToken: codPayload.guestAccessToken,
+              needsContactConfirm: codPayload.needsContactConfirmation,
+              contactEmail: !isAuthenticated ? contactEmail : undefined,
+              contactName: addressData.name,
+              contactPhone: normalizedPhone,
+            });
           }
         }
       } catch (err: unknown) {
         const apiErr = getClientApiError(err);
         const msg = formatClientApiErrorMessage(err);
+        if (
+          apiErr.status === 409 &&
+          /account already exists|sign in to checkout/i.test(msg)
+        ) {
+          toast.error(
+            "This email belongs to a registered account. Sign in to link this order to your profile.",
+          );
+          router.push(loginUrlWithRedirect("/checkout"));
+          return;
+        }
         toast.error(msg || "Failed to process order");
         if (
           apiErr.status === 409 ||
@@ -1495,6 +1688,7 @@ export default function CheckoutClient() {
       buyNowItem,
       isSubmittingOrder,
       isPlacingOrder,
+      isAuthenticated,
       user?.email,
       fetchCart,
       buyNowCouponCode,
@@ -1503,6 +1697,7 @@ export default function CheckoutClient() {
       recoverFromAbortedPayment,
       bindRazorpayEvents,
       refreshBuyNowForPlaceOrder,
+      router,
     ],
   );
 
@@ -1628,20 +1823,7 @@ export default function CheckoutClient() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className={cn("min-h-[60vh]", heritagePageBg)}>
-        <GuestCheckoutEmailGate
-          onVerified={() => {
-            void fetchUser();
-            void fetchCart();
-          }}
-        />
-      </div>
-    );
-  }
-
-  if (isOrderLoading)
+  if (isOrderLoading && isAuthenticated)
     return (
       <div
         className={cn(
@@ -1749,7 +1931,9 @@ export default function CheckoutClient() {
       <OrderPlacementSuccessOverlay
         isOpen={isPlacingOrder || Boolean(pendingOrderSuccessId)}
         orderId={pendingOrderSuccessId}
-        guestLeadCheckout={Boolean(user?.offlineLead)}
+        guestAwaitingContactConfirm={guestAwaitingContactConfirm}
+        redirectPath={postCheckoutRedirect}
+        orderSummary={postCheckoutOrderSummary}
       />
       <div className='mx-auto box-border min-w-0 max-w-7xl px-4 pt-3 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-10 sm:pb-18 lg:px-8 lg:py-6'>
         <header className='mb-1 lg:mb-2.5'>
@@ -1856,13 +2040,36 @@ export default function CheckoutClient() {
                     Shipping Address
                   </h2>
 
-                  <div className='mb-6 border border-gray-200/70 bg-[#f8f9fa] px-4 py-3 sm:px-5'>
-                    <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
-                      Email
-                    </p>
-                    <p className='mt-1 break-all text-sm font-medium text-navy-900'>
-                      {user?.email || "-"}
-                    </p>
+                  <div className='mb-6'>
+                    <label
+                      htmlFor='checkout-email'
+                      className='mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500'
+                    >
+                      Email for order updates
+                    </label>
+                    {useGuestCheckoutForm ?
+                      <>
+                        <Input
+                          id='checkout-email'
+                          type='email'
+                          autoComplete='email'
+                          placeholder='you@example.com'
+                          {...register("email")}
+                          error={errors.email?.message}
+                        />
+                        <p className='mt-2 text-xs text-gray-500'>
+                          Receipt and order updates will be sent here.
+                        </p>
+                      </>
+                    : <>
+                        <input type='hidden' {...register("email")} />
+                        <div className='border border-gray-200/70 bg-[#f8f9fa] px-4 py-3 sm:px-5'>
+                          <p className='break-all text-sm font-medium text-navy-900'>
+                            {user?.email || "—"}
+                          </p>
+                        </div>
+                      </>
+                    }
                   </div>
 
                   {showManualAddressPreview && (
@@ -1916,13 +2123,13 @@ export default function CheckoutClient() {
                     </div>
                   )}
 
-                  {user?.addresses && user.addresses.length > 0 && (
+                  {showSavedAddressBook && (
                     <div className='mb-3'>
                       <p className='mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500'>
                         Saved addresses
                       </p>
                       <div className='grid grid-cols-1 gap-1 md:grid-cols-2 md:gap-2'>
-                        {(user.addresses || []).map((addr) => (
+                        {(user!.addresses || []).map((addr) => (
                           <div key={addr._id} className='relative'>
                             <label
                               className={cn(
@@ -2012,9 +2219,9 @@ export default function CheckoutClient() {
                     id='checkout-shipping-fields'
                     className={cn(
                       "scroll-mt-28 space-y-4 border border-dashed border-gray-300 bg-[#f8f9fa]/50 p-4 transition-all duration-300 sm:p-5",
-                      !showShippingForm && "hidden",
+                      !showShippingForm && !useGuestCheckoutForm && "hidden",
                     )}
-                    aria-hidden={!showShippingForm}
+                    aria-hidden={!showShippingForm && !useGuestCheckoutForm}
                   >
                     <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400'>
                       {selectedAddressId ? "Edit address" : "Delivery details"}

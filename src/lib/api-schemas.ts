@@ -499,20 +499,32 @@ export const orderCreatedRazorpay = z
 export const orderCreatedRazorpayIntent = z
   .object({
     status: z.string(),
-    data: z.object({
-      checkoutIntentId: z.preprocess(
-        (v) => (typeof v === "string" ? v.trim() : v),
-        mongoObjectIdString,
-      ),
-      razorpayOrder: razorpayOrderPayload,
-    }),
+    data: z
+      .object({
+        checkoutIntentId: z.preprocess(
+          (v) => (typeof v === "string" ? v.trim() : v),
+          mongoObjectIdString,
+        ),
+        razorpayOrder: razorpayOrderPayload,
+        guestAccessToken: z.string().optional(),
+        needsContactConfirmation: z.boolean().optional(),
+      })
+      .passthrough(),
   })
   .passthrough();
 
-export const orderCreatedCod = z.object({
-  status: z.string(),
-  data: z.object({ order: doc }),
-});
+export const orderCreatedCod = z
+  .object({
+    status: z.string(),
+    data: z
+      .object({
+        order: doc,
+        guestAccessToken: z.string().optional(),
+        needsContactConfirmation: z.boolean().optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
 
 export const orderPreparePayment = z
   .object({
@@ -524,11 +536,19 @@ export const orderPreparePayment = z
   })
   .passthrough();
 
-export const orderSingle = z.object({
-  status: z.string(),
-  message: z.string().optional(),
-  data: z.object({ order: doc }),
-});
+export const orderSingle = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z
+      .object({
+        order: doc,
+        guestAccessToken: z.string().optional(),
+        needsContactConfirmation: z.boolean().optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
 
 export const ordersMyList = z.object({
   status: z.string(),
@@ -861,10 +881,25 @@ export const adminAnalytics = z.object({
   data: z.any(),
 });
 
-export const adminOrderDetail = z.object({
-  status: z.string(),
-  data: z.object({ order: doc }),
-});
+export const adminOrderDetail = z
+  .object({
+    status: z.string(),
+    data: z
+      .object({
+        order: doc,
+        guestCheckout: z
+          .object({
+            userId: z.string(),
+            isWebGuest: z.literal(true),
+            confirmUrl: z.string(),
+            whatsAppMessage: z.string(),
+          })
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
 
 export {
   adminSalesInvoiceList,

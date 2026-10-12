@@ -14,6 +14,7 @@ import {
   isAuthPublicRequest,
   isAuthMeRequest,
   isGuestCartApiRequest,
+  isGuestOrderApiRequest,
 } from "@/lib/authRequestPaths";
 import type {
   AdminCreateOfflineOrderBody,
@@ -96,6 +97,12 @@ api.interceptors.response.use(
       if (isGuestCartApiRequest(originalRequest)) {
         return Promise.reject({ message: "Sign in to sync cart", status: 401 });
       }
+      if (isGuestOrderApiRequest(originalRequest)) {
+        return Promise.reject({
+          message: message || "Invalid or expired confirmation link.",
+          status: 401,
+        });
+      }
       const path = `${window.location.pathname}${window.location.search || ""}`;
       if (!path.startsWith("/auth") && !isAuthMeRequest(originalRequest)) {
         window.location.href = loginUrlWithRedirect(path);
@@ -152,6 +159,19 @@ export const authApi = {
       "auth.signupStart",
       api.post("/auth/signup/start", data),
       schemas.authMessage,
+    ),
+  finishOfflineLeadSignup: (
+    data: WithTurnstile<{
+      name: string;
+      email: string;
+      password: string;
+      phone: string;
+    }>,
+  ) =>
+    unwrapAxios(
+      "auth.finishOfflineLead",
+      api.post("/auth/offline-lead/finish", data),
+      schemas.authWithUser,
     ),
   signupVerify: (data: WithTurnstile<{ email: string; otp: string }>) =>
     unwrapAxios(
@@ -623,6 +643,36 @@ export const orderApi = {
         userBankDetails,
       }),
       schemas.orderSingle,
+    ),
+};
+
+export const guestOrderApi = {
+  getConfirm: (token: string) =>
+    unwrapAxios(
+      "guestOrders.confirmView",
+      api.get("/guest-orders/confirm", { params: { token } }),
+      schemas.successData,
+    ),
+  submitConfirm: (token: string, confirmed: boolean) =>
+    unwrapAxios(
+      "guestOrders.confirmSubmit",
+      api.post("/guest-orders/confirm", { token, confirmed }),
+      schemas.successMessageData,
+    ),
+  resendConfirmEmail: (token: string) =>
+    unwrapAxios(
+      "guestOrders.confirmResend",
+      api.post("/guest-orders/confirm/resend-email", { token }),
+      schemas.successMessageData,
+    ),
+  updateContact: (
+    token: string,
+    patch: { email?: string; phone?: string; name?: string },
+  ) =>
+    unwrapAxios(
+      "guestOrders.updateContact",
+      api.patch("/guest-orders/confirm/contact", { token, ...patch }),
+      schemas.successData,
     ),
 };
 
@@ -1303,6 +1353,18 @@ export const adminApi = {
       "admin.userInsights",
       api.get(`/admin/users/${id}/insights`),
       schemas.adminUserInsights,
+    ),
+  verifyGuestContact: (id: string) =>
+    unwrapAxios(
+      "admin.verifyGuestContact",
+      api.post(`/admin/users/${id}/verify-guest-contact`),
+      schemas.successMessageData,
+    ),
+  resendGuestConfirmEmail: (id: string) =>
+    unwrapAxios(
+      "admin.resendGuestConfirmEmail",
+      api.post(`/admin/users/${id}/resend-guest-confirm-email`),
+      schemas.successMessageData,
     ),
   toggleUserStatus: (id: string) =>
     unwrapAxios(

@@ -35,6 +35,15 @@ import { TurnstileField } from "@/components/auth/TurnstileField";
 import { useTurnstileToken } from "@/hooks/useTurnstileToken";
 import { ApiValidationError } from "@/lib/parseApi";
 import { safeRedirectPath } from "@/lib/safeRedirect";
+import {
+  readGuestCheckoutProfile,
+  saveGuestCheckoutProfile,
+} from "@/lib/guestCheckoutProfile";
+import {
+  guestConfirmStatusPath,
+  guestVerificationCopy,
+} from "@/lib/guestVerificationCopy";
+import Link from "next/link";
 import AdminTwoFactorLoginStep from "@/components/auth/AdminTwoFactorLoginStep";
 import { trackCompleteRegistration } from "@/lib/metaPixel";
 
@@ -79,6 +88,12 @@ type PendingCopy = { title: string; description: string };
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
+function phone10ForForm(raw?: string | null): string {
+  const d = String(raw || "").replace(/\D/g, "");
+  if (d.length >= 10) return d.slice(-10);
+  return d;
+}
+
 type SignupPageClientProps = {
   embedded?: boolean;
   onSuccess?: () => void;
@@ -90,10 +105,18 @@ export default function SignupPageClient({
   onSuccess,
   onSwitchToLogin,
 }: SignupPageClientProps = {}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = safeRedirectPath(searchParams.get("redirect")) || "/";
+  const prefillEmail = searchParams.get("email");
+  const guestFinish = searchParams.get("guestFinish") === "1";
+  const fetchUser = useAuthStore((s) => s.fetchUser);
+
   const [showPassword, setShowPassword] = useState(false);
-  const [wizardStep, setWizardStep] = useState<"details" | "password" | "otp">(
-    "details",
-  );
+  const [wizardStep, setWizardStep] = useState<
+    "details" | "password" | "otp" | "guest_contact"
+  >("details");
+  const [guestFinishBooting, setGuestFinishBooting] = useState(guestFinish);
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingCopy, setPendingCopy] = useState<PendingCopy>({
     title: "Please wait",
@@ -102,15 +125,13 @@ export default function SignupPageClient({
   const {
     signupStart,
     signupVerify,
+    finishOfflineLeadSignup,
     loginWithGoogle,
     isLoading,
     admin2faPending,
+    user: authUser,
   } = useAuthStore();
   const turnstile = useTurnstileToken();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = safeRedirectPath(searchParams.get("redirect")) || "/";
-  const prefillEmail = searchParams.get("email");
 
   const navigateAfterAuth = useCallback(() => {
     if (onSuccess) {
@@ -129,7 +150,54 @@ export default function SignupPageClient({
     if (raw && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
       form.setValue("email", raw);
     }
+    const profile = readGuestCheckoutProfile();
+    if (!profile) return;
+    if (profile.name && !form.getValues("name")) {
+      form.setValue("name", profile.name);
+    }
+    if (profile.phone && !form.getValues("phone")) {
+      form.setValue("phone", phone10ForForm(profile.phone));
+    }
+    if (!raw && profile.email) {
+      form.setValue("email", profile.email);
+    }
   }, [prefillEmail, form]);
+
+  useEffect(() => {
+    if (!guestFinish) return;
+    let cancelled = false;
+    void fetchUser()
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setGuestFinishBooting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [guestFinish, fetchUser]);
+
+  useEffect(() => {
+    if (guestFinish) {
+      setWizardStep("password");
+    }
+  }, [guestFinish]);
+
+  useEffect(() => {
+    if (!authUser?.offlineLead) return;
+    if (authUser.email) form.setValue("email", authUser.email);
+    if (authUser.name) form.setValue("name", authUser.name);
+    if (authUser.phone) form.setValue("phone", phone10ForForm(authUser.phone));
+    setWizardStep(
+      authUser.emailVerified === true ? "password" : "guest_contact",
+    );
+  }, [authUser, form]);
+
+  const guestConfirmHref = (() => {
+    const profile = readGuestCheckoutProfile();
+    return profile?.confirmToken ?
+        guestConfirmStatusPath(profile.confirmToken)
+      : null;
+  })();
 
   const otpForm = useForm<OtpForm>({
     resolver: zodResolver(otpSchema),
@@ -139,25 +207,114 @@ export default function SignupPageClient({
   const onSubmitForm = async (data: SignupForm) => {
     const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
-    setPendingCopy({
-      title: "Sending verification code",
-      description: "Creating your secure signup session and delivering OTP.",
-    });
+    const phoneDigits = data.phone.replace(/\D/g, "");
+    const payload = {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      phone: phoneDigits,
+      turnstileToken,
+    };
+
     try {
-      const phoneDigits = data.phone.replace(/\D/g, "");
-      await signupStart({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        phone: phoneDigits,
-        turnstileToken,
+      const finishGuestPassword = async () => {
+        setPendingCopy({
+          title: "Saving your password",
+          description: "Linking your guest orders to your new sign-in.",
+        });
+        await finishOfflineLeadSignup(payload);
+        trackCompleteRegistration({
+          email: data.email,
+          phone: phoneDigits,
+          firstName: data.name?.trim().split(/\s+/)[0],
+          lastName:
+            data.name?.trim().split(/\s+/).slice(1).join(" ") || undefined,
+          country: "India",
+        });
+        toast.success("Your password is set. Welcome to The House of Rani!");
+        navigateAfterAuth();
+      };
+
+      if (authUser?.offlineLead) {
+        if (authUser.emailVerified !== true) {
+          setWizardStep("guest_contact");
+          toast.error("Please verify your email on your order link first.");
+          return;
+        }
+        await finishGuestPassword();
+        return;
+      }
+
+      if (guestFinish) {
+        try {
+          await finishGuestPassword();
+          return;
+        } catch (finishErr: unknown) {
+          const msg =
+            finishErr instanceof Error ? finishErr.message : String(finishErr);
+          if (
+            /confirm your email|verification|403|guest profile/i.test(msg)
+          ) {
+            setWizardStep("guest_contact");
+            toast.error(msg);
+            return;
+          }
+          /* fall through to signupStart when session cookie missing */
+        }
+      }
+
+      setPendingCopy({
+        title: "Sending verification code",
+        description: "Creating your secure signup session and delivering OTP.",
       });
+      const startRes = await signupStart(payload);
+      const startData = (startRes?.data ?? startRes) as {
+        skipOtp?: boolean;
+        offlineLeadFinish?: boolean;
+        contactVerified?: boolean;
+      };
+      const skipOtp =
+        startData?.skipOtp === true || startData?.offlineLeadFinish === true;
+      const contactVerified = startData?.contactVerified === true;
+
+      if (skipOtp && !contactVerified) {
+        saveGuestCheckoutProfile({
+          email: data.email,
+          name: data.name,
+          phone: phoneDigits,
+        });
+        setWizardStep("guest_contact");
+        toast.success(
+          "Confirm your email first — then return here to create a password.",
+        );
+        return;
+      }
+
+      if (skipOtp && contactVerified) {
+        setPendingCopy({
+          title: "Saving your password",
+          description: "Finishing your account without a separate email code.",
+        });
+        await finishOfflineLeadSignup(payload);
+        trackCompleteRegistration({
+          email: data.email,
+          phone: phoneDigits,
+          firstName: data.name?.trim().split(/\s+/)[0],
+          lastName:
+            data.name?.trim().split(/\s+/).slice(1).join(" ") || undefined,
+          country: "India",
+        });
+        toast.success("Your password is set. Your orders are on this account.");
+        navigateAfterAuth();
+        return;
+      }
+
       setPendingEmail(data.email);
       setWizardStep("otp");
       toast.success("We sent a 6-digit code to your email.");
     } catch (err: unknown) {
       const error = err as { message?: string };
-      toast.error(error.message || "Could not send verification email.");
+      toast.error(error.message || "Could not complete signup.");
     }
   };
 
@@ -230,7 +387,12 @@ export default function SignupPageClient({
   const stepIndex =
     wizardStep === "details" ? 0
     : wizardStep === "password" ? 1
+    : wizardStep === "guest_contact" ? 1
     : 2;
+
+  const verifiedGuestLead =
+    authUser?.offlineLead === true && authUser.emailVerified === true;
+  const showGuestPasswordStep = verifiedGuestLead || guestFinish;
 
   const googleBlock =
     googleClientId ?
@@ -245,6 +407,16 @@ export default function SignupPageClient({
 
   if (embedded && admin2faPending) {
     return null;
+  }
+
+  if (guestFinishBooting) {
+    return (
+      <AuthPendingOverlay
+        active
+        title='Loading your account'
+        description='Preparing the password step for your verified guest order.'
+      />
+    );
   }
 
   if (admin2faPending) {
@@ -270,7 +442,48 @@ export default function SignupPageClient({
   return (
     <>
       <AuthFormRoot embedded={embedded}>
-        {wizardStep === "otp" ?
+        {wizardStep === "guest_contact" ?
+          <>
+            {!embedded && <AuthStepBar total={2} current={1} />}
+            <AuthFormHeader
+              embedded={embedded}
+              title='Verify your email'
+              subtitle='One quick step before you create a password'
+            />
+            <p className='text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800'>
+              {guestVerificationCopy.statusPending}
+            </p>
+            <p className='text-sm leading-relaxed text-gray-600'>
+              {guestVerificationCopy.signupBody(
+                form.getValues("email") ||
+                  authUser?.email ||
+                  "your inbox",
+              )}
+            </p>
+            {guestConfirmHref ?
+              <Button asChild variant='brand' size='lg' className={authPrimaryBtn()}>
+                <Link href={guestConfirmHref}>
+                  {guestVerificationCopy.signupCta}
+                </Link>
+              </Button>
+            : <p className='text-xs text-gray-500'>
+                {guestVerificationCopy.bannerInboxFallback}
+              </p>
+            }
+            <AuthBackButton
+              embedded={embedded}
+              onClick={() =>
+                setWizardStep(
+                  authUser?.offlineLead && authUser.emailVerified ?
+                    "password"
+                  : "details",
+                )
+              }
+            >
+              ← Back
+            </AuthBackButton>
+          </>
+        : wizardStep === "otp" ?
           <>
             {embedded ?
               <AuthStepBar total={3} current={2} />
@@ -359,13 +572,50 @@ export default function SignupPageClient({
             : null}
             <AuthFormHeader
               embedded={embedded}
-              title='Secure your account'
-              subtitle='Choose a strong password to finish setup'
+              title={
+                showGuestPasswordStep ? "Create your password"
+                : "Secure your account"
+              }
+              subtitle={
+                showGuestPasswordStep ?
+                  "Your order is verified — set a password to save this account. No email code needed."
+                : "Choose a strong password to finish setup"
+              }
             />
             <form
               onSubmit={form.handleSubmit(onSubmitForm)}
               className='space-y-3'
             >
+              {showGuestPasswordStep ?
+                <>
+                  <AuthField
+                    embedded={embedded}
+                    {...form.register("name")}
+                    label='Full name'
+                    placeholder='Your name'
+                    error={form.formState.errors.name?.message}
+                    autoComplete='name'
+                  />
+                  <AuthField
+                    embedded={embedded}
+                    {...form.register("email")}
+                    type='email'
+                    label='Email address'
+                    placeholder='your@email.com'
+                    error={form.formState.errors.email?.message}
+                    autoComplete='email'
+                  />
+                  <AuthField
+                    embedded={embedded}
+                    {...form.register("phone")}
+                    type='tel'
+                    label='Mobile'
+                    placeholder='10-digit number'
+                    error={form.formState.errors.phone?.message}
+                    maxLength={10}
+                  />
+                </>
+              : null}
               <AuthField
                 embedded={embedded}
                 {...form.register("password")}
@@ -405,16 +655,22 @@ export default function SignupPageClient({
                 className={authPrimaryBtn()}
                 loading={isLoading}
               >
-                Send verification code
+                {showGuestPasswordStep ?
+                  guestVerificationCopy.createPasswordCta
+                : "Send verification code"}
               </Button>
-              <AuthBackButton
-                embedded={embedded}
-                onClick={() => setWizardStep("details")}
-              >
-                ← Back to your details
-              </AuthBackButton>
+              {!showGuestPasswordStep ?
+                <AuthBackButton
+                  embedded={embedded}
+                  onClick={() => setWizardStep("details")}
+                >
+                  ← Back to your details
+                </AuthBackButton>
+              : null}
             </form>
           </>
+        : guestFinish ?
+          null
         : <>
             {!embedded && <AuthStepBar total={3} current={stepIndex} />}
 
