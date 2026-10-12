@@ -92,6 +92,29 @@ export default function AnalyticsPage() {
     if (t && TAB_PARAM[t]) setActiveTab(TAB_PARAM[t]);
   }, [searchParams]);
 
+  const visitorInitialSearch = useMemo(() => {
+    const sessionKey =
+      searchParams.get("visitorSession") ??
+      searchParams.get("sessionKey") ??
+      "";
+    const email =
+      searchParams.get("visitorEmail") ?? searchParams.get("email") ?? "";
+    const userId =
+      searchParams.get("visitorUserId") ??
+      searchParams.get("userId") ??
+      "";
+    const autoLoad = Boolean(
+      sessionKey.trim().length >= 8 || email.trim() || userId.trim(),
+    );
+    if (!autoLoad) return undefined;
+    return {
+      sessionKey: sessionKey.trim() || undefined,
+      email: email.trim() || undefined,
+      userId: userId.trim() || undefined,
+      autoLoad: true,
+    };
+  }, [searchParams]);
+
   const stockLists = useMemo(() => {
     if (!analytics) return { out: [], low: [] };
     const out =
@@ -496,7 +519,8 @@ export default function AnalyticsPage() {
               <RecentSessionReplaysSection onWatchSession={onWatchReplay} />
               <div id='visitor-session-explorer'>
                 <VisitorSessionExplorer
-                  presetSessionKey={watchReplaySessionKey}
+                  presetSessionKey={watchReplaySessionKey || undefined}
+                  initialSearch={visitorInitialSearch}
                 />
               </div>
               <Ga4ReportingSection initial={analytics.ga4Reporting} />

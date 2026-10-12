@@ -1415,6 +1415,12 @@ export const adminApi = {
       api.get("/admin/analytics/visitor-activity", { params }),
       schemas.looseDataResponse,
     ),
+  listVisitorSessions: (limit = 35) =>
+    unwrapAxios(
+      "admin.visitorSessions",
+      api.get("/admin/analytics/visitor-sessions", { params: { limit } }),
+      schemas.looseDataResponse,
+    ),
   getSessionReplay: (sessionKey: string) =>
     unwrapAxios(
       "admin.sessionReplay",

@@ -1519,6 +1519,12 @@ export default function AdminUsersPage() {
                           <span className='text-[10px] text-gray-400'>
                             Page views, cart, dwell, Meta mirror
                           </span>
+                          <Link
+                            href={`/admin/analytics?tab=engagement&visitorUserId=${encodeURIComponent(selectedUser._id)}`}
+                            className='ml-auto text-[10px] font-semibold text-brand-700 hover:underline shrink-0'
+                          >
+                            Full journey in Analytics →
+                          </Link>
                         </div>
                         <ul className='space-y-2 max-h-64 overflow-y-auto pr-1'>
                           {insight.activityTimeline.map((ev, idx) => (
