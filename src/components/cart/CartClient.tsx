@@ -32,6 +32,7 @@ import { playCheckoutLaunchAnimation } from "@/lib/checkoutLaunchFx";
 import { clearBuyNowSession } from "@/lib/buyNowCheckoutSession";
 import shoppingCartGif from "@/assets/shopping-cart.gif";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
+import { recordCommerceActivity } from "@/lib/commerceActivity";
 import {
   SHIPPING_CHARGE,
   SHIPPING_THRESHOLD,
@@ -97,6 +98,10 @@ export default function CartClient() {
       void fetchCart();
     }
   }, [hasSessionChecked, isAuthenticated, fetchCart]);
+
+  useEffect(() => {
+    recordCommerceActivity({ eventType: "cart_view", path: "/cart" });
+  }, []);
 
   const cartItemsKey =
     cart?.items

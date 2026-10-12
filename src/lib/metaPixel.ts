@@ -10,6 +10,9 @@ import {
   getStoredMarketingAttribution,
 } from "@/lib/marketingAttribution";
 import { useAuthStore } from "@/store/useAuthStore";
+import { getShopSessionKey } from "@/lib/shopSession";
+import { recordSearchActivity } from "@/lib/commerceActivity";
+import { getGuestActivityEmail } from "@/lib/guestActivityIdentity";
 
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
@@ -182,11 +185,16 @@ function relayToConversionsApi(
     void waitForFbpCookie().then(() => {
       const identifiers = getMetaBrowserIdentifiers();
       const resolvedUserData = getMetaUserData(userData);
+      const sessionKey = getShopSessionKey() ?? undefined;
+      const guestActivityEmail =
+        !resolvedUserData.externalId ? getGuestActivityEmail() : undefined;
       const payload = {
         eventName,
         eventId,
         eventSourceUrl: window.location.href.split("#")[0],
         customData,
+        ...(sessionKey ? { sessionKey } : {}),
+        ...(guestActivityEmail ? { guestEmail: guestActivityEmail } : {}),
         ...identifiers,
         ...(resolvedUserData.email ? { email: resolvedUserData.email } : {}),
         ...(resolvedUserData.phone ? { phone: resolvedUserData.phone } : {}),
@@ -426,6 +434,7 @@ export function trackSearchDeduped(searchQuery: string): void {
   lastTrackedSearchQuery = q;
   lastTrackedSearchAt = now;
   trackSearch(q);
+  recordSearchActivity(q);
 }
 
 /** Cart quantity increase — same SKU payload as PDP AddToCart. */

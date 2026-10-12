@@ -1100,6 +1100,57 @@ export interface DashboardAnalytics {
       catalogUnitsSoldLifetime: number;
       pdpViewsToPaidPercent: number;
     };
+    commerceActivity?: {
+      periodDays: number;
+      counts: {
+        addToCart: number;
+        removeFromCart: number;
+        cartCleared?: number;
+        cartView: number;
+        wishlistAdd: number;
+        wishlistRemove: number;
+        checkoutPageOpen?: number;
+        checkoutStart: number;
+        searches?: number;
+        purchases?: number;
+        sessionExit: number;
+      };
+      engagementFunnel: {
+        addToCart: number;
+        wishlistAdd: number;
+        checkoutPageOpen?: number;
+        checkoutStart: number;
+        purchases?: number;
+        cartToCheckoutPercent: number;
+      };
+      addsByHour: { hour: number; adds: number }[];
+      topCartProducts: {
+        productId: string;
+        name: string;
+        slug: string;
+        adds: number;
+        units: number;
+      }[];
+      topWishlistProducts: {
+        productId: string;
+        name: string;
+        slug: string;
+        adds: number;
+      }[];
+      addsBySource: { source: string; adds: number }[];
+      cartDropoffPages: { path: string; sessions: number }[];
+      recentEvents: {
+        type: string;
+        path: string;
+        productName: string;
+        productSlug: string;
+        source: string;
+        channel: string;
+        userLabel: string;
+        quantity?: number;
+        at: string | Date;
+      }[];
+    };
   };
   contentInsights?: {
     blog: {
@@ -1118,6 +1169,109 @@ export interface DashboardAnalytics {
         clickThroughPercent: number;
       }[];
     };
+  };
+  ga4Reporting?: {
+    configured: boolean;
+    propertyId?: string;
+    setupHint?: string;
+    lastError?: string;
+    periodDays: number;
+    overview?: {
+      activeUsers: number;
+      sessions: number;
+      engagementRate: number;
+      eventCount: number;
+      totalRevenue?: number;
+      ecommercePurchases?: number;
+    };
+    daily?: {
+      date: string;
+      activeUsers: number;
+      sessions: number;
+    }[];
+    topPages?: { path: string; views: number }[];
+    topEvents?: { name: string; count: number }[];
+    ecommerce?: {
+      addToCarts: number;
+      purchases: number;
+      purchaseRevenue: number;
+      itemsViewed: number;
+    };
+  };
+  engagementInsights?: {
+    pageEngagement?: {
+      periodDays: number;
+      totals: { views: number; totalMs: number };
+      timeByPage: {
+        page: string;
+        views: number;
+        totalMs: number;
+        avgMs: number;
+      }[];
+      topProductDwell: {
+        slug: string;
+        name: string;
+        catalog?: string;
+        views: number;
+        totalMs: number;
+        avgMs: number;
+        avgScrollPct?: number;
+      }[];
+      engagementHeatmap: {
+        dayIndex: number;
+        hour: number;
+        totalMs: number;
+        views: number;
+      }[];
+      scrollDepthByPage: {
+        page: string;
+        avgScrollPct: number;
+        samples: number;
+      }[];
+      recentEngagements: {
+        path: string;
+        durationMs: number;
+        productName: string;
+        maxScrollPct?: number;
+        userLabel: string;
+        at: string | Date;
+      }[];
+    };
+    metaEvents?: {
+      periodDays: number;
+      totalEvents: number;
+      byEventName: { name: string; count: number }[];
+      recent: {
+        name: string;
+        path: string;
+        detail: string;
+        value?: number;
+        currency: string;
+        userLabel: string;
+        at: string | Date;
+      }[];
+    };
+    gaEvents?: {
+      periodDays: number;
+      totalEvents: number;
+      byEventName: { name: string; count: number }[];
+      recent: {
+        name: string;
+        path: string;
+        detail: string;
+        value?: number;
+        currency: string;
+        userLabel: string;
+        at: string | Date;
+      }[];
+    };
+    unifiedFeed?: {
+      source: "commerce" | "page" | "meta" | "ga";
+      at: string | Date;
+      label: string;
+      detail: string;
+      userId?: string;
+    }[];
   };
   offerAttributionMtd?: {
     sales: { discountTotal: number; ordersCount: number };

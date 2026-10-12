@@ -5,6 +5,7 @@ import { StoreErrorBoundary } from "@/components/StoreErrorBoundary";
 import { StoreRaniCare } from "@/components/support/StoreRaniCare";
 import StoreAuthModal from "@/components/auth/StoreAuthModal";
 import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
+import SessionReplayRecorder from "@/components/analytics/SessionReplayRecorder";
 import WishlistRehydrator from "@/components/wishlist/WishlistRehydrator";
 import GuestCartHydrator from "@/components/cart/GuestCartHydrator";
 import { fetchShopNavCategoriesServer } from "@/lib/categoryServer";
@@ -29,6 +30,7 @@ export default async function StoreLayout({
       <WishlistRehydrator />
       <GuestCartHydrator />
       <StoreVisitTracker />
+      <SessionReplayRecorder />
       <Navbar initialNavCategories={initialNavCategories} />
       <main className='isolate min-h-screen flex flex-col bg-background pb-0 lg:pb-0'>
         <MarketingEditionsProvider

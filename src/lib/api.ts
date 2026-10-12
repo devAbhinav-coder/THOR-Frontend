@@ -473,6 +473,9 @@ export const cartApi = {
       variant: object;
       quantity: number;
       customFieldAnswers?: Array<{ label: string; value: string }>;
+      commerceSource?: string;
+      commercePath?: string;
+      sessionKey?: string;
     },
     opts?: { idempotencyKey?: string },
   ) =>
@@ -509,10 +512,12 @@ export const cartApi = {
       ),
       schemas.cartPayload,
     ),
-  remove: (cartItemId: string) =>
+  remove: (cartItemId: string, sessionKey?: string) =>
     unwrapAxios(
       "cart.remove",
-      api.delete(`/cart/item/${cartItemId}`),
+      api.delete(`/cart/item/${cartItemId}`, {
+        params: sessionKey ? { sessionKey } : undefined,
+      }),
       schemas.cartPayload,
     ),
   mergeGuest: (
@@ -528,8 +533,14 @@ export const cartApi = {
       api.post("/cart/merge-guest", { items }),
       schemas.cartPayload,
     ),
-  clear: () =>
-    unwrapAxios("cart.clear", api.delete("/cart"), schemas.cartClear),
+  clear: (sessionKey?: string) =>
+    unwrapAxios(
+      "cart.clear",
+      api.delete("/cart", {
+        params: sessionKey ? { sessionKey } : undefined,
+      }),
+      schemas.cartClear,
+    ),
   applyCoupon: (couponCode: string, opts?: { idempotencyKey?: string }) =>
     unwrapAxios(
       "cart.applyCoupon",
@@ -822,10 +833,17 @@ export const testimonialApi = {
 export const wishlistApi = {
   get: () =>
     unwrapAxios("wishlist.get", api.get("/wishlist"), schemas.wishlistGet),
-  toggle: (productId: string) =>
+  toggle: (
+    productId: string,
+    body?: {
+      sessionKey?: string;
+      commercePath?: string;
+      commerceSource?: string;
+    },
+  ) =>
     unwrapAxios(
       "wishlist.toggle",
-      api.post(`/wishlist/${productId}`),
+      api.post(`/wishlist/${productId}`, body ?? {}),
       schemas.wishlistToggle,
     ),
 };
@@ -1134,6 +1152,39 @@ export const storefrontApi = {
       api.post("/storefront/offer-event", data),
       schemas.looseDataResponse,
     ),
+  recordCommerceEvent: (data: {
+    eventType:
+      | "add_to_cart"
+      | "remove_from_cart"
+      | "cart_cleared"
+      | "cart_view"
+      | "wishlist_add"
+      | "wishlist_remove"
+      | "checkout_page_open"
+      | "checkout_start"
+      | "search"
+      | "purchase"
+      | "session_exit";
+    sessionKey: string;
+    path?: string;
+    productId?: string;
+    productName?: string;
+    productSlug?: string;
+    variantSku?: string;
+    quantity?: number;
+    source?: string;
+    userId?: string;
+    guestEmail?: string;
+    searchQuery?: string;
+    orderId?: string;
+    orderNumber?: string;
+    value?: number;
+  }) =>
+    unwrapAxios(
+      "storefront.commerceEvent",
+      api.post("/storefront/commerce-event", data),
+      schemas.looseDataResponse,
+    ),
   getShippingEstimate: (pin: string) =>
     unwrapAxios(
       "storefront.shippingEstimate",
@@ -1353,6 +1404,36 @@ export const adminApi = {
       "admin.userInsights",
       api.get(`/admin/users/${id}/insights`),
       schemas.adminUserInsights,
+    ),
+  getVisitorActivity: (params: {
+    sessionKey?: string;
+    email?: string;
+    userId?: string;
+  }) =>
+    unwrapAxios(
+      "admin.visitorActivity",
+      api.get("/admin/analytics/visitor-activity", { params }),
+      schemas.looseDataResponse,
+    ),
+  getSessionReplay: (sessionKey: string) =>
+    unwrapAxios(
+      "admin.sessionReplay",
+      api.get("/admin/analytics/session-replay", {
+        params: { sessionKey },
+      }),
+      schemas.looseDataResponse,
+    ),
+  listSessionReplays: (limit = 25) =>
+    unwrapAxios(
+      "admin.sessionReplays",
+      api.get("/admin/analytics/session-replays", { params: { limit } }),
+      schemas.looseDataResponse,
+    ),
+  getGa4Reporting: () =>
+    unwrapAxios(
+      "admin.ga4Reporting",
+      api.get("/admin/analytics/ga4-reporting"),
+      schemas.looseDataResponse,
     ),
   verifyGuestContact: (id: string) =>
     unwrapAxios(

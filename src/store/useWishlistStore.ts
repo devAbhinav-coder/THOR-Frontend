@@ -3,6 +3,11 @@ import { Product } from "@/types";
 import { wishlistApi } from "@/lib/api";
 import { getQueryClient, WISHLIST_QUERY_KEY } from "@/lib/queryClient";
 import toast from "react-hot-toast";
+import {
+  currentCommercePath,
+  type CommerceActivitySource,
+} from "@/lib/commerceActivity";
+import { getShopSessionKey } from "@/lib/shopSession";
 
 const toggleInFlight = new Set<string>();
 
@@ -13,7 +18,7 @@ interface WishlistState {
   toggleWishlist: (
     productId: string,
     product?: Product,
-    options?: { silent?: boolean },
+    options?: { silent?: boolean; commerceSource?: CommerceActivitySource },
   ) => Promise<void>;
   isInWishlist: (productId: string) => boolean;
 }
@@ -39,7 +44,7 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
   toggleWishlist: async (
     productId: string,
     product?: Product,
-    options?: { silent?: boolean },
+    options?: { silent?: boolean; commerceSource?: CommerceActivitySource },
   ) => {
     if (!productId || toggleInFlight.has(productId)) return;
 
@@ -85,7 +90,13 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
 
     toggleInFlight.add(productId);
     try {
-      await wishlistApi.toggle(productId);
+      await wishlistApi.toggle(productId, {
+        sessionKey: getShopSessionKey() ?? undefined,
+        commercePath: currentCommercePath(),
+        commerceSource:
+          options?.commerceSource ??
+          (isIn ? "wishlist" : "unknown"),
+      });
       if (!silent) {
         toast.success(isIn ? "Removed from wishlist" : "Added to wishlist", {
           id: "wishlist-toggle-toast",

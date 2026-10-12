@@ -21,6 +21,7 @@ import {
   Sparkles,
   Award,
   Store,
+  Activity,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { User, type OfflineCustomerLead } from "@/types";
@@ -81,6 +82,13 @@ type UserInsight = {
     total: number;
     createdAt: string;
     items?: Array<{ quantity?: number }>;
+  }>;
+  activityTimeline?: Array<{
+    kind: "commerce" | "page" | "meta" | "ga" | "pageview";
+    at: string;
+    title: string;
+    detail: string;
+    meta?: string;
   }>;
 };
 
@@ -1499,6 +1507,62 @@ export default function AdminUsersPage() {
                       label='AI customer advice'
                     />
                   </div>
+
+                  {insight.activityTimeline &&
+                    insight.activityTimeline.length > 0 && (
+                      <div className='rounded-2xl border border-gray-200 bg-white p-4 shadow-sm'>
+                        <div className='flex items-center gap-2 mb-3'>
+                          <Activity className='h-4 w-4 text-brand-600' />
+                          <p className='text-sm font-semibold text-gray-900'>
+                            Store activity
+                          </p>
+                          <span className='text-[10px] text-gray-400'>
+                            Page views, cart, dwell, Meta mirror
+                          </span>
+                        </div>
+                        <ul className='space-y-2 max-h-64 overflow-y-auto pr-1'>
+                          {insight.activityTimeline.map((ev, idx) => (
+                            <li
+                              key={`${ev.at}-${idx}`}
+                              className='flex gap-3 text-[11px] border-b border-gray-50 pb-2 last:border-0'
+                            >
+                              <span className='text-gray-400 tabular-nums shrink-0 w-[72px]'>
+                                {formatDate(ev.at)}
+                              </span>
+                              <span
+                                className={`shrink-0 uppercase text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                  ev.kind === "meta" ?
+                                    "bg-indigo-50 text-indigo-700"
+                                  : ev.kind === "page" ?
+                                    "bg-amber-50 text-amber-800"
+                                  : ev.kind === "pageview" ?
+                                    "bg-sky-50 text-sky-800"
+                                  : ev.kind === "ga" ?
+                                    "bg-violet-50 text-violet-800"
+                                  : "bg-emerald-50 text-emerald-800"
+                                }`}
+                              >
+                                {ev.kind}
+                              </span>
+                              <div className='min-w-0 flex-1'>
+                                <p className='font-semibold text-gray-800'>
+                                  {ev.title}
+                                </p>
+                                <p className='text-gray-600 truncate'>
+                                  {ev.detail}
+                                  {ev.meta ?
+                                    <span className='text-gray-400'>
+                                      {" "}
+                                      · {ev.meta}
+                                    </span>
+                                  : null}
+                                </p>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                   <div className='flex flex-wrap items-center gap-2'>
                     {tierBadge(insight.metrics.userSegment)}

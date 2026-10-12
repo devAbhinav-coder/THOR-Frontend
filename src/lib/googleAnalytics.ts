@@ -1,4 +1,5 @@
 import { Product, Order } from "@/types";
+import { mirrorGaEvent } from "@/lib/gaEventMirror";
 
 declare global {
   interface Window {
@@ -23,6 +24,7 @@ const trackEvent = (eventName: string, params: Record<string, any>) => {
       ecommerce: params,
     });
   }
+  mirrorGaEvent(eventName, params);
 };
 
 /**

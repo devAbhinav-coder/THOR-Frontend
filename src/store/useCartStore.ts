@@ -17,6 +17,12 @@ import {
 } from "@/lib/cartIdempotency";
 import { getQueryClient, CART_QUERY_KEY } from "@/lib/queryClient";
 import toast from "react-hot-toast";
+import {
+  currentCommercePath,
+  recordCommerceActivity,
+  type CommerceActivitySource,
+} from "@/lib/commerceActivity";
+import { getShopSessionKey } from "@/lib/shopSession";
 
 /** Survives full page reload / new tab so checkout still sees cart-applied coupon after fetchCart. */
 export const CART_APPLIED_COUPON_STORAGE_KEY = "hor_cart_applied_coupon_code";
@@ -338,6 +344,7 @@ function mergeOptimisticCart(
 export type AddToCartOptions = {
   /** Override success toast; `false` suppresses the default "Added to cart!" message. */
   successToast?: string | false;
+  commerceSource?: CommerceActivitySource;
 };
 
 interface CartState {
@@ -425,6 +432,15 @@ export const useCartStore = create<CartState>((set, get) => ({
         if (toastMsg !== false) {
           toast.success(toastMsg ?? "Added to cart!");
         }
+        recordCommerceActivity({
+          eventType: "add_to_cart",
+          productId,
+          productName: product.name,
+          productSlug: product.slug,
+          variantSku: variant.sku,
+          quantity,
+          source: options?.commerceSource ?? "unknown",
+        });
       } finally {
         addCartInFlight.delete(key);
       }
@@ -447,8 +463,17 @@ export const useCartStore = create<CartState>((set, get) => ({
     const idempotencyKey = getOrCreateCartIdempotencyKey(idemOp);
 
     try {
+      const sessionKey = getShopSessionKey() ?? undefined;
       const body = await cartApi.add(
-        { productId, variant, quantity, customFieldAnswers },
+        {
+          productId,
+          variant,
+          quantity,
+          customFieldAnswers,
+          sessionKey,
+          commercePath: currentCommercePath(),
+          commerceSource: options?.commerceSource ?? "unknown",
+        },
         { idempotencyKey },
       );
       clearCartIdempotencyKey(idemOp);
@@ -533,13 +558,28 @@ export const useCartStore = create<CartState>((set, get) => ({
       !useAuthStore.getState().isAuthenticated
     ) {
       const lines = readGuestCartLines();
-      const next = lines.filter(
-        (_, i) => `guest-${lines[i].productId}-${lines[i].variant.sku}-${i}` !== cartItemId,
+      const idx = lines.findIndex(
+        (_, i) =>
+          `guest-${lines[i].productId}-${lines[i].variant.sku}-${i}` ===
+          cartItemId,
       );
+      const removedLine = idx >= 0 ? lines[idx] : undefined;
+      const next = lines.filter((_, i) => i !== idx);
       writeGuestCartLines(next);
       publishCart(next.length ? guestLinesToCart(next) : null, {
         previousCoupon,
       });
+      if (removedLine) {
+        recordCommerceActivity({
+          eventType: "remove_from_cart",
+          productId: removedLine.productId,
+          productName: removedLine.productName,
+          variantSku: removedLine.variant.sku,
+          quantity: removedLine.quantity,
+          source: "cart",
+          path: "/cart",
+        });
+      }
       toast.success("Item removed from cart");
       return;
     }
@@ -570,7 +610,10 @@ export const useCartStore = create<CartState>((set, get) => ({
     };
 
     try {
-      const body = await cartApi.remove(cartItemId);
+      const body = await cartApi.remove(
+        cartItemId,
+        getShopSessionKey() ?? undefined,
+      );
       applyRemovedCart(body.data.cart);
       toast.success("Item removed from cart");
     } catch (err: unknown) {
@@ -578,7 +621,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       if (error.status === 409) {
         try {
           await get().fetchCart();
-          const body = await cartApi.remove(cartItemId);
+          const body = await cartApi.remove(
+            cartItemId,
+            getShopSessionKey() ?? undefined,
+          );
           applyRemovedCart(body.data.cart);
           toast.success("Item removed from cart");
           return;
@@ -601,8 +647,23 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   clearCart: async () => {
+    const sessionKey = getShopSessionKey() ?? undefined;
+    if (!useAuthStore.getState().isAuthenticated) {
+      const count = readGuestCartLines().length;
+      clearGuestCartStorage();
+      publishCart(null);
+      if (count > 0) {
+        recordCommerceActivity({
+          eventType: "cart_cleared",
+          path: "/cart",
+          quantity: count,
+          source: "cart",
+        });
+      }
+      return;
+    }
     try {
-      await cartApi.clear();
+      await cartApi.clear(sessionKey);
       publishCart(null);
     } catch {
       toast.error("Failed to clear cart");

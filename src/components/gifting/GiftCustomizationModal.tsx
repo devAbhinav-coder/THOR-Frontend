@@ -190,6 +190,7 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
         quantity,
         answers.map((a) => ({ label: a.label, value: a.value })),
         product as ProductType,
+        { commerceSource: "gifting" },
       );
       trackAddToCart(
         product as ProductType,

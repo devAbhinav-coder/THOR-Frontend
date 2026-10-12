@@ -90,6 +90,7 @@ import {
 import { getMarketingAttributionForCheckout } from "@/lib/marketingAttribution";
 import { getShopSessionKey } from "@/lib/shopSession";
 import { trackGaPurchase, trackGaBeginCheckout } from "@/lib/googleAnalytics";
+import { recordCommerceActivity } from "@/lib/commerceActivity";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { armPostCheckoutAuthGuard } from "@/lib/checkoutSuccessGuard";
 import { releaseAllScrollLocks } from "@/lib/bodyScrollLock";
@@ -698,6 +699,14 @@ export default function CheckoutClient() {
       if (trackingItems.length > 0) {
         trackGaBeginCheckout(total, trackingItems);
       }
+
+      recordCommerceActivity({
+        eventType: "checkout_page_open",
+        path: "/checkout",
+        source: "checkout",
+        value: total,
+        quantity: numItems,
+      });
 
       hasTrackedCheckout.current = true;
     },

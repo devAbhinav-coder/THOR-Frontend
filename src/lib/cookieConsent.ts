@@ -60,3 +60,8 @@ export function reapplyStoredConsentIfAny(): void {
   const stored = getStoredConsent();
   if (stored) pushGtagConsent(stored);
 }
+
+/** Analytics / session replay / ad tags — only when user accepts all cookies. */
+export function hasAnalyticsConsent(): boolean {
+  return getStoredConsent() === "accepted_all";
+}

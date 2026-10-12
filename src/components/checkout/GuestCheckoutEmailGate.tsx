@@ -10,6 +10,7 @@ import { Mail } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { mergeGuestCartFromStorage } from "@/store/useCartStore";
+import { setGuestActivityEmail } from "@/lib/guestActivityIdentity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OtpResendCooldown } from "@/components/auth/OtpResendCooldown";
@@ -70,6 +71,7 @@ export default function GuestCheckoutEmailGate({ onVerified }: Props) {
     const turnstileToken = await turnstile.consumeOrToast();
     if (!turnstileToken) return;
     const email = emailForm.getValues("email").trim().toLowerCase();
+    setGuestActivityEmail(email);
     setSending(true);
     try {
       await authApi.sendOtp({

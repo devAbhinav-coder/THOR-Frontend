@@ -24,6 +24,7 @@ import { isFreeProductSize } from "@/lib/productCatalogOptions";
 import { getSelectedVariantPriceDisplay } from "@/lib/productPricing";
 import { hasInStockVariant } from "@/lib/productStock";
 import { cartApi, productApi } from "@/lib/api";
+import { setPdpEngagementContext } from "@/lib/pdpEngagementContext";
 import GiftCustomizationModal from "@/components/gifting/GiftCustomizationModal";
 import {
   customFieldAnswersToPayload,
@@ -342,7 +343,8 @@ export default function PremiumProductClient({
       /* storage blocked */
     }
     productApi.recordView(viewSlug).catch(() => {});
-  }, [isLiveProduct, product.catalogSlug, product.slug]);
+    setPdpEngagementContext(product.name, product.catalogSlug || product.slug);
+  }, [isLiveProduct, product.catalogSlug, product.slug, product.name]);
 
   /* Meta Pixel + GA: one ViewContent / view_item per premium PDP visit */
   const hasTrackedViewContent = useRef(false);
@@ -522,6 +524,7 @@ export default function PremiumProductClient({
         1,
         answersArray.length > 0 ? answersArray : undefined,
         cartProduct,
+        { commerceSource: "premium" },
       );
       toast.success("Added to bag");
     } catch {

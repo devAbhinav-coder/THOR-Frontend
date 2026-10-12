@@ -15,3 +15,8 @@ export { default as AnalyticsIntelligenceSection } from './AnalyticsIntelligence
 export { default as MarketingPerformanceBlock } from './MarketingPerformanceBlock';
 export { default as MarketingAdSummaryCards } from './MarketingAdSummaryCards';
 export { default as AnalyticsSectionHeader } from './AnalyticsSectionHeader';
+export { default as CommerceActivitySection } from './CommerceActivitySection';
+export { default as EngagementAnalyticsSection } from './EngagementAnalyticsSection';
+export { default as VisitorSessionExplorer } from './VisitorSessionExplorer';
+export { default as RecentSessionReplaysSection } from './RecentSessionReplaysSection';
+export { default as Ga4ReportingSection } from './Ga4ReportingSection';

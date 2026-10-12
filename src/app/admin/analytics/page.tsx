@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -20,6 +20,7 @@ import {
   Package,
   LineChart,
   Eye,
+  MousePointerClick,
 } from "lucide-react";
 import { formatPrice, cn } from "@/lib/utils";
 import {
@@ -53,14 +54,20 @@ import {
   MarketingInsightsPanel,
   AnalyticsIntelligenceSection,
   AnalyticsSectionHeader,
+  CommerceActivitySection,
+  EngagementAnalyticsSection,
+  VisitorSessionExplorer,
+  RecentSessionReplaysSection,
+  Ga4ReportingSection,
 } from "@/components/admin/analytics";
 import { LeakCard } from "@/components/admin/revenue/LeakCard";
 
-type Tab = "sales" | "traffic" | "catalogue" | "customers";
+type Tab = "sales" | "traffic" | "engagement" | "catalogue" | "customers";
 
 const TAB_PARAM: Record<string, Tab> = {
   sales: "sales",
   traffic: "traffic",
+  engagement: "engagement",
   catalogue: "catalogue",
   customers: "customers",
 };
@@ -70,6 +77,15 @@ export default function AnalyticsPage() {
   const { analytics, isLoading, loadError, isRefreshing, load, refresh } =
     useAdminAnalytics();
   const [activeTab, setActiveTab] = useState<Tab>("sales");
+  const [watchReplaySessionKey, setWatchReplaySessionKey] = useState("");
+  const onWatchReplay = useCallback((sessionKey: string) => {
+    setWatchReplaySessionKey(sessionKey);
+    if (typeof document !== "undefined") {
+      document
+        .getElementById("visitor-session-explorer")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
 
   useEffect(() => {
     const t = searchParams.get("tab");
@@ -157,6 +173,11 @@ export default function AnalyticsPage() {
   const tabs: { id: Tab; label: string; icon: typeof LineChart }[] = [
     { id: "sales", label: "Sales", icon: LineChart },
     { id: "traffic", label: "Traffic & acquisition", icon: Radio },
+    {
+      id: "engagement",
+      label: "Engagement & journey",
+      icon: MousePointerClick,
+    },
     { id: "catalogue", label: "Catalogue", icon: Package },
     { id: "customers", label: "Customers", icon: Users },
   ];
@@ -467,6 +488,24 @@ export default function AnalyticsPage() {
               <TrafficAnalyticsSection insights={analytics.visitInsights} />
 
               <AnalyticsIntelligenceSection analytics={analytics} />
+            </div>
+          )}
+
+          {activeTab === "engagement" && (
+            <div className='space-y-5'>
+              <RecentSessionReplaysSection onWatchSession={onWatchReplay} />
+              <div id='visitor-session-explorer'>
+                <VisitorSessionExplorer
+                  presetSessionKey={watchReplaySessionKey}
+                />
+              </div>
+              <Ga4ReportingSection initial={analytics.ga4Reporting} />
+              <EngagementAnalyticsSection
+                engagement={analytics.engagementInsights}
+              />
+              <CommerceActivitySection
+                activity={analytics.commerceInsights?.commerceActivity}
+              />
             </div>
           )}
 

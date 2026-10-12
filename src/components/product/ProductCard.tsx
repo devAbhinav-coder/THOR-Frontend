@@ -210,6 +210,7 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
           1,
           undefined,
           product,
+          { commerceSource: "card" },
         );
         trackAddToCart(
           product,

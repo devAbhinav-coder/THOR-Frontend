@@ -146,7 +146,7 @@ function WishlistCardInner({
           1,
           undefined,
           bagProduct,
-          { successToast: false },
+          { successToast: false, commerceSource: "wishlist" },
         );
         trackAddToCart(
           bagProduct,

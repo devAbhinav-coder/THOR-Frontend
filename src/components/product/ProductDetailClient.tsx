@@ -13,6 +13,7 @@ import {
   Gift,
 } from "lucide-react";
 import { cartApi, productApi, reviewApi } from "@/lib/api";
+import { setPdpEngagementContext } from "@/lib/pdpEngagementContext";
 import { Product, Review, ProductVariant } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
 import { productNameClassName } from "@/lib/storefrontTypography";
@@ -570,7 +571,8 @@ export default function ProductDetailClient({
       /* storage blocked */
     }
     productApi.recordView(product.slug).catch(() => {});
-  }, [product?.slug]);
+    setPdpEngagementContext(product.name, product.slug);
+  }, [product?.slug, product?.name]);
 
   /* Analytics & Meta Pixel: one ViewContent per product visit */
   const hasTrackedViewContent = useRef(false);
@@ -758,6 +760,7 @@ export default function ProductDetailClient({
         quantity,
         answersArray.length > 0 ? answersArray : undefined,
         product,
+        { commerceSource: "pdp" },
       );
       trackAddToCart(product, quantity, selectedPrice, selectedVariant);
       trackGaAddToCart(product, quantity, selectedPrice);
