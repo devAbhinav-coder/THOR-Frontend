@@ -1662,16 +1662,6 @@ export default function CheckoutClient() {
       } catch (err: unknown) {
         const apiErr = getClientApiError(err);
         const msg = formatClientApiErrorMessage(err);
-        if (
-          apiErr.status === 409 &&
-          /account already exists|sign in to checkout/i.test(msg)
-        ) {
-          toast.error(
-            "This email belongs to a registered account. Sign in to link this order to your profile.",
-          );
-          router.push(loginUrlWithRedirect("/checkout"));
-          return;
-        }
         toast.error(msg || "Failed to process order");
         if (
           apiErr.status === 409 ||
@@ -2067,7 +2057,9 @@ export default function CheckoutClient() {
                           error={errors.email?.message}
                         />
                         <p className='mt-2 text-xs text-gray-500'>
-                          Receipt and order updates will be sent here.
+                          Receipt and order updates will be sent here. If you
+                          already have an account with this email, your order
+                          will still be linked to it — no need to sign in now.
                         </p>
                       </>
                     : <>

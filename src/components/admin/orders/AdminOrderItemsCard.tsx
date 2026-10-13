@@ -36,8 +36,8 @@ export default function AdminOrderItemsCard({
     (s, it) => s + (it.price || 0) * (it.quantity || 0),
     0,
   );
-  const cogsKnown = items.every(
-    (it) => isManualOfflineOrderLine(it) ? (it.costAtSale ?? 0) > 0 : true,
+  const cogsKnown = items.every((it) =>
+    isManualOfflineOrderLine(it) ? (it.costAtSale ?? 0) > 0 : true,
   );
   const totalCogs = items.reduce(
     (s, it) => s + (it.costAtSale ?? 0) * (it.quantity || 0),
@@ -89,7 +89,8 @@ export default function AdminOrderItemsCard({
                 isOfflineManual={isManual}
                 className={cn(
                   "h-[72px] w-[60px] rounded-xl shadow-sm transition-transform",
-                  usableImg && "group-hover:scale-[1.03] group-hover:border-brand-300",
+                  usableImg &&
+                    "group-hover:scale-[1.03] group-hover:border-brand-300",
                 )}
                 sizes='60px'
                 onClick={() => {
@@ -139,7 +140,11 @@ export default function AdminOrderItemsCard({
                       {it.variant?.sku ?
                         <span className='inline-flex items-center gap-0.5 text-[11px] text-gray-500 font-mono'>
                           {it.variant.sku}
-                          <AdminCopyButton value={it.variant.sku} label='Copy SKU' iconOnly />
+                          <AdminCopyButton
+                            value={it.variant.sku}
+                            label='Copy SKU'
+                            iconOnly
+                          />
                         </span>
                       : null}
                       {it.lineCategory ?
@@ -218,7 +223,9 @@ export default function AdminOrderItemsCard({
                 {formatPrice(totalCogs)}
               </span>
               {!cogsKnown ?
-                <span className='ml-1 text-amber-700'>(some lines missing)</span>
+                <span className='ml-1 text-amber-700'>
+                  (some lines missing)
+                </span>
               : null}
             </span>
           : null}

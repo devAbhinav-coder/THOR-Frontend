@@ -155,13 +155,26 @@ function AdjustModal({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const parsedDelta = useMemo(() => {
+    const raw = delta.trim();
+    if (raw === "" || raw === "-" || raw === "+") return 0;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
+  }, [delta]);
+
+  const projectedStock = variant.stock + parsedDelta;
+
   const handle = async () => {
-    const d = parseInt(delta, 10) || 0;
+    const d = parsedDelta;
     const cp = parseFloat(costPrice);
     const p = parseFloat(price);
 
     if (d === 0 && isNaN(cp) && isNaN(p)) {
       toast.error("Enter a stock change or update a price");
+      return;
+    }
+    if (d !== 0 && projectedStock < 0) {
+      toast.error(`Cannot go below 0 (would be ${projectedStock})`);
       return;
     }
 
@@ -212,9 +225,24 @@ function AdjustModal({
                 type='number'
                 value={delta}
                 onChange={(e) => setDelta(e.target.value)}
-                placeholder='e.g. +10'
+                placeholder='e.g. +10 or -2'
                 className='w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none bg-gray-50/30'
               />
+              <p className='text-[10px] text-gray-500 mt-1 leading-snug'>
+                Change amount, not final stock.{" "}
+                {parsedDelta !== 0 ?
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      projectedStock < 0 ?
+                        "text-red-600"
+                      : "text-gray-700",
+                    )}
+                  >
+                    After save: {Math.max(0, projectedStock)} units
+                  </span>
+                : null}
+              </p>
             </div>
             <div>
               <label className='text-[10px] font-bold text-gray-400 uppercase mb-1 block'>

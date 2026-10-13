@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/input-otp";
 import { TurnstileField } from "@/components/auth/TurnstileField";
 import { useTurnstileToken } from "@/hooks/useTurnstileToken";
+import Link from "next/link";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import { cn } from "@/lib/utils";
 import {
@@ -193,13 +193,15 @@ export default function GuestCheckoutEmailGate({ onVerified }: Props) {
               {sending ? "Sending…" : "Send verification code"}
             </Button>
             <p className="text-center text-sm text-gray-600">
-              Already have an account?{" "}
+              Prefer to sign in first?{" "}
               <Link
                 href={loginUrlWithRedirect("/checkout")}
                 className="font-semibold text-navy-900 underline-offset-2 hover:underline"
               >
                 Sign in
               </Link>
+              {" "}
+              (optional — guest checkout works with the same email too.)
             </p>
           </form>
         : <form
