@@ -586,7 +586,9 @@ export default function Testimonials({
         <div
           ref={railRef}
           data-lenis-prevent-horizontal
-          className='relative overflow-hidden py-6'
+          // rr-block: the rAF tilt loop below rewrites `style.transform` on every
+          // card each frame (~800 DOM mutations/s), which floods session replay.
+          className='rr-block relative overflow-hidden py-6'
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => {
             if (!gallery) setPaused(false);

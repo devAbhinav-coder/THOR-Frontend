@@ -45,6 +45,15 @@ let storefrontSettingsCache: {
   value: StorefrontSettingsResponse;
 } | null = null;
 
+const STOREFRONT_PUBLIC_OFFERS_CLIENT_CACHE_MS = 60_000;
+type StorefrontPublicOffersResponse = schemas.StorefrontPublicOffersApiEnvelope;
+let storefrontPublicOffersInFlight: Promise<StorefrontPublicOffersResponse> | null =
+  null;
+let storefrontPublicOffersCache: {
+  expiresAt: number;
+  value: StorefrontPublicOffersResponse;
+} | null = null;
+
 /**
  * Instance default is `application/json`, so axios `transformRequest` would run
  * `JSON.stringify(formDataToJSON(data))` on FormData and drop binary parts - uploads
@@ -381,10 +390,14 @@ export const productApi = {
       schemas.trendingSearchesResponse,
     ),
   // Existing endpoints
-  recordView: (slug: string) =>
+  /** One counted PDP view per shopper per product; server dedupes by sessionKey. */
+  recordView: (slug: string, payload?: { sessionKey?: string | null }) =>
     unwrapAxios(
       "products.recordView",
-      api.post(`/products/${encodeURIComponent(slug)}/view`),
+      api.post(
+        `/products/${encodeURIComponent(slug)}/view`,
+        payload?.sessionKey ? { sessionKey: payload.sessionKey } : {},
+      ),
       schemas.viewCount,
     ),
   getBySlug: (slug: string) =>
@@ -1191,12 +1204,34 @@ export const storefrontApi = {
       api.get("/storefront/shipping/estimate", { params: { pin } }),
       schemas.shippingEstimate,
     ),
-  getPublicOffers: () =>
-    unwrapAxios(
+  getPublicOffers: async () => {
+    const now = Date.now();
+    if (
+      storefrontPublicOffersCache &&
+      now < storefrontPublicOffersCache.expiresAt
+    ) {
+      return storefrontPublicOffersCache.value;
+    }
+    if (storefrontPublicOffersInFlight) {
+      return storefrontPublicOffersInFlight;
+    }
+    storefrontPublicOffersInFlight = unwrapAxios(
       "storefront.publicOffers",
       api.get("/storefront/public-offers"),
       schemas.storefrontPublicOffers,
-    ),
+    )
+      .then((body) => {
+        storefrontPublicOffersCache = {
+          value: body,
+          expiresAt: Date.now() + STOREFRONT_PUBLIC_OFFERS_CLIENT_CACHE_MS,
+        };
+        return body;
+      })
+      .finally(() => {
+        storefrontPublicOffersInFlight = null;
+      });
+    return storefrontPublicOffersInFlight;
+  },
 };
 
 export const adminApi = {
@@ -1329,6 +1364,8 @@ export const adminApi = {
       trackingNumber?: string;
       trackingUrl?: string;
       notifyCustomer?: boolean;
+      notifyMode?: "none" | "processing_awb" | "shipped" | "tracking_updated";
+      markShipped?: boolean;
     },
   ) =>
     unwrapAxios(
@@ -1914,6 +1951,51 @@ export const inventoryApi = {
       "inventory.ledger",
       api.get("/admin/inventory/ledger", { params }),
       schemas.adminStockLedger,
+    ),
+  /** Where a product's "sold" number comes from (channels, SKUs, order lines). */
+  getProductSales: (
+    productId: string,
+    params?: { sku?: string; period?: string; year?: number; month?: number },
+  ) =>
+    unwrapAxios(
+      "inventory.productSales",
+      api.get(
+        `/admin/inventory/products/${encodeURIComponent(productId)}/sales`,
+        { params },
+      ),
+      schemas.adminProductSalesBreakdown,
+    ),
+  recalculateSoldCounters: () =>
+    unwrapAxios(
+      "inventory.recalculateSoldCounters",
+      api.post("/admin/inventory/sold-counters/recalculate"),
+      schemas.adminSoldCounterSyncResult,
+    ),
+  getProductViews: (
+    productId: string,
+    params?: { period?: string; year?: number; month?: number },
+  ) =>
+    unwrapAxios(
+      "inventory.productViews",
+      api.get(
+        `/admin/inventory/products/${encodeURIComponent(productId)}/views`,
+        { params },
+      ),
+      schemas.adminProductViewsBreakdown,
+    ),
+  recountProductViews: (productId: string) =>
+    unwrapAxios(
+      "inventory.recountProductViews",
+      api.post(
+        `/admin/inventory/products/${encodeURIComponent(productId)}/views/recount`,
+      ),
+      schemas.adminViewCounterRecountResult,
+    ),
+  recountAllProductViews: () =>
+    unwrapAxios(
+      "inventory.recountAllProductViews",
+      api.post("/admin/inventory/view-counters/recalculate"),
+      schemas.adminViewCounterBulkRecountResult,
     ),
   getValuation: () =>
     unwrapAxios(

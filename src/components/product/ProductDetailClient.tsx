@@ -26,6 +26,7 @@ import BagIcon from "@/components/icons/BagIcon";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { getShopSessionKey } from "@/lib/shopSession";
 import { useWishlistUiState } from "@/hooks/useWishlistUiState";
 import toast from "react-hot-toast";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -552,9 +553,12 @@ export default function ProductDetailClient({
 
   /* Review Eligibility - Handled by React Query below */
 
-  /* Analytics: one counted view per product per browser session */
+  /* Analytics: one counted view per product per browser session (server dedupes too; admins never counted) */
+  const viewerRole = useAuthStore((s) => s.user?.role);
   useEffect(() => {
     if (!product?.slug) return;
+    setPdpEngagementContext(product.name, product.slug);
+    if (viewerRole && viewerRole !== "user") return; // owner / staff browsing their own shop
     const key = `hor_pv_${product.slug}`;
     try {
       if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(key))
@@ -564,9 +568,10 @@ export default function ProductDetailClient({
     } catch {
       /* storage blocked */
     }
-    productApi.recordView(product.slug).catch(() => {});
-    setPdpEngagementContext(product.name, product.slug);
-  }, [product?.slug, product?.name]);
+    productApi
+      .recordView(product.slug, { sessionKey: getShopSessionKey() })
+      .catch(() => {});
+  }, [product?.slug, product?.name, viewerRole]);
 
   /* Analytics & Meta Pixel: one ViewContent per product visit */
   const hasTrackedViewContent = useRef(false);

@@ -54,6 +54,7 @@ export default function HomePromoMarquee({
   );
 
   useEffect(() => {
+    if (initialOffers !== null && initialOffers !== undefined) return;
     let cancelled = false;
     storefrontApi
       .getPublicOffers()
@@ -72,7 +73,7 @@ export default function HomePromoMarquee({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialOffers]);
 
   const lines = useMemo(
     () => buildHomePromoMarqueeLines(announcementMessages, offers),

@@ -337,16 +337,60 @@ export default function AdminUsersPage() {
 
   const isRefreshing = false;
 
+  /** Close the profile drawer and drop `?highlight=` so a refresh doesn't reopen it. */
+  const closeSelectedUser = useCallback(() => {
+    setSelectedUser(null);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("highlight")) {
+      url.searchParams.delete("highlight");
+      window.history.replaceState(window.history.state, "", url.toString());
+    }
+  }, []);
+
+  // Deep link: /admin/users?highlight=<userId> (from order detail, analytics, etc.)
+  // opens that customer's profile drawer directly.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const highlight = new URLSearchParams(window.location.search)
+      .get("highlight")
+      ?.trim();
+    if (!highlight) return;
+
+    let cancelled = false;
+    adminApi
+      .getUserInsights(highlight)
+      .then((res) => {
+        if (cancelled) return;
+        const u = (res.data as { user?: User }).user;
+        if (u && u._id) {
+          setSelectedUser(u);
+          setSearch((prev) => prev || u.email || u.name || "");
+        } else {
+          toast.error("Customer not found.");
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        toast.error(
+          (err as { message?: string })?.message || "Could not open customer profile.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (!selectedUser) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setSelectedUser(null);
+        closeSelectedUser();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedUser]);
+  }, [selectedUser, closeSelectedUser]);
 
   const toggleStatusMutation = useMutation({
     mutationFn: (userId: string) => adminApi.toggleUserStatus(userId),
@@ -1411,9 +1455,7 @@ export default function AdminUsersPage() {
             type='button'
             className='absolute inset-0 bg-navy-950/60 backdrop-blur-[2px]'
             aria-label='Close'
-            onClick={() => {
-              setSelectedUser(null);
-            }}
+            onClick={closeSelectedUser}
           />
           <div className='relative w-full sm:max-w-lg md:max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-hidden flex flex-col border border-gray-100'>
             <div className='px-5 sm:px-7 pt-6 pb-5 bg-gradient-to-br from-navy-950 via-navy-900 to-brand-900 text-white shrink-0'>
@@ -1454,9 +1496,7 @@ export default function AdminUsersPage() {
                 </div>
                 <button
                   type='button'
-                  onClick={() => {
-                    setSelectedUser(null);
-                  }}
+                  onClick={closeSelectedUser}
                   className='h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors'
                   aria-label='Close'
                 >

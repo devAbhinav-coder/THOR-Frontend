@@ -225,7 +225,13 @@ export const productSingle = z.object({
 
 export const viewCount = z.object({
   status: z.string(),
-  data: z.object({ viewCount: z.number() }),
+  data: z
+    .object({
+      viewCount: z.number(),
+      counted: z.boolean().optional(),
+      reason: z.string().optional(),
+    })
+    .passthrough(),
 });
 
 export const storeVisitRecorded = z.object({
@@ -637,6 +643,10 @@ export const storefrontPublicOffers = z.object({
     promotions: z.array(doc),
   }),
 });
+
+export type StorefrontPublicOffersApiEnvelope = z.infer<
+  typeof storefrontPublicOffers
+>;
 
 export const reviewsFeatured = z.object({
   status: z.string(),
@@ -1225,6 +1235,221 @@ export const adminInventoryOverview = z
     data: z.object({
       products: z.array(doc),
       summary: z.any(),
+    }),
+  })
+  .passthrough();
+
+const soldBreakdownLine = z
+  .object({
+    orderId: z.string(),
+    orderNumber: z.string(),
+    createdAt: z.string(),
+    channel: z.string(),
+    channelLabel: z.string(),
+    paymentMethod: z.string(),
+    paymentStatus: z.string(),
+    status: z.string(),
+    customerName: z.string().optional().default(""),
+    sku: z.string(),
+    size: z.string().optional(),
+    color: z.string().optional(),
+    quantity: z.number(),
+    price: z.number(),
+    lineTotal: z.number(),
+    bucket: z.enum(["paid", "pending", "refunded", "cancelled"]),
+    counted: z.boolean(),
+  })
+  .passthrough();
+
+export const adminProductSalesBreakdown = z
+  .object({
+    status: z.string(),
+    data: z.object({
+      breakdown: z
+        .object({
+          product: z
+            .object({
+              _id: z.string(),
+              name: z.string(),
+              image: z.string().optional(),
+              counterSoldCount: z.number(),
+            })
+            .passthrough(),
+          period: z.object({ period: z.string(), label: z.string() }),
+          skuFilter: z.string().nullable(),
+          totals: z
+            .object({
+              paidUnits: z.number(),
+              paidOrders: z.number(),
+              paidRevenue: z.number(),
+              pendingUnits: z.number(),
+              pendingOrders: z.number(),
+              refundedUnits: z.number(),
+              cancelledUnits: z.number(),
+              counterUnits: z.number(),
+              counterDrift: z.number(),
+            })
+            .passthrough(),
+          byChannel: z.array(
+            z
+              .object({
+                channel: z.string(),
+                label: z.string(),
+                orders: z.number(),
+                units: z.number(),
+                revenue: z.number(),
+                pendingUnits: z.number(),
+              })
+              .passthrough(),
+          ),
+          bySku: z.array(
+            z
+              .object({
+                sku: z.string(),
+                size: z.string().optional(),
+                color: z.string().optional(),
+                stock: z.number(),
+                paidUnits: z.number(),
+                pendingUnits: z.number(),
+                refundedUnits: z.number(),
+                cancelledUnits: z.number(),
+                counterUnits: z.number(),
+              })
+              .passthrough(),
+          ),
+          lines: z.array(soldBreakdownLine),
+          truncated: z.boolean(),
+        })
+        .passthrough(),
+    }),
+  })
+  .passthrough();
+
+export type AdminProductSalesBreakdown = z.infer<
+  typeof adminProductSalesBreakdown
+>["data"]["breakdown"];
+
+export const adminSoldCounterSyncResult = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z.object({
+      result: z.object({ updated: z.number(), scanned: z.number() }),
+    }),
+  })
+  .passthrough();
+
+const adminViewsBucket = z
+  .object({
+    key: z.string(),
+    label: z.string(),
+    views: z.number(),
+    sessions: z.number(),
+  })
+  .passthrough();
+
+export const adminProductViewsBreakdown = z
+  .object({
+    status: z.string(),
+    data: z.object({
+      breakdown: z
+        .object({
+          product: z
+            .object({
+              _id: z.string(),
+              name: z.string(),
+              slug: z.string(),
+              premiumSlug: z.string().optional(),
+              image: z.string().optional(),
+              createdAt: z.string().optional(),
+              counterViewCount: z.number(),
+            })
+            .passthrough(),
+          period: z.object({ period: z.string(), label: z.string() }),
+          paths: z.array(z.string()),
+          coverage: z.object({
+            firstLoggedAt: z.string().nullable(),
+            lastLoggedAt: z.string().nullable(),
+            logStartedAt: z.string().nullable(),
+          }),
+          totals: z
+            .object({
+              pageViews: z.number(),
+              uniqueSessions: z.number(),
+              uniqueSessionDays: z.number(),
+              staffViews: z.number(),
+              loggedInViews: z.number(),
+              guestViews: z.number(),
+              counterViewCount: z.number(),
+              counterDrift: z.number(),
+            })
+            .passthrough(),
+          byDevice: z.array(adminViewsBucket),
+          bySource: z.array(adminViewsBucket),
+          byCountry: z.array(adminViewsBucket),
+          byCampaign: z.array(adminViewsBucket),
+          byDay: z.array(
+            z.object({
+              date: z.string(),
+              views: z.number(),
+              sessions: z.number(),
+            }),
+          ),
+          recent: z.array(
+            z
+              .object({
+                at: z.string(),
+                path: z.string(),
+                device: z.string().optional(),
+                referrerSource: z.string().optional(),
+                country: z.string().optional(),
+                region: z.string().optional(),
+                utmSource: z.string().optional(),
+                utmMedium: z.string().optional(),
+                utmCampaign: z.string().optional(),
+                sessionKey: z.string(),
+                loggedIn: z.boolean(),
+                isStaff: z.boolean(),
+              })
+              .passthrough(),
+          ),
+          truncated: z.boolean(),
+        })
+        .passthrough(),
+    }),
+  })
+  .passthrough();
+
+export type AdminProductViewsBreakdown = z.infer<
+  typeof adminProductViewsBreakdown
+>["data"]["breakdown"];
+
+export const adminViewCounterRecountResult = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z.object({
+      result: z.object({
+        before: z.number(),
+        after: z.number(),
+        firstLoggedAt: z.string().nullable(),
+      }),
+    }),
+  })
+  .passthrough();
+
+export const adminViewCounterBulkRecountResult = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    data: z.object({
+      result: z.object({
+        scanned: z.number(),
+        updated: z.number(),
+        counterBefore: z.number(),
+        counterAfter: z.number(),
+        logStartedAt: z.string().nullable(),
+      }),
     }),
   })
   .passthrough();

@@ -10,9 +10,10 @@ import {
   fetchHomeExploreProducts,
 } from "@/lib/storePrefetch";
 import {
-  fetchStorefrontHomeBundle,
+  fetchStorefrontHeroSlides,
   fetchStorefrontHomePageBundle,
   fetchStorefrontPublicOffers,
+  fetchStorefrontSettingsHome,
 } from "@/lib/storefrontServer";
 import { getSiteUrl } from "@/lib/siteUrl";
 import {
@@ -123,9 +124,12 @@ export default async function HomePage() {
   let heroSlides = homeBundle?.heroSlides ?? [];
   let storefrontSettings = homeBundle?.settings ?? null;
   if (!homeBundle) {
-    const legacyHero = await fetchStorefrontHomeBundle();
-    heroSlides = legacyHero.heroSlides;
-    storefrontSettings = legacyHero.settings;
+    const [slides, settings] = await Promise.all([
+      fetchStorefrontHeroSlides(),
+      fetchStorefrontSettingsHome(),
+    ]);
+    heroSlides = slides;
+    storefrontSettings = settings;
   }
   const categoryStats = homeBundle?.categoryStats ?? categoryStatsFallback;
   const featuredProducts = homeBundle?.featuredProducts ?? featuredFallback;

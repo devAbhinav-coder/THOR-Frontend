@@ -36,6 +36,7 @@ import { trackViewContent } from "@/lib/metaPixel";
 import { trackGaViewItem } from "@/lib/googleAnalytics";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { getShopSessionKey } from "@/lib/shopSession";
 import { useRouter } from "next/navigation";
 import type { Product, ProductVariant } from "@/types";
 import { cn, formatPrice } from "@/lib/utils";
@@ -328,11 +329,14 @@ export default function PremiumProductClient({
     : false;
   const showQuoteFlow = Boolean(cartProduct?.isCustomizable);
 
-  /* Analytics: one counted view per product per browser session (same as shop PDP) */
+  /* Analytics: one counted view per product per browser session (same as shop PDP; admins never counted) */
+  const viewerRole = useAuthStore((s) => s.user?.role);
   useEffect(() => {
     if (!isLiveProduct) return;
     const viewSlug = product.catalogSlug || product.slug;
     if (!viewSlug) return;
+    setPdpEngagementContext(product.name, product.catalogSlug || product.slug);
+    if (viewerRole && viewerRole !== "user") return;
     const key = `hor_pv_${viewSlug}`;
     try {
       if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(key))
@@ -342,9 +346,16 @@ export default function PremiumProductClient({
     } catch {
       /* storage blocked */
     }
-    productApi.recordView(viewSlug).catch(() => {});
-    setPdpEngagementContext(product.name, product.catalogSlug || product.slug);
-  }, [isLiveProduct, product.catalogSlug, product.slug, product.name]);
+    productApi
+      .recordView(viewSlug, { sessionKey: getShopSessionKey() })
+      .catch(() => {});
+  }, [
+    isLiveProduct,
+    product.catalogSlug,
+    product.slug,
+    product.name,
+    viewerRole,
+  ]);
 
   /* Meta Pixel + GA: one ViewContent / view_item per premium PDP visit */
   const hasTrackedViewContent = useRef(false);

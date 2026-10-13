@@ -53,6 +53,9 @@ import {
   variantPriceOverridesBase,
 } from "@/lib/productPricing";
 import BulkSellingPriceModal from "./BulkSellingPriceModal";
+import ProductSalesBreakdownModal, {
+  type ProductSalesBreakdownTarget,
+} from "@/components/admin/inventory/ProductSalesBreakdownModal";
 
 interface Variant {
   sku: string;
@@ -61,7 +64,10 @@ interface Variant {
   stock: number;
   price?: number;
   costPrice?: number;
+  /** Units in paid order lines (period-aware). */
   soldCount?: number;
+  /** Reservation counter stored on the variant (diagnostic). */
+  counterSoldCount?: number;
   periodRevenue?: number;
   periodProfit?: number;
   missingCost?: boolean;
@@ -92,6 +98,11 @@ interface InventoryProduct {
   effectiveSellPrice?: number;
   hasVariantPriceSpread?: boolean;
   isPeriodView?: boolean;
+  /** Reservation counter stored on the product doc (diagnostic). */
+  counterSoldCount?: number;
+  /** counterSoldCount − paid units (lifetime only; null for period views). */
+  counterDrift?: number | null;
+  /** @deprecated use counterSoldCount */
   lifetimeSoldCount?: number;
   variantsMissingCost?: number;
 }
@@ -296,11 +307,14 @@ function marginColor(pct: number) {
 function VariantBreakdownPanel({
   product,
   onAdjust,
+  onShowSales,
 }: {
   product: InventoryProduct;
   onAdjust: (v: Variant) => void;
+  onShowSales: (sku?: string) => void;
 }) {
   const periodView = Boolean(product.isPeriodView);
+  const lifetimeView = product.counterDrift != null;
 
   return (
     <div className='rounded-xl border border-brand-200/80 bg-white shadow-sm overflow-hidden'>
@@ -309,9 +323,8 @@ function VariantBreakdownPanel({
           Variant / SKU details
         </p>
         <p className='text-[10px] text-gray-500'>
-          {periodView ?
-            "Per-SKU sold · sell · cost · period revenue/profit from orders"
-          : "Per-SKU soldCount · size / color / stock / cost / margin"}
+          Per-SKU sold · revenue · profit from paid orders · click a Sold
+          number to see which orders
         </p>
       </div>
       <div className='overflow-x-auto'>
@@ -367,7 +380,23 @@ function VariantBreakdownPanel({
                     <StockBadge stock={v.stock} />
                   </td>
                   <td className='px-4 py-2.5 text-right tabular-nums font-semibold text-navy-800'>
-                    {skuSold}
+                    <button
+                      type='button'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onShowSales(v.sku);
+                      }}
+                      title='Which orders sold this SKU?'
+                      className={cn(
+                        "px-1.5 py-0.5 rounded-md underline-offset-2 hover:underline hover:bg-navy-50 transition-colors",
+                        lifetimeView &&
+                          v.counterSoldCount != null &&
+                          v.counterSoldCount !== skuSold &&
+                          "ring-1 ring-amber-200",
+                      )}
+                    >
+                      {skuSold}
+                    </button>
                   </td>
                   <td className='px-4 py-2.5 text-right font-semibold text-gray-900'>
                     {formatPrice(sell)}
@@ -445,14 +474,18 @@ function VariantBreakdownPanel({
 function ProductRow({
   product,
   onAdjust,
+  onShowSales,
 }: {
   product: InventoryProduct;
   onAdjust: (v: Variant) => void;
+  onShowSales: (sku?: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const img = product.images[0]?.url;
   const sold = product.soldCount ?? 0;
   const hasSales = sold > 0;
+  const drift = product.counterDrift ?? 0;
+  const hasDrift = product.counterDrift != null && drift !== 0;
 
   const variantWithCost = product.variants.find(
     (v) => v.costPrice !== undefined && v.costPrice !== null,
@@ -530,8 +563,29 @@ function ProductRow({
           <StockBadge stock={product.totalStock} />
         </td>
         <td className='px-4 py-3 text-center'>
-          <p className='text-sm font-bold text-navy-900'>{sold}</p>
-          <p className='text-[9px] text-gray-400'>pieces</p>
+          <button
+            type='button'
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowSales();
+            }}
+            title={
+              hasDrift ?
+                `Paid orders: ${sold} · catalog counter: ${product.counterSoldCount} (${drift > 0 ? "+" : ""}${drift}). Click for the order list.`
+              : "Click to see which orders / channels sold this"
+            }
+            className={cn(
+              "inline-flex flex-col items-center px-2 py-0.5 rounded-lg transition-colors hover:bg-navy-50",
+              hasDrift && "ring-1 ring-amber-300 bg-amber-50/60",
+            )}
+          >
+            <span className='text-sm font-bold text-navy-900 underline-offset-2 hover:underline'>
+              {sold}
+            </span>
+            <span className='text-[9px] text-gray-400'>
+              {hasDrift ? `counter ${product.counterSoldCount}` : "paid · details"}
+            </span>
+          </button>
         </td>
         <td className='px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap'>
           <div className='text-right'>
@@ -624,11 +678,11 @@ function ProductRow({
           : <MetricTooltip
               title='Inventory velocity'
               lines={[
-                { label: "Sold", value: String(sold) },
+                { label: "Sold (paid orders)", value: String(sold) },
                 { label: "In stock", value: String(product.totalStock) },
                 { label: "Turnover", value: turnoverLabel, highlight: true },
               ]}
-              note='soldCount ÷ current stock. Higher = faster moving.'
+              note='Units sold ÷ current stock. Higher = faster moving.'
               align='center'
             >
               <span
@@ -693,7 +747,11 @@ function ProductRow({
       {expanded && (
         <tr className='bg-brand-50/30'>
           <td colSpan={11} className='px-4 py-3 pl-14'>
-            <VariantBreakdownPanel product={product} onAdjust={onAdjust} />
+            <VariantBreakdownPanel
+              product={product}
+              onAdjust={onAdjust}
+              onShowSales={onShowSales}
+            />
           </td>
         </tr>
       )}
@@ -718,6 +776,8 @@ export default function InventoryStockTab() {
     v: Variant;
   } | null>(null);
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const [salesTarget, setSalesTarget] =
+    useState<ProductSalesBreakdownTarget | null>(null);
 
   const years = Array.from(
     { length: 5 },
@@ -1072,6 +1132,13 @@ export default function InventoryStockTab() {
                     key={p._id}
                     product={p}
                     onAdjust={(v) => setAdjustTarget({ p, v })}
+                    onShowSales={(sku) =>
+                      setSalesTarget({
+                        productId: p._id,
+                        productName: p.name,
+                        sku,
+                      })
+                    }
                   />
                 ))
               }
@@ -1095,6 +1162,18 @@ export default function InventoryStockTab() {
           onApplied={invalidateStock}
           initialCategory={categoryFilter}
           initialSubcategory={subcategoryFilter}
+        />
+
+        <ProductSalesBreakdownModal
+          target={salesTarget}
+          onClose={() => setSalesTarget(null)}
+          period={period}
+          year={period === "year" ? year : new Date().getFullYear()}
+          month={new Date().getMonth() + 1}
+          onCountersSynced={() => {
+            invalidateStock();
+            void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+          }}
         />
 
         {totalPages > 1 && (

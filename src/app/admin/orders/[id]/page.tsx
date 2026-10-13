@@ -1,1189 +1,137 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import OrderLineThumbnail from "@/components/orders/OrderLineThumbnail";
-import OrderLineCogEditor from "@/components/admin/orders/OrderLineCogEditor";
-import AdminOrderLifecycleTimeline from "@/components/admin/orders/AdminOrderLifecycleTimeline";
-import AdminCancelOrderModal from "@/components/admin/orders/AdminCancelOrderModal";
-import { getOrderCancellationInfo } from "@/lib/orderLifecycle";
-import {
-  isUsableOrderLineImage,
-  isManualOfflineOrderLine,
-} from "@/lib/offlineOrder";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
-  Truck,
-  Package,
-  MapPin,
-  User as UserIcon,
-  CreditCard,
-  Clock,
-  ExternalLink,
-  FileText,
-  Gift,
-  ChevronDown,
-  Sparkles,
-  CheckCircle2,
-  Circle,
-  Compass,
-  XCircle,
-  RotateCcw,
-  Undo2,
-  Award,
-  Info,
-  Loader2,
-  RefreshCw,
-  Download,
-  Printer,
-  Trash2,
-  Receipt,
+  ArrowRight,
+  Ban,
   Building2,
+  CalendarClock,
+  ChevronRight,
+  Copy,
+  Gift,
+  IndianRupee,
+  ListChecks,
+  MoreHorizontal,
+  Package,
+  Receipt,
+  Store,
+  Trash2,
+  Truck,
+  Undo2,
+  User as UserIcon,
+  XCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { adminApi } from "@/lib/api";
-import { Order, OrderItem, OrderStatus } from "@/types";
+import type { Order, OrderStatus } from "@/types";
 import { Button } from "@/components/ui/button";
-import {
-  formatDateTime,
-  formatPrice,
-  getOrderStatusColor,
-  cn,
-  getPaymentStatusColor,
-} from "@/lib/utils";
-import {
-  getMaxRefundableInr,
-  getNonRefundableFeesInr,
-} from "@/lib/orderRefundPolicy";
-import AdminOrderPackingSlip4R from "@/components/admin/AdminOrderPackingSlip4R";
+import { cn, formatDateTime, formatPrice } from "@/lib/utils";
+import { getOrderCancellationInfo } from "@/lib/orderLifecycle";
+import { getMaxRefundableInr } from "@/lib/orderRefundPolicy";
 import { AdminAiExplainButton } from "@/components/admin/ai";
-import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import OrderMarketingAttributionCard from "@/components/admin/orders/OrderMarketingAttributionCard";
 import OrderReviewInvitePanel from "@/components/admin/OrderReviewInvitePanel";
+import OrderMarketingAttributionCard from "@/components/admin/orders/OrderMarketingAttributionCard";
+import AdminOrderLifecycleTimeline from "@/components/admin/orders/AdminOrderLifecycleTimeline";
+import AdminCancelOrderModal from "@/components/admin/orders/AdminCancelOrderModal";
 import AdminOrderCustomerCommsPanel from "@/components/admin/orders/AdminOrderCustomerCommsPanel";
 import AdminGuestCheckoutPanel, {
   type AdminGuestCheckoutMeta,
 } from "@/components/admin/orders/AdminGuestCheckoutPanel";
+import AdminDelhiveryAutomationCard from "@/components/admin/orders/AdminDelhiveryAutomationCard";
+import AdminOrderItemsCard from "@/components/admin/orders/AdminOrderItemsCard";
+import AdminOrderCustomerCard, {
+  CustomerSegmentBadge,
+  getOrderUser,
+  getOrderUserId,
+} from "@/components/admin/orders/AdminOrderCustomerCard";
+import AdminOrderPaymentCard from "@/components/admin/orders/AdminOrderPaymentCard";
+import AdminOrderTrackingCard from "@/components/admin/orders/AdminOrderTrackingCard";
+import AdminOrderDocumentsCard, {
+  getLinkedTaxInvoiceId,
+} from "@/components/admin/orders/AdminOrderDocumentsCard";
+import AdminOrderReturnCard from "@/components/admin/orders/AdminOrderReturnCard";
+import AdminOrderActivityLog from "@/components/admin/orders/AdminOrderActivityLog";
+import AdminOrderCustomGiftCard from "@/components/admin/orders/AdminOrderCustomGiftCard";
+import AdminOrderTrackingModal from "@/components/admin/orders/AdminOrderTrackingModal";
+import AdminOrderRefundModal from "@/components/admin/orders/AdminOrderRefundModal";
+import AdminOrderMenu, {
+  type AdminOrderMenuItem,
+} from "@/components/admin/orders/AdminOrderMenu";
+import {
+  NEXT_STATUS_MAP,
+  ORDER_STATUSES,
+  ORDER_STATUS_META,
+  OrderStatusBadge,
+  PaymentStatusBadge,
+  orderStatusMeta,
+  paymentMethodLabel,
+  primaryNextStatus,
+} from "@/components/admin/orders/AdminOrderStatusBadge";
+import AdminOrderDetailLoading from "./loading";
 
-function adminPaymentMethodLabel(pm: Order["paymentMethod"]): string {
-  switch (pm) {
-    case "razorpay":
-      return "Razorpay";
-    case "cod":
-      return "Cash on delivery";
-    case "offline_upi":
-      return "Offline · UPI";
-    case "offline_cash":
-      return "Offline · cash";
-    default:
-      return String(pm);
-  }
+/* ── helpers ─────────────────────────────────────────────────────────── */
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hr${h === 1 ? "" : "s"} ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d} day${d === 1 ? "" : "s"} ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo} month${mo === 1 ? "" : "s"} ago`;
+  const y = Math.floor(mo / 12);
+  return `${y} year${y === 1 ? "" : "s"} ago`;
 }
 
-function getLinkedTaxInvoiceId(order: Order): string | null {
-  const raw = order.taxSalesInvoiceId;
-  if (!raw) return null;
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "object" && raw !== null && "_id" in raw) {
-    return String((raw as { _id: string })._id);
-  }
+function channelBadge(
+  order: Order,
+): { label: string; icon: typeof Store; cls: string } | null {
+  if (order.productType === "custom")
+    return {
+      label: "Bespoke gift",
+      icon: Gift,
+      cls: "bg-brand-50 text-brand-800 ring-brand-200",
+    };
+  if (order.offlineMeta?.source === "b2b")
+    return {
+      label: "B2B",
+      icon: Building2,
+      cls: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+    };
+  if (order.offlineMeta?.source === "stall")
+    return {
+      label: "Stall / POS",
+      icon: Store,
+      cls: "bg-slate-100 text-slate-800 ring-slate-200",
+    };
+  if (order.offlineMeta?.source === "personal_contact")
+    return {
+      label: "Personal contact",
+      icon: UserIcon,
+      cls: "bg-slate-100 text-slate-800 ring-slate-200",
+    };
   return null;
 }
 
-const ORDER_STATUSES: OrderStatus[] = [
-  "pending",
-  "confirmed",
-  "processing",
-  "shipped",
-  "delivered",
-  "cancelled",
-  "refunded",
+const SECTION_LINKS: { id: string; label: string }[] = [
+  { id: "items", label: "Items" },
+  { id: "fulfillment", label: "Fulfilment" },
+  { id: "lifecycle", label: "Lifecycle" },
+  { id: "activity", label: "Activity" },
+  { id: "customer", label: "Customer" },
+  { id: "payment", label: "Payment" },
+  { id: "comms", label: "Comms" },
 ];
 
-function customerSegmentBadge(segment: string | null) {
-  if (!segment) return null;
-  const tiers: Record<string, { label: string; className: string }> = {
-    frequent_buyer: {
-      label: "VIP",
-      className: "bg-amber-100 text-amber-950 border-amber-200",
-    },
-    repeat_buyer: {
-      label: "Returning",
-      className: "bg-slate-100 text-slate-800 border-slate-200",
-    },
-    new_buyer: {
-      label: "Member",
-      className: "bg-emerald-50 text-emerald-900 border-emerald-100",
-    },
-    prospect: {
-      label: "New",
-      className: "bg-gray-100 text-gray-600 border-gray-200",
-    },
-  };
-  const t = tiers[segment] ?? {
-    label: segment.replace(/_/g, " "),
-    className: "bg-gray-100 text-gray-700 border-gray-200",
-  };
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-        t.className,
-      )}
-      title='Based on paid orders and lifetime spend'
-    >
-      <Award className='h-3 w-3 shrink-0 opacity-90' aria-hidden />
-      {t.label}
-    </span>
-  );
-}
-
-function getAutoTrackingUrl(carrier?: string, trackingNumber?: string) {
-  const awb = trackingNumber?.trim();
-  if (!awb) return null;
-  const c = (carrier || "").toLowerCase().trim();
-
-  if (c.includes("delhivery"))
-    return `https://www.delhivery.com/track/package/${encodeURIComponent(awb)}`;
-  if (c.includes("bluedart") || c.includes("blue dart"))
-    return `https://www.bluedart.com/tracking?wbnum=${encodeURIComponent(awb)}`;
-  if (c.includes("fedex") || c.includes("fed ex"))
-    return `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(awb)}`;
-  if (c.includes("dhl"))
-    return `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${encodeURIComponent(awb)}`;
-  if (c.includes("ecom") || c.includes("ecom express"))
-    return `https://www.ecomexpress.in/tracking/?awb_field=${encodeURIComponent(awb)}`;
-  if (
-    c.includes("india post") ||
-    c.includes("indiapost") ||
-    c.includes("speed post")
-  )
-    return `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx?trackingid=${encodeURIComponent(awb)}`;
-
-  return `https://www.google.com/search?q=${encodeURIComponent(`${carrier || "courier"} tracking ${awb}`)}`;
-}
-
-// Collapsible Custom Gift Details
-function CustomGiftAccordion({ order }: { order: any }) {
-  const [open, setOpen] = useState(true);
-  const req = order.customRequestId;
-  if (!req && order.productType !== "custom") return null;
-
-  return (
-    <div className='bg-gradient-to-br from-gold-50 to-amber-50/50 rounded-2xl border border-gold-200 overflow-hidden'>
-      <button
-        onClick={() => setOpen(!open)}
-        className='w-full flex items-center justify-between p-5 text-left'
-      >
-        <div className='flex items-center gap-3'>
-          <div className='h-9 w-9 rounded-xl bg-gold-100 flex items-center justify-center'>
-            <Gift className='h-5 w-5 text-gold-600' />
-          </div>
-          <div>
-            <p className='font-bold text-gray-900 text-sm'>
-              Custom order details
-            </p>
-            <p className='text-xs text-gold-700'>
-              Customer-submitted specifications
-            </p>
-          </div>
-        </div>
-        <ChevronDown
-          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <div className='border-t border-gold-100 p-5 space-y-4'>
-          {order.customRequestId && (
-            <p className='text-xs text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gold-100'>
-              Request ID:{" "}
-              <span className='font-mono font-semibold text-gray-900'>
-                {order.customRequestId}
-              </span>
-            </p>
-          )}
-
-          {/* Items with custom field answers */}
-          <div className='space-y-3'>
-            {(order.items ?? []).map((item: any, i: number) => (
-              <div
-                key={i}
-                className='bg-white rounded-xl border border-gold-100 p-3 space-y-2'
-              >
-                <p className='text-sm font-bold text-gray-900'>{item.name}</p>
-                <p className='text-xs text-gray-500'>Qty: {item.quantity}</p>
-                {(item.customFieldAnswers?.length ?? 0) > 0 && (
-                  <div className='grid grid-cols-2 gap-1.5 pt-1'>
-                    {(item.customFieldAnswers ?? []).map(
-                      (a: any, j: number) => (
-                        <div
-                          key={j}
-                          className='bg-gold-50 rounded-lg px-2.5 py-1.5 border border-gold-100'
-                        >
-                          <p className='text-[10px] text-gold-600 font-bold'>
-                            {a.label}
-                          </p>
-                          {(
-                            typeof a.value === "string" &&
-                            /^https?:\/\//.test(a.value)
-                          ) ?
-                            <a
-                              href={a.value}
-                              target='_blank'
-                              rel='noreferrer'
-                              className='block mt-1'
-                            >
-                              <div className='relative h-16 w-16 rounded-md overflow-hidden border border-gold-200 bg-white'>
-                                <Image
-                                  src={a.value}
-                                  alt={a.label}
-                                  fill
-                                  sizes='64px'
-                                  className='object-cover'
-                                />
-                              </div>
-                              <span className='text-[10px] font-semibold text-brand-600 mt-1 block'>
-                                Open full image
-                              </span>
-                            </a>
-                          : <p className='text-xs font-semibold text-gray-900 mt-0.5'>
-                              {a.value || "-"}
-                            </p>
-                          }
-                        </div>
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function chargeableWeightGmLocal(
-  l: number,
-  b: number,
-  h: number,
-  actualGramsPerBox: number,
-): number {
-  const volKg = (l * b * h) / 5000;
-  const volG = Math.ceil(volKg * 1000);
-  return Math.max(Math.ceil(actualGramsPerBox), volG);
-}
-
-/** Same as backend `perBoxDeadWeightGm` - total weight split across boxes, min 50g per piece */
-function perBoxDeadWeightGmLocal(totalGrams: number, boxCount: number): number {
-  const boxes = Math.min(5, Math.max(1, Math.floor(boxCount)));
-  return Math.max(50, Math.ceil(totalGrams / boxes));
-}
-
-function volumetricWeightGmLocal(l: number, b: number, h: number): number {
-  return Math.ceil(((l * b * h) / 5000) * 1000);
-}
-
-/** Delhivery Kinko `/invoice/charges` returns an array of rate rows - use first row as authoritative. */
-type DelhiveryKinkoRow = {
-  charged_weight?: number;
-  total_amount?: number;
-  gross_amount?: number;
-  zone?: string;
-  status?: string;
-  charge_DL?: number;
-  charge_COD?: number;
-  divisor?: number;
-  tax_data?: { SGST?: number; CGST?: number; IGST?: number };
-};
-
-function parseDelhiveryKinkoRow(charges: unknown): DelhiveryKinkoRow | null {
-  if (charges == null) return null;
-  if (
-    Array.isArray(charges) &&
-    charges.length > 0 &&
-    typeof charges[0] === "object" &&
-    charges[0] !== null
-  ) {
-    return charges[0] as DelhiveryKinkoRow;
-  }
-  if (typeof charges === "object" && !Array.isArray(charges)) {
-    return charges as DelhiveryKinkoRow;
-  }
-  return null;
-}
-
-function DelhiveryAutomationCard({
-  order,
-  orderId,
-  onRefresh,
-}: {
-  order: Order;
-  orderId: string;
-  onRefresh: () => Promise<void>;
-}) {
-  const [cfg, setCfg] = useState<{
-    configured: boolean;
-    pickupLocationName: string | null;
-    originPincode: string | null;
-  } | null>(null);
-  const [cfgLoading, setCfgLoading] = useState(true);
-  const [estLoading, setEstLoading] = useState(false);
-  const [shipLoading, setShipLoading] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
-  const [labelPdfSize, setLabelPdfSize] = useState<"4R" | "A4">("4R");
-  const [labelLoading, setLabelLoading] = useState(false);
-  const [freeformPin, setFreeformPin] = useState("");
-  const [freePinLoading, setFreePinLoading] = useState(false);
-  const [freePinResult, setFreePinResult] = useState<{
-    serviceable: boolean;
-    remark?: string;
-  } | null>(null);
-  const [estimate, setEstimate] = useState<{
-    boxCount?: number;
-    perBoxDeadWeightGm?: number;
-    chargeableWeightGm?: number;
-    cgmRequested?: number;
-    chargedWeightDelhivery?: number;
-    charges: unknown;
-    tatDays?: number;
-  } | null>(null);
-
-  const [pkgType, setPkgType] = useState<"box" | "flyer" | "">("");
-  const [shippingMode, setShippingMode] = useState<"Surface" | "Express">(
-    "Surface",
-  );
-  const [boxCount, setBoxCount] = useState(1);
-  const [dims, setDims] = useState({ l: 20, b: 15, h: 10, w: 500 });
-
-  useEffect(() => {
-    let c = true;
-    adminApi
-      .getDelhiveryStatus()
-      .then((res) => {
-        if (!c) return;
-        setCfg({
-          configured: res.data.configured,
-          pickupLocationName: res.data.pickupLocationName ?? null,
-          originPincode: res.data.originPincode ?? null,
-        });
-      })
-      .catch(() => {
-        if (!c) return;
-        setCfg({
-          configured: false,
-          pickupLocationName: null,
-          originPincode: null,
-        });
-      })
-      .finally(() => {
-        if (c) setCfgLoading(false);
-      });
-    return () => {
-      c = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const p = order.shippingAddress?.pincode?.replace(/\D/g, "").slice(0, 6);
-    if (p && p.length === 6) {
-      setFreeformPin(p);
-      setFreePinResult(null);
-    }
-  }, [order._id, order.shippingAddress?.pincode]);
-
-  const dimSum = dims.l + dims.b + dims.h;
-  const perBoxDeadLocal = perBoxDeadWeightGmLocal(dims.w, boxCount);
-  const localVolumetricGm = volumetricWeightGmLocal(dims.l, dims.b, dims.h);
-  const localChargeable = chargeableWeightGmLocal(
-    dims.l,
-    dims.b,
-    dims.h,
-    perBoxDeadLocal,
-  );
-  const codMpsBlocked = order.paymentMethod === "cod" && boxCount > 1;
-  const canShip =
-    cfg?.configured &&
-    ["confirmed", "processing"].includes(order.status) &&
-    dimSum >= 15 &&
-    dims.w >= 50 &&
-    !codMpsBlocked;
-
-  const kinkoRow = useMemo(
-    () => parseDelhiveryKinkoRow(estimate?.charges),
-    [estimate?.charges],
-  );
-
-  const checkFreePin = async () => {
-    const clean = freeformPin.replace(/\D/g, "").slice(0, 6);
-    if (clean.length !== 6) {
-      toast.error("Enter a 6-digit pincode");
-      return;
-    }
-    setFreePinLoading(true);
-    setFreePinResult(null);
-    try {
-      const res = await adminApi.checkDelhiveryServiceability(clean);
-      setFreePinResult({
-        serviceable: Boolean(res.data.serviceable),
-        remark: res.data.remark,
-      });
-      toast.success(
-        res.data.serviceable ?
-          "PIN is serviceable by Delhivery"
-        : "PIN may not be serviceable",
-      );
-    } catch (e: unknown) {
-      toast.error((e as { message?: string })?.message || "PIN check failed");
-    } finally {
-      setFreePinLoading(false);
-    }
-  };
-
-  const runEstimate = async () => {
-    if (dimSum < 15) {
-      toast.error("Length + breadth + height must be at least 15 cm");
-      return;
-    }
-    if (dims.w < 50) {
-      toast.error("Weight must be at least 50 g");
-      return;
-    }
-    setEstLoading(true);
-    setEstimate(null);
-    try {
-      const md = shippingMode === "Express" ? "E" : "S";
-      const res = await adminApi.estimateDelhivery(orderId, {
-        md,
-        lengthCm: dims.l,
-        breadthCm: dims.b,
-        heightCm: dims.h,
-        weightGm: dims.w,
-        boxCount,
-        ...(pkgType ? { ipkg_type: pkgType } : {}),
-      });
-      setEstimate({
-        boxCount: res.data.boxCount,
-        perBoxDeadWeightGm: res.data.perBoxDeadWeightGm,
-        chargeableWeightGm: res.data.chargeableWeightGm,
-        cgmRequested: res.data.cgmRequested,
-        chargedWeightDelhivery: res.data.chargedWeightDelhivery,
-        charges: res.data.charges,
-        tatDays: res.data.tatDays,
-      });
-      toast.success("Estimate loaded from Delhivery");
-    } catch (e: unknown) {
-      toast.error((e as { message?: string })?.message || "Estimate failed");
-    } finally {
-      setEstLoading(false);
-    }
-  };
-
-  const createShipment = async () => {
-    if (!canShip) return;
-    const destPin =
-      order.shippingAddress?.pincode?.replace(/\D/g, "").slice(0, 6) ?? "";
-    const typedPin = freeformPin.replace(/\D/g, "").slice(0, 6);
-    if (typedPin.length !== 6) {
-      toast.error(
-        "Enter the 6-digit PIN above (defaults to this order’s shipping PIN).",
-      );
-      return;
-    }
-    if (typedPin === destPin) {
-      if (!freePinResult) {
-        const ok = window.confirm(
-          "You have not tapped Check for this PIN yet. Delhivery serviceability is unknown. Continue anyway?",
-        );
-        if (!ok) return;
-      } else if (!freePinResult.serviceable) {
-        const ok = window.confirm(
-          "Delhivery indicates this PIN may not be serviceable. Create shipment anyway?",
-        );
-        if (!ok) return;
-      }
-    } else {
-      const ok = window.confirm(
-        `PIN in the box (${typedPin}) is not this order’s shipping PIN (${destPin || "-"}). The shipment will still use the order’s saved address (${destPin || "missing"}). Continue?`,
-      );
-      if (!ok) return;
-    }
-    if (
-      !window.confirm(
-        "Create Delhivery shipment with these dimensions? The order stays in Processing until Delhivery confirms pickup (or you mark shipped manually). No premature shipped email.",
-      )
-    ) {
-      return;
-    }
-    setShipLoading(true);
-    try {
-      await adminApi.createDelhiveryShipment(orderId, {
-        shippingMode,
-        lengthCm: dims.l,
-        breadthCm: dims.b,
-        heightCm: dims.h,
-        weightGm: dims.w,
-        boxCount,
-        ...(pkgType ? { ipkg_type: pkgType } : {}),
-      });
-      await onRefresh();
-      toast.success("Delhivery manifest created — order in Processing");
-    } catch (e: unknown) {
-      toast.error(
-        (e as { message?: string })?.message || "Shipment creation failed",
-      );
-    } finally {
-      setShipLoading(false);
-    }
-  };
-
-  const syncNow = async () => {
-    setSyncLoading(true);
-    try {
-      const res = await adminApi.syncDelhiveryTracking(orderId);
-      await onRefresh();
-      const msg = res.data.summary?.trim();
-      toast.success(msg && msg.length > 0 ? msg : "Tracking synced");
-    } catch (e: unknown) {
-      toast.error((e as { message?: string })?.message || "Sync failed");
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
-  const openPackingSlipPdf = async (mode: "download" | "print") => {
-    setLabelLoading(true);
-    try {
-      const blob = await adminApi.downloadDelhiveryPackingSlipFile(orderId, {
-        pdf_size: labelPdfSize,
-      });
-      const waybill = order.trackingNumber?.trim() || "awb";
-      const safeName = `delhivery-label-${waybill}-${labelPdfSize}.pdf`;
-      const objectUrl = URL.createObjectURL(blob);
-      if (mode === "download") {
-        const a = document.createElement("a");
-        a.href = objectUrl;
-        a.download = safeName;
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(objectUrl);
-        toast.success("Delhivery PDF downloaded");
-      } else {
-        const w = window.open(objectUrl, "_blank", "noopener,noreferrer");
-        if (!w) {
-          URL.revokeObjectURL(objectUrl);
-          toast.error("Pop-up blocked - allow pop-ups to print the label.");
-          return;
-        }
-        toast.success(
-          "PDF opened - use Print (Ctrl+P) and choose your 4×6 or A4 printer.",
-        );
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120_000);
-      }
-    } catch (e: unknown) {
-      toast.error(
-        (e as { message?: string })?.message || "Could not load shipping label",
-      );
-    } finally {
-      setLabelLoading(false);
-    }
-  };
-
-  if (cfgLoading) {
-    return (
-      <div className='bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 flex items-center gap-2 text-sm text-gray-500'>
-        <Loader2 className='h-4 w-4 animate-spin' /> Loading Delhivery settings…
-      </div>
-    );
-  }
-
-  if (!cfg?.configured) {
-    return (
-      <div className='bg-amber-50/80 rounded-2xl border border-amber-100 p-5 sm:p-6'>
-        <h2 className='font-semibold text-amber-950 flex items-center gap-2 mb-2'>
-          <Truck className='h-4 w-4' /> Delhivery automation
-        </h2>
-        <p className='text-sm text-amber-900/90'>
-          Set{" "}
-          <code className='text-xs bg-white/80 px-1 rounded'>
-            DELHIVERY_API_TOKEN
-          </code>
-          ,{" "}
-          <code className='text-xs bg-white/80 px-1 rounded'>
-            DELHIVERY_PICKUP_LOCATION_NAME
-          </code>
-          , and{" "}
-          <code className='text-xs bg-white/80 px-1 rounded'>
-            DELHIVERY_ORIGIN_PINCODE
-          </code>{" "}
-          on the server. Optional:{" "}
-          <code className='text-xs bg-white/80 px-1 rounded'>
-            DELHIVERY_USE_STAGING=true
-          </code>{" "}
-          for staging API.
-        </p>
-      </div>
-    );
-  }
-
-  const d = order.delhivery;
-
-  return (
-    <div className='bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'>
-      <div className='p-5 sm:p-6 border-b border-gray-50'>
-        <h2 className='font-semibold text-gray-900 flex items-center gap-2'>
-          <Truck className='h-4 w-4 text-brand-600' /> Delhivery automation
-        </h2>
-        <p className='text-xs text-gray-500 mt-1'>
-          Pickup:{" "}
-          <span className='font-semibold text-gray-700'>
-            {cfg.pickupLocationName || "-"}
-          </span>{" "}
-          · Origin PIN{" "}
-          <span className='font-mono'>{cfg.originPincode || "-"}</span>
-        </p>
-      </div>
-
-      <div className='p-5 sm:p-6 space-y-5'>
-        <div className='rounded-xl border border-gray-100 bg-gray-50/90 p-4 space-y-3'>
-          <p className='text-sm font-semibold text-gray-900 flex items-center gap-2'>
-            <MapPin className='h-4 w-4 text-brand-600 shrink-0' aria-hidden />
-            Pin serviceability
-          </p>
-          <p className='text-xs text-gray-500 leading-snug'>
-            Pre-filled with this order’s shipping PIN. Change only to test
-            another PIN - shipment always uses the order address on file. NSZ =
-            not serviceable; Embargo = temporary hold.
-          </p>
-          <div className='flex flex-wrap gap-2 items-center'>
-            <input
-              type='text'
-              name='delhivery-free-pin'
-              autoComplete='postal-code'
-              inputMode='numeric'
-              maxLength={6}
-              placeholder='6-digit PIN'
-              className='h-10 px-3 border border-gray-200 rounded-xl text-sm font-mono w-[7.5rem] tracking-wider'
-              value={freeformPin}
-              onChange={(e) =>
-                setFreeformPin(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-            />
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              className='rounded-xl'
-              loading={freePinLoading}
-              onClick={() => void checkFreePin()}
-            >
-              Check
-            </Button>
-          </div>
-          {freePinResult && (
-            <p
-              className={cn(
-                "text-xs font-semibold leading-snug",
-                freePinResult.serviceable ? "text-emerald-800" : "text-red-800",
-              )}
-            >
-              {freePinResult.serviceable ?
-                "Serviceable - Delhivery can deliver to this PIN."
-              : "Not serviceable or restricted."}
-              {freePinResult.remark ?
-                <span className='font-normal text-gray-700'>
-                  {" "}
-                  {freePinResult.remark}
-                </span>
-              : null}
-            </p>
-          )}
-        </div>
-
-        {order.status === "shipped" || order.status === "delivered" ?
-          <div className='rounded-xl bg-slate-50 border border-slate-100 p-4 space-y-2 text-sm'>
-            <p className='font-semibold text-gray-900'>Shipment metadata</p>
-            {d?.package && (
-              <p className='text-gray-600 text-xs'>
-                Last create: {d.package.shippingMode} · {d.package.lengthCm}×
-                {d.package.breadthCm}×{d.package.heightCm} cm ·{" "}
-                {d.package.weightGmTotal} g · {d.package.boxCount ?? 1} box(es)
-                {typeof d.estimatedTatDays === "number" ?
-                  ` · ~${d.estimatedTatDays} d TAT`
-                : ""}
-              </p>
-            )}
-            {d?.lastTrackSummary && (
-              <p className='text-xs text-slate-800 leading-relaxed rounded-lg border border-slate-200 bg-white px-3 py-2'>
-                {d.lastTrackSummary}
-                {d.lastTrackSyncAt && (
-                  <span className='block text-[10px] text-gray-400 mt-1.5'>
-                    Last synced {formatDateTime(d.lastTrackSyncAt)}
-                  </span>
-                )}
-              </p>
-            )}
-            {!d?.lastTrackSummary && d?.lastPackageStatus && (
-              <p className='text-xs text-gray-600'>
-                Courier status:{" "}
-                <span className='font-semibold'>{d.lastPackageStatus}</span>
-                {d.lastTrackSyncAt && (
-                  <span className='text-gray-400'>
-                    {" "}
-                    · synced {formatDateTime(d.lastTrackSyncAt)}
-                  </span>
-                )}
-              </p>
-            )}
-            {Array.isArray(d?.trackScansSnapshot) &&
-              d.trackScansSnapshot.length > 0 && (
-                <details className='text-xs'>
-                  <summary className='cursor-pointer font-semibold text-gray-600'>
-                    Scan history ({d.trackScansSnapshot.length})
-                  </summary>
-                  <ul className='mt-2 space-y-1 text-gray-600 list-disc pl-4 max-h-40 overflow-y-auto'>
-                    {d.trackScansSnapshot
-                      .slice(-8)
-                      .map(
-                        (
-                          s: {
-                            status?: string;
-                            time?: string;
-                            location?: string;
-                            detail?: string;
-                          },
-                          i: number,
-                        ) => (
-                          <li key={i}>
-                            {[s.status || s.detail, s.location, s.time]
-                              .filter(Boolean)
-                              .join(" · ") || "-"}
-                          </li>
-                        ),
-                      )}
-                  </ul>
-                </details>
-              )}
-            {order.status === "shipped" &&
-              (order.shippingCarrier || "")
-                .toLowerCase()
-                .includes("delhivery") &&
-              order.trackingNumber && (
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  className='rounded-xl gap-2'
-                  loading={syncLoading}
-                  onClick={() => void syncNow()}
-                >
-                  <RefreshCw className='h-3.5 w-3.5' /> Sync tracking now
-                </Button>
-              )}
-            {(order.status === "shipped" || order.status === "delivered") &&
-              (order.shippingCarrier || "")
-                .toLowerCase()
-                .includes("delhivery") &&
-              Boolean(order.trackingNumber?.trim()) && (
-                <div className='pt-3 mt-1 border-t border-slate-200/80 space-y-2'>
-                  <p className='text-xs font-semibold text-gray-800'>
-                    Delhivery official label (API PDF)
-                  </p>
-                  <p className='text-[10px] text-gray-500 leading-snug'>
-                    This is Delhivery’s packing slip from{" "}
-                    <code className='text-[9px] bg-white/90 px-1 rounded'>
-                      pdf=true
-                    </code>{" "}
-                    - not the same template as the in-house preview below. Size:
-                    4×6 (4R) thermal default, or A4.
-                  </p>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <label className='sr-only' htmlFor='delhivery-label-size'>
-                      Label size
-                    </label>
-                    <select
-                      id='delhivery-label-size'
-                      value={labelPdfSize}
-                      onChange={(e) =>
-                        setLabelPdfSize(e.target.value as "4R" | "A4")
-                      }
-                      disabled={labelLoading}
-                      className='h-9 px-2 border border-slate-200 rounded-lg text-xs font-medium bg-white text-gray-800 min-w-[7rem]'
-                    >
-                      <option value='4R'>4×6 (4R)</option>
-                      <option value='A4'>A4 (8×11)</option>
-                    </select>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className='rounded-xl gap-1.5 h-9'
-                      loading={labelLoading}
-                      onClick={() => void openPackingSlipPdf("download")}
-                    >
-                      <Download className='h-3.5 w-3.5 shrink-0' aria-hidden />
-                      Delhivery PDF
-                    </Button>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className='rounded-xl gap-1.5 h-9'
-                      loading={labelLoading}
-                      onClick={() => void openPackingSlipPdf("print")}
-                    >
-                      <Printer className='h-3.5 w-3.5 shrink-0' aria-hidden />
-                      Open Delhivery PDF
-                    </Button>
-                  </div>
-                  <div className='pt-3 mt-2 border-t border-dashed border-slate-200'>
-                    <p className='text-[10px] font-semibold text-gray-800 mb-2'>
-                      In-house packing slip (4×6 layout)
-                    </p>
-                    <AdminOrderPackingSlip4R
-                      order={order}
-                      awb={order.trackingNumber!.trim()}
-                    />
-                  </div>
-                </div>
-              )}
-          </div>
-        : null}
-
-        {["confirmed", "processing"].includes(order.status) && (
-          <>
-            <div>
-              <p className='text-xs font-bold text-gray-500 uppercase tracking-wider mb-2'>
-                BOX 1 (single or per-box dims)
-              </p>
-              <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-                <div>
-                  <label className='text-[10px] font-semibold text-gray-400 uppercase'>
-                    Package type
-                  </label>
-                  <select
-                    value={pkgType}
-                    onChange={(e) =>
-                      setPkgType(e.target.value as "box" | "flyer" | "")
-                    }
-                    className='mt-1 w-full h-10 px-2 border border-gray-200 rounded-xl text-sm'
-                  >
-                    <option value=''>Select (optional)</option>
-                    <option value='box'>box</option>
-                    <option value='flyer'>flyer</option>
-                  </select>
-                  <p className='text-[10px] text-gray-400 mt-0.5'>
-                    Used for rate estimate (Kinko)
-                  </p>
-                </div>
-                <div>
-                  <label className='text-[10px] font-semibold text-gray-400 uppercase'>
-                    Speed
-                  </label>
-                  <select
-                    value={shippingMode}
-                    onChange={(e) =>
-                      setShippingMode(e.target.value as "Surface" | "Express")
-                    }
-                    className='mt-1 w-full h-10 px-2 border border-gray-200 rounded-xl text-sm'
-                  >
-                    <option value='Surface'>Surface</option>
-                    <option value='Express'>Express</option>
-                  </select>
-                </div>
-                <div>
-                  <label className='text-[10px] font-semibold text-gray-400 uppercase'>
-                    Boxes
-                  </label>
-                  <select
-                    value={boxCount}
-                    onChange={(e) => setBoxCount(parseInt(e.target.value, 10))}
-                    className='mt-1 w-full h-10 px-2 border border-gray-200 rounded-xl text-sm'
-                  >
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className='grid grid-cols-3 gap-3 mt-3'>
-                {(["l", "b", "h"] as const).map((k) => (
-                  <div key={k}>
-                    <label className='text-[10px] font-semibold text-gray-400 uppercase'>
-                      {k === "l" ?
-                        "Length"
-                      : k === "b" ?
-                        "Breadth"
-                      : "Height"}{" "}
-                      (cm)
-                    </label>
-                    <input
-                      type='number'
-                      min={1}
-                      className='mt-1 w-full h-10 px-2 border border-gray-200 rounded-xl text-sm tabular-nums'
-                      value={dims[k]}
-                      onChange={(e) =>
-                        setDims((p) => ({
-                          ...p,
-                          [k]: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-              <p className='text-[10px] text-gray-500 mt-1'>
-                Length + breadth + height should be at least 15 cm
-              </p>
-
-              <div className='mt-3 max-w-md space-y-2'>
-                <label className='text-[10px] font-semibold text-gray-400 uppercase'>
-                  {boxCount > 1 ?
-                    "Total dead weight (all boxes, g)"
-                  : "Dead weight (g)"}
-                </label>
-                <input
-                  type='number'
-                  min={1}
-                  className='mt-1 w-full max-w-xs h-10 px-2 border border-gray-200 rounded-xl text-sm tabular-nums'
-                  value={dims.w}
-                  onChange={(e) =>
-                    setDims((p) => ({
-                      ...p,
-                      w: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                />
-                <p className='text-[10px] text-gray-600 leading-relaxed'>
-                  Chargeable weight = max(
-                  <span className='font-medium'>per-box dead</span>,{" "}
-                  <span className='font-medium'>volumetric</span>) with
-                  volumetric = L×B×H÷5000 (kg→g), same as Delhivery.
-                  {boxCount > 1 ?
-                    ` Per-box dead = max(50g, ceil(${dims.w || 0}÷${boxCount})).`
-                  : " Single box: min 50g dead weight."}
-                </p>
-                <div className='rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-[11px] text-gray-700 space-y-0.5 tabular-nums'>
-                  <div className='flex justify-between gap-2'>
-                    <span className='text-gray-500'>
-                      Per-box dead (used for cgm)
-                    </span>
-                    <span className='font-semibold'>{perBoxDeadLocal} g</span>
-                  </div>
-                  <div className='flex justify-between gap-2'>
-                    <span className='text-gray-500'>
-                      Volumetric (same dims each box)
-                    </span>
-                    <span className='font-semibold'>{localVolumetricGm} g</span>
-                  </div>
-                  <div className='flex justify-between gap-2 pt-1 border-t border-gray-200 font-semibold text-gray-900'>
-                    <span>Chargeable (local)</span>
-                    <span>{localChargeable} g</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className='mt-3 rounded-xl bg-sky-50 border border-sky-100 px-3 py-2 flex gap-2 text-xs text-sky-900'>
-                <Info className='h-4 w-4 shrink-0 mt-0.5' />
-                <span>
-                  Estimated cost from Delhivery may differ from final billing
-                  after physical measurements at pickup.
-                </span>
-              </div>
-
-              <div className='mt-3 flex flex-wrap items-start gap-6'>
-                <div>
-                  <p className='text-[10px] font-bold text-gray-400 uppercase tracking-wider'>
-                    {(
-                      kinkoRow?.charged_weight != null &&
-                      Number.isFinite(kinkoRow.charged_weight)
-                    ) ?
-                      "Charged weight (Delhivery)"
-                    : estimate?.chargeableWeightGm != null ?
-                      "Chargeable weight (cgm sent)"
-                    : "Estimated weight (local calc.)"}
-                  </p>
-                  <p className='text-lg font-bold text-gray-900 tabular-nums'>
-                    {(
-                      kinkoRow?.charged_weight != null &&
-                      Number.isFinite(kinkoRow.charged_weight)
-                    ) ?
-                      `${kinkoRow.charged_weight} g`
-                    : estimate?.chargeableWeightGm != null ?
-                      `${estimate.chargeableWeightGm} g`
-                    : `${localChargeable} g`}
-                  </p>
-                  {estimate?.cgmRequested != null &&
-                    kinkoRow?.charged_weight != null &&
-                    estimate.cgmRequested !== kinkoRow.charged_weight && (
-                      <p className='text-[10px] text-gray-500 mt-1 max-w-xs'>
-                        cgm sent to API: {estimate.cgmRequested} g - Delhivery
-                        rate row uses charged_weight {kinkoRow.charged_weight} g
-                        (authoritative for this quote).
-                      </p>
-                    )}
-                  {!estimate && (
-                    <p className='text-[10px] text-gray-500 mt-1'>
-                      Tap &quot;Get shipping estimate&quot; for Delhivery&apos;s
-                      billed weight and fare.
-                    </p>
-                  )}
-                </div>
-                {estimate?.tatDays != null && (
-                  <div>
-                    <p className='text-[10px] font-bold text-gray-400 uppercase tracking-wider'>
-                      TAT hint
-                    </p>
-                    <p className='text-sm font-semibold text-gray-800'>
-                      ~{estimate.tatDays} day(s)
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {kinkoRow && (
-                <div className='mt-4 rounded-xl border border-emerald-200/90 bg-emerald-50/40 p-4 space-y-3 text-sm'>
-                  <p className='font-semibold text-gray-900'>
-                    Delhivery rate quote (Kinko)
-                  </p>
-                  <p className='text-[10px] text-gray-600 leading-snug'>
-                    Values below come from Delhivery&apos;s response -{" "}
-                    <span className='font-medium'>total_amount</span> is what
-                    matters for reconciliation;{" "}
-                    <span className='font-medium'>charged_weight</span> is the
-                    weight used for this row.
-                  </p>
-                  <dl className='grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs'>
-                    {kinkoRow.zone != null && kinkoRow.zone !== "" && (
-                      <div className='flex justify-between gap-3 border-b border-emerald-100/80 pb-2 sm:border-0 sm:pb-0'>
-                        <dt className='text-gray-600'>Zone</dt>
-                        <dd className='font-semibold text-gray-900'>
-                          {kinkoRow.zone}
-                        </dd>
-                      </div>
-                    )}
-                    {kinkoRow.status != null && kinkoRow.status !== "" && (
-                      <div className='flex justify-between gap-3 border-b border-emerald-100/80 pb-2 sm:border-0 sm:pb-0'>
-                        <dt className='text-gray-600'>Rate row status</dt>
-                        <dd
-                          className='font-medium text-gray-800'
-                          title='Internal slot used in Delhivery’s tariff engine - not your parcel’s live status'
-                        >
-                          {kinkoRow.status}
-                        </dd>
-                      </div>
-                    )}
-                    {typeof kinkoRow.charge_DL === "number" && (
-                      <div className='flex justify-between gap-3'>
-                        <dt className='text-gray-600'>
-                          Forward / line (charge_DL)
-                        </dt>
-                        <dd className='font-mono tabular-nums'>
-                          {formatPrice(kinkoRow.charge_DL)}
-                        </dd>
-                      </div>
-                    )}
-                    {order.paymentMethod === "cod" &&
-                      typeof kinkoRow.charge_COD === "number" && (
-                        <div className='flex justify-between gap-3'>
-                          <dt className='text-gray-600'>COD fee</dt>
-                          <dd className='font-mono tabular-nums'>
-                            {formatPrice(kinkoRow.charge_COD)}
-                          </dd>
-                        </div>
-                      )}
-                    {typeof kinkoRow.gross_amount === "number" && (
-                      <div className='flex justify-between gap-3'>
-                        <dt className='text-gray-600'>Gross (pre-tax)</dt>
-                        <dd className='font-mono font-semibold tabular-nums'>
-                          {formatPrice(kinkoRow.gross_amount)}
-                        </dd>
-                      </div>
-                    )}
-                    {typeof kinkoRow.total_amount === "number" && (
-                      <div className='flex justify-between gap-3 sm:col-span-2 pt-1 border-t border-emerald-100'>
-                        <dt className='text-gray-800 font-semibold'>
-                          Total (incl. tax)
-                        </dt>
-                        <dd className='font-mono font-bold text-emerald-900 tabular-nums text-base'>
-                          {formatPrice(kinkoRow.total_amount)}
-                        </dd>
-                      </div>
-                    )}
-                    {kinkoRow.tax_data &&
-                      (typeof kinkoRow.tax_data.SGST === "number" ||
-                        typeof kinkoRow.tax_data.CGST === "number") && (
-                        <div className='sm:col-span-2 text-[10px] text-gray-600'>
-                          Tax split: SGST {kinkoRow.tax_data.SGST ?? 0} + CGST{" "}
-                          {kinkoRow.tax_data.CGST ?? 0}
-                          {(
-                            typeof kinkoRow.tax_data.IGST === "number" &&
-                            kinkoRow.tax_data.IGST > 0
-                          ) ?
-                            ` + IGST ${kinkoRow.tax_data.IGST}`
-                          : ""}
-                        </div>
-                      )}
-                  </dl>
-                </div>
-              )}
-
-              <div className='mt-4 flex flex-wrap gap-2'>
-                <Button
-                  type='button'
-                  variant='outline'
-                  className='rounded-xl'
-                  loading={estLoading}
-                  onClick={() => void runEstimate()}
-                >
-                  Get shipping estimate
-                </Button>
-                <Button
-                  type='button'
-                  variant='brand'
-                  className='rounded-xl'
-                  loading={shipLoading}
-                  disabled={!canShip}
-                  onClick={() => void createShipment()}
-                >
-                  Create Delhivery shipment
-                </Button>
-              </div>
-              {!canShip && (
-                <p className='text-xs text-amber-700 mt-2'>
-                  {codMpsBlocked ?
-                    "For COD orders, use a single box in automation (or add tracking manually for multi-box)."
-                  : "Fix dimensions (15 cm min sum, 50 g min) or wait until order is Confirmed / Processing."
-                  }
-                </p>
-              )}
-
-              {estimate?.charges != null && (
-                <details className='mt-3 text-[11px]'>
-                  <summary className='cursor-pointer font-semibold text-gray-500'>
-                    Full API JSON (debug)
-                  </summary>
-                  <pre className='mt-2 p-3 bg-gray-50 rounded-xl overflow-x-auto text-[10px] border border-gray-100 text-gray-600'>
-                    {JSON.stringify(estimate.charges, null, 2)}
-                  </pre>
-                </details>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+/* ── page ────────────────────────────────────────────────────────────── */
 
 export default function AdminOrderDetailsPage() {
   const params = useParams();
@@ -1195,98 +143,49 @@ export default function AdminOrderDetailsPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [generatingInvoice, setGeneratingInvoice] = useState(false);
-  const [creatingTaxInvoice, setCreatingTaxInvoice] = useState(false);
-
-  const [tracking, setTracking] = useState({
-    shippingCarrier: "",
-    trackingNumber: "",
-    trackingUrl: "",
-    note: "",
-  });
-  const [trackingErrors, setTrackingErrors] = useState<{
-    shippingCarrier?: string;
-    trackingNumber?: string;
-    trackingUrl?: string;
-  }>({});
-  const [trackingModalOpen, setTrackingModalOpen] = useState(false);
-  const [adminCancelModalOpen, setAdminCancelModalOpen] = useState(false);
-
-  const [refundModalOpen, setRefundModalOpen] = useState(false);
-  const [refundNotes, setRefundNotes] = useState("");
-  const [refundMethod, setRefundMethod] = useState<
-    "razorpay_auto" | "cash" | "bank_transfer" | "upi_manual"
-  >("razorpay_auto");
-  const [refunding, setRefunding] = useState(false);
-  const [resolvingReturn, setResolvingReturn] = useState(false);
-  const [returnAdminNote, setReturnAdminNote] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [customerSegment, setCustomerSegment] = useState<string | null>(null);
   const [guestCheckout, setGuestCheckout] =
     useState<AdminGuestCheckoutMeta | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  const trackingHref = useMemo(() => {
-    if (!order) return null;
-    return (
-      order.trackingUrl ||
-      getAutoTrackingUrl(order.shippingCarrier, order.trackingNumber)
-    );
-  }, [order]);
+  const [trackingModalOpen, setTrackingModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
 
-  const refundPolicy = useMemo(() => {
-    if (!order) return null;
-    return {
-      nonRefundable: getNonRefundableFeesInr(order),
-      maxRefundable: getMaxRefundableInr(order),
-    };
-  }, [order]);
-
-  const loadOrder = async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setIsLoading(true);
-    try {
-      const res = await adminApi.getOrderDetails(id);
-      const o: Order = res.data.order;
-      setOrder(o);
-      const gc = (res.data as { guestCheckout?: AdminGuestCheckoutMeta })
-        .guestCheckout;
-      setGuestCheckout(gc ?? null);
-      setTracking({
-        shippingCarrier: o.shippingCarrier || "",
-        trackingNumber: o.trackingNumber || "",
-        trackingUrl: o.trackingUrl || "",
-        note: "",
-      });
-    } catch (err: unknown) {
-      toast.error(
-        (err as { message?: string })?.message || "Failed to load order",
-      );
-    } finally {
-      if (!opts?.silent) setIsLoading(false);
-    }
-  };
+  const loadOrder = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setIsLoading(true);
+      try {
+        const res = await adminApi.getOrderDetails(id);
+        setOrder(res.data.order);
+        const gc = (res.data as { guestCheckout?: AdminGuestCheckoutMeta })
+          .guestCheckout;
+        setGuestCheckout(gc ?? null);
+      } catch (err: unknown) {
+        toast.error(
+          (err as { message?: string })?.message || "Failed to load order",
+        );
+      } finally {
+        if (!opts?.silent) setIsLoading(false);
+      }
+    },
+    [id],
+  );
 
   useEffect(() => {
     void loadOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when order id changes
-  }, [id]);
+  }, [loadOrder]);
 
+  const userId = order ? getOrderUserId(order) : null;
   useEffect(() => {
-    if (!order) {
-      setCustomerSegment(null);
-      return;
-    }
-    const uid =
-      typeof order.user === "object" && order.user && "_id" in order.user ?
-        String((order.user as { _id: string })._id)
-      : typeof order.user === "string" ? order.user
-      : null;
-    if (!uid) {
+    if (!userId) {
       setCustomerSegment(null);
       return;
     }
     let cancelled = false;
     adminApi
-      .getUserInsights(uid)
+      .getUserInsights(userId)
       .then((res) => {
         if (!cancelled) setCustomerSegment(res.data.metrics.userSegment);
       })
@@ -1296,23 +195,72 @@ export default function AdminOrderDetailsPage() {
     return () => {
       cancelled = true;
     };
+  }, [userId]);
+
+  const refreshSilent = useCallback(async () => {
+    await loadOrder({ silent: true });
+  }, [loadOrder]);
+
+  /* ── derived ───────────────────────────────────────────────────── */
+
+  const derived = useMemo(() => {
+    if (!order) return null;
+    const needsRazorpayRefund =
+      order.paymentMethod === "razorpay" &&
+      order.paymentStatus === "paid" &&
+      order.status === "cancelled" &&
+      !(order.refundData?.amount && order.refundData.amount > 0);
+    const cancellationInfo =
+      order.status === "cancelled" ?
+        getOrderCancellationInfo(order)
+      : undefined;
+    const isB2b = order.offlineMeta?.source === "b2b";
+    const taxId = getLinkedTaxInvoiceId(order);
+    const items = order.items ?? [];
+    const qty = items.reduce((s, it) => s + (it.quantity || 0), 0);
+    const user = getOrderUser(order);
+    const next = primaryNextStatus(order.status);
+    const returnApprovedAwaitingRefund =
+      order.returnStatus === "approved" && order.status !== "refunded";
+    return {
+      needsRazorpayRefund,
+      cancellationInfo,
+      isB2b,
+      taxId,
+      lineCount: items.length,
+      qty,
+      user,
+      next,
+      returnApprovedAwaitingRefund,
+      maxRefundable: getMaxRefundableInr(order),
+      channel: channelBadge(order),
+    };
   }, [order]);
 
-  const updateStatus = async (status: OrderStatus) => {
+  /* ── actions ───────────────────────────────────────────────────── */
+
+  const applyStatus = async (status: OrderStatus) => {
+    if (!order) return;
+    if (status === order.status) return;
     if (status === "shipped") {
       setTrackingModalOpen(true);
       return;
     }
     if (status === "cancelled") {
-      setAdminCancelModalOpen(true);
+      setCancelModalOpen(true);
       return;
     }
-    if (!order) return;
-
+    const natural = NEXT_STATUS_MAP[order.status]?.includes(status);
+    if (!natural) {
+      const ok = window.confirm(
+        `Move this order from "${orderStatusMeta(order.status).label}" to "${ORDER_STATUS_META[status].label}"?\n\nThis is not a normal forward step. The customer may receive a status email.`,
+      );
+      if (!ok) return;
+    }
     setUpdating(true);
     try {
       await adminApi.updateOrderStatus(order._id, { status });
-      toast.success(`Status updated to ${status}`);
+      toast.success(`Status updated to ${ORDER_STATUS_META[status].label}`);
       const res = await adminApi.getOrderDetails(order._id);
       setOrder(res.data.order);
     } catch (err: unknown) {
@@ -1324,7 +272,7 @@ export default function AdminOrderDetailsPage() {
     }
   };
 
-  const confirmAdminCancel = async (reason: string) => {
+  const confirmCancel = async (reason: string) => {
     if (!order) return;
     setUpdating(true);
     try {
@@ -1333,7 +281,7 @@ export default function AdminOrderDetailsPage() {
         note: reason,
       });
       toast.success("Order cancelled");
-      setAdminCancelModalOpen(false);
+      setCancelModalOpen(false);
       const res = await adminApi.getOrderDetails(order._id);
       setOrder(res.data.order);
     } catch (err: unknown) {
@@ -1345,1256 +293,711 @@ export default function AdminOrderDetailsPage() {
     }
   };
 
-  const processRefundAction = async () => {
+  const deleteOrder = async () => {
     if (!order) return;
-    setRefunding(true);
-    try {
-      const refundAmount = refundPolicy?.maxRefundable ?? order.total;
-      if (refundAmount <= 0) {
-        toast.error(
-          "Nothing eligible to refund (non-refundable fees may equal order total).",
-        );
-        return;
-      }
-      await adminApi.processRefund(order._id, {
-        amount: refundAmount,
-        refundMethod:
-          order.paymentMethod === "razorpay" ? "razorpay_auto" : refundMethod,
-        notes: refundNotes,
-      });
-      toast.success("Refund processed successfully");
-      setRefundModalOpen(false);
-      const res = await adminApi.getOrderDetails(order._id);
-      setOrder(res.data.order);
-    } catch (err: unknown) {
-      toast.error(
-        (err as { message?: string })?.message || "Failed to process refund",
-      );
-    } finally {
-      setRefunding(false);
-    }
-  };
-
-  const resolveReturnAction = async (action: "approve" | "reject") => {
-    if (!order) return;
-    if (!confirm(`Are you sure you want to ${action} this return?`)) return;
-    setResolvingReturn(true);
-    try {
-      await adminApi.resolveReturn(order._id, {
-        action,
-        adminNote: returnAdminNote || undefined,
-      });
-      toast.success(
-        `Return ${action === "approve" ? "approved" : "rejected"} successfully`,
-      );
-      const res = await adminApi.getOrderDetails(order._id);
-      setOrder(res.data.order);
-      setReturnAdminNote("");
-    } catch (err: unknown) {
-      toast.error(
-        (err as { message?: string })?.message || "Failed to resolve return",
-      );
-    } finally {
-      setResolvingReturn(false);
-    }
-  };
-
-  const markShippedWithTracking = async () => {
-    if (!order) return;
-    const errs: typeof trackingErrors = {};
-    if (!tracking.shippingCarrier.trim())
-      errs.shippingCarrier = "Courier is required";
-    if (!tracking.trackingNumber.trim())
-      errs.trackingNumber = "Tracking/AWB is required";
-    if (
-      tracking.trackingUrl.trim() &&
-      !/^https?:\/\//i.test(tracking.trackingUrl.trim())
-    ) {
-      errs.trackingUrl = "Tracking URL must start with http(s)://";
-    }
-    setTrackingErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    setUpdating(true);
-    try {
-      await adminApi.updateOrderStatus(order._id, {
-        status: "shipped",
-        note: tracking.note || undefined,
-        shippingCarrier: tracking.shippingCarrier || undefined,
-        trackingNumber: tracking.trackingNumber || undefined,
-        trackingUrl: tracking.trackingUrl || undefined,
-      });
-      toast.success("Marked as shipped");
-      const res = await adminApi.getOrderDetails(order._id);
-      setOrder(res.data.order);
-      setTrackingModalOpen(false);
-    } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || "Failed to update");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className='p-6 xl:p-8 space-y-4 animate-pulse'>
-        <div className='h-7 w-48 bg-gray-100 rounded-xl' />
-        <div className='h-40 bg-gray-100 rounded-2xl' />
-        <div className='h-56 bg-gray-100 rounded-2xl' />
-      </div>
+    const typed = window.prompt(
+      `Permanently delete order ${order.orderNumber}? This cannot be undone.\n\nType DELETE to confirm.`,
     );
-  }
+    if (typed !== "DELETE") {
+      if (typed !== null)
+        toast.error("Deletion cancelled - confirmation text did not match.");
+      return;
+    }
+    setDeleting(true);
+    try {
+      await adminApi.deleteOrder(order._id);
+      toast.success("Order deleted");
+      router.push("/admin/orders");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { message?: string })?.message || "Failed to delete order",
+      );
+      setDeleting(false);
+    }
+  };
 
-  if (!order) {
+  const copyOrderNumber = async () => {
+    if (!order) return;
+    try {
+      await navigator.clipboard.writeText(order.orderNumber);
+      toast.success("Order number copied");
+    } catch {
+      toast.error("Could not copy");
+    }
+  };
+
+  /* ── loading / not found ───────────────────────────────────────── */
+
+  if (isLoading) return <AdminOrderDetailLoading />;
+
+  if (!order || !derived) {
     return (
       <div className='p-6 xl:p-8'>
-        <div className='bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center'>
-          <p className='text-gray-700 font-semibold'>Order not found</p>
-          <Button asChild variant='brand' className='mt-4'>
-            <Link href='/admin/orders'>Back to Orders</Link>
+        <div className='bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center max-w-md mx-auto'>
+          <div className='h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3'>
+            <Package className='h-6 w-6 text-gray-400' />
+          </div>
+          <p className='text-gray-900 font-semibold'>Order not found</p>
+          <p className='text-sm text-gray-500 mt-1'>
+            It may have been deleted or the link is wrong.
+          </p>
+          <Button asChild variant='brand' className='mt-5 rounded-xl'>
+            <Link href='/admin/orders'>Back to orders</Link>
           </Button>
         </div>
       </div>
     );
   }
 
-  const user =
-    typeof order.user === "object" ?
-      (order.user as {
-        name?: string;
-        email?: string;
-        phone?: string;
-        avatar?: string;
-      })
-    : null;
-  const orderItems = order.items ?? [];
-  const invoiceEligible =
-    order.paymentStatus === "paid" || order.status === "delivered";
-  const isPaid = order.paymentStatus === "paid";
-  const needsRazorpayRefund =
-    order.paymentMethod === "razorpay" &&
-    order.paymentStatus === "paid" &&
-    order.status === "cancelled" &&
-    !(order.refundData?.amount && order.refundData.amount > 0);
-  const cancellationInfo =
-    order.status === "cancelled" ? getOrderCancellationInfo(order) : undefined;
-  const isB2bOrder = order.offlineMeta?.source === "b2b";
-  const linkedTaxInvoiceId = getLinkedTaxInvoiceId(order);
+  const {
+    needsRazorpayRefund,
+    cancellationInfo,
+    isB2b,
+    taxId,
+    lineCount,
+    qty,
+    user,
+    next,
+    returnApprovedAwaitingRefund,
+    maxRefundable,
+    channel,
+  } = derived;
+
+  const statusMenu: AdminOrderMenuItem[] = [
+    { type: "heading", key: "h", label: "Set status" },
+    ...ORDER_STATUSES.map<AdminOrderMenuItem>((s) => {
+      const m = ORDER_STATUS_META[s];
+      const natural = NEXT_STATUS_MAP[order.status]?.includes(s);
+      return {
+        key: s,
+        label: m.label,
+        icon: m.icon,
+        active: s === order.status,
+        disabled: s === order.status,
+        danger: s === "cancelled",
+        hint:
+          s === order.status ? undefined
+          : s === "shipped" ? "Opens tracking form"
+          : s === "cancelled" ? "Asks for a reason"
+          : s === "refunded" ? "Status only - use Process refund to pay back"
+          : natural ? undefined
+          : "Unusual - asks to confirm",
+        onSelect: () => void applyStatus(s),
+      };
+    }),
+  ];
+
+  const moreMenu: AdminOrderMenuItem[] = [
+    {
+      key: "copy",
+      label: "Copy order number",
+      icon: Copy,
+      onSelect: () => void copyOrderNumber(),
+    },
+    {
+      key: "list",
+      label: "All orders",
+      icon: ListChecks,
+      href: "/admin/orders",
+    },
+    ...(userId ?
+      [
+        {
+          key: "profile",
+          label: "Customer profile",
+          icon: UserIcon,
+          href: `/admin/users?highlight=${encodeURIComponent(userId)}`,
+        } as AdminOrderMenuItem,
+      ]
+    : []),
+    { type: "separator", key: "sep1" },
+    ...(order.status !== "cancelled" && order.status !== "refunded" ?
+      [
+        {
+          key: "cancel",
+          label: "Cancel order",
+          icon: Ban,
+          danger: true,
+          onSelect: () => setCancelModalOpen(true),
+        } as AdminOrderMenuItem,
+      ]
+    : []),
+    {
+      key: "delete",
+      label: "Delete order",
+      hint: "Permanent - requires typing DELETE",
+      icon: Trash2,
+      danger: true,
+      disabled: deleting,
+      onSelect: () => void deleteOrder(),
+    },
+  ];
+
+  const ChannelIcon = channel?.icon;
 
   return (
-    <div className='min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-slate-50/90 via-white to-white pb-10'>
-      <div className='max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-8 relative'>
-        {zoomedImage && (
-          <div
-            className='fixed inset-0 z-50 flex items-center justify-center bg-navy-900/90 backdrop-blur-sm p-4'
-            onClick={() => setZoomedImage(null)}
-          >
-            <div className='relative max-w-4xl max-h-[90vh] w-full h-full'>
-              <button
-                onClick={() => setZoomedImage(null)}
-                className='absolute -top-4 -right-4 md:-top-6 md:-right-6 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 backdrop-blur-md transition-colors z-50'
-              >
-                <XCircle className='h-6 w-6' />
-              </button>
-              <Image
-                src={zoomedImage}
-                alt='Zoomed product'
-                fill
-                className='object-contain'
-              />
-            </div>
-          </div>
-        )}
-        {/* Breadcrumb / Back */}
-        <button
-          type='button'
-          onClick={() => router.push("/admin/orders")}
-          className='inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors'
-        >
-          <ArrowLeft className='h-4 w-4' /> Back to Orders
-        </button>
+    <div className='min-h-full bg-[#f6f6f8] pb-16'>
+      {/* ── Command bar ───────────────────────────────────────────── */}
+      <div className='sticky top-0 z-30 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75 border-b border-gray-200'>
+        <div className='max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8'>
+          <div className='py-3 flex flex-wrap items-center gap-x-4 gap-y-3'>
+            <Link
+              href='/admin/orders'
+              className='inline-flex items-center gap-1.5 h-9 px-2.5 -ml-2.5 rounded-lg text-sm font-semibold text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors'
+            >
+              <ArrowLeft className='h-4 w-4' />
+              <span className='hidden sm:inline'>Orders</span>
+            </Link>
+            <ChevronRight className='h-4 w-4 text-gray-300 hidden sm:block -ml-3' />
 
-        <AdminPageHeader
-          title={`Order ${order.orderNumber}`}
-          badge={
-            order.productType === "custom" ? "Bespoke Gift"
-            : order.offlineMeta?.source === "b2b" ?
-              "B2B Order"
-            : order.offlineMeta ?
-              "Offline Order"
-            : undefined
-          }
-          description={`Placed on ${formatDateTime(order.createdAt)}`}
-          actions={
-            <div className='flex flex-wrap items-center gap-2'>
+            <div className='min-w-0 flex-1'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <h1 className='font-serif text-xl sm:text-2xl font-bold text-gray-900 tracking-tight leading-none'>
+                  {order.orderNumber}
+                </h1>
+                <OrderStatusBadge status={order.status} />
+                <PaymentStatusBadge status={order.paymentStatus} size='sm' />
+                {channel && ChannelIcon ?
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full ring-1 ring-inset px-2 py-0.5 text-[11px] font-semibold",
+                      channel.cls,
+                    )}
+                  >
+                    <ChannelIcon className='h-3 w-3' /> {channel.label}
+                  </span>
+                : null}
+              </div>
+              <p className='text-xs text-gray-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5'>
+                <span>Placed {formatDateTime(order.createdAt)}</span>
+                <span className='text-gray-300'>·</span>
+                <span>{timeAgo(order.createdAt)}</span>
+                <span className='text-gray-300'>·</span>
+                <span>
+                  {lineCount} line{lineCount === 1 ? "" : "s"}, {qty} pc
+                  {qty === 1 ? "" : "s"}
+                </span>
+                <span className='text-gray-300'>·</span>
+                <span className='font-semibold text-gray-700 tabular-nums'>
+                  {formatPrice(order.total)}
+                </span>
+              </p>
+            </div>
+
+            <div className='flex flex-wrap items-center gap-2 ml-auto'>
               <AdminAiExplainButton
                 kind='order'
                 orderId={order._id}
-                label='AI explain order'
+                label='AI explain'
               />
-              <OrderReviewInvitePanel orderId={order._id} />
-              <button
-                type='button'
-                disabled={!invoiceEligible || generatingInvoice}
-                onClick={async () => {
-                  if (!invoiceEligible) return;
-                  setGeneratingInvoice(true);
-                  try {
-                    await adminApi.generateOrderInvoice(order._id);
-                    toast.success("Invoice generated");
-                    const refreshed = await adminApi.getOrderDetails(order._id);
-                    setOrder(refreshed.data.order as Order);
-                  } catch (err: unknown) {
-                    toast.error(
-                      (err as { message?: string })?.message ||
-                        "Failed to generate invoice",
-                    );
-                  } finally {
-                    setGeneratingInvoice(false);
-                  }
-                }}
-                className={cn(
-                  "px-3.5 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-colors",
-                  invoiceEligible ?
-                    "border-brand-200 text-brand-700 bg-white hover:bg-brand-50"
-                  : "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed",
-                )}
-              >
-                {generatingInvoice ?
-                  "Generating…"
-                : order.invoice?.isGenerated ?
-                  "Regenerate order invoice"
-                : "Order invoice (THOR)"}
-              </button>
-              {order.invoice?.isGenerated && (
-                <Link
-                  href={`/admin/orders/${encodeURIComponent(order._id)}/invoice`}
-                  className='inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-800 text-sm font-semibold text-white shadow-sm transition-all hover:from-navy-800 hover:to-navy-700 hover:shadow-md'
+              <OrderReviewInvitePanel
+                orderId={order._id}
+                className='h-9 py-0'
+              />
+              <AdminOrderMenu
+                trigger={<MoreHorizontal className='h-4 w-4' />}
+                chevron={false}
+                items={moreMenu}
+                triggerClassName='w-9 px-0 justify-center'
+                width='w-64'
+              />
+              <AdminOrderMenu
+                trigger={
+                  <>
+                    <span
+                      className={cn(
+                        "h-2 w-2 rounded-full",
+                        orderStatusMeta(order.status).dot,
+                      )}
+                    />
+                    Status
+                  </>
+                }
+                items={statusMenu}
+                disabled={updating}
+                width='w-64'
+              />
+              {next ?
+                <Button
+                  type='button'
+                  variant='brand'
+                  className='rounded-xl h-9 gap-1.5 shadow-sm'
+                  loading={updating}
+                  onClick={() => void applyStatus(next.status)}
                 >
-                  <FileText className='h-4 w-4' />
-                  View order invoice
-                </Link>
-              )}
-              {isB2bOrder &&
-                (linkedTaxInvoiceId ?
-                  <Link
-                    href={`/admin/invoices/new?id=${encodeURIComponent(linkedTaxInvoiceId)}`}
-                    className='inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100'
-                  >
-                    <Receipt className='h-4 w-4' />
-                    View GST invoice (INV)
-                  </Link>
-                : <button
-                    type='button'
-                    disabled={creatingTaxInvoice}
-                    onClick={async () => {
-                      setCreatingTaxInvoice(true);
-                      try {
-                        const res = await adminApi.createTaxInvoiceFromOrder(
-                          order._id,
-                        );
-                        const invoiceId = res.data.invoice.id;
-                        toast.success("GST tax invoice created");
-                        router.push(
-                          `/admin/invoices/new?id=${encodeURIComponent(invoiceId)}`,
-                        );
-                      } catch (err: unknown) {
-                        toast.error(
-                          (err as { message?: string })?.message ||
-                            "Failed to create tax invoice",
-                        );
-                      } finally {
-                        setCreatingTaxInvoice(false);
-                      }
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-colors",
-                      creatingTaxInvoice ?
-                        "border-gray-200 text-gray-400 bg-gray-50 cursor-wait"
-                      : "border-emerald-200 text-emerald-800 bg-white hover:bg-emerald-50",
-                    )}
-                  >
-                    <Receipt className='h-4 w-4' />
-                    {creatingTaxInvoice ? "Creating…" : "GST tax invoice (INV)"}
-                  </button>)}
-              <button
-                type='button'
-                className='px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-semibold shadow-sm transition-colors flex items-center gap-2'
-                onClick={async () => {
-                  if (
-                    confirm(
-                      "Are you sure you want to delete this order? This action cannot be undone.",
-                    )
-                  ) {
-                    try {
-                      await adminApi.deleteOrder(order._id);
-                      toast.success("Order deleted successfully");
-                      router.push("/admin/orders");
-                    } catch (err: unknown) {
-                      const error = err as { message?: string };
-                      toast.error(error.message || "Failed to delete order");
-                    }
-                  }
-                }}
-              >
-                <Trash2 className='h-4 w-4' />
-                Delete
-              </button>
-              <select
-                onChange={(e) => updateStatus(e.target.value as OrderStatus)}
-                className='px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-                value=''
-              >
-                <option value=''>Update Status</option>
-                {ORDER_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                  {next.label} <ArrowRight className='h-4 w-4' />
+                </Button>
+              : null}
             </div>
-          }
-        />
+          </div>
 
-        {cancellationInfo?.reason && (
-          <div
-            className={cn(
-              "rounded-2xl border p-4 sm:p-5 shadow-sm",
-              cancellationInfo.initiatedBy === "admin" ?
-                "border-slate-200 bg-slate-50/90"
-              : "border-amber-200 bg-amber-50/80",
-            )}
+          {/* section jump links */}
+          <nav
+            aria-label='Sections'
+            className='hidden lg:flex items-center gap-1 -mb-px overflow-x-auto'
           >
-            <p
-              className={cn(
-                "text-sm font-bold",
-                cancellationInfo.initiatedBy === "admin" ?
-                  "text-slate-900"
-                : "text-amber-950",
-              )}
-            >
-              {cancellationInfo.initiatedBy === "admin" ?
+            {SECTION_LINKS.map((s) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className='px-2.5 py-2 text-xs font-semibold text-gray-500 hover:text-gray-900 border-b-2 border-transparent hover:border-brand-400 transition-colors whitespace-nowrap'
+              >
+                {s.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      <div className='max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6'>
+        {/* ── Alerts ──────────────────────────────────────────────── */}
+        {order.paymentStatus === "failed" ?
+          <Alert tone='red' icon={XCircle} title='Payment failed'>
+            The customer’s payment did not go through. Do not ship until payment
+            is confirmed or the order is re-placed.
+          </Alert>
+        : null}
+
+        {cancellationInfo?.reason || cancellationInfo?.initiatedBy ?
+          <Alert
+            tone={cancellationInfo.initiatedBy === "admin" ? "slate" : "amber"}
+            icon={Ban}
+            title={
+              cancellationInfo.initiatedBy === "admin" ?
                 "Cancelled by admin team"
               : cancellationInfo.initiatedBy === "customer" ?
                 "Cancelled by customer"
-              : "Cancellation reason"}
-            </p>
-            <p
-              className={cn(
-                "text-sm mt-1 whitespace-pre-wrap",
-                cancellationInfo.initiatedBy === "admin" ?
-                  "text-slate-800"
-                : "text-amber-900",
-              )}
-            >
-              {cancellationInfo.reason}
-            </p>
-          </div>
-        )}
+              : "Order cancelled"
+            }
+          >
+            {cancellationInfo.reason ?
+              <span className='whitespace-pre-wrap'>
+                {cancellationInfo.reason}
+              </span>
+            : "No reason recorded."}
+          </Alert>
+        : null}
 
-        {needsRazorpayRefund && (
-          <div className='rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 via-white to-orange-50/80 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-            <div>
-              <p className='text-sm font-bold text-red-950'>
-                Refund required — paid online order cancelled
-              </p>
-              <p className='text-sm text-red-900/90 mt-1'>
-                Customer paid via Razorpay. Process{" "}
-                <strong className='tabular-nums'>
-                  {formatPrice(refundPolicy?.maxRefundable ?? order.total)}
-                </strong>{" "}
-                back to the original payment method in one step.
-              </p>
-            </div>
-            <Button
-              variant='brand'
-              className='rounded-xl bg-red-600 hover:bg-red-700 border-red-600 shrink-0'
-              onClick={() => setRefundModalOpen(true)}
-            >
-              Process Razorpay refund
-            </Button>
-          </div>
-        )}
+        {needsRazorpayRefund ?
+          <Alert
+            tone='red'
+            icon={IndianRupee}
+            title='Refund required - paid online order was cancelled'
+            action={
+              <Button
+                type='button'
+                className='rounded-xl bg-red-600 hover:bg-red-700 text-white shrink-0 gap-1.5'
+                onClick={() => setRefundModalOpen(true)}
+              >
+                <Undo2 className='h-4 w-4' /> Refund{" "}
+                {formatPrice(maxRefundable)}
+              </Button>
+            }
+          >
+            Customer paid via Razorpay. Process the refund back to the original
+            payment method in one step.
+          </Alert>
+        : null}
 
-        {highlightNewB2b && isB2bOrder && !linkedTaxInvoiceId && (
-          <div className='rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-emerald-50/60 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-            <div>
-              <p className='text-sm font-bold text-emerald-950'>
-                B2B order saved
-              </p>
-              <p className='text-sm text-emerald-800 mt-1'>
-                GST tax invoice uses its own <strong>INV-</strong> number
-                (separate from order <strong>{order.orderNumber}</strong>, THOR
-                series).
-              </p>
-            </div>
-            <button
-              type='button'
-              disabled={creatingTaxInvoice}
-              onClick={async () => {
-                setCreatingTaxInvoice(true);
-                try {
-                  const res = await adminApi.createTaxInvoiceFromOrder(
-                    order._id,
-                  );
-                  const invoiceId = res.data.invoice.id;
-                  toast.success("GST tax invoice created");
-                  router.replace(
-                    `/admin/invoices/new?id=${encodeURIComponent(invoiceId)}`,
-                  );
-                } catch (err: unknown) {
-                  toast.error(
-                    (err as { message?: string })?.message ||
-                      "Failed to create tax invoice",
-                  );
-                } finally {
-                  setCreatingTaxInvoice(false);
-                }
-              }}
-              className='inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 disabled:opacity-60'
-            >
-              <Receipt className='h-4 w-4' />
-              {creatingTaxInvoice ?
-                "Creating…"
-              : "Create GST invoice (INV) now"}
-            </button>
-          </div>
-        )}
+        {order.returnStatus === "requested" ?
+          <Alert
+            tone='amber'
+            icon={Undo2}
+            title='Return requested - needs a decision'
+            action={
+              <a
+                href='#return'
+                className='inline-flex items-center gap-1 text-sm font-semibold text-amber-900 hover:underline shrink-0'
+              >
+                Review <ArrowRight className='h-4 w-4' />
+              </a>
+            }
+          >
+            {order.returnRequest?.reason ||
+              "Customer asked to return this order."}
+          </Alert>
+        : null}
 
-        {/* Status badges row */}
-        <div className='flex flex-wrap items-center gap-3'>
-          <div className='flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm'>
-            <span className='text-xs text-gray-500 font-semibold uppercase tracking-wider'>
-              Status:
-            </span>
-            <span
-              className={cn(
-                "text-xs font-bold px-2.5 py-1 rounded-lg capitalize",
-                getOrderStatusColor(order.status),
-              )}
-            >
-              {order.status}
-            </span>
-          </div>
-          <div className='flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm'>
-            <span className='text-xs text-gray-500 font-semibold uppercase tracking-wider'>
-              Payment:
-            </span>
-            <span
-              className={cn(
-                "text-xs font-bold px-2.5 py-1 rounded-lg capitalize",
-                getPaymentStatusColor(order.paymentStatus),
-              )}
-            >
-              {order.paymentStatus}
-            </span>
-          </div>
-          <div className='flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm'>
-            <span className='text-xs text-gray-500 font-semibold uppercase tracking-wider'>
-              Method:
-            </span>
-            <span className='text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700'>
-              {adminPaymentMethodLabel(order.paymentMethod)}
-            </span>
-          </div>
+        {returnApprovedAwaitingRefund ?
+          <Alert
+            tone='emerald'
+            icon={Undo2}
+            title='Return approved - refund pending'
+            action={
+              <Button
+                type='button'
+                className='rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shrink-0 gap-1.5'
+                onClick={() => setRefundModalOpen(true)}
+              >
+                Process refund
+              </Button>
+            }
+          >
+            Eligible amount {formatPrice(maxRefundable)} (shipping / COD fees
+            retained).
+          </Alert>
+        : null}
+
+        {order.delhivery?.rtoDetected && order.status !== "delivered" ?
+          <Alert
+            tone='red'
+            icon={AlertTriangle}
+            title='RTO detected by Delhivery'
+          >
+            The parcel is returning to origin. Check the courier status and
+            contact the customer before re-dispatch.
+          </Alert>
+        : null}
+
+        {highlightNewB2b && isB2b && !taxId ?
+          <Alert
+            tone='emerald'
+            icon={Receipt}
+            title='B2B order saved'
+            action={
+              <a
+                href='#documents'
+                className='inline-flex items-center gap-1 text-sm font-semibold text-emerald-900 hover:underline shrink-0'
+              >
+                Create GST invoice <ArrowRight className='h-4 w-4' />
+              </a>
+            }
+          >
+            The GST tax invoice uses its own <b>INV-</b> number, separate from
+            order <b>{order.orderNumber}</b>.
+          </Alert>
+        : null}
+
+        {/* ── Summary strip ───────────────────────────────────────── */}
+        <div className='grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3'>
+          <Stat
+            icon={IndianRupee}
+            label='Order value'
+            value={formatPrice(order.total)}
+            sub={paymentMethodLabel(order.paymentMethod)}
+            emphasis
+          />
+          <Stat
+            icon={Package}
+            label='Items'
+            value={`${qty} pc${qty === 1 ? "" : "s"}`}
+            sub={`${lineCount} line${lineCount === 1 ? "" : "s"}${order.discount > 0 ? ` · −${formatPrice(order.discount)} off` : ""}`}
+          />
+          <Stat
+            icon={Truck}
+            label='Fulfilment'
+            value={
+              order.offlineMeta?.fulfillment === "offline_handover" ?
+                "Offline handover"
+              : order.trackingNumber ?
+                order.shippingCarrier || "Courier"
+              : "Not shipped"
+            }
+            sub={
+              order.trackingNumber ?
+                <span className='font-mono'>{order.trackingNumber}</span>
+              : order.delhivery?.shipmentCreatedAt ?
+                "Delhivery manifest created"
+              : orderStatusMeta(order.status).label
+            }
+          />
+          <Stat
+            icon={UserIcon}
+            label='Customer'
+            value={user?.name || order.shippingAddress?.name || "-"}
+            sub={
+              <span className='inline-flex items-center gap-1.5 min-w-0'>
+                <CustomerSegmentBadge segment={customerSegment} />
+                <span className='truncate'>
+                  {user?.email || user?.phone || ""}
+                </span>
+              </span>
+            }
+          />
+          <Stat
+            icon={CalendarClock}
+            label='Timing'
+            value={
+              order.deliveredAt ? `Delivered ${timeAgo(order.deliveredAt)}`
+              : order.shippedAt ?
+                `Shipped ${timeAgo(order.shippedAt)}`
+              : `Placed ${timeAgo(order.createdAt)}`
+            }
+            sub={
+              (
+                typeof order.delhivery?.estimatedTatDays === "number" &&
+                !order.deliveredAt
+              ) ?
+                `ETA ~${order.delhivery.estimatedTatDays} days`
+              : formatDateTime(
+                  order.deliveredAt || order.shippedAt || order.createdAt,
+                )
+            }
+          />
         </div>
 
-        <div className='grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] xl:grid-cols-[minmax(0,1fr)_380px] gap-8 xl:gap-10 items-start'>
-          {/* Main: items, Delhivery, lifecycle */}
+        {/* ── Workspace grid ──────────────────────────────────────── */}
+        <div className='grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] gap-6 items-start'>
+          {/* Main column */}
           <div className='space-y-6 min-w-0'>
-            {(() => {
-              const o = order;
-              if (!o) return null;
+            <AdminOrderReturnCard
+              order={order}
+              onUpdated={setOrder}
+              onProcessRefund={() => setRefundModalOpen(true)}
+            />
 
-              return (
-                <>
-                  {/* Return / Refund Context */}
-                  {(o as any).returnStatus &&
-                    (o as any).returnStatus !== "none" && (
-                      <div className='bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-4'>
-                        <div className='flex flex-wrap justify-between items-start gap-3'>
-                          <div>
-                            <h3 className='text-amber-800 font-bold flex items-center gap-2 text-sm'>
-                              <Circle className='h-2 w-2 text-amber-500 fill-amber-500' />
-                              Return Status:{" "}
-                              <span className='capitalize'>
-                                {(o as any).returnStatus}
-                              </span>
-                            </h3>
-                            {(o as any).returnRequest?.reason && (
-                              <p className='text-amber-700 text-sm mt-1'>
-                                <span className='font-semibold'>Reason:</span>{" "}
-                                {(o as any).returnRequest.reason}
-                                {(o as any).returnRequest?.note ?
-                                  ` - ${(o as any).returnRequest.note}`
-                                : ""}
-                              </p>
-                            )}
-                            {(o as any).returnRequest?.refundMethod && (
-                              <p className='text-amber-700 text-sm mt-1'>
-                                <span className='font-semibold'>
-                                  Refund Method Requested:
-                                </span>{" "}
-                                <span className='capitalize bg-amber-100 px-2 py-0.5 rounded-lg text-xs font-bold'>
-                                  {(
-                                    o as any
-                                  ).returnRequest.refundMethod.replace(
-                                    /_/g,
-                                    " ",
-                                  )}
-                                </span>
-                              </p>
-                            )}
-                          </div>
-                          {o.status !== "refunded" &&
-                            (o as any).returnStatus === "approved" && (
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                className='border-amber-300 text-amber-700 hover:bg-amber-100'
-                                onClick={() => setRefundModalOpen(true)}
-                              >
-                                Process Refund
-                              </Button>
-                            )}
-                        </div>
+            <AdminOrderItemsCard
+              order={order}
+              onZoom={setZoomedImage}
+              onLineCostSaved={(idx, saved) =>
+                setOrder((prev) => {
+                  if (!prev) return prev;
+                  const items = [...(prev.items ?? [])];
+                  const line = items[idx];
+                  if (!line) return prev;
+                  items[idx] = { ...line, costAtSale: saved };
+                  return { ...prev, items };
+                })
+              }
+            />
 
-                        {/* Bank Details if COD */}
-                        {(o as any).returnRequest?.userBankDetails && (
-                          <div className='bg-white/70 border border-amber-200 rounded-xl p-3.5 space-y-1.5'>
-                            <p className='text-xs font-bold text-amber-800 uppercase tracking-wide mb-2'>
-                              Customer Refund Details
-                            </p>
-                            {(o as any).returnRequest.refundMethod === "upi" ?
-                              <p className='text-sm text-gray-800'>
-                                <span className='font-semibold text-gray-600'>
-                                  UPI ID:
-                                </span>{" "}
-                                {(o as any).returnRequest.userBankDetails.upiId}
-                              </p>
-                            : <div className='grid grid-cols-2 gap-2 text-sm'>
-                                {[
-                                  [
-                                    "Account Name",
-                                    (o as any).returnRequest.userBankDetails
-                                      .accountName,
-                                  ],
-                                  [
-                                    "Account Number",
-                                    (o as any).returnRequest.userBankDetails
-                                      .accountNumber,
-                                  ],
-                                  [
-                                    "IFSC Code",
-                                    (o as any).returnRequest.userBankDetails
-                                      .ifscCode,
-                                  ],
-                                  [
-                                    "Bank Name",
-                                    (o as any).returnRequest.userBankDetails
-                                      .bankName,
-                                  ],
-                                ]
-                                  .filter(([, v]) => v)
-                                  .map(([label, value]) => (
-                                    <div key={label as string}>
-                                      <span className='text-gray-500 text-xs'>
-                                        {label as string}
-                                      </span>
-                                      <p className='font-semibold text-gray-900 font-mono text-sm'>
-                                        {value as string}
-                                      </p>
-                                    </div>
-                                  ))}
-                              </div>
-                            }
-                          </div>
-                        )}
+            <AdminOrderCustomGiftCard order={order} />
 
-                        {/* Approve / Reject if still requested */}
-                        {(o as any).returnStatus === "requested" && (
-                          <div className='space-y-2'>
-                            <textarea
-                              value={returnAdminNote}
-                              onChange={(e) =>
-                                setReturnAdminNote(e.target.value)
-                              }
-                              placeholder='Note to customer (optional)'
-                              rows={2}
-                              className='w-full px-3 py-2 border border-amber-200 bg-white rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-300'
-                            />
-                            <div className='flex gap-2'>
-                              <Button
-                                size='sm'
-                                className='flex-1 bg-green-600 hover:bg-green-700 text-white'
-                                loading={resolvingReturn}
-                                onClick={() => resolveReturnAction("approve")}
-                              >
-                                ✅ Approve Return
-                              </Button>
-                              <Button
-                                size='sm'
-                                variant='outline'
-                                className='flex-1 border-red-300 text-red-700 hover:bg-red-50'
-                                loading={resolvingReturn}
-                                onClick={() => resolveReturnAction("reject")}
-                              >
-                                ❌ Reject Return
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+            {order.offlineMeta?.fulfillment !== "offline_handover" ?
+              <AdminDelhiveryAutomationCard
+                order={order}
+                orderId={id}
+                onRefresh={refreshSilent}
+              />
+            : null}
 
-                        {(o as any).refundData && (
-                          <div className='mt-2 pt-3 border-t border-amber-200/60 text-sm text-amber-800 space-y-1'>
-                            <div className='flex justify-between gap-2'>
-                              <span>
-                                <span className='font-semibold'>Refunded:</span>{" "}
-                                {formatPrice((o as any).refundData.amount)}
-                              </span>
-                              <span>
-                                <span className='font-semibold'>Via:</span>{" "}
-                                <span className='capitalize'>
-                                  {String((o as any).refundData.method).replace(
-                                    /_/g,
-                                    " ",
-                                  )}
-                                </span>
-                              </span>
-                            </div>
-                            {(o as any).refundData.nonRefundableFees > 0 && (
-                              <p className='text-xs text-amber-700/90'>
-                                Non-refundable fees retained:{" "}
-                                <span className='font-semibold tabular-nums'>
-                                  {formatPrice(
-                                    (o as any).refundData.nonRefundableFees,
-                                  )}
-                                </span>{" "}
-                                (shipping / COD)
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
+            <AdminOrderLifecycleTimeline order={order} />
 
-                  <div className='bg-white rounded-2xl border border-gray-200/80 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] overflow-hidden'>
-                    <div className='px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-50/50 via-white to-white'>
-                      <h2 className='font-semibold text-gray-900 flex items-center gap-2'>
-                        <Package className='h-4 w-4 text-brand-600' /> Items (
-                        {o.items?.length || 0})
-                      </h2>
-                    </div>
-                    <div className='p-5 sm:p-6 space-y-4'>
-                      {(o.items || []).map((it, idx) => {
-                        const isManual = isManualOfflineOrderLine(it);
-                        return (
-                          <div
-                            key={idx}
-                            className='flex gap-4 p-3 -mx-3 rounded-xl hover:bg-gray-50/80 transition-colors group'
-                          >
-                            <OrderLineThumbnail
-                              image={it.image}
-                              name={it.name}
-                              isOfflineManual={isManual}
-                              className={cn(
-                                "h-16 w-14 rounded-xl shadow-sm transition-transform",
-                                isUsableOrderLineImage(it.image, {
-                                  isOfflineManual: isManual,
-                                }) &&
-                                  "group-hover:scale-105 group-hover:border-brand-300 group-hover:shadow",
-                              )}
-                              sizes='56px'
-                              onClick={() => {
-                                if (
-                                  isUsableOrderLineImage(it.image, {
-                                    isOfflineManual: isManual,
-                                  })
-                                ) {
-                                  setZoomedImage(it.image!);
-                                }
-                              }}
-                            />
-                            <div className='flex-1 min-w-0'>
-                              <div className='flex flex-wrap items-center gap-2'>
-                                <p className='text-sm font-semibold text-gray-900 line-clamp-2 leading-snug'>
-                                  {it.name}
-                                </p>
-                                {isManual ?
-                                  <span className='text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800'>
-                                    Manual line
-                                  </span>
-                                : null}
-                              </div>
-                              <p className='text-xs text-gray-500 mt-1 font-medium'>
-                                {[
-                                  it.variant?.size,
-                                  it.variant?.color,
-                                  it.variant?.sku,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </p>
-                              {it.lineCategory ?
-                                <p className='text-[11px] text-gray-500 mt-0.5'>
-                                  Category: {it.lineCategory}
-                                </p>
-                              : null}
-                              <p className='text-xs text-brand-600 font-semibold mt-1.5 bg-brand-50 inline-block px-2 py-0.5 rounded-md border border-brand-100/50'>
-                                Qty: {it.quantity}{" "}
-                                <span className='text-brand-300 mx-1'>×</span>{" "}
-                                {formatPrice(it.price)}
-                              </p>
-                              {!isManual && (it.costAtSale ?? 0) > 0 ?
-                                <p className='text-[11px] text-gray-500 mt-1'>
-                                  COGS: {formatPrice(it.costAtSale!)} / unit
-                                </p>
-                              : null}
-                              {isManual ?
-                                <OrderLineCogEditor
-                                  orderId={id}
-                                  lineIndex={idx}
-                                  quantity={it.quantity}
-                                  unitPrice={it.price}
-                                  costAtSale={it.costAtSale}
-                                  onSaved={(saved) => {
-                                    setOrder((prev) => {
-                                      if (!prev) return prev;
-                                      const items = [...(prev.items ?? [])];
-                                      const line = items[idx];
-                                      if (!line) return prev;
-                                      items[idx] = {
-                                        ...line,
-                                        costAtSale: saved,
-                                      };
-                                      return { ...prev, items };
-                                    });
-                                  }}
-                                />
-                              : null}
-                            </div>
-                            <p className='text-sm font-bold text-gray-900 flex-shrink-0 self-center'>
-                              {formatPrice(it.price * it.quantity)}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <DelhiveryAutomationCard
-                    order={o}
-                    orderId={id}
-                    onRefresh={async () => {
-                      const res = await adminApi.getOrderDetails(id);
-                      setOrder(res.data.order);
-                    }}
-                  />
-
-                  {o.productType === "custom" && (
-                    <CustomGiftAccordion order={o} />
-                  )}
-                </>
-              );
-            })()}
-
-            {order && <AdminOrderLifecycleTimeline order={order} />}
+            <AdminOrderActivityLog order={order} />
           </div>
 
-          {/* Sidebar: customer, shipping, totals, tracking */}
-          <div className='space-y-6 lg:sticky lg:top-4 lg:self-start'>
-            <div className='bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow'>
-              <h2 className='font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3'>
-                <UserIcon className='h-4 w-4 text-brand-600' /> Customer
-              </h2>
-              <div className='flex items-center gap-3 mb-1'>
-                {user?.avatar ?
-                  <div className='relative h-11 w-11 overflow-hidden rounded-full ring-1 ring-gray-200'>
-                    <Image
-                      src={user.avatar}
-                      alt={user?.name || "Customer"}
-                      fill
-                      sizes='44px'
-                      className='object-cover'
-                    />
-                  </div>
-                : <div className='h-11 w-11 rounded-full bg-gradient-to-br from-brand-100 to-navy-100 flex items-center justify-center text-sm font-black text-brand-700'>
-                    {String(user?.name || "U")
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                }
-                <div className='flex flex-wrap items-center gap-2'>
-                  <p className='text-sm font-semibold text-gray-900'>
-                    {user?.name || "-"}
-                  </p>
-                  {customerSegmentBadge(customerSegment)}
-                </div>
-              </div>
-              <p className='text-xs text-gray-500 mt-1'>{user?.email || ""}</p>
-              {user?.phone && (
-                <p className='text-xs text-gray-500 mt-1'>{user.phone}</p>
-              )}
-            </div>
+          {/* Sidebar */}
+          <aside className='space-y-6 min-w-0 lg:self-start'>
+            <AdminOrderCustomerCard
+              order={order}
+              customerSegment={customerSegment}
+            />
 
             {guestCheckout ?
               <AdminGuestCheckoutPanel
                 meta={guestCheckout}
-                onUpdated={() => loadOrder({ silent: true })}
+                onUpdated={refreshSilent}
               />
             : null}
 
-            {order && (
-              <AdminOrderCustomerCommsPanel
-                order={order}
-                onRefresh={async () => {
-                  await loadOrder({ silent: true });
-                }}
-              />
-            )}
+            <AdminOrderPaymentCard
+              order={order}
+              refundCtaVisible={
+                needsRazorpayRefund || returnApprovedAwaitingRefund
+              }
+              onProcessRefund={() => setRefundModalOpen(true)}
+            />
 
-            {isB2bOrder && (
-              <div className='bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow'>
-                <h2 className='font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3'>
-                  <Building2 className='h-4 w-4 text-emerald-600' /> B2B buyer
-                </h2>
-                {(
-                  order.b2bMeta?.companyName ||
-                  order.b2bMeta?.gstin ||
-                  order.b2bMeta?.poNumber
-                ) ?
-                  <dl className='space-y-2 text-sm'>
-                    {order.b2bMeta.companyName && (
-                      <div>
-                        <dt className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-                          Company
-                        </dt>
-                        <dd className='font-semibold text-gray-900'>
-                          {order.b2bMeta.companyName}
-                        </dd>
-                      </div>
-                    )}
-                    {order.b2bMeta.gstin && (
-                      <div>
-                        <dt className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-                          GSTIN
-                        </dt>
-                        <dd className='font-mono text-gray-800'>
-                          {order.b2bMeta.gstin}
-                        </dd>
-                      </div>
-                    )}
-                    {order.b2bMeta.poNumber && (
-                      <div>
-                        <dt className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
-                          PO number
-                        </dt>
-                        <dd className='text-gray-800'>
-                          {order.b2bMeta.poNumber}
-                        </dd>
-                      </div>
-                    )}
-                  </dl>
-                : <p className='text-sm text-gray-500'>
-                    No company/GSTIN saved on this order - add buyer details
-                    when creating the tax invoice.
-                  </p>
-                }
-              </div>
-            )}
+            <AdminOrderTrackingCard
+              order={order}
+              onEdit={() => setTrackingModalOpen(true)}
+            />
+
+            <AdminOrderDocumentsCard order={order} onOrderUpdated={setOrder} />
+
+            <AdminOrderCustomerCommsPanel
+              order={order}
+              customerSegment={customerSegment}
+              onRefresh={refreshSilent}
+            />
 
             <OrderMarketingAttributionCard
               attribution={order.marketingAttribution}
             />
+          </aside>
+        </div>
+      </div>
 
-            <div className='bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow'>
-              <h2 className='font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3'>
-                <MapPin className='h-4 w-4 text-brand-600' /> Shipping
-              </h2>
-              <p className='text-sm font-semibold text-gray-900'>
-                {order.shippingAddress?.name || "-"}
-              </p>
-              <p className='text-xs text-gray-500 mt-1'>
-                {order.shippingAddress?.phone || ""}
-              </p>
-              <p className='text-sm text-gray-700 mt-3'>
-                {order.shippingAddress.house && (
-                  <>
-                    {order.shippingAddress.house}
-                    <br />
-                  </>
-                )}
-                {order.shippingAddress.street}
-                {order.shippingAddress.landmark && (
-                  <>
-                    <br />
-                    <span className='text-gray-500'>
-                      Landmark: {order.shippingAddress.landmark}
-                    </span>
-                  </>
-                )}
-                <br />
-                {order.shippingAddress.city}, {order.shippingAddress.state} -{" "}
-                {order.shippingAddress.pincode}
-              </p>
-            </div>
-
-            <div className='bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow'>
-              <h2 className='font-semibold text-gray-900 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3'>
-                <CreditCard className='h-4 w-4 text-brand-600' /> Totals
-              </h2>
-              <div className='text-sm space-y-2'>
-                <div className='flex justify-between text-gray-600'>
-                  <span>Subtotal</span>
-                  <span>{formatPrice(order.subtotal)}</span>
-                </div>
-                {order.discount > 0 && (
-                  <div className='flex justify-between text-green-700'>
-                    <span>Discount</span>
-                    <span>- {formatPrice(order.discount)}</span>
-                  </div>
-                )}
-                <div className='flex justify-between text-gray-600 gap-2'>
-                  <span className='min-w-0'>
-                    Shipping
-                    <span className='block text-[10px] font-normal text-amber-700/90 mt-0.5'>
-                      Non-refundable on returns
-                    </span>
-                  </span>
-                  <span className='shrink-0 tabular-nums text-right'>
-                    {order.shippingCharge === 0 ?
-                      <span className='text-emerald-600 font-semibold'>
-                        FREE
-                      </span>
-                    : formatPrice(order.shippingCharge || 0)}
-                  </span>
-                </div>
-                {(order.codFee || 0) > 0 && (
-                  <div className='flex justify-between text-gray-600 gap-2'>
-                    <span className='min-w-0'>
-                      COD handling fee
-                      <span className='block text-[10px] font-normal text-amber-700/90 mt-0.5'>
-                        COD only - non-refundable on returns
-                      </span>
-                    </span>
-                    <span className='shrink-0 tabular-nums'>
-                      {formatPrice(order.codFee || 0)}
-                    </span>
-                  </div>
-                )}
-                <div className='flex justify-between text-gray-600'>
-                  <span>Tax</span>
-                  <span>{formatPrice(order.tax)}</span>
-                </div>
-                <div className='pt-3 mt-3 border-t border-gray-100 flex justify-between font-bold text-gray-900'>
-                  <span>Total</span>
-                  <span>{formatPrice(order.total)}</span>
-                </div>
-                {refundPolicy && refundPolicy.nonRefundable > 0 && (
-                  <div className='rounded-xl bg-amber-50/80 border border-amber-100 px-3 py-2 text-[11px] text-amber-900 leading-snug'>
-                    <span className='font-semibold'>Return refunds:</span> max{" "}
-                    <span className='tabular-nums font-bold'>
-                      {formatPrice(refundPolicy.maxRefundable)}
-                    </span>{" "}
-                    to customer (shipping{" "}
-                    {formatPrice(order.shippingCharge || 0)}
-                    {(order.codFee || 0) > 0 ?
-                      ` + COD ${formatPrice(order.codFee || 0)}`
-                    : ""}{" "}
-                    retained).
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className='bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden hover:shadow-md transition-shadow'>
-              <div className='px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50/50 via-white to-white flex items-center justify-between'>
-                <h2 className='font-semibold text-gray-900 flex items-center gap-2'>
-                  <Truck className='h-4 w-4 text-brand-600' /> Tracking Details
-                </h2>
-                {order.status === "shipped" && (
-                  <button
-                    onClick={() => setTrackingModalOpen(true)}
-                    className='text-[11px] font-bold text-brand-600 hover:text-brand-700 uppercase tracking-wider bg-brand-50 px-2 py-1 rounded-lg'
-                  >
-                    Edit Options
-                  </button>
-                )}
-              </div>
-
-              <div className='p-5 sm:p-6'>
-                {order.trackingNumber ?
-                  <div className='space-y-4'>
-                    <div className='grid grid-cols-2 gap-4'>
-                      <div className='bg-gray-50 rounded-xl p-3 border border-gray-100/50'>
-                        <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1'>
-                          Carrier
-                        </p>
-                        <p className='text-sm font-bold text-gray-900'>
-                          {order.shippingCarrier || "-"}
-                        </p>
-                      </div>
-                      <div className='bg-gray-50 rounded-xl p-3 border border-gray-100/50'>
-                        <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1'>
-                          AWB Number
-                        </p>
-                        <p className='text-sm font-bold text-gray-900 font-mono tracking-tight'>
-                          {order.trackingNumber}
-                        </p>
-                      </div>
-                    </div>
-
-                    {trackingHref && (
-                      <a
-                        href={trackingHref}
-                        target='_blank'
-                        rel='noreferrer'
-                        className='flex items-center justify-center w-full py-3 rounded-xl border border-brand-100 bg-brand-50/50 hover:bg-brand-50 text-sm font-bold text-brand-700 transition-colors'
-                      >
-                        Track Package <ExternalLink className='h-4 w-4 ml-2' />
-                      </a>
-                    )}
-
-                    {order.status !== "shipped" &&
-                      order.status !== "delivered" && (
-                        <p className='text-xs text-gray-400 text-center italic'>
-                          Tracking info is visible to the customer.
-                        </p>
-                      )}
-                  </div>
-                : <div className='text-center py-4'>
-                    <div className='h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3'>
-                      <Clock className='h-5 w-5 text-gray-300' />
-                    </div>
-                    <p className='text-sm font-medium text-gray-500'>
-                      No tracking attached yet
-                    </p>
-                    <p className='text-[11px] text-gray-400 mt-1 max-w-[200px] mx-auto'>
-                      Mark as "Shipped" from the status menu to add tracking
-                      details.
-                    </p>
-                  </div>
-                }
-              </div>
-            </div>
+      {/* ── Overlays ────────────────────────────────────────────────── */}
+      {zoomedImage ?
+        <div
+          className='fixed inset-0 z-[80] flex items-center justify-center bg-navy-900/90 backdrop-blur-sm p-4'
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className='relative max-w-4xl max-h-[90vh] w-full h-full'>
+            <button
+              type='button'
+              onClick={() => setZoomedImage(null)}
+              className='absolute -top-2 -right-2 md:-top-4 md:-right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 backdrop-blur-md transition-colors z-10'
+              aria-label='Close'
+            >
+              <XCircle className='h-6 w-6' />
+            </button>
+            <Image
+              src={zoomedImage}
+              alt='Zoomed product'
+              fill
+              className='object-contain'
+            />
           </div>
         </div>
+      : null}
 
-        {order && adminCancelModalOpen && (
-          <AdminCancelOrderModal
-            order={order}
-            open={adminCancelModalOpen}
-            isSubmitting={updating}
-            onClose={() => {
-              if (!updating) setAdminCancelModalOpen(false);
-            }}
-            onConfirm={(reason) => void confirmAdminCancel(reason)}
-          />
-        )}
+      {cancelModalOpen ?
+        <AdminCancelOrderModal
+          order={order}
+          open={cancelModalOpen}
+          isSubmitting={updating}
+          onClose={() => {
+            if (!updating) setCancelModalOpen(false);
+          }}
+          onConfirm={(reason) => void confirmCancel(reason)}
+        />
+      : null}
 
-        {trackingModalOpen && (
-          <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60'>
-            <div
-              className='absolute inset-0'
-              onClick={() => setTrackingModalOpen(false)}
-            />
-            <div className='relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200'>
-              <div className='p-4 sm:p-5 border-b border-gray-100'>
-                <p className='text-xs uppercase tracking-widest text-gray-400 font-semibold'>
-                  Shipping
-                </p>
-                <h3 className='text-lg font-bold text-gray-900'>
-                  Add tracking details
-                </h3>
-                <p className='text-xs text-gray-500 mt-1'>
-                  Required - users will see this in their tracking emails and
-                  order details.
-                </p>
-              </div>
-              <div className='p-4 sm:p-5 space-y-3'>
-                <div>
-                  <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-                    Courier
-                  </label>
-                  <input
-                    value={tracking.shippingCarrier}
-                    onChange={(e) => {
-                      setTrackingErrors((p) => ({
-                        ...p,
-                        shippingCarrier: undefined,
-                      }));
-                      setTracking((p) => ({
-                        ...p,
-                        shippingCarrier: e.target.value,
-                      }));
-                    }}
-                    placeholder='e.g. Delhivery, BlueDart, FedEx'
-                    className={cn(
-                      "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
-                      trackingErrors.shippingCarrier ?
-                        "border-red-300 bg-red-50/40"
-                      : "border-gray-200",
-                    )}
-                  />
-                  {trackingErrors.shippingCarrier && (
-                    <p className='text-xs text-red-600 mt-1'>
-                      {trackingErrors.shippingCarrier}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-                    Tracking / AWB number
-                  </label>
-                  <input
-                    value={tracking.trackingNumber}
-                    onChange={(e) => {
-                      setTrackingErrors((p) => ({
-                        ...p,
-                        trackingNumber: undefined,
-                      }));
-                      setTracking((p) => ({
-                        ...p,
-                        trackingNumber: e.target.value,
-                      }));
-                    }}
-                    placeholder='e.g. 1234567890'
-                    className={cn(
-                      "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
-                      trackingErrors.trackingNumber ?
-                        "border-red-300 bg-red-50/40"
-                      : "border-gray-200",
-                    )}
-                  />
-                  {trackingErrors.trackingNumber && (
-                    <p className='text-xs text-red-600 mt-1'>
-                      {trackingErrors.trackingNumber}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className='block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5'>
-                    Tracking URL (optional)
-                  </label>
-                  <input
-                    value={tracking.trackingUrl}
-                    onChange={(e) => {
-                      setTrackingErrors((p) => ({
-                        ...p,
-                        trackingUrl: undefined,
-                      }));
-                      setTracking((p) => ({
-                        ...p,
-                        trackingUrl: e.target.value,
-                      }));
-                    }}
-                    placeholder='https://...'
-                    className={cn(
-                      "w-full h-11 px-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300",
-                      trackingErrors.trackingUrl ?
-                        "border-red-300 bg-red-50/40"
-                      : "border-gray-200",
-                    )}
-                  />
-                  {trackingErrors.trackingUrl && (
-                    <p className='text-xs text-red-600 mt-1'>
-                      {trackingErrors.trackingUrl}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className='p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex gap-3'>
-                <Button
-                  variant='outline'
-                  className='flex-1 rounded-xl'
-                  onClick={() => setTrackingModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant='brand'
-                  className='flex-1 rounded-xl'
-                  loading={updating}
-                  onClick={markShippedWithTracking}
-                >
-                  Mark Shipped
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+      <AdminOrderTrackingModal
+        order={order}
+        open={trackingModalOpen}
+        onClose={() => setTrackingModalOpen(false)}
+        onSaved={setOrder}
+      />
 
-        {refundModalOpen && (
-          <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60'>
-            <div className='bg-white w-full sm:w-[480px] rounded-t-2xl sm:rounded-3xl p-6 sm:p-8 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95'>
-              <h2 className='text-xl font-bold text-gray-900 mb-1'>
-                Process Refund
-              </h2>
-              <p className='text-sm text-gray-600 mb-3'>
-                Eligible refund:{" "}
-                <span className='font-bold text-gray-900 tabular-nums'>
-                  {formatPrice(refundPolicy?.maxRefundable ?? order.total)}
-                </span>{" "}
-                (order total minus non-refundable shipping &amp; COD fees).
-              </p>
-              {refundPolicy && refundPolicy.nonRefundable > 0 && (
-                <p className='text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mb-4'>
-                  Retained: shipping {formatPrice(order.shippingCharge || 0)}
-                  {(order.codFee || 0) > 0 ?
-                    ` · COD ${formatPrice(order.codFee || 0)}`
-                  : ""}
-                  .
-                </p>
-              )}
-              <div className='space-y-4'>
-                {order.paymentMethod === "razorpay" ?
-                  <div className='p-4 bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl'>
-                    This order was paid via Razorpay. It will be securely
-                    refunded directly to the original payment source.
-                  </div>
-                : <div className='space-y-1'>
-                    <label className='text-xs font-semibold text-gray-700'>
-                      Select Offline Refund Method (COD Order)
-                    </label>
-                    <select
-                      value={refundMethod}
-                      onChange={(e) => setRefundMethod(e.target.value as any)}
-                      className='w-full h-11 px-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-                    >
-                      <option value='cash'>Cash (Manual)</option>
-                      <option value='bank_transfer'>Bank Transfer</option>
-                      <option value='upi_manual'>UPI (Manual)</option>
-                    </select>
-                  </div>
-                }
-                <input
-                  value={refundNotes}
-                  onChange={(e) => setRefundNotes(e.target.value)}
-                  placeholder='Reason / Note for Audit Log'
-                  className='w-full h-11 px-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
-                />
-                <div className='flex gap-3 pt-2'>
-                  <Button
-                    variant='outline'
-                    className='flex-1 rounded-xl'
-                    disabled={refunding}
-                    onClick={() => setRefundModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant='brand'
-                    className='flex-1 rounded-xl bg-red-600 hover:bg-red-700 border-red-600 text-white'
-                    loading={refunding}
-                    onClick={processRefundAction}
-                  >
-                    Confirm Refund
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+      <AdminOrderRefundModal
+        order={order}
+        open={refundModalOpen}
+        onClose={() => setRefundModalOpen(false)}
+        onRefunded={setOrder}
+      />
+    </div>
+  );
+}
+
+/* ── local presentational pieces ─────────────────────────────────────── */
+
+function Stat({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  emphasis,
+}: {
+  icon: typeof Package;
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+  emphasis?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border px-4 py-3.5 min-w-0 flex items-start gap-3",
+        emphasis ?
+          "border-navy-800 bg-gradient-to-br from-navy-900 to-navy-800 text-white shadow-[0_12px_30px_-16px_rgba(20,25,47,0.6)]"
+        : "border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+      )}
+    >
+      <span
+        className={cn(
+          "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
+          emphasis ? "bg-white/10 text-brand-200" : "bg-gray-100 text-gray-600",
         )}
+      >
+        <Icon className='h-4 w-4' />
+      </span>
+      <div className='min-w-0 flex-1'>
+        <p
+          className={cn(
+            "text-[10px] font-bold uppercase tracking-[0.14em]",
+            emphasis ? "text-brand-200/90" : "text-gray-400",
+          )}
+        >
+          {label}
+        </p>
+        <p
+          className={cn(
+            "text-base font-bold leading-tight mt-0.5 truncate tabular-nums",
+            emphasis ? "text-white" : "text-gray-900",
+          )}
+        >
+          {value}
+        </p>
+        {sub ?
+          <p
+            className={cn(
+              "text-[11px] mt-0.5 truncate",
+              emphasis ? "text-white/70" : "text-gray-500",
+            )}
+          >
+            {sub}
+          </p>
+        : null}
       </div>
+    </div>
+  );
+}
+
+const ALERT_TONE = {
+  red: {
+    wrap: "border-red-200 bg-gradient-to-r from-red-50 via-white to-white",
+    icon: "bg-red-100 text-red-700",
+    title: "text-red-950",
+    body: "text-red-900/90",
+  },
+  amber: {
+    wrap: "border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white",
+    icon: "bg-amber-100 text-amber-800",
+    title: "text-amber-950",
+    body: "text-amber-900/90",
+  },
+  emerald: {
+    wrap: "border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-white",
+    icon: "bg-emerald-100 text-emerald-800",
+    title: "text-emerald-950",
+    body: "text-emerald-900/90",
+  },
+  slate: {
+    wrap: "border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white",
+    icon: "bg-slate-200 text-slate-700",
+    title: "text-slate-900",
+    body: "text-slate-700",
+  },
+} as const;
+
+function Alert({
+  tone,
+  icon: Icon,
+  title,
+  children,
+  action,
+}: {
+  tone: keyof typeof ALERT_TONE;
+  icon: typeof Package;
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  const t = ALERT_TONE[tone];
+  return (
+    <div
+      role='status'
+      className={cn(
+        "rounded-2xl border p-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4",
+        t.wrap,
+      )}
+    >
+      <span
+        className={cn(
+          "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
+          t.icon,
+        )}
+      >
+        <Icon className='h-[18px] w-[18px]' />
+      </span>
+      <div className='min-w-0 flex-1'>
+        <p className={cn("text-sm font-bold", t.title)}>{title}</p>
+        <p className={cn("text-sm mt-0.5 leading-snug", t.body)}>{children}</p>
+      </div>
+      {action}
     </div>
   );
 }

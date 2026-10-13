@@ -30,20 +30,20 @@ export function formatTurnover(turnover: number | null | undefined): string {
 
 export const INVENTORY_METRIC_NOTES = {
   estMeaning:
-    '"Est." = estimated from catalog (units already sold × price/cost). Past sales math - NOT a future forecast.',
+    "Gross = Σ (line price × qty) over paid order lines. Discounts, shipping, COD fees and refunds are netted on the Revenue page.",
   catalogVsOrders:
-    "This is catalog math. Actual cash collected is on the Revenue page (paid orders).",
+    "Counted from paid order lines (website + offline + B2B) - same source as Revenue, Analytics and the dashboard.",
   productLevelSales:
-    "Each size/color SKU has its own soldCount. Product total = sum of all SKUs.",
+    "Each size/color SKU is counted from its own paid order lines. Product total = sum of all SKUs. Click a Sold number for the order list.",
   variantSoldCount:
     "Each SKU (size + color) tracks sold units separately in variant breakdown.",
   costMethod: "Purchase bills update cost using WAC (weighted average cost).",
   avgCost:
-    "Avg cost = stock-weighted average of variant purchase costs currently on hand.",
+    "COGS uses the cost frozen on each order line at sale time; falls back to the SKU's current purchase cost when missing.",
   avgMrp:
-    "Each SKU uses its own list price. Lifetime revenue = Σ (SKU sold × SKU sell price).",
+    "Each SKU uses its own list price. Revenue = Σ (SKU sold × price actually paid on the order).",
   effectiveSellPrice:
-    "Blended avg sell when SKU sold counts are missing; otherwise per-SKU sum.",
+    "Blended avg list price across SKUs (used for the Stock @ MRP valuation).",
   variantStock:
     "Stock, cost & MRP are per SKU. totalStock = sum of all variant stocks.",
 } as const;
@@ -60,11 +60,12 @@ export function summaryTooltipLines(input: {
   return {
     unitsSold: [
       { label: "Units sold", value: input.sold.toLocaleString("en-IN") },
+      { label: "Source", value: "Paid order lines" },
       { label: "Per SKU", value: "Size + color wise" },
     ],
     grossRevenue: [
-      { label: "Meaning", value: "Est. = catalog estimate" },
-      { label: "Formula", value: "Σ (SKU sold × SKU sell price)" },
+      { label: "Source", value: "Paid order lines" },
+      { label: "Formula", value: "Σ (qty × line price)" },
       { label: "Example", value: "Red 50×₹999 + Blue 10×₹1299" },
       {
         label: "Total",
@@ -73,9 +74,9 @@ export function summaryTooltipLines(input: {
       },
     ],
     grossProfit: [
-      { label: "Est. revenue", value: formatPrice(input.grossRevenue) },
+      { label: "Revenue", value: formatPrice(input.grossRevenue) },
       { label: "Minus COGS", value: formatPrice(input.grossCost) },
-      { label: "COGS =", value: "Σ (SKU sold × SKU cost)" },
+      { label: "COGS =", value: "Σ (qty × cost at sale)" },
       {
         label: "Gross profit",
         value: formatPrice(input.grossProfit),
@@ -83,8 +84,7 @@ export function summaryTooltipLines(input: {
       },
     ],
     margin: [
-      { label: "Formula", value: "(MRP − cost) ÷ MRP" },
-      { label: "Or", value: "profit ÷ revenue" },
+      { label: "Formula", value: "gross profit ÷ revenue" },
       {
         label: "Margin",
         value: input.margin != null ? `${input.margin}%` : "-",
@@ -127,7 +127,7 @@ export function productRowTooltipLines(product: {
 
   if (product.isPeriodView) {
     return [
-      { label: "Units sold (period)", value: String(sold) },
+      { label: "Units sold", value: String(sold) },
       { label: "Source", value: "Paid order lines" },
       { label: "Gross revenue", value: formatPrice(product.grossRevenue ?? 0) },
       { label: "COGS", value: formatPrice(product.grossCostOfSales ?? 0) },

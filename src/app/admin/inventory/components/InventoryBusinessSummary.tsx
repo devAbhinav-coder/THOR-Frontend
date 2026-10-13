@@ -200,18 +200,12 @@ export default function InventoryBusinessSummary({
         <div>
           <h2 className='text-sm font-bold text-navy-900'>Catalog snapshot</h2>
           <p className='text-xs text-gray-500 max-w-xl'>
-            {summary.period && summary.period !== "lifetime" ?
-              <>
-                Sales &amp; profit for <strong>{summary.periodLabel}</strong>{" "}
-                from paid orders (website + offline/POS). Stock values are
-                current snapshot.
-              </>
-            : <>
-                Sold / revenue / profit from catalog{" "}
-                <strong>soldCount × MRP/cost</strong> (per SKU). Hover any
-                metric for the full formula.
-              </>
-            }{" "}
+            Sold, revenue &amp; profit for{" "}
+            <strong>{summary.periodLabel ?? "all time"}</strong> from{" "}
+            <strong>paid order lines</strong> (website + offline/POS + B2B) -
+            the same source as Revenue, Analytics and the dashboard. Stock
+            values are the current snapshot. Click any Sold number below to
+            see the orders behind it.{" "}
             For cash from orders use{" "}
             <Link
               href='/admin/revenue'
@@ -255,7 +249,7 @@ export default function InventoryBusinessSummary({
           sublabel={
             isPeriod ?
               "Paid orders in selected period"
-            : "Sum of per-SKU soldCount"
+            : "Paid orders · all time"
           }
           value={sold.toLocaleString("en-IN")}
           icon={ShoppingBag}
@@ -271,18 +265,14 @@ export default function InventoryBusinessSummary({
           }
         />
         <PrimaryKpi
-          label={isPeriod ? "Gross revenue" : "Est. gross revenue"}
-          sublabel={
-            isPeriod ?
-              "Actual paid line totals"
-            : "Units sold × avg MRP (catalog)"
-          }
+          label='Gross revenue'
+          sublabel='Σ paid line totals (qty × price)'
           value={formatPrice(grossRevenue)}
           icon={IndianRupee}
           accent='bg-brand-100 text-brand-700'
           tooltip={
             <MetricTooltip
-              title='Est. gross revenue'
+              title='Gross revenue'
               lines={tips.grossRevenue}
               note={INVENTORY_METRIC_NOTES.estMeaning}
             >
@@ -291,18 +281,14 @@ export default function InventoryBusinessSummary({
           }
         />
         <PrimaryKpi
-          label={isPeriod ? "Gross profit" : "Est. gross profit"}
-          sublabel={
-            isPeriod ?
-              "Revenue − COGS (orders)"
-            : "Est. revenue − cost of sold units"
-          }
+          label='Gross profit'
+          sublabel='Revenue − COGS (cost at sale)'
           value={formatPrice(grossProfit)}
           icon={TrendingUp}
           accent='bg-emerald-100 text-emerald-700'
           tooltip={
             <MetricTooltip
-              title='Est. gross profit'
+              title='Gross profit'
               lines={tips.grossProfit}
               note={INVENTORY_METRIC_NOTES.avgCost}
             >
@@ -311,13 +297,13 @@ export default function InventoryBusinessSummary({
           }
         />
         <PrimaryKpi
-          label='Catalog margin'
-          sublabel='Gross profit ÷ est. revenue'
+          label='Gross margin'
+          sublabel='Gross profit ÷ revenue'
           value={margin != null && grossRevenue > 0 ? `${margin}%` : "-"}
           icon={Percent}
           accent='bg-purple-100 text-purple-700'
           tooltip={
-            <MetricTooltip title='Catalog margin' lines={tips.margin}>
+            <MetricTooltip title='Gross margin' lines={tips.margin}>
               {infoIcon}
             </MetricTooltip>
           }
@@ -328,11 +314,11 @@ export default function InventoryBusinessSummary({
       {sold > 0 && (
         <div className='rounded-[1.25rem] border border-gray-200/80 bg-white/80 backdrop-blur-sm p-4 shadow-sm overflow-visible'>
           <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5'>
-            {isPeriod ? "Profit flow (orders)" : "Catalog profit flow"}
+            Profit flow (paid orders)
           </p>
           <div className='flex flex-wrap items-center gap-2'>
             <FlowMini
-              label={isPeriod ? "Revenue" : "Est. revenue"}
+              label='Revenue'
               value={formatPrice(grossRevenue)}
               tone='base'
             />
@@ -358,19 +344,17 @@ export default function InventoryBusinessSummary({
               </span>
             )}
           </div>
-          {!isPeriod && (
-            <p className='text-[10px] text-gray-400 mt-2.5 leading-relaxed'>
-              <strong>Est.</strong> = catalog estimate from units already sold ×
-              list price/cost - not a future forecast. Actual cash is on the{" "}
-              <Link
-                href='/admin/revenue'
-                className='text-brand-600 font-semibold hover:underline'
-              >
-                Revenue
-              </Link>{" "}
-              page.
-            </p>
-          )}
+          <p className='text-[10px] text-gray-400 mt-2.5 leading-relaxed'>
+            Gross figures only (line price × qty, cost frozen at sale). Shipping,
+            COD fees, discounts, refunds and operating costs are netted on the{" "}
+            <Link
+              href='/admin/revenue'
+              className='text-brand-600 font-semibold hover:underline'
+            >
+              Revenue
+            </Link>{" "}
+            page.
+          </p>
         </div>
       )}
 

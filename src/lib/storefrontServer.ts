@@ -179,6 +179,8 @@ export const fetchStorefrontHomePageBundle = cache(
       const res = await serverFetch(`${base}/storefront/home`, {
         next: { revalidate: 60, tags: [STOREFRONT_SETTINGS_CACHE_TAG] },
         headers: { Accept: "application/json" },
+        /** Home bundle can be slow on cold DB; 12s abort caused fallback + a second /home storm. */
+        timeoutMs: 45_000,
       });
       if (!res.ok) return null;
       const json = (await res.json()) as HomeBundleApiJson;

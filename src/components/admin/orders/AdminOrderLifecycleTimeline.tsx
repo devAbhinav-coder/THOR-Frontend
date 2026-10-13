@@ -13,6 +13,7 @@ import {
 import { Order } from "@/types";
 import { buildOrderLifecycleTimeline } from "@/lib/orderLifecycle";
 import { cn, formatDateTime } from "@/lib/utils";
+import AdminOrderSectionCard from "./AdminOrderSectionCard";
 
 const FAILURE_STATUSES = new Set(["cancelled", "return_rejected"]);
 const WARNING_STATUSES = new Set([
@@ -26,28 +27,27 @@ export default function AdminOrderLifecycleTimeline({ order }: { order: Order })
 
   if (events.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] overflow-hidden">
-        <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 via-white to-white">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-            <Compass className="h-4 w-4 text-blue-600" /> Order lifecycle
-          </h2>
-        </div>
-        <p className="p-6 text-sm text-gray-500">No status updates recorded yet.</p>
-      </div>
+      <AdminOrderSectionCard
+        id='lifecycle'
+        icon={Compass}
+        tone='sky'
+        title='Order lifecycle'
+      >
+        <p className='text-sm text-gray-500'>No status updates recorded yet.</p>
+      </AdminOrderSectionCard>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200/80 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] overflow-hidden">
-      <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 via-white to-white">
-        <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-          <Compass className="h-4 w-4 text-blue-600" /> Order lifecycle
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">
-          Only steps that actually happened on this order.
-        </p>
-      </div>
-      <div className="p-5 sm:p-8 w-full overflow-x-auto pb-4">
+    <AdminOrderSectionCard
+      id='lifecycle'
+      icon={Compass}
+      tone='sky'
+      title='Order lifecycle'
+      description='Only steps that actually happened on this order - courier scans appear once shipped.'
+      flush
+    >
+      <div className="px-5 sm:px-8 pt-4 pb-5 w-full overflow-x-auto">
         <div
           className="flex items-start min-w-[280px] relative mt-6 font-sans"
           style={{ minWidth: `${Math.max(events.length * 140, 280)}px` }}
@@ -163,6 +163,6 @@ export default function AdminOrderLifecycleTimeline({ order }: { order: Order })
           })}
         </div>
       </div>
-    </div>
+    </AdminOrderSectionCard>
   );
 }

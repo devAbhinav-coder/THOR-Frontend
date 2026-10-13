@@ -34,7 +34,11 @@ export default async function StoreLayout({
       <Navbar initialNavCategories={initialNavCategories} />
       <main className='isolate min-h-screen flex flex-col bg-background pb-0 lg:pb-0'>
         <MarketingEditionsProvider
-          editions={initialStorefrontSettings?.marketingEditions}
+          editions={
+            initialStorefrontSettings != null ?
+              (initialStorefrontSettings.marketingEditions ?? [])
+            : undefined
+          }
         >
           <StoreErrorBoundary>{children}</StoreErrorBoundary>
         </MarketingEditionsProvider>

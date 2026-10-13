@@ -158,7 +158,10 @@ export interface Product {
   ratings: { average: number; count: number };
   /** PDP views (server-incremented) */
   viewCount?: number;
+  /** Reservation counter on the doc (bumped on checkout hold / COD / offline create). */
   soldCount?: number;
+  /** Admin lists only: lifetime units in paid orders (same source as Revenue/Analytics). */
+  paidSoldUnits?: number;
   seoTitle?: string;
   seoDescription?: string;
   hsnCode?: string;

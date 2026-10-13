@@ -69,7 +69,8 @@ export default function StoreVisitTracker() {
     pageStartedAt.current = Date.now();
     maxScrollPct.current = computeScrollPct();
     sendVisit({ sessionKey: sessionId, kind: 'session', path, userId });
-  }, [pathname, userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one session ping per tab load
+  }, []);
 
   useEffect(() => {
     const sessionId = getShopSessionKey();

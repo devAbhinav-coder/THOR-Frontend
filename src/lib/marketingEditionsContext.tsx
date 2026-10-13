@@ -28,6 +28,7 @@ export function MarketingEditionsProvider({
   >(null);
 
   useEffect(() => {
+    if (editions !== undefined && editions !== null) return;
     let cancelled = false;
     storefrontApi
       .getSettings()
@@ -41,7 +42,7 @@ export function MarketingEditionsProvider({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [editions]);
 
   const value = useMemo(() => {
     const fromClient = clientEditions ?? [];

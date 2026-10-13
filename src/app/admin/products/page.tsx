@@ -44,6 +44,17 @@ import toast from "react-hot-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { LOW_STOCK_ALERT_EXCLUSIVE_MAX } from "@/lib/inventoryConstants";
 import AdminErrorState from "@/components/admin/AdminErrorState";
+import ProductSalesBreakdownModal, {
+  type ProductSalesBreakdownTarget,
+} from "@/components/admin/inventory/ProductSalesBreakdownModal";
+import ProductViewsBreakdownModal, {
+  type ProductViewsBreakdownTarget,
+} from "@/components/admin/inventory/ProductViewsBreakdownModal";
+
+/** Admin "sold" = lifetime units in paid orders (same as Inventory / Revenue / Analytics). */
+function adminSoldUnits(p: Product): number {
+  return p.paidSoldUnits ?? p.soldCount ?? 0;
+}
 
 type QuickFilter = "all" | "featured" | "active" | "inactive" | "premium";
 
@@ -149,7 +160,18 @@ export default function AdminProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [salesTarget, setSalesTarget] =
+    useState<ProductSalesBreakdownTarget | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  const openSales = useCallback((p: Product) => {
+    setSalesTarget({ productId: p._id, productName: p.name });
+  }, []);
+  const [viewsTarget, setViewsTarget] =
+    useState<ProductViewsBreakdownTarget | null>(null);
+  const openViews = useCallback((p: Product) => {
+    setViewsTarget({ productId: p._id, productName: p.name });
+  }, []);
 
   useEffect(() => {
     try {
@@ -616,14 +638,30 @@ export default function AdminProductsPage() {
                           </td>
                           <td className='px-4 py-3 text-xs'>
                             <div className='flex flex-col gap-1 items-start'>
-                              <span className='inline-flex items-center gap-1 bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold border border-gray-200 shadow-sm'>
+                              <button
+                                type='button'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openSales(product);
+                                }}
+                                title='Paid-order units · click for channel / order breakdown'
+                                className='inline-flex items-center gap-1 bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold border border-gray-200 shadow-sm hover:border-brand-300 hover:text-brand-700 hover:bg-brand-50/60 transition-colors'
+                              >
                                 <List className='h-3 w-3 text-gray-400' />{" "}
-                                {product.soldCount || 0} sold
-                              </span>
-                              <span className='inline-flex items-center gap-1 bg-indigo-50/50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100 shadow-sm'>
+                                {adminSoldUnits(product)} sold
+                              </button>
+                              <button
+                                type='button'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openViews(product);
+                                }}
+                                title='Unique shopper views · click for source / device / day breakdown'
+                                className='inline-flex items-center gap-1 bg-indigo-50/50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100 shadow-sm hover:bg-indigo-100/70 hover:border-indigo-200 transition-colors'
+                              >
                                 <Eye className='h-3 w-3 text-indigo-400' />
                                 {product.viewCount || 0} views
-                              </span>
+                              </button>
                             </div>
                           </td>
                           <td className='px-4 py-3'>
@@ -727,30 +765,29 @@ export default function AdminProductsPage() {
                           )}
                         </p>
                         <div className='mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs font-medium text-gray-500'>
-                          <span className='flex items-center gap-1'>
-                            <svg
-                              className='h-3.5 w-3.5 text-gray-400'
-                              fill='none'
-                              viewBox='0 0 24 24'
-                              stroke='currentColor'
-                              strokeWidth={2}
-                            >
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
-                              />
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z'
-                              />
-                            </svg>
+                          <button
+                            type='button'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openViews(product);
+                            }}
+                            title='Unique shopper views · click for source / device / day breakdown'
+                            className='flex items-center gap-1 px-1.5 py-0.5 -ml-1.5 rounded-md hover:bg-indigo-50 hover:text-indigo-700 transition-colors'
+                          >
+                            <Eye className='h-3.5 w-3.5 text-gray-400' />
                             {product.viewCount || 0}
-                          </span>
-                          <span className='text-navy-700 bg-navy-50 px-2.5 py-0.5 rounded-full'>
-                            {product.soldCount || 0} sold
-                          </span>
+                          </button>
+                          <button
+                            type='button'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openSales(product);
+                            }}
+                            title='Paid-order units · click for channel / order breakdown'
+                            className='text-navy-700 bg-navy-50 px-2.5 py-0.5 rounded-full hover:bg-navy-100 transition-colors'
+                          >
+                            {adminSoldUnits(product)} sold
+                          </button>
                         </div>
                         <button
                           type='button'
@@ -1017,6 +1054,26 @@ export default function AdminProductsPage() {
           onSave={handleSave}
         />
       )}
+
+      <ProductSalesBreakdownModal
+        target={salesTarget}
+        onClose={() => setSalesTarget(null)}
+        period='lifetime'
+        onCountersSynced={() => {
+          void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+          void queryClient.invalidateQueries({
+            queryKey: ["admin-inventory-stock"],
+          });
+        }}
+      />
+      <ProductViewsBreakdownModal
+        target={viewsTarget}
+        onClose={() => setViewsTarget(null)}
+        period='lifetime'
+        onCounterRecounted={() => {
+          void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+        }}
+      />
     </div>
   );
 }

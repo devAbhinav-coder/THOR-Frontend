@@ -19,12 +19,17 @@ import { sumVariantStock } from "@/lib/productStock";
 import type { Product } from "@/types";
 import ProductFormModal from "@/components/admin/ProductFormModal";
 import AdminPremiumBadge from "@/components/admin/AdminPremiumBadge";
+import ProductViewsBreakdownModal, {
+  type ProductViewsBreakdownTarget,
+} from "@/components/admin/inventory/ProductViewsBreakdownModal";
 
 export default function AdminPremiumPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [defaultIsPremium, setDefaultIsPremium] = useState(true);
+  const [viewsTarget, setViewsTarget] =
+    useState<ProductViewsBreakdownTarget | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin", "premium-products"],
@@ -199,13 +204,20 @@ export default function AdminPremiumPage() {
                       {formatPrice(p.price)}
                     </td>
                     <td className='px-4 py-3 text-gray-700'>
-                      <span className='inline-flex items-center gap-1 tabular-nums'>
+                      <button
+                        type='button'
+                        onClick={() =>
+                          setViewsTarget({ productId: p._id, productName: p.name })
+                        }
+                        title='Unique shopper views · click for source / device / day breakdown'
+                        className='inline-flex items-center gap-1 tabular-nums px-1.5 py-0.5 -ml-1.5 rounded-md hover:bg-indigo-50 hover:text-indigo-700 transition-colors'
+                      >
                         <Eye
                           className='h-3.5 w-3.5 text-gray-400'
                           aria-hidden
                         />
                         {p.viewCount || 0}
-                      </span>
+                      </button>
                     </td>
                     <td className='px-4 py-3 text-gray-700'>{stock}</td>
                     <td className='px-4 py-3'>
@@ -267,6 +279,17 @@ export default function AdminPremiumPage() {
           onSave={handleSave}
         />
       )}
+      <ProductViewsBreakdownModal
+        target={viewsTarget}
+        onClose={() => setViewsTarget(null)}
+        period='lifetime'
+        onCounterRecounted={() => {
+          void queryClient.invalidateQueries({
+            queryKey: ["admin", "premium-products"],
+          });
+          void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+        }}
+      />
     </div>
   );
 }
