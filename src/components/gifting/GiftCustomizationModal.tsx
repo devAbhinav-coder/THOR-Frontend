@@ -14,7 +14,6 @@ import { UPLOAD_MAX_MB } from "@/lib/uploadLimits";
 import Link from "next/link";
 import type { Product as ProductType } from "@/types";
 import { loginUrlWithRedirect } from "@/lib/safeRedirect";
-import { trackAddToCart } from "@/lib/metaPixel";
 
 interface CustomField {
   _id: string;
@@ -191,12 +190,6 @@ export default function GiftCustomizationModal({ product, onClose }: Props) {
         answers.map((a) => ({ label: a.label, value: a.value })),
         product as ProductType,
         { commerceSource: "gifting" },
-      );
-      trackAddToCart(
-        product as ProductType,
-        quantity,
-        variant.price ?? product.price,
-        variant,
       );
       onClose();
     } catch {

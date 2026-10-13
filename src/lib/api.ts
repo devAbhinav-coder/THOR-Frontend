@@ -1322,6 +1322,43 @@ export const adminApi = {
       api.patch(`/admin/orders/${id}/status`, payload),
       schemas.adminOrderDetail,
     ),
+  updateOrderShipping: (
+    id: string,
+    payload: {
+      shippingCarrier?: string;
+      trackingNumber?: string;
+      trackingUrl?: string;
+      notifyCustomer?: boolean;
+    },
+  ) =>
+    unwrapAxios(
+      "admin.orderShipping",
+      api.patch(`/admin/orders/${id}/shipping`, payload),
+      schemas.adminOrderDetail,
+    ),
+  resendCustomerOrderEmail: (
+    id: string,
+    payload: {
+      template: string;
+      subject?: string;
+      htmlBody?: string;
+      sendInApp?: boolean;
+    },
+  ) =>
+    unwrapAxios(
+      "admin.orderEmailResend",
+      api.post(`/admin/orders/${id}/customer-email/resend`, payload),
+      schemas.successData,
+    ),
+  forceMarkOrderShipped: (
+    id: string,
+    payload?: { note?: string; notifyCustomer?: boolean },
+  ) =>
+    unwrapAxios(
+      "admin.orderForceShipped",
+      api.post(`/admin/orders/${id}/mark-shipped`, payload ?? {}),
+      schemas.adminOrderDetail,
+    ),
   updateOrderLineCostAtSale: (
     orderId: string,
     lineIndex: number,

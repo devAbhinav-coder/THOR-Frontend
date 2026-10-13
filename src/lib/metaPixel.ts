@@ -309,12 +309,27 @@ export const trackViewContent = (
   trackMatchedEvent("ViewContent", payload, `vc_${payload.content_ids[0]}`);
 };
 
+const addToCartDedupeMs = 2500;
+let lastAddToCartKey = "";
+let lastAddToCartAt = 0;
+
 export const trackAddToCart = (
   product: Product,
   quantity: number = 1,
   priceOverride?: number,
   variant?: MetaCatalogVariantRef,
 ) => {
+  const itemId = getMetaCatalogItemId(product._id, variant);
+  const dedupeKey = `${itemId}:${quantity}`;
+  const now = Date.now();
+  if (
+    dedupeKey === lastAddToCartKey &&
+    now - lastAddToCartAt < addToCartDedupeMs
+  ) {
+    return;
+  }
+  lastAddToCartKey = dedupeKey;
+  lastAddToCartAt = now;
   const payload = metaProductPayload(product, variant, quantity, priceOverride);
   trackMatchedEvent("AddToCart", payload, `atc_${payload.content_ids[0]}`);
 };

@@ -47,10 +47,24 @@ export const trackGaViewItem = (product: Product) => {
   });
 };
 
+const gaAddToCartDedupeMs = 2500;
+let lastGaAddToCartKey = "";
+let lastGaAddToCartAt = 0;
+
 /**
  * Tracks the 'add_to_cart' GA4 ecommerce event.
  */
 export const trackGaAddToCart = (product: Product, quantity: number = 1, priceOverride?: number) => {
+  const dedupeKey = `${product._id}:${quantity}:${priceOverride ?? product.price}`;
+  const now = Date.now();
+  if (
+    dedupeKey === lastGaAddToCartKey &&
+    now - lastGaAddToCartAt < gaAddToCartDedupeMs
+  ) {
+    return;
+  }
+  lastGaAddToCartKey = dedupeKey;
+  lastGaAddToCartAt = now;
   trackEvent("add_to_cart", {
     currency: "INR",
     value: (priceOverride || product.price) * quantity,

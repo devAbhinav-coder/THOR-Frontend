@@ -49,11 +49,27 @@ function activityIdentity() {
   return { userId, guestEmail };
 }
 
+const addToCartDedupeMs = 2500;
+let lastAddToCartKey = "";
+let lastAddToCartAt = 0;
+
 /** Best-effort storefront activity log for admin analytics (guest + logged-in). */
 export function recordCommerceActivity(payload: Payload): void {
   if (typeof window === "undefined") return;
   const sessionKey = getShopSessionKey();
   if (!sessionKey) return;
+  if (payload.eventType === "add_to_cart") {
+    const dedupeKey = `${sessionKey}:${payload.productId ?? ""}:${payload.variantSku ?? ""}:${payload.quantity ?? 1}`;
+    const now = Date.now();
+    if (
+      dedupeKey === lastAddToCartKey &&
+      now - lastAddToCartAt < addToCartDedupeMs
+    ) {
+      return;
+    }
+    lastAddToCartKey = dedupeKey;
+    lastAddToCartAt = now;
+  }
   const { userId, guestEmail } = activityIdentity();
   const path =
     payload.path ??

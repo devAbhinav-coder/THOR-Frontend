@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,7 +15,6 @@ import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinaryUrl";
 import cloudinaryLoader from "@/lib/cloudinaryLoader";
 import { hasInStockVariant } from "@/lib/productStock";
 import { productNeedsCustomization } from "@/lib/productCustomization";
-import { trackAddToCart } from "@/lib/metaPixel";
 import ProductMarketingBadge from "@/components/product/ProductMarketingBadge";
 
 interface WishlistCardProps {
@@ -36,6 +35,7 @@ function WishlistCardInner({
   const [primaryImageError, setPrimaryImageError] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const moveToBagLockRef = useRef(false);
   const { toggleWishlist } = useWishlistStore();
   const { addToCart } = useCartStore();
   const router = useRouter();
@@ -123,7 +123,9 @@ function WishlistCardInner({
         router.push(productHref);
         return;
       }
+      if (moveToBagLockRef.current || isAdding) return;
 
+      moveToBagLockRef.current = true;
       setIsAdding(true);
       try {
         const resolved = await resolveProductForBag();
@@ -148,12 +150,6 @@ function WishlistCardInner({
           bagProduct,
           { successToast: false, commerceSource: "wishlist" },
         );
-        trackAddToCart(
-          bagProduct,
-          1,
-          variant.price ?? bagProduct.price,
-          variant,
-        );
         setIsRemoving(true);
         await toggleWishlist(product._id, bagProduct, { silent: true });
         if (useWishlistStore.getState().isInWishlist(product._id)) {
@@ -166,11 +162,13 @@ function WishlistCardInner({
         setIsRemoving(false);
         toast.error("Could not move to bag");
       } finally {
+        moveToBagLockRef.current = false;
         setIsAdding(false);
       }
     },
     [
       addToCart,
+      isAdding,
       isOutOfStock,
       needsCustomization,
       onRemoved,

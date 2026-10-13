@@ -23,6 +23,7 @@ import {
   type CommerceActivitySource,
 } from "@/lib/commerceActivity";
 import { getShopSessionKey } from "@/lib/shopSession";
+import { notifyCartAddAnalytics } from "@/lib/cartAddAnalytics";
 
 /** Survives full page reload / new tab so checkout still sees cart-applied coupon after fetchCart. */
 export const CART_APPLIED_COUPON_STORAGE_KEY = "hor_cart_applied_coupon_code";
@@ -361,7 +362,7 @@ interface CartState {
     /** When set, cart badge + drawer update immediately (then server confirms) */
     product?: Product,
     options?: AddToCartOptions,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   updateItem: (cartItemId: string, quantity: number) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -407,20 +408,22 @@ export const useCartStore = create<CartState>((set, get) => ({
     options,
   ) => {
     const key = cartAddKey(productId, variant.sku, customFieldAnswers);
-    if (addCartInFlight.has(key)) return;
+    if (addCartInFlight.has(key)) return false;
+    addCartInFlight.add(key);
 
     const previousCart = get().cart;
     const previousCount = get().itemCount;
     const previousCoupon = get().appliedCouponCode;
 
-    /** Guest bag: localStorage only — never hit protected /cart APIs (avoids 401 → login redirect). */
-    if (!useAuthStore.getState().isAuthenticated) {
-      if (!product) {
-        toast.error("Could not add to bag. Open the product page and try again.");
-        return;
-      }
-      addCartInFlight.add(key);
-      try {
+    try {
+      /** Guest bag: localStorage only — never hit protected /cart APIs (avoids 401 → login redirect). */
+      if (!useAuthStore.getState().isAuthenticated) {
+        if (!product) {
+          toast.error(
+            "Could not add to bag. Open the product page and try again.",
+          );
+          return false;
+        }
         const lines = upsertGuestStorageLine(
           product,
           variant,
@@ -441,57 +444,59 @@ export const useCartStore = create<CartState>((set, get) => ({
           quantity,
           source: options?.commerceSource ?? "unknown",
         });
-      } finally {
-        addCartInFlight.delete(key);
+        notifyCartAddAnalytics(product, variant, quantity);
+        return true;
       }
-      return;
-    }
 
-    if (product) {
-      addCartInFlight.add(key);
-      const optimistic = mergeOptimisticCart(
-        previousCart,
-        product,
-        variant,
-        quantity,
-        customFieldAnswers,
-      );
-      publishCart(optimistic, { previousCoupon });
-    }
-
-    const idemOp = `add:${key}`;
-    const idempotencyKey = getOrCreateCartIdempotencyKey(idemOp);
-
-    try {
-      const sessionKey = getShopSessionKey() ?? undefined;
-      const body = await cartApi.add(
-        {
-          productId,
+      if (product) {
+        const optimistic = mergeOptimisticCart(
+          previousCart,
+          product,
           variant,
           quantity,
           customFieldAnswers,
-          sessionKey,
-          commercePath: currentCommercePath(),
-          commerceSource: options?.commerceSource ?? "unknown",
-        },
-        { idempotencyKey },
-      );
-      clearCartIdempotencyKey(idemOp);
-      publishCart(body.data.cart, { previousCoupon });
-      const toastMsg = options?.successToast;
-      if (toastMsg !== false) {
-        toast.success(toastMsg ?? "Added to cart!");
+        );
+        publishCart(optimistic, { previousCoupon });
       }
-    } catch (err: unknown) {
-      if (product) {
-        publishCart(previousCart, { previousCoupon });
-        if (!previousCart) set({ itemCount: previousCount });
+
+      const idemOp = `add:${key}`;
+      const idempotencyKey = getOrCreateCartIdempotencyKey(idemOp);
+
+      try {
+        const sessionKey = getShopSessionKey() ?? undefined;
+        const body = await cartApi.add(
+          {
+            productId,
+            variant,
+            quantity,
+            customFieldAnswers,
+            sessionKey,
+            commercePath: currentCommercePath(),
+            commerceSource: options?.commerceSource ?? "unknown",
+          },
+          { idempotencyKey },
+        );
+        clearCartIdempotencyKey(idemOp);
+        publishCart(body.data.cart, { previousCoupon });
+        const toastMsg = options?.successToast;
+        if (toastMsg !== false) {
+          toast.success(toastMsg ?? "Added to cart!");
+        }
+        if (product) {
+          notifyCartAddAnalytics(product, variant, quantity);
+        }
+        return true;
+      } catch (err: unknown) {
+        if (product) {
+          publishCart(previousCart, { previousCoupon });
+          if (!previousCart) set({ itemCount: previousCount });
+        }
+        const error = err as CartApiError;
+        toast.error(error.message || "Failed to add to cart");
+        throw err;
       }
-      const error = err as CartApiError;
-      toast.error(error.message || "Failed to add to cart");
-      throw err;
     } finally {
-      if (product) addCartInFlight.delete(key);
+      addCartInFlight.delete(key);
     }
   },
 

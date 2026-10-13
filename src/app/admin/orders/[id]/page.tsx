@@ -62,6 +62,7 @@ import { AdminAiExplainButton } from "@/components/admin/ai";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import OrderMarketingAttributionCard from "@/components/admin/orders/OrderMarketingAttributionCard";
 import OrderReviewInvitePanel from "@/components/admin/OrderReviewInvitePanel";
+import AdminOrderCustomerCommsPanel from "@/components/admin/orders/AdminOrderCustomerCommsPanel";
 import AdminGuestCheckoutPanel, {
   type AdminGuestCheckoutMeta,
 } from "@/components/admin/orders/AdminGuestCheckoutPanel";
@@ -513,7 +514,7 @@ function DelhiveryAutomationCard({
     }
     if (
       !window.confirm(
-        "Create Delhivery shipment with these dimensions and mark this order as Shipped? This registers pickup with Delhivery.",
+        "Create Delhivery shipment with these dimensions? The order stays in Processing until Delhivery confirms pickup (or you mark shipped manually). No premature shipped email.",
       )
     ) {
       return;
@@ -530,7 +531,7 @@ function DelhiveryAutomationCard({
         ...(pkgType ? { ipkg_type: pkgType } : {}),
       });
       await onRefresh();
-      toast.success("Shipment created - order marked shipped");
+      toast.success("Delhivery manifest created — order in Processing");
     } catch (e: unknown) {
       toast.error(
         (e as { message?: string })?.message || "Shipment creation failed",
@@ -2141,6 +2142,15 @@ export default function AdminOrderDetailsPage() {
                 onUpdated={() => loadOrder({ silent: true })}
               />
             : null}
+
+            {order && (
+              <AdminOrderCustomerCommsPanel
+                order={order}
+                onRefresh={async () => {
+                  await loadOrder({ silent: true });
+                }}
+              />
+            )}
 
             {isB2bOrder && (
               <div className='bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 sm:p-6 hover:shadow-md transition-shadow'>

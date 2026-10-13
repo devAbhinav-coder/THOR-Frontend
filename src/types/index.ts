@@ -512,7 +512,15 @@ export interface Order {
       detail?: string;
     }[];
     rtoDetected?: boolean;
+    autoShippedFromDelhiveryAt?: string;
   };
+  customerCommunications?: {
+    channel: "email" | "in_app" | "whatsapp";
+    kind: string;
+    subject?: string;
+    sentAt: string;
+    note?: string;
+  }[];
   shippingCarrier?: string;
   trackingNumber?: string;
   trackingUrl?: string;

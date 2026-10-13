@@ -29,7 +29,7 @@ import { hasInStockVariant } from "@/lib/productStock";
 import { productNeedsCustomization } from "@/lib/productCustomization";
 import { buildProductMetaLine } from "@/lib/productCardMeta";
 import { shopProductHref } from "@/lib/shopProductListing";
-import { trackAddToCart, trackAddToWishlist, pickMetaCatalogVariant } from "@/lib/metaPixel";
+import { trackAddToWishlist, pickMetaCatalogVariant } from "@/lib/metaPixel";
 import ProductMarketingBadge from "@/components/product/ProductMarketingBadge";
 
 interface ProductCardProps {
@@ -51,6 +51,7 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
   const [secondaryFailed, setSecondaryFailed] = useState(false);
   const [primaryImageError, setPrimaryImageError] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const addToCartLockRef = useRef(false);
 
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -163,6 +164,7 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
     async (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      if (addToCartLockRef.current || isAddingToCart) return;
 
       const productHref = shopProductHref(product.slug, displayColor);
 
@@ -197,6 +199,7 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
         return;
       }
 
+      addToCartLockRef.current = true;
       setIsAddingToCart(true);
       try {
         await addToCart(
@@ -212,21 +215,17 @@ function ProductCardInner({ product, displayColor }: ProductCardProps) {
           product,
           { commerceSource: "card" },
         );
-        trackAddToCart(
-          product,
-          1,
-          availableVariant.price ?? product.price,
-          availableVariant,
-        );
       } catch {
         toast.error("Could not add to bag");
       } finally {
+        addToCartLockRef.current = false;
         setIsAddingToCart(false);
       }
     },
     [
       addToCart,
       displayColor,
+      isAddingToCart,
       isOutOfStock,
       needsCustomization,
       product,

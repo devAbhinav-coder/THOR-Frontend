@@ -23,6 +23,33 @@ function readCookie(name: string): string | undefined {
   return match ? decodeURIComponent(match.slice(prefix.length)) : undefined;
 }
 
+/** Meta `_fbc` cookie: fb.{subdomainIndex}.{creationTime}.{fbclid} */
+export function readFbclidFromMetaCookie(): string | undefined {
+  const fbc = readCookie("_fbc");
+  if (!fbc) return undefined;
+  const match = /^fb\.\d+\.\d+\.(.+)$/.exec(fbc.trim());
+  const fbclid = match?.[1]?.trim();
+  if (!fbclid) return undefined;
+  return fbclid.slice(0, 200);
+}
+
+function mergeFbclidFromCookie(
+  attribution: MarketingAttribution,
+): MarketingAttribution {
+  if (attribution.fbclid?.trim()) return attribution;
+  const fromCookie = readFbclidFromMetaCookie();
+  if (!fromCookie) return attribution;
+  return { ...attribution, fbclid: fromCookie };
+}
+
+function persistAttribution(payload: MarketingAttribution): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    /* private mode */
+  }
+}
+
 /** Meta Click ID cookie - only set when the pixel has not already written `_fbc`. */
 export function writeMetaFbcCookie(
   fbclid: string,
@@ -75,11 +102,7 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
   if (existing) {
     if (fbclid && !existing.fbclid) {
       const updated: MarketingAttribution = { ...existing, fbclid };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        /* private mode */
-      }
+      persistAttribution(updated);
       const capturedAtMs =
         updated.capturedAt ?
           new Date(updated.capturedAt).getTime()
@@ -87,17 +110,21 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
       writeMetaFbcCookie(fbclid, capturedAtMs);
       return updated;
     }
-    if (existing.fbclid) {
-      const capturedAtMs =
-        existing.capturedAt ?
-          new Date(existing.capturedAt).getTime()
-        : undefined;
-      writeMetaFbcCookie(existing.fbclid, capturedAtMs);
+    const fromCookie = mergeFbclidFromCookie(existing);
+    if (fromCookie.fbclid && !existing.fbclid) {
+      persistAttribution(fromCookie);
     }
-    return existing;
+    if (fromCookie.fbclid) {
+      const capturedAtMs =
+        fromCookie.capturedAt ?
+          new Date(fromCookie.capturedAt).getTime()
+        : undefined;
+      writeMetaFbcCookie(fromCookie.fbclid, capturedAtMs);
+    }
+    return fromCookie;
   }
 
-  const payload: MarketingAttribution = {
+  let payload: MarketingAttribution = {
     utmSource: trim(params.get("utm_source"), 120),
     utmMedium: trim(params.get("utm_medium"), 120),
     utmCampaign: trim(params.get("utm_campaign"), 200),
@@ -107,6 +134,8 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
     landingPath: window.location.pathname.slice(0, 200),
     capturedAt: new Date().toISOString(),
   };
+
+  payload = mergeFbclidFromCookie(payload);
 
   const hasSignal = Boolean(
     payload.utmSource ||
@@ -118,11 +147,7 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
   );
   if (!hasSignal) return null;
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch {
-    /* private mode */
-  }
+  persistAttribution(payload);
 
   if (payload.fbclid) {
     const capturedAtMs =
@@ -135,19 +160,25 @@ export function captureMarketingAttributionFromUrl(): MarketingAttribution | nul
 
 export function getStoredMarketingAttribution(): MarketingAttribution | null {
   const stored = readStored();
-  if (stored?.fbclid) {
-    const capturedAtMs =
-      stored.capturedAt ? new Date(stored.capturedAt).getTime() : undefined;
-    writeMetaFbcCookie(stored.fbclid, capturedAtMs);
+  if (!stored) return null;
+  const merged = mergeFbclidFromCookie(stored);
+  if (merged.fbclid && !stored.fbclid) {
+    persistAttribution(merged);
   }
-  return stored;
+  if (merged.fbclid) {
+    const capturedAtMs =
+      merged.capturedAt ? new Date(merged.capturedAt).getTime() : undefined;
+    writeMetaFbcCookie(merged.fbclid, capturedAtMs);
+  }
+  return merged;
 }
 
 /** Payload for checkout API - omits empty fields. */
 export function getMarketingAttributionForCheckout():
   | MarketingAttribution
   | undefined {
-  const stored = readStored();
+  captureMarketingAttributionFromUrl();
+  const stored = getStoredMarketingAttribution();
   if (!stored) return undefined;
   const { capturedAt, landingPath, ...rest } = stored;
   const hasValue = Object.values(rest).some(Boolean);

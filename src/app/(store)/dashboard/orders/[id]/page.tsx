@@ -596,8 +596,10 @@ export default function OrderDetailPage() {
   const msgTemplate =
     EMOTIONAL_MESSAGES[Math.floor(Math.random() * EMOTIONAL_MESSAGES.length)];
   const trackingHref =
-    order.trackingUrl ||
-    getAutoTrackingUrl(order.shippingCarrier, order.trackingNumber);
+    ["shipped", "delivered"].includes(order.status) ?
+      order.trackingUrl ||
+      getAutoTrackingUrl(order.shippingCarrier, order.trackingNumber)
+    : null;
 
   const isReturnEligible = isOrderReturnEligible(order);
 

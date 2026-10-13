@@ -46,16 +46,8 @@ import {
   resolveEditionShopLink,
 } from "@/lib/marketingEditions";
 import { useMarketingEditions } from "@/lib/marketingEditionsContext";
-import {
-  trackViewContent,
-  trackAddToCart,
-  trackAddToWishlist,
-} from "@/lib/metaPixel";
-import {
-  trackGaViewItem,
-  trackGaAddToCart,
-  trackGaAddToWishlist,
-} from "@/lib/googleAnalytics";
+import { trackViewContent, trackAddToWishlist } from "@/lib/metaPixel";
+import { trackGaViewItem, trackGaAddToWishlist } from "@/lib/googleAnalytics";
 import {
   type ReviewEligibility,
   type ReviewFormState,
@@ -265,6 +257,8 @@ export default function ProductDetailClient({
   /* Actions */
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const addToCartLockRef = useRef(false);
+  const buyNowLockRef = useRef(false);
   const buyNowBtnRef = useRef<HTMLButtonElement>(null);
   const buyNowMobileRef = useRef<HTMLButtonElement>(null);
   const purchaseScrollAnchorRef = useRef<HTMLDivElement>(null);
@@ -729,6 +723,7 @@ export default function ProductDetailClient({
   };
 
   const handleAddToCart = async () => {
+    if (addToCartLockRef.current || isAddingToCart) return;
     if (!selectedVariant || isOutOfStock) return;
 
     // Validate inline fields (if any)
@@ -742,6 +737,7 @@ export default function ProductDetailClient({
       }
     }
 
+    addToCartLockRef.current = true;
     setIsAddingToCart(true);
     try {
       const answersArray = Object.entries(customFieldAnswers).map(
@@ -762,16 +758,16 @@ export default function ProductDetailClient({
         product,
         { commerceSource: "pdp" },
       );
-      trackAddToCart(product, quantity, selectedPrice, selectedVariant);
-      trackGaAddToCart(product, quantity, selectedPrice);
     } catch {
       /* handled */
     } finally {
+      addToCartLockRef.current = false;
       setIsAddingToCart(false);
     }
   };
 
   const handleBuyNow = async () => {
+    if (buyNowLockRef.current || isBuyingNow) return;
     if (!selectedVariant || isOutOfStock) return;
 
     // Validate inline fields (if any)
@@ -785,6 +781,7 @@ export default function ProductDetailClient({
       }
     }
 
+    buyNowLockRef.current = true;
     setIsBuyingNow(true);
     try {
       const answersArray = Object.entries(customFieldAnswers).map(
@@ -805,7 +802,7 @@ export default function ProductDetailClient({
         },
         customFieldAnswers: answersArray.length > 0 ? answersArray : undefined,
       });
-      await playCheckoutLaunchAnimation(
+      void playCheckoutLaunchAnimation(
         buyNowMobileRef.current ?? buyNowBtnRef.current,
         {
           gifSrc: shoppingCartGif.src,
@@ -813,6 +810,7 @@ export default function ProductDetailClient({
       );
       router.push("/checkout?buyNow=1");
     } catch {
+      buyNowLockRef.current = false;
       setIsBuyingNow(false);
       toast.error("Could not start checkout. Try again.");
     }

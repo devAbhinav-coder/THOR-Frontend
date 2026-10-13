@@ -47,6 +47,7 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
     options?: { silent?: boolean; commerceSource?: CommerceActivitySource },
   ) => {
     if (!productId || toggleInFlight.has(productId)) return;
+    toggleInFlight.add(productId);
 
     const previousSet = get().wishlistSet;
     const isIn = Boolean(previousSet[productId]);
@@ -88,7 +89,6 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
       }
     }
 
-    toggleInFlight.add(productId);
     try {
       await wishlistApi.toggle(productId, {
         sessionKey: getShopSessionKey() ?? undefined,

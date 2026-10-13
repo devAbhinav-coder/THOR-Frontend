@@ -88,7 +88,13 @@ export default function Ga4ReportingSection({
           {data.setupHint ??
             "Configure GA4_PROPERTY_ID and service account credentials on the API server."}
         </p>
-        <Button type='button' size='sm' variant='outline' onClick={() => void refresh()} disabled={loading}>
+        <Button
+          type='button'
+          size='sm'
+          variant='outline'
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
           {loading ?
             <Loader2 className='h-3.5 w-3.5 animate-spin mr-1' />
           : <RefreshCw className='h-3.5 w-3.5 mr-1' />}
@@ -107,7 +113,13 @@ export default function Ga4ReportingSection({
         />
         <p className='text-xs text-red-800'>{data.lastError}</p>
         <p className='text-[10px] text-red-700/80'>{data.setupHint}</p>
-        <Button type='button' size='sm' variant='outline' onClick={() => void refresh()} disabled={loading}>
+        <Button
+          type='button'
+          size='sm'
+          variant='outline'
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
           Retry
         </Button>
       </div>
@@ -124,7 +136,13 @@ export default function Ga4ReportingSection({
           title='Google Analytics 4 (Reporting API)'
           description={`Official GA4 Data API · property ${data.propertyId} · last ${data.periodDays} days · cached on dashboard refresh.`}
         />
-        <Button type='button' size='sm' variant='outline' onClick={() => void refresh()} disabled={loading}>
+        <Button
+          type='button'
+          size='sm'
+          variant='outline'
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
           {loading ?
             <Loader2 className='h-3.5 w-3.5 animate-spin' />
           : <RefreshCw className='h-3.5 w-3.5' />}
@@ -182,15 +200,21 @@ export default function Ga4ReportingSection({
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]'>
           <div className='rounded-lg border border-violet-100 bg-violet-50/50 p-2.5'>
             <p className='text-gray-500'>Items viewed</p>
-            <p className='font-bold tabular-nums'>{ec.itemsViewed.toLocaleString()}</p>
+            <p className='font-bold tabular-nums'>
+              {ec.itemsViewed.toLocaleString()}
+            </p>
           </div>
           <div className='rounded-lg border border-violet-100 bg-violet-50/50 p-2.5'>
             <p className='text-gray-500'>Add to carts</p>
-            <p className='font-bold tabular-nums'>{ec.addToCarts.toLocaleString()}</p>
+            <p className='font-bold tabular-nums'>
+              {ec.addToCarts.toLocaleString()}
+            </p>
           </div>
           <div className='rounded-lg border border-violet-100 bg-violet-50/50 p-2.5'>
             <p className='text-gray-500'>Purchases</p>
-            <p className='font-bold tabular-nums'>{ec.purchases.toLocaleString()}</p>
+            <p className='font-bold tabular-nums'>
+              {ec.purchases.toLocaleString()}
+            </p>
           </div>
           <div className='rounded-lg border border-violet-100 bg-violet-50/50 p-2.5'>
             <p className='text-gray-500'>Purchase revenue</p>
@@ -207,7 +231,9 @@ export default function Ga4ReportingSection({
             Users & sessions (daily)
           </p>
           {dailyChart.length === 0 ?
-            <p className='text-xs text-gray-500 py-8 text-center'>No daily rows</p>
+            <p className='text-xs text-gray-500 py-8 text-center'>
+              No daily rows
+            </p>
           : <ResponsiveContainer width='100%' height={220}>
               <LineChart data={dailyChart}>
                 <CartesianGrid strokeDasharray='3 3' />
