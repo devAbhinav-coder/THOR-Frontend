@@ -119,7 +119,13 @@ api.interceptors.response.use(
       return Promise.reject({ message: "Session expired", status: 401 });
     }
 
-    toastForNonAuthHttpError(status);
+    const serverMessage =
+      typeof error.response?.data?.message === "string" ?
+        error.response.data.message.trim()
+      : "";
+    if (!(status === 403 && serverMessage)) {
+      toastForNonAuthHttpError(status);
+    }
 
     const retryAfterRaw = error.response?.data?.retryAfter;
     const retryAfter =

@@ -7,6 +7,7 @@ import {
   Check,
   KeyRound,
   Loader2,
+  LogIn,
   Mail,
   Pencil,
   ShieldCheck,
@@ -32,6 +33,7 @@ import {
   buildGuestSignupPageHref,
   guestVerificationCopy,
 } from "@/lib/guestVerificationCopy";
+import { loginUrlWithRedirect } from "@/lib/safeRedirect";
 import GuestEmailVerificationPendingCard from "@/components/order/GuestEmailVerificationPendingCard";
 
 type ConfirmView = {
@@ -62,6 +64,8 @@ type ConfirmView = {
   };
   confirmEmailSentAt?: string | null;
   confirmEmailSendCount?: number;
+  requiresContactVerification?: boolean;
+  hasRegisteredAccount?: boolean;
 };
 
 export default function GuestOrderConfirmClient() {
@@ -322,10 +326,16 @@ export default function GuestOrderConfirmClient() {
   const contactDeclined =
     declined || view.contact.contactDeclined === true;
   const alreadyDone = view.contact.contactConfirmed;
+  const needsVerify = view.requiresContactVerification === true;
   const showIdentityConfirm =
-    fromEmailLink && !alreadyDone && !contactDeclined;
+    needsVerify && fromEmailLink && !alreadyDone && !contactDeclined;
   const awaitingEmailStep =
-    !fromEmailLink && !alreadyDone && !contactDeclined;
+    needsVerify && !fromEmailLink && !alreadyDone && !contactDeclined;
+  const registeredGuestSuccess = !needsVerify && !alreadyDone && !contactDeclined;
+
+  const signInHref = loginUrlWithRedirect(
+    `/dashboard/orders/${encodeURIComponent(view.order._id)}`,
+  );
 
   const signupHref = buildGuestSignupPageHref({
     email: view.contact.email,
@@ -333,31 +343,59 @@ export default function GuestOrderConfirmClient() {
   });
 
   const sentLabel =
-    view.confirmEmailSentAt ?
-      guestVerificationCopy.emailSentAt(
-        new Date(view.confirmEmailSentAt).toLocaleString("en-IN", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }),
-      )
-    : guestVerificationCopy.emailNotSentYet;
+    needsVerify ?
+      view.confirmEmailSentAt ?
+        guestVerificationCopy.emailSentAt(
+          new Date(view.confirmEmailSentAt).toLocaleString("en-IN", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }),
+        )
+      : guestVerificationCopy.emailNotSentYet
+    : "Your order receipt and updates are being sent to your inbox.";
 
   return (
     <div className={cn("mx-auto max-w-xl px-4 py-12 sm:py-16", heritagePageBg)}>
       <div className={cn(heritageSectionCard, "p-6 sm:p-10")}>
         <div className='mb-6 flex items-center gap-3'>
-          <ShieldCheck className='h-8 w-8 text-[#c5a059]' aria-hidden />
+          {registeredGuestSuccess ?
+            <Check className='h-8 w-8 text-emerald-700' aria-hidden />
+          : <ShieldCheck className='h-8 w-8 text-[#c5a059]' aria-hidden />}
           <div>
             <p className='text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500'>
-              {guestVerificationCopy.pageEyebrow}
+              {registeredGuestSuccess ?
+                guestVerificationCopy.registeredGuestPageEyebrow
+              : guestVerificationCopy.pageEyebrow}
             </p>
             <h1 className='font-serif text-2xl font-semibold text-navy-900'>
-              {view.order.orderNumber}
+              {registeredGuestSuccess ?
+                guestVerificationCopy.registeredGuestOrderTitle
+              : view.order.orderNumber}
             </h1>
+            {registeredGuestSuccess ?
+              <p className='mt-1 text-sm font-medium text-navy-800'>
+                {view.order.orderNumber}
+              </p>
+            : null}
           </div>
         </div>
 
-        {showIdentityConfirm ?
+        {registeredGuestSuccess ?
+          <>
+            <p className='text-sm leading-relaxed text-gray-600'>
+              {guestVerificationCopy.registeredGuestOrderBody(view.contact.email)}
+            </p>
+            <p className='mt-4 text-sm leading-relaxed text-gray-600'>
+              {guestVerificationCopy.registeredGuestSignInHint}
+            </p>
+            <Button asChild className='mt-5 w-full bg-navy-900 hover:bg-navy-800'>
+              <Link href={signInHref}>
+                <LogIn className='mr-2 h-4 w-4' aria-hidden />
+                {guestVerificationCopy.registeredGuestSignInCta}
+              </Link>
+            </Button>
+          </>
+        : showIdentityConfirm ?
           <p className='text-sm leading-relaxed text-gray-600'>
             {guestVerificationCopy.emailLinkIntro(view.order.orderNumber)}
           </p>
@@ -370,7 +408,9 @@ export default function GuestOrderConfirmClient() {
           </p>
         }
 
-        <p className='mt-3 text-xs text-gray-500'>{sentLabel}</p>
+        {!registeredGuestSuccess ?
+          <p className='mt-3 text-xs text-gray-500'>{sentLabel}</p>
+        : null}
 
         {awaitingEmailStep ?
           <GuestEmailVerificationPendingCard
@@ -415,7 +455,7 @@ export default function GuestOrderConfirmClient() {
           </div>
         : null}
 
-        {!alreadyDone && !editing ?
+        {needsVerify && !alreadyDone && !editing ?
           <button
             type='button'
             onClick={() => setEditing(true)}
@@ -426,7 +466,7 @@ export default function GuestOrderConfirmClient() {
           </button>
         : null}
 
-        {editing && !alreadyDone ?
+        {needsVerify && editing && !alreadyDone ?
           <div className='mt-4 space-y-3 border border-dashed border-gray-200 p-4'>
             <Input
               label='Name'
@@ -491,7 +531,16 @@ export default function GuestOrderConfirmClient() {
           </dl>
         }
 
-        {alreadyDone ?
+        {registeredGuestSuccess ?
+          <div className='mt-8 flex flex-col gap-3 border-t border-gray-100 pt-6'>
+            <Link
+              href='/shop'
+              className='text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-navy-900 underline-offset-4 hover:underline'
+            >
+              Continue shopping
+            </Link>
+          </div>
+        : alreadyDone ?
           <div className='mt-8 rounded border border-emerald-200 bg-emerald-50/80 p-5'>
             <div className='flex items-start gap-3'>
               <Check className='mt-0.5 h-6 w-6 shrink-0 text-emerald-700' />
@@ -560,7 +609,7 @@ export default function GuestOrderConfirmClient() {
               Continue shopping
             </Link>
           </div>
-        : showIdentityConfirm ?
+        : needsVerify && showIdentityConfirm ?
           <>
             <div className='mt-8 flex flex-col gap-3 sm:flex-row'>
               <Button
@@ -599,7 +648,7 @@ export default function GuestOrderConfirmClient() {
               </button>
             </div>
           </>
-        : awaitingEmailStep ?
+        : needsVerify && awaitingEmailStep ?
           <div className='mt-8 border-t border-gray-100 pt-6'>
             <button
               type='button'

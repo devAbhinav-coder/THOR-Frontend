@@ -1235,23 +1235,16 @@ export default function CheckoutClient() {
         });
       }
 
-      const guestNeedsConfirm =
-        !isAuthenticated &&
-        Boolean(opts?.needsContactConfirm || confirmToken);
-      const awaitingConfirm = guestNeedsConfirm && Boolean(confirmToken);
-      setGuestAwaitingContactConfirm(awaitingConfirm);
+      const needsGuestContactVerify =
+        !isAuthenticated && opts?.needsContactConfirm === true;
+      setGuestAwaitingContactConfirm(needsGuestContactVerify);
 
-      if (awaitingConfirm) {
-        setPostCheckoutRedirect(
-          `/order/confirm?token=${encodeURIComponent(confirmToken)}`,
-        );
-      } else if (!isAuthenticated) {
+      if (!isAuthenticated) {
         setPostCheckoutRedirect(
           confirmToken ?
             `/order/confirm?token=${encodeURIComponent(confirmToken)}`
-          : "/order/confirm",
+          : `/order/confirm`,
         );
-        setGuestAwaitingContactConfirm(Boolean(confirmToken));
       } else {
         setPostCheckoutRedirect(
           `/dashboard/orders/${encodeURIComponent(order._id)}`,

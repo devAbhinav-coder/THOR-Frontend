@@ -24,6 +24,14 @@ export const guestVerificationCopy = {
   signupCta: "Order summary · resend email",
   postCheckoutBody: (email: string) =>
     `Thank you for your order. We have sent order confirmation and verification to ${email}. Open that email and use the secure link to verify your details and confirm whether you placed this order.`,
+  /** Guest checkout linked to an existing signup / Google profile — no Yes/No guest verify. */
+  registeredGuestOrderTitle: "Order confirmed",
+  registeredGuestOrderBody: (email: string) =>
+    `Thank you for your order. We have sent order updates and your receipt to ${email}.`,
+  registeredGuestSignInHint:
+    "Sign in with this email to track this order, save addresses, and shop faster next time.",
+  registeredGuestSignInCta: "Sign in to stay updated",
+  registeredGuestPageEyebrow: "Order received",
   emailLinkIntro: (orderNumber: string) =>
     `Order ${orderNumber}: please review your contact details below. Select Yes to confirm that you placed this order and that your email and phone are correct. Select No if you did not place this order.`,
   confirmYes: "Yes, I placed this order",
