@@ -567,10 +567,7 @@ export default function Testimonials({
 
   return (
     <section
-      className={cn(
-        homeSectionStyles.pageBg,
-        "overflow-x-clip py-12 sm:py-16 lg:py-20",
-      )}
+      className={cn(homeSectionStyles.pageBg, "overflow-x-clip py-0.5 sm:py-2")}
       aria-label='Customer love and photo stories'
     >
       <div className={cn(homeSectionStyles.container, "mb-7 sm:mb-9")}>

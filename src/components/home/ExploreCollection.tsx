@@ -95,7 +95,7 @@ export default function ExploreCollection({
 
   return (
     <section
-      className={cn(homeSectionStyles.pageBg, "py-6 sm:py-16 lg:py-20")}
+      className={cn(homeSectionStyles.pageBg, "py-0.5 sm:py-2")}
       style={{ contain: "layout" }}
       aria-labelledby='explore-collection-heading'
     >
