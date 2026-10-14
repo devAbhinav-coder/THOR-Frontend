@@ -162,7 +162,10 @@ export default function BlogBanner({ initialBlogs }: Props = {}) {
 
   return (
     <section
-      className={cn(homeSectionStyles.pageBg, "bg-gray-50/50 py-0.5 sm:py-2")}
+      className={cn(
+        homeSectionStyles.pageBg,
+        "bg-gray-50/50 py-0.5 sm:py-2 sm:pt-6",
+      )}
       aria-labelledby='heritage-stories-heading'
     >
       <div className={homeSectionStyles.container}>
