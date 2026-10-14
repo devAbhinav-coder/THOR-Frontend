@@ -55,6 +55,8 @@ import AdminOrderDocumentsCard, {
   getLinkedTaxInvoiceId,
 } from "@/components/admin/orders/AdminOrderDocumentsCard";
 import AdminOrderReturnCard from "@/components/admin/orders/AdminOrderReturnCard";
+import AdminOrderInitiateReturnCard from "@/components/admin/orders/AdminOrderInitiateReturnCard";
+import { getPaymentDisplay } from "@/lib/orderPaymentDisplay";
 import AdminOrderActivityLog from "@/components/admin/orders/AdminOrderActivityLog";
 import AdminOrderCustomGiftCard from "@/components/admin/orders/AdminOrderCustomGiftCard";
 import AdminOrderTrackingModal from "@/components/admin/orders/AdminOrderTrackingModal";
@@ -205,11 +207,14 @@ export default function AdminOrderDetailsPage() {
 
   const derived = useMemo(() => {
     if (!order) return null;
-    const needsRazorpayRefund =
-      order.paymentMethod === "razorpay" &&
+    const needsPaidOrderRefund =
       order.paymentStatus === "paid" &&
       order.status === "cancelled" &&
       !(order.refundData?.amount && order.refundData.amount > 0);
+    const needsRazorpayRefund =
+      needsPaidOrderRefund && order.paymentMethod === "razorpay";
+    const needsCodCancelRefund =
+      needsPaidOrderRefund && order.paymentMethod === "cod";
     const cancellationInfo =
       order.status === "cancelled" ?
         getOrderCancellationInfo(order)
@@ -220,10 +225,11 @@ export default function AdminOrderDetailsPage() {
     const qty = items.reduce((s, it) => s + (it.quantity || 0), 0);
     const user = getOrderUser(order);
     const next = primaryNextStatus(order.status);
-    const returnApprovedAwaitingRefund =
-      order.returnStatus === "approved" && order.status !== "refunded";
+    const returnReceivedAwaitingRefund =
+      order.returnStatus === "received" && order.status !== "refunded";
     return {
       needsRazorpayRefund,
+      needsCodCancelRefund,
       cancellationInfo,
       isB2b,
       taxId,
@@ -231,7 +237,7 @@ export default function AdminOrderDetailsPage() {
       qty,
       user,
       next,
-      returnApprovedAwaitingRefund,
+      returnReceivedAwaitingRefund,
       maxRefundable: getMaxRefundableInr(order),
       channel: channelBadge(order),
     };
@@ -351,6 +357,7 @@ export default function AdminOrderDetailsPage() {
 
   const {
     needsRazorpayRefund,
+    needsCodCancelRefund,
     cancellationInfo,
     isB2b,
     taxId,
@@ -358,7 +365,7 @@ export default function AdminOrderDetailsPage() {
     qty,
     user,
     next,
-    returnApprovedAwaitingRefund,
+    returnReceivedAwaitingRefund,
     maxRefundable,
     channel,
   } = derived;
@@ -373,13 +380,13 @@ export default function AdminOrderDetailsPage() {
         label: m.label,
         icon: m.icon,
         active: s === order.status,
-        disabled: s === order.status,
+        disabled: s === order.status || s === "refunded",
         danger: s === "cancelled",
         hint:
           s === order.status ? undefined
+          : s === "refunded" ? "Use Process refund — status alone is blocked"
           : s === "shipped" ? "Opens tracking form"
           : s === "cancelled" ? "Asks for a reason"
-          : s === "refunded" ? "Status only - use Process refund to pay back"
           : natural ? undefined
           : "Unusual - asks to confirm",
         onSelect: () => void applyStatus(s),
@@ -456,7 +463,11 @@ export default function AdminOrderDetailsPage() {
                   {order.orderNumber}
                 </h1>
                 <OrderStatusBadge status={order.status} />
-                <PaymentStatusBadge status={order.paymentStatus} size='sm' />
+                <PaymentStatusBadge
+                  status={order.paymentStatus}
+                  order={order}
+                  size='sm'
+                />
                 {channel && ChannelIcon ?
                   <span
                     className={cn(
@@ -551,10 +562,19 @@ export default function AdminOrderDetailsPage() {
 
       <div className='max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6'>
         {/* ── Alerts ──────────────────────────────────────────────── */}
-        {order.paymentStatus === "failed" ?
+        {order.paymentStatus === "failed" && order.status !== "cancelled" ?
           <Alert tone='red' icon={XCircle} title='Payment failed'>
             The customer’s payment did not go through. Do not ship until payment
             is confirmed or the order is re-placed.
+          </Alert>
+        : null}
+
+        {order.status === "cancelled" &&
+        order.paymentMethod === "cod" &&
+        (order.paymentStatus === "failed" || order.paymentStatus === "pending") ?
+          <Alert tone='slate' icon={Ban} title='COD cancelled — no collection'>
+            Cash was not collected for this order. No refund step is needed.
+            Payment shows as: {getPaymentDisplay(order).label}.
           </Alert>
         : null}
 
@@ -599,6 +619,26 @@ export default function AdminOrderDetailsPage() {
           </Alert>
         : null}
 
+        {needsCodCancelRefund ?
+          <Alert
+            tone='red'
+            icon={IndianRupee}
+            title='Refund required - COD was collected then order cancelled'
+            action={
+              <Button
+                type='button'
+                className='rounded-xl bg-red-600 hover:bg-red-700 text-white shrink-0 gap-1.5'
+                onClick={() => setRefundModalOpen(true)}
+              >
+                <Undo2 className='h-4 w-4' /> Refund{" "}
+                {formatPrice(maxRefundable)}
+              </Button>
+            }
+          >
+            Courier COD was marked paid. Send refund manually (UPI / bank / cash).
+          </Alert>
+        : null}
+
         {order.returnStatus === "requested" ?
           <Alert
             tone='amber'
@@ -618,11 +658,34 @@ export default function AdminOrderDetailsPage() {
           </Alert>
         : null}
 
-        {returnApprovedAwaitingRefund ?
+        {order.returnStatus === "approved" || order.returnStatus === "picked_up" ?
+          <Alert
+            tone='amber'
+            icon={Undo2}
+            title={
+              order.returnStatus === "approved" ?
+                "Return approved - arrange pickup"
+              : "Return picked up - mark received when it arrives"
+            }
+            action={
+              <a
+                href='#return'
+                className='inline-flex items-center gap-1 text-sm font-semibold text-amber-900 hover:underline shrink-0'
+              >
+                Next step <ArrowRight className='h-4 w-4' />
+              </a>
+            }
+          >
+            Refund unlocks only after the item is received and inspected at the
+            warehouse.
+          </Alert>
+        : null}
+
+        {returnReceivedAwaitingRefund ?
           <Alert
             tone='emerald'
             icon={Undo2}
-            title='Return approved - refund pending'
+            title='Return received - refund pending'
             action={
               <Button
                 type='button'
@@ -740,6 +803,8 @@ export default function AdminOrderDetailsPage() {
         <div className='grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] gap-6 items-start'>
           {/* Main column */}
           <div className='space-y-6 min-w-0'>
+            <AdminOrderInitiateReturnCard order={order} onUpdated={setOrder} />
+
             <AdminOrderReturnCard
               order={order}
               onUpdated={setOrder}
@@ -793,7 +858,9 @@ export default function AdminOrderDetailsPage() {
             <AdminOrderPaymentCard
               order={order}
               refundCtaVisible={
-                needsRazorpayRefund || returnApprovedAwaitingRefund
+                needsRazorpayRefund ||
+                needsCodCancelRefund ||
+                returnReceivedAwaitingRefund
               }
               onProcessRefund={() => setRefundModalOpen(true)}
             />

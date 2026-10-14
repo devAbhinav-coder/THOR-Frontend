@@ -91,7 +91,7 @@ export default function AdminOrderPaymentCard({
       tone='navy'
       title='Payment'
       description={paymentMethodLabel(order.paymentMethod)}
-      action={<PaymentStatusBadge status={order.paymentStatus} size='sm' />}
+      action={<PaymentStatusBadge status={order.paymentStatus} order={order} size='sm' />}
       bodyClassName='space-y-4'
     >
       <dl className='space-y-2 text-sm'>

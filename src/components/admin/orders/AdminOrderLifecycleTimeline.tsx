@@ -1,31 +1,326 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
-  CheckCircle2,
-  Circle,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  ClipboardList,
   Compass,
+  Info,
+  Package,
+  PackageCheck,
+  Radar,
   RotateCcw,
   Truck,
   Undo2,
-  XCircle,
+  X,
 } from "lucide-react";
 import { Order } from "@/types";
-import { buildOrderLifecycleTimeline } from "@/lib/orderLifecycle";
-import { cn, formatDateTime } from "@/lib/utils";
-import AdminOrderSectionCard from "./AdminOrderSectionCard";
+import {
+  buildOrderLifecycleTimeline,
+  buildReturnJourney,
+  isPostDeliveryStatus,
+  type ReturnJourneyStep,
+} from "@/lib/orderLifecycle";
+import { RETURN_STATUS_LABELS } from "@/lib/orderReturnHelpers";
+import { cn, formatPrice } from "@/lib/utils";
+import AdminOrderSectionCard, { MicroLabel } from "./AdminOrderSectionCard";
 
-const FAILURE_STATUSES = new Set(["cancelled", "return_rejected"]);
-const WARNING_STATUSES = new Set([
-  "return_requested",
-  "return_approved",
-  "refunded",
-]);
+type StepState = "done" | "current" | "upcoming" | "failed";
+type Tone = "emerald" | "amber";
+
+type Step = {
+  key: string;
+  label: string;
+  state: StepState;
+  timestamp?: string;
+  detail?: string;
+  pendingLabel?: string;
+  icon: LucideIcon;
+};
+
+const FULFILMENT_ICONS: Record<string, LucideIcon> = {
+  pending: ClipboardList,
+  confirmed: Check,
+  processing: Package,
+  shipped: Truck,
+  delivered: PackageCheck,
+  cancelled: X,
+  refunded: Undo2,
+};
+
+const RETURN_ICONS: Record<ReturnJourneyStep["key"], LucideIcon> = {
+  requested: RotateCcw,
+  approved: Check,
+  picked_up: Truck,
+  received: PackageCheck,
+  refunded: Undo2,
+  rejected: X,
+};
+
+const TONE = {
+  emerald: {
+    done: "bg-emerald-600 text-white ring-emerald-600",
+    current: "bg-white text-emerald-700 ring-emerald-500",
+    ping: "bg-emerald-400",
+    line: "bg-emerald-500",
+    lineSoft: "bg-gradient-to-r from-emerald-500 to-emerald-200",
+    lineSoftV: "bg-gradient-to-b from-emerald-500 to-emerald-200",
+    chip: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  },
+  amber: {
+    done: "bg-amber-500 text-white ring-amber-500",
+    current: "bg-white text-amber-700 ring-amber-400",
+    ping: "bg-amber-400",
+    line: "bg-amber-400",
+    lineSoft: "bg-gradient-to-r from-amber-400 to-amber-100",
+    lineSoftV: "bg-gradient-to-b from-amber-400 to-amber-100",
+    chip: "bg-amber-50 text-amber-900 ring-amber-200",
+  },
+} as const;
+
+const dateFmt = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+const timeFmt = new Intl.DateTimeFormat("en-IN", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function splitDateTime(ts: string): { date: string; time: string } | null {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return null;
+  return { date: dateFmt.format(d), time: timeFmt.format(d) };
+}
+
+function connectorClass(next: Step | undefined, tone: Tone, vertical = false) {
+  if (!next) return "";
+  if (next.state === "failed") return "bg-red-300";
+  if (next.state === "done") return TONE[tone].line;
+  if (next.state === "current") {
+    return vertical ? TONE[tone].lineSoftV : TONE[tone].lineSoft;
+  }
+  return "bg-gray-200";
+}
+
+function StepNode({ step, tone }: { step: Step; tone: Tone }) {
+  const Icon = step.icon;
+  return (
+    <span
+      className={cn(
+        "relative z-10 h-8 w-8 shrink-0 rounded-full flex items-center justify-center ring-2 transition-colors",
+        step.state === "done" && TONE[tone].done,
+        step.state === "current" && TONE[tone].current,
+        step.state === "failed" && "bg-red-600 text-white ring-red-600",
+        step.state === "upcoming" && "bg-white text-gray-300 ring-gray-200",
+      )}
+    >
+      {step.state === "current" ?
+        <span
+          className={cn(
+            "absolute inset-0 rounded-full opacity-30 animate-ping",
+            TONE[tone].ping,
+          )}
+          aria-hidden
+        />
+      : null}
+      <Icon className='relative h-4 w-4' strokeWidth={2.25} />
+    </span>
+  );
+}
+
+function StepMeta({
+  step,
+  tone,
+  align,
+}: {
+  step: Step;
+  tone: Tone;
+  align: "center" | "left";
+}) {
+  const when = step.timestamp ? splitDateTime(step.timestamp) : null;
+  return (
+    <div className={cn("min-w-0", align === "center" && "text-center")}>
+      <p
+        className={cn(
+          "text-[12.5px] font-semibold leading-snug",
+          step.state === "upcoming" ? "text-gray-400"
+          : step.state === "failed" ? "text-red-700"
+          : "text-gray-900",
+        )}
+      >
+        {step.label}
+      </p>
+      {when ?
+        <p className='mt-0.5 text-[11px] leading-tight text-gray-500 tabular-nums'>
+          <span className='whitespace-nowrap'>{when.date}</span>
+          {align === "center" ? <br /> : " · "}
+          <span className='whitespace-nowrap'>{when.time}</span>
+        </p>
+      : step.state === "current" && step.pendingLabel ?
+        <span
+          className={cn(
+            "mt-1 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold ring-1 ring-inset",
+            TONE[tone].chip,
+          )}
+        >
+          {step.pendingLabel}
+        </span>
+      : null}
+      {step.detail ?
+        <p
+          className='mt-1 text-[11px] leading-snug text-gray-500 line-clamp-2 break-words'
+          title={step.detail}
+        >
+          {step.detail}
+        </p>
+      : null}
+    </div>
+  );
+}
+
+/** Horizontal on md+ (columns share the width — never scrolls), vertical on mobile. */
+function Stepper({ steps, tone }: { steps: Step[]; tone: Tone }) {
+  return (
+    <>
+      <ol
+        className='hidden md:grid'
+        style={{
+          gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {steps.map((step, i) => (
+          <li
+            key={step.key}
+            className='relative flex flex-col items-center gap-2 px-1.5'
+          >
+            {i < steps.length - 1 ?
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute top-[15px] left-[calc(50%+20px)] right-[calc(-50%+20px)] h-0.5 rounded-full",
+                  connectorClass(steps[i + 1], tone),
+                )}
+              />
+            : null}
+            <StepNode step={step} tone={tone} />
+            <StepMeta step={step} tone={tone} align='center' />
+          </li>
+        ))}
+      </ol>
+
+      <ol className='md:hidden'>
+        {steps.map((step, i) => (
+          <li key={step.key} className='relative flex gap-3 pb-5 last:pb-0'>
+            {i < steps.length - 1 ?
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute left-[15px] top-9 bottom-1 w-0.5 rounded-full",
+                  connectorClass(steps[i + 1], tone, true),
+                )}
+              />
+            : null}
+            <StepNode step={step} tone={tone} />
+            <div className='pt-1.5 min-w-0'>
+              <StepMeta step={step} tone={tone} align='left' />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+function adminReturnNextStep(order: Order): string {
+  switch (order.returnStatus) {
+    case "requested":
+      return "Review the request below — approve to arrange a pickup, or reject with a note to the customer.";
+    case "approved":
+      return "Book the reverse pickup and mark it picked up. The refund stays locked until the item is received and inspected.";
+    case "picked_up":
+      return "Parcel is on its way back. Inspect it on arrival and mark it received — that unlocks the refund.";
+    case "received":
+      return order.status === "refunded" ?
+          "Refund recorded for this return."
+        : "Item received and inspected — the refund is unlocked. Process it from the return card.";
+    case "returned":
+      return order.refundData ?
+          `Return closed — ${formatPrice(order.refundData.amount)} refunded via ${String(order.refundData.method).replace(/_/g, " ")}.`
+        : "Return closed and refund recorded.";
+    case "rejected":
+      return "Return rejected — no refund is due. The customer has been notified.";
+    default:
+      return "";
+  }
+}
 
 export default function AdminOrderLifecycleTimeline({ order }: { order: Order }) {
   const events = buildOrderLifecycleTimeline(order);
+  const journey = buildReturnJourney(order);
+  const hasReturn = journey !== null;
 
-  if (events.length === 0) {
+  const scans = events.filter((e) => e.status === "courier_scan");
+  const fulfilmentEvents = events.filter(
+    (e) =>
+      e.status !== "courier_scan" &&
+      !e.status.startsWith("return_") &&
+      !(hasReturn && isPostDeliveryStatus(e.status)),
+  );
+
+  const isOpenFulfilment =
+    !hasReturn &&
+    !["delivered", "cancelled", "refunded"].includes(order.status);
+
+  const fulfilmentSteps: Step[] = fulfilmentEvents.map((e, i) => {
+    let state: StepState =
+      e.state === "upcoming" ? "upcoming"
+      : e.status === "cancelled" ? "failed"
+      : "done";
+    if (
+      isOpenFulfilment &&
+      i === fulfilmentEvents.length - 1 &&
+      state === "done"
+    ) {
+      state = "current";
+    }
+    return {
+      key: e.key,
+      label: e.label,
+      state,
+      timestamp: e.timestamp,
+      detail: e.detail,
+      icon: FULFILMENT_ICONS[e.status] ?? Check,
+    };
+  });
+
+  const returnSteps: Step[] =
+    journey?.map((s) => ({
+      key: s.key,
+      label: s.label,
+      state: s.state,
+      timestamp: s.timestamp,
+      detail: s.detail,
+      pendingLabel: s.pendingLabel,
+      icon: RETURN_ICONS[s.key],
+    })) ?? [];
+
+  const latestScan = scans[scans.length - 1];
+  const nextStep = hasReturn ? adminReturnNextStep(order) : "";
+  const returnClosed =
+    order.returnStatus === "returned" ||
+    order.returnStatus === "rejected" ||
+    order.status === "refunded";
+  const returnLabel =
+    order.returnStatus ?
+      (RETURN_STATUS_LABELS[order.returnStatus] ??
+      order.returnStatus.replace(/_/g, " "))
+    : "";
+
+  if (fulfilmentSteps.length === 0 && !hasReturn) {
     return (
       <AdminOrderSectionCard
         id='lifecycle'
@@ -44,125 +339,118 @@ export default function AdminOrderLifecycleTimeline({ order }: { order: Order })
       icon={Compass}
       tone='sky'
       title='Order lifecycle'
-      description='Only steps that actually happened on this order - courier scans appear once shipped.'
+      description='Only steps that actually happened - upcoming return steps are shown greyed out.'
       flush
     >
-      <div className="px-5 sm:px-8 pt-4 pb-5 w-full overflow-x-auto">
-        <div
-          className="flex items-start min-w-[280px] relative mt-6 font-sans"
-          style={{ minWidth: `${Math.max(events.length * 140, 280)}px` }}
-        >
-          {events.map((event, index) => {
-            const isCompleted = event.state === "done" || event.state === "current";
-            const isFailure = FAILURE_STATUSES.has(event.status);
-            const isWarning = WARNING_STATUSES.has(event.status);
-            const timestamp =
-              event.timestamp ? formatDateTime(event.timestamp) : "";
+      {fulfilmentSteps.length > 0 ?
+        <div className='px-5 sm:px-6 pt-5 pb-6'>
+          <MicroLabel className='mb-4'>Fulfilment</MicroLabel>
+          <Stepper steps={fulfilmentSteps} tone='emerald' />
 
-            let icon: ReactNode;
-            if (event.status === "delivered" && isCompleted) {
-              icon = (
-                <div className="flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-full z-10 border border-emerald-100/50 relative top-0.5">
-                  <CheckCircle2 className="h-4 w-4 text-white fill-emerald-600" />
-                  <span className="text-emerald-800 text-[13px] font-bold capitalize pt-px">
-                    Delivered
+          {scans.length > 0 ?
+            <details className='group mt-5 rounded-xl border border-gray-200 bg-gray-50/60 open:bg-white'>
+              <summary className='flex cursor-pointer list-none items-center gap-3 px-4 py-2.5 text-sm [&::-webkit-details-marker]:hidden'>
+                <Radar className='h-4 w-4 shrink-0 text-sky-600' />
+                <span className='font-semibold text-gray-800 shrink-0'>
+                  Courier scans
+                </span>
+                <span className='rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200 shrink-0'>
+                  {scans.length}
+                </span>
+                {latestScan ?
+                  <span className='min-w-0 truncate text-xs text-gray-500'>
+                    Latest: {latestScan.label}
+                    {latestScan.detail ? ` · ${latestScan.detail}` : ""}
                   </span>
-                </div>
-              );
-            } else if (isFailure && isCompleted) {
-              icon = (
-                <div className="flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-full z-10 border border-red-100 relative top-0.5">
-                  <XCircle className="h-4 w-4 text-red-600 fill-red-600" />
-                  <span className="text-red-800 text-[13px] font-bold capitalize pt-px">
-                    {event.label}
-                  </span>
-                </div>
-              );
-            } else if (isWarning && isCompleted) {
-              icon =
-                event.status === "refunded" ?
-                  <div className="flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-full z-10 border border-orange-200 relative top-0.5 shadow-sm">
-                    <Undo2 className="h-4 w-4 text-orange-600 shrink-0" />
-                    <span className="text-orange-900 text-[13px] font-bold capitalize pt-px">
-                      Refunded
-                    </span>
-                  </div>
-                : <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full z-10 border border-amber-200 relative top-0.5 shadow-sm">
-                    <RotateCcw className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span className="text-amber-900 text-[13px] font-bold capitalize pt-px">
-                      {event.label}
-                    </span>
-                  </div>;
-            } else if (event.status === "shipped") {
-              icon = (
-                <div className="bg-white px-3 z-10">
-                  <Truck
-                    className={cn(
-                      "h-6 w-6 mt-1",
-                      isCompleted ? "text-blue-600 fill-blue-600" : "text-gray-300",
-                    )}
-                  />
-                </div>
-              );
-            } else if (isCompleted) {
-              icon = (
-                <div className="bg-white px-2 z-10">
-                  <CheckCircle2 className="h-6 w-6 text-white fill-emerald-600 rounded-full mt-1.5" />
-                </div>
-              );
-            } else {
-              icon = (
-                <div className="bg-white px-2 z-10">
-                  <Circle className="h-2 w-2 text-gray-300 fill-gray-300 mt-3" />
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={event.key}
-                className={cn(
-                  "relative flex flex-col items-center",
-                  index === events.length - 1 ? "flex-[0.5]" : "flex-1",
-                )}
-              >
-                {index < events.length - 1 && (
-                  <div
-                    className={cn(
-                      "absolute top-5 left-[50%] right-[-50%] h-[2px] z-0",
-                      isCompleted && !isFailure ? "bg-emerald-600" : "bg-gray-200",
-                      isFailure ? "bg-red-200" : "",
-                    )}
-                  />
-                )}
-
-                <div className="relative z-10 flex justify-center h-10 items-center w-full">
-                  {icon}
-                </div>
-
-                <div className="mt-3 text-center max-w-[120px]">
-                  <p
-                    className={cn(
-                      "text-[13px] font-bold leading-snug",
-                      isCompleted ? "text-gray-900" : "text-gray-500",
-                    )}
-                  >
-                    {event.label}
-                  </p>
-                  {timestamp && (
-                    <p className="text-[11px] text-gray-500 mt-1">{timestamp}</p>
-                  )}
-                  {event.detail && (
-                    <p className="text-[10px] text-gray-500 mt-1 line-clamp-3">
-                      {event.detail}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                : null}
+                <ChevronDown className='ml-auto h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180' />
+              </summary>
+              <ol className='max-h-72 overflow-y-auto border-t border-gray-100 px-4 py-3 space-y-3'>
+                {[...scans].reverse().map((scan, i) => {
+                  const when = scan.timestamp ? splitDateTime(scan.timestamp) : null;
+                  return (
+                    <li key={scan.key} className='flex gap-3 text-sm'>
+                      <span
+                        className={cn(
+                          "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                          i === 0 ? "bg-sky-500" : "bg-gray-300",
+                        )}
+                      />
+                      <div className='min-w-0 flex-1'>
+                        <p className='font-medium text-gray-900'>{scan.label}</p>
+                        {scan.detail ?
+                          <p className='text-xs text-gray-500 break-words'>
+                            {scan.detail}
+                          </p>
+                        : null}
+                      </div>
+                      {when ?
+                        <p className='shrink-0 text-right text-[11px] leading-tight text-gray-500 tabular-nums'>
+                          {when.date}
+                          <br />
+                          {when.time}
+                        </p>
+                      : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            </details>
+          : null}
         </div>
-      </div>
+      : null}
+
+      {hasReturn ?
+        <div
+          className={cn(
+            "px-5 sm:px-6 pt-5 pb-6 bg-gradient-to-b from-amber-50/60 to-white",
+            fulfilmentSteps.length > 0 && "border-t border-amber-100",
+          )}
+        >
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-2'>
+            <div className='flex items-center gap-2'>
+              <MicroLabel className='text-amber-700/80'>Return &amp; refund</MicroLabel>
+              {returnLabel ?
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+                    order.returnStatus === "rejected" ?
+                      "bg-red-50 text-red-800 ring-red-200"
+                    : "bg-white text-amber-900 ring-amber-200",
+                  )}
+                >
+                  {returnLabel}
+                </span>
+              : null}
+            </div>
+            <a
+              href='#return'
+              className='inline-flex items-center gap-1 text-xs font-semibold text-amber-800 hover:text-amber-950'
+            >
+              Manage return <ArrowRight className='h-3.5 w-3.5' />
+            </a>
+          </div>
+
+          <Stepper steps={returnSteps} tone='amber' />
+
+          {nextStep ?
+            <div
+              className={cn(
+                "mt-5 flex gap-2.5 rounded-xl border px-4 py-3 text-[13px] leading-relaxed",
+                order.returnStatus === "rejected" ?
+                  "border-red-100 bg-red-50/60 text-red-900"
+                : "border-amber-200/70 bg-white text-amber-950",
+              )}
+            >
+              <Info className='mt-0.5 h-4 w-4 shrink-0 opacity-70' />
+              <p>
+                {returnClosed ? null : <span className='font-semibold'>Next: </span>}
+                {nextStep}
+              </p>
+            </div>
+          : null}
+        </div>
+      : null}
     </AdminOrderSectionCard>
   );
 }

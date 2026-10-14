@@ -7,20 +7,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Package,
   CheckCircle2,
-  AlertCircle,
   Sparkles,
   Gift,
   ChevronDown,
 } from "lucide-react";
 import OrderDetailLuxuryContent from "@/components/dashboard/orders/OrderDetailLuxuryContent";
 import CancelOrderModal from "@/components/dashboard/orders/CancelOrderModal";
+import OrderReturnStatusPanel from "@/components/dashboard/orders/OrderReturnStatusPanel";
 import {
   isPresetReviewTitle,
   titleForRating,
 } from "@/components/dashboard/orders/OrderItemReviewBlock";
 import { orderApi, reviewApi } from "@/lib/api";
 import { Order, OrderItem } from "@/types";
-import { formatPrice, formatDateTime, cn } from "@/lib/utils";
+import { formatPrice, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import {
@@ -625,51 +625,7 @@ export default function OrderDetailPage() {
           setReturnModalStep(1);
           setReturnModalOpen(true);
         }}
-        returnBanner={
-          order.returnStatus && order.returnStatus !== "none" ?
-            (() => {
-              const rs = order.returnStatus as string;
-              const refundMethodLabel = (m: string) => m.replace(/_/g, " ");
-              const returnCopy: Record<string, string> = {
-                requested:
-                  "Our team is reviewing your return request. We will update you shortly.",
-                approved:
-                  "Your return was approved. Refund will be processed shortly.",
-                rejected:
-                  "This return request was not approved. Contact support if you need help.",
-                returned:
-                  "Return completed. Refund details are below if applicable.",
-              };
-              return (
-                <div className='bg-amber-50 border border-amber-200 p-5 flex gap-3 items-start'>
-                  <AlertCircle className='h-5 w-5 text-amber-600 mt-0.5 shrink-0' />
-                  <div className='flex-1'>
-                    <h3 className='font-serif text-lg text-amber-900 capitalize'>
-                      Return Status: {rs}
-                    </h3>
-                    <p className='text-sm text-amber-800 mt-1'>
-                      {returnCopy[rs] ?? "We will update you on your return."}
-                    </p>
-                    {order.refundData && (
-                      <div className='mt-3 bg-white/70 p-3 border border-amber-100'>
-                        <p className='text-sm font-semibold text-amber-900'>
-                          Refund Processed:{" "}
-                          {formatPrice(order.refundData.amount)}
-                        </p>
-                        <p className='text-xs text-amber-800'>
-                          Method:{" "}
-                          <span className='capitalize'>
-                            {refundMethodLabel(String(order.refundData.method))}
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()
-          : null
-        }
+        returnBanner={<OrderReturnStatusPanel order={order} />}
         customGiftSection={
           order.productType === "custom" ?
             <CustomGiftDetails order={order} />

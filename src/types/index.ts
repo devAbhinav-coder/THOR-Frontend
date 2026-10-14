@@ -537,7 +537,17 @@ export interface Order {
     note?: string;
     refundMethod?: string;
     requestedAt?: string;
+    requestedBy?: "customer" | "admin";
+    requestChannel?: string;
     userBankDetails?: Record<string, string | undefined>;
+    adminNote?: string;
+    resolvedAt?: string;
+    pickupCarrier?: string;
+    pickupAwb?: string;
+    pickedUpAt?: string;
+    receivedAt?: string;
+    itemCondition?: "resellable" | "damaged";
+    restocked?: boolean;
   };
   refundData?: {
     amount: number;

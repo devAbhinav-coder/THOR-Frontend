@@ -1788,6 +1788,40 @@ export const adminApi = {
       api.patch(`/admin/orders/${id}/return/resolve`, payload),
       schemas.adminOrderDetail,
     ),
+  markReturnPickedUp: (
+    id: string,
+    payload: { carrier?: string; awb?: string; note?: string },
+  ) =>
+    unwrapAxios(
+      "admin.markReturnPickedUp",
+      api.post(`/admin/orders/${id}/return/pickup`, payload),
+      schemas.adminOrderDetail,
+    ),
+  markReturnReceived: (
+    id: string,
+    payload: { condition: "resellable" | "damaged"; note?: string },
+  ) =>
+    unwrapAxios(
+      "admin.markReturnReceived",
+      api.post(`/admin/orders/${id}/return/receive`, payload),
+      schemas.adminOrderDetail,
+    ),
+  initiateReturn: (
+    id: string,
+    payload: {
+      reason: string;
+      note?: string;
+      requestChannel?: string;
+      autoApprove?: boolean;
+      refundMethod?: "upi" | "bank_transfer";
+      userBankDetails?: Record<string, string | undefined>;
+    },
+  ) =>
+    unwrapAxios(
+      "admin.initiateReturn",
+      api.post(`/admin/orders/${id}/return/initiate`, payload),
+      schemas.adminOrderDetail,
+    ),
 
   getDelhiveryStatus: () =>
     unwrapAxios(

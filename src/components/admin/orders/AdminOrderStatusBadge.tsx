@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { Order, OrderStatus, PaymentStatus } from "@/types";
 import { cn } from "@/lib/utils";
+import { getPaymentDisplay } from "@/lib/orderPaymentDisplay";
 
 export const ORDER_STATUSES: OrderStatus[] = [
   "pending",
@@ -213,14 +214,19 @@ export function OrderStatusBadge({
 
 export function PaymentStatusBadge({
   status,
+  order,
   size = "md",
   className,
 }: {
   status: PaymentStatus;
+  /** When set, labels reflect cancelled COD / context-aware copy */
+  order?: Pick<Order, "paymentStatus" | "paymentMethod" | "status">;
   size?: BadgeSize;
   className?: string;
 }) {
-  const m = PAYMENT_STATUS_META[status] ?? PAYMENT_STATUS_META.pending;
+  const display =
+    order ? getPaymentDisplay(order) : { status, label: PAYMENT_STATUS_META[status]?.label ?? status };
+  const m = PAYMENT_STATUS_META[display.status] ?? PAYMENT_STATUS_META.pending;
   const Icon = m.icon;
   return (
     <span
@@ -232,7 +238,7 @@ export function PaymentStatusBadge({
       )}
     >
       <Icon aria-hidden />
-      {m.label}
+      {display.label}
     </span>
   );
 }

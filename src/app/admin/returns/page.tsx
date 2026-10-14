@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/lib/api";
 import { formatPrice, formatDate, getOrderStatusColor, cn } from "@/lib/utils";
+import {
+  adminReturnChannelLabel,
+  RETURN_STATUS_LABELS,
+} from "@/lib/orderReturnHelpers";
 import {
   RotateCcw,
   CheckCircle2,
@@ -28,18 +32,22 @@ type ReturnOrder = {
   orderNumber: string;
   total: number;
   status: string;
-  returnStatus: string;
+  returnStatus?: string | null;
   paymentMethod: string;
+  paymentStatus?: string;
   createdAt: string;
   deliveredAt?: string;
+  activityAt?: string;
   returnRequest?: {
     reason: string;
     note?: string;
     refundMethod?: string;
     requestedAt?: string;
+    requestedBy?: "customer" | "admin";
+    requestChannel?: string;
     adminNote?: string;
   };
-  refundData?: { amount: number; method: string };
+  refundData?: { amount: number; method: string; processedAt?: string };
   items: { name: string; quantity: number; image: string }[];
   user?: { name: string; email: string; phone?: string };
 };
@@ -50,7 +58,10 @@ type ReturnsInsights = {
     requested: number;
     approved: number;
     rejected: number;
+    pickedUp?: number;
+    received?: number;
     returned: number;
+    refundOnly?: number;
     totalRefundedAmount: number;
     refundedOrdersCount: number;
   };
@@ -73,16 +84,54 @@ const STATUS_TABS = [
   { label: "All", value: "" },
   { label: "Requested", value: "requested" },
   { label: "Approved", value: "approved" },
+  { label: "Picked up", value: "picked_up" },
+  { label: "Received", value: "received" },
   { label: "Rejected", value: "rejected" },
-  { label: "Returned", value: "returned" },
+  { label: "Returned & refunded", value: "returned" },
+  { label: "Refund only (no return)", value: "refund_only" },
 ];
 
 const RETURN_STATUS_COLORS: Record<string, string> = {
   requested: "bg-yellow-100 text-yellow-800",
-  approved: "bg-green-100 text-green-800",
+  approved: "bg-sky-100 text-sky-800",
+  picked_up: "bg-indigo-100 text-indigo-800",
+  received: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
   returned: "bg-blue-100 text-blue-800",
+  refund_only: "bg-rose-100 text-rose-800",
 };
+
+/** Rows with no return record are direct refunds (legacy, cancel or in-transit). */
+function rowReturnState(o: ReturnOrder): string {
+  const rs = o.returnStatus;
+  if (!rs || rs === "none") return "refund_only";
+  return rs;
+}
+
+function rowReturnLabel(o: ReturnOrder): string {
+  const s = rowReturnState(o);
+  if (s === "refund_only") return "Refund only";
+  return RETURN_STATUS_LABELS[s] ?? s.replace(/_/g, " ");
+}
+
+function rowSource(o: ReturnOrder): string {
+  const rr = o.returnRequest;
+  if (!rr?.requestedAt) return "Admin refund";
+  if (rr.requestedBy === "admin") {
+    const ch = adminReturnChannelLabel(rr.requestChannel);
+    return ch ? `Admin · ${ch}` : "Admin";
+  }
+  return "Customer · app";
+}
+
+function rowDate(o: ReturnOrder): string {
+  return (
+    o.activityAt ||
+    o.returnRequest?.requestedAt ||
+    o.refundData?.processedAt ||
+    o.createdAt
+  );
+}
 
 function escapeCsvCell(s: string) {
   return `"${String(s).replace(/"/g, '""')}"`;
@@ -93,8 +142,18 @@ export default function AdminReturnsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
 
-  const filter = { page, status: statusFilter };
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const filter = { page, status: statusFilter, q: search };
 
   const {
     data: insights,
@@ -120,6 +179,7 @@ export default function AdminReturnsPage() {
       try {
         const params: Record<string, string | number> = { page, limit: 20 };
         if (statusFilter) params.status = statusFilter;
+        if (search) params.q = search;
         const res = await adminApi.getReturns(params);
         return {
           returns: (res.data.orders as ReturnOrder[]) || [],
@@ -151,20 +211,24 @@ export default function AdminReturnsPage() {
           "Phone",
           "Return status",
           "Order status",
+          "Source",
           "Reason",
-          "Refund method",
+          "Refund method requested",
+          "Refunded amount",
+          "Refunded via",
           "Order total",
-          "Requested at",
+          "Date",
         ],
       ];
       let p = 1;
       let hasMore = true;
-      const limit = 100;
-      while (hasMore && p <= 50) {
+      const limit = 50;
+      while (hasMore && p <= 100) {
         const res = await adminApi.getReturns({
           page: p,
           limit,
           status: statusFilter || undefined,
+          q: search || undefined,
         });
         const batch = (res.data.orders as ReturnOrder[]) || [];
         const pag = res.pagination;
@@ -174,12 +238,15 @@ export default function AdminReturnsPage() {
             o.user?.name || "",
             o.user?.email || "",
             o.user?.phone || "",
-            o.returnStatus,
+            rowReturnLabel(o),
             o.status,
+            rowSource(o),
             o.returnRequest?.reason || "",
             o.returnRequest?.refundMethod?.replace(/_/g, " ") || "",
+            o.refundData?.amount ? String(o.refundData.amount) : "",
+            o.refundData?.method?.replace(/_/g, " ") || "",
             String(o.total),
-            o.returnRequest?.requestedAt || o.createdAt,
+            rowDate(o),
           ]);
         }
         hasMore = pag.totalPages > p;
@@ -264,7 +331,7 @@ export default function AdminReturnsPage() {
       )}
 
       {/* KPIs - from backend aggregates */}
-      <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
+      <div className='grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3'>
         {[
           {
             label: "Open requests",
@@ -273,8 +340,13 @@ export default function AdminReturnsPage() {
             color: "bg-amber-50 text-amber-700",
           },
           {
-            label: "Approved",
-            value: insightsLoading ? "…" : (summary?.approved ?? 0),
+            label: "In progress",
+            value:
+              insightsLoading ? "…" : (
+                (summary?.approved ?? 0) +
+                (summary?.pickedUp ?? 0) +
+                (summary?.received ?? 0)
+              ),
             icon: CheckCircle2,
             color: "bg-green-50 text-green-700",
           },
@@ -285,10 +357,16 @@ export default function AdminReturnsPage() {
             color: "bg-gray-50 text-gray-600",
           },
           {
-            label: "Completed",
+            label: "Returned & refunded",
             value: insightsLoading ? "…" : (summary?.returned ?? 0),
             icon: RotateCcw,
             color: "bg-blue-50 text-blue-700",
+          },
+          {
+            label: "Refund only",
+            value: insightsLoading ? "…" : (summary?.refundOnly ?? 0),
+            icon: TrendingDown,
+            color: "bg-rose-50 text-rose-700",
           },
           {
             label: "Refunded (₹)",
@@ -301,7 +379,7 @@ export default function AdminReturnsPage() {
             small: true,
           },
           {
-            label: "Refund orders",
+            label: "Orders refunded",
             value: insightsLoading ? "…" : (summary?.refundedOrdersCount ?? 0),
             icon: RotateCcw,
             color: "bg-navy-50 text-navy-800",
@@ -457,6 +535,18 @@ export default function AdminReturnsPage() {
         </div>
       </div>
 
+      <div className='flex flex-col sm:flex-row sm:items-center gap-3'>
+        <input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder='Search order number…'
+          className='w-full sm:w-64 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300'
+        />
+        <p className='text-xs text-gray-500'>
+          {isLoading ? "Loading…" : `${total.toLocaleString()} order${total === 1 ? "" : "s"}`}
+        </p>
+      </div>
+
       <div className='flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
         {STATUS_TABS.map((tab) => (
           <button
@@ -495,7 +585,9 @@ export default function AdminReturnsPage() {
             <div className='p-10 text-center'>
               <RotateCcw className='h-10 w-10 text-gray-200 mx-auto mb-3' />
               <p className='text-gray-500 font-medium'>
-                No return requests for this filter.
+                {search ?
+                  `No returns or refunds match "${search}".`
+                : "No returns or refunds for this filter."}
               </p>
             </div>
           : <>
@@ -547,10 +639,16 @@ export default function AdminReturnsPage() {
                           <p className='text-xs text-gray-400 truncate max-w-[200px]'>
                             {order.user?.email || ""}
                           </p>
+                          <span className='mt-1 inline-block text-[10px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded'>
+                            {rowSource(order)}
+                          </span>
                         </td>
-                        <td className='px-5 py-3.5 max-w-[200px]'>
+                        <td className='px-5 py-3.5 max-w-[220px]'>
                           <p className='text-gray-700 truncate'>
-                            {order.returnRequest?.reason || "-"}
+                            {order.returnRequest?.reason ||
+                              (order.refundData?.amount ?
+                                "Refunded without return"
+                              : "-")}
                           </p>
                           {order.returnRequest?.note ?
                             <p className='text-xs text-gray-400 truncate'>
@@ -559,8 +657,21 @@ export default function AdminReturnsPage() {
                           : null}
                         </td>
                         <td className='px-5 py-3.5'>
-                          {order.returnRequest?.refundMethod ?
+                          {order.refundData?.amount ?
+                            <div>
+                              <p className='text-sm font-bold text-gray-900 tabular-nums'>
+                                {formatPrice(order.refundData.amount)}
+                              </p>
+                              <p className='text-[11px] text-gray-500 capitalize'>
+                                {String(order.refundData.method || "").replace(
+                                  /_/g,
+                                  " ",
+                                )}
+                              </p>
+                            </div>
+                          : order.returnRequest?.refundMethod ?
                             <span className='text-xs font-semibold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg capitalize'>
+                              Pending ·{" "}
                               {order.returnRequest.refundMethod.replace(
                                 /_/g,
                                 " ",
@@ -571,21 +682,19 @@ export default function AdminReturnsPage() {
                         <td className='px-5 py-3.5'>
                           <span
                             className={cn(
-                              "text-xs font-semibold px-2.5 py-1 rounded-full capitalize",
-                              RETURN_STATUS_COLORS[order.returnStatus] ||
+                              "text-xs font-semibold px-2.5 py-1 rounded-full",
+                              RETURN_STATUS_COLORS[rowReturnState(order)] ||
                                 "bg-gray-100 text-gray-700",
                             )}
                           >
-                            {order.returnStatus}
+                            {rowReturnLabel(order)}
                           </span>
                         </td>
                         <td className='px-5 py-3.5 font-semibold text-gray-900 tabular-nums'>
                           {formatPrice(order.total)}
                         </td>
                         <td className='px-5 py-3.5 text-gray-500'>
-                          {formatDate(
-                            order.returnRequest?.requestedAt || order.createdAt,
-                          )}
+                          {formatDate(rowDate(order))}
                         </td>
                         <td className='px-5 py-3.5'>
                           <Link
@@ -619,23 +728,28 @@ export default function AdminReturnsPage() {
                       </div>
                       <span
                         className={cn(
-                          "text-xs font-semibold px-2.5 py-1 rounded-full capitalize",
-                          RETURN_STATUS_COLORS[order.returnStatus] ||
+                          "text-xs font-semibold px-2.5 py-1 rounded-full",
+                          RETURN_STATUS_COLORS[rowReturnState(order)] ||
                             "bg-gray-100 text-gray-700",
                         )}
                       >
-                        {order.returnStatus}
+                        {rowReturnLabel(order)}
                       </span>
                     </div>
                     <p className='text-xs text-gray-600 mb-1'>
                       <span className='font-medium'>Reason:</span>{" "}
-                      {order.returnRequest?.reason || "-"}
+                      {order.returnRequest?.reason ||
+                        (order.refundData?.amount ? "Refunded without return" : "-")}
+                    </p>
+                    <p className='text-[11px] text-gray-500 mb-1'>
+                      {rowSource(order)}
+                      {order.refundData?.amount ?
+                        ` · Refunded ${formatPrice(order.refundData.amount)}`
+                      : ""}
                     </p>
                     <div className='flex justify-between items-center'>
                       <span className='text-xs text-gray-400'>
-                        {formatDate(
-                          order.returnRequest?.requestedAt || order.createdAt,
-                        )}
+                        {formatDate(rowDate(order))}
                       </span>
                       <span className='text-sm font-bold text-gray-900'>
                         {formatPrice(order.total)}

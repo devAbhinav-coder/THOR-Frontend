@@ -9,6 +9,8 @@ const LABELS: Record<string, string> = {
   return_requested: "Return requested",
   return_approved: "Return approved",
   return_rejected: "Return rejected",
+  return_picked_up: "Return picked up",
+  return_received: "Return received",
 };
 
 export function formatLifecycleStatus(status: string): string {

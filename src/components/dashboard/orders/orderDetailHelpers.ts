@@ -34,8 +34,17 @@ export function getExpectedDeliveryLabel(order: Order): string | null {
   return null;
 }
 
+/** Team-entered notes (pickup courier/AWB, inspection result, refund ref) stay admin-only. */
+const STAFF_ONLY_DETAIL_STATUSES = new Set([
+  "return_picked_up",
+  "return_received",
+  "refunded",
+]);
+
 export function buildTrackingTimeline(order: Order): TrackingEvent[] {
-  const fromHistory = buildOrderLifecycleTimeline(order);
+  const fromHistory = buildOrderLifecycleTimeline(order).map((e) =>
+    STAFF_ONLY_DETAIL_STATUSES.has(e.status) ? { ...e, detail: undefined } : e,
+  );
   if (fromHistory.length > 0) return fromHistory;
   return buildSyntheticFulfillmentUpToCurrent(order.status);
 }

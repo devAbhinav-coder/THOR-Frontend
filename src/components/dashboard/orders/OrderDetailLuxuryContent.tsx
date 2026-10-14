@@ -20,6 +20,7 @@ import OrderTrackingTimeline from "./OrderTrackingTimeline";
 import { InlineStars, OrderReviewForm } from "./OrderItemReviewBlock";
 import { getOrderCancellationInfo } from "@/lib/orderLifecycle";
 import { isOrderInvoiceAvailable } from "@/lib/orderInvoiceHelpers";
+import { getPaymentDisplay } from "@/lib/orderPaymentDisplay";
 
 const SUPPORT_EMAIL = "support@thehouseofrani.com";
 
@@ -94,12 +95,15 @@ export default function OrderDetailLuxuryContent({
 }: Props) {
   const trackingEvents = buildTrackingTimeline(order);
   const expectedDelivery = getExpectedDeliveryLabel(order);
+  const hasReturn = Boolean(order.returnStatus && order.returnStatus !== "none");
   const showTracking =
-    !isCancelledOrRefunded && trackingEvents.length > 0;
+    (!isCancelledOrRefunded || hasReturn) && trackingEvents.length > 0;
+  const showClosedNotice = isCancelledOrRefunded && !hasReturn;
   const cancellationInfo =
     order.status === "cancelled" ? getOrderCancellationInfo(order) : undefined;
   const timelineTitle =
-    order.status === "shipped" || order.status === "delivered" ?
+    hasReturn ? "Order & return timeline"
+    : order.status === "shipped" || order.status === "delivered" ?
       "Live tracking"
     : "Order timeline";
   const canShowInvoice = isOrderInvoiceAvailable(order);
@@ -206,7 +210,7 @@ export default function OrderDetailLuxuryContent({
 
       {returnBanner}
 
-      {isCancelledOrRefunded && (
+      {showClosedNotice && (
         <div className='bg-red-50 border border-red-200 p-4 flex gap-3 text-sm text-red-800'>
           <AlertCircle className='h-5 w-5 shrink-0 mt-0.5' />
           <div>
@@ -547,8 +551,8 @@ export default function OrderDetailLuxuryContent({
           <p className='font-serif text-lg text-account-primary'>
             {paymentMethodLabel(order.paymentMethod)}
           </p>
-          <p className='text-sm text-account-on-surface-variant mt-2 capitalize'>
-            {order.paymentStatus}
+          <p className='text-sm text-account-on-surface-variant mt-2'>
+            {getPaymentDisplay(order).label}
           </p>
           {order.razorpayPaymentId && (
             <p className='text-xs text-account-outline mt-2 font-mono'>
